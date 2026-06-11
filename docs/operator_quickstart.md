@@ -286,3 +286,12 @@ Use docs/schwab_legacy_normalizer_findings.md before implementing Schwab parser 
 Legacy Schwab findings confirm that security transferItems are fill-leg candidates, CURRENCY transferItems are not fill legs, raw transaction JSON should be preserved, and output must be canonical normalized fills.
 
 The uploaded Schwab JSON transaction sample was empty, so a non-empty Schwab transaction JSON or CSV export is still required before adapter implementation.
+## Phase J3 Schwab orders JSON schema contract
+
+Use docs/schwab_orders_json_schema_contract.md before implementing the Schwab orders JSON adapter.
+
+The fill source of truth is orderActivityCollection execution records where executionType is FILL.
+
+The adapter must flatten OCO childOrderStrategies, match executionLegs to orderLegCollection by legId, and emit one normalized fill row per FILL execution leg.
+
+Schwab orders JSON does not reliably carry commissions and fees, so fee enrichment should come later from Schwab transactions transferItems JSON.

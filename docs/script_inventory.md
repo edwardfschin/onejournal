@@ -60,4 +60,9 @@ Removal rule: none of these can be removed unless the reference matrix and basel
 | Item | Phase | Keep/Review | Reason |
 |---|---|---|---|
 | docs/schwab_legacy_normalizer_findings.md | db_phase_j2_schwab_legacy_findings | KEEP | Captures reusable Schwab normalization findings before parser implementation. |
+## Phase J3 Schwab Orders JSON Schema Contract
+
+| Item | Phase | Keep/Review | Reason |
+|---|---|---|---|
+| docs/schwab_orders_json_schema_contract.md | db_phase_j3_schwab_orders_schema | KEEP | Defines read-only Schwab orders JSON to normalized fills extraction rules. |
 
