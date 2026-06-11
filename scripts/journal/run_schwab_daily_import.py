@@ -49,10 +49,10 @@ def _print_operator_summary(*, asof: str, import_db: bool, orders_path: str, tra
     print(f"GENERATED_CSV_CLEANUP: {cleaned}")
     counts = _db_counts(db_path)
     if counts:
-        print(f"DB_TOTAL_IMPORT_RUNS : {counts[chr(39) + chr(39).join([])] if False else counts[chr(105)+chr(109)+chr(112)+chr(111)+chr(114)+chr(116)+chr(95)+chr(114)+chr(117)+chr(110)+chr(115)]}")
-        print(f"DB_TOTAL_FILLS       : {counts[chr(110)+chr(111)+chr(114)+chr(109)+chr(97)+chr(108)+chr(105)+chr(122)+chr(101)+chr(100)+chr(95)+chr(102)+chr(105)+chr(108)+chr(108)+chr(115)]}")
-        print(f"DB_TOTAL_EPISODES    : {counts[chr(116)+chr(114)+chr(97)+chr(100)+chr(101)+chr(95)+chr(101)+chr(112)+chr(105)+chr(115)+chr(111)+chr(100)+chr(101)+chr(115)]}")
-        print(f"DB_TOTAL_EPISODE_LEGS: {counts[chr(116)+chr(114)+chr(97)+chr(100)+chr(101)+chr(95)+chr(101)+chr(112)+chr(105)+chr(115)+chr(111)+chr(100)+chr(101)+chr(95)+chr(108)+chr(101)+chr(103)+chr(115)]}")
+        print(f"DB_TOTAL_IMPORT_RUNS : {counts["import_runs"]}")
+        print(f"DB_TOTAL_FILLS       : {counts["normalized_fills"]}")
+        print(f"DB_TOTAL_EPISODES    : {counts["trade_episodes"]}")
+        print(f"DB_TOTAL_EPISODE_LEGS: {counts["trade_episode_legs"]}")
     print("STATUS               : OK")
 
 def _cleanup_generated(paths: list[Path], keep_files: bool) -> bool:
