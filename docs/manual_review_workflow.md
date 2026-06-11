@@ -54,15 +54,19 @@ python scripts/journal/update_review_template.py --asof 2026-06-02
 
 This is a legacy/backfill helper for data/journal/reviews/manual_reviews.csv. It is not the normal Phase B review write path.
 
-## How to Edit Reviews
+## How to Edit Reviews in Phase B
 
-1. Open data/journal/reviews/manual_reviews.csv.
+1. Start Streamlit.
 
-2. Edit the row matching the episode_uid.
+2. Select the DB payload.
 
-3. Regenerate the dashboard payload: python scripts/journal/check_dashboard_payload.py --asof 2026-06-02 --file docs/examples/manual_csv/fills_template.csv --reviews data/journal/reviews/manual_reviews.csv --write
+3. Use Save Review in Streamlit.
 
-4. Refresh the Streamlit dashboard.
+4. Save Review writes DuckDB manual_reviews.
+
+5. Save Review rebuilds output/dashboard/latest/dashboard_payload_from_db.json.
+
+6. Refresh the Streamlit dashboard if needed.
 
 ## Important Rules
 

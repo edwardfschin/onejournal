@@ -22,9 +22,9 @@ If it fails, fix the failing section before continuing.
 
 ## Refresh Dashboard Payload
 
-Run: python scripts/journal/refresh_dashboard.py --asof 2026-06-02
+Run: python scripts/journal/build_dashboard_payload_from_db.py --asof 2026-06-02 --db data/journal/onejournal.duckdb --output output/dashboard/latest/dashboard_payload_from_db.json --write
 
-This rebuilds output/dashboard/latest/dashboard_payload.json and updates missing rows in data/journal/reviews/manual_reviews.csv.
+This rebuilds output/dashboard/latest/dashboard_payload_from_db.json from DuckDB manual_reviews.
 
 ## Edit Manual Reviews
 
@@ -34,7 +34,7 @@ Edit review_status, setup_quality, entry_reason, and notes.
 
 Do not edit episode_uid unless the trade episode itself changes.
 
-After editing reviews, run again: python scripts/journal/refresh_dashboard.py --asof 2026-06-02
+After saving reviews in Streamlit, the DB dashboard payload is rebuilt from DuckDB manual_reviews.
 
 ## Start Dashboard
 
@@ -101,11 +101,11 @@ No broker credentials in CSV files.
 
 2. ./bin/onejournal_check.sh
 
-3. python scripts/journal/refresh_dashboard.py --asof 2026-06-02
+3. python scripts/journal/build_dashboard_payload_from_db.py --asof 2026-06-02 --db data/journal/onejournal.duckdb --output output/dashboard/latest/dashboard_payload_from_db.json --write
 
 4. Use Streamlit DB payload Save Review to write DuckDB manual_reviews.
 
-5. python scripts/journal/refresh_dashboard.py --asof 2026-06-02
+5. Save Review in Streamlit writes DuckDB manual_reviews and rebuilds the DB dashboard payload.
 
 6. streamlit run src/onejournal/apps/streamlit_app.py
 

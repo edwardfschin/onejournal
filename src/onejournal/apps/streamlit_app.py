@@ -29,7 +29,6 @@ PROJECT_DIR = Path(__file__).resolve().parents[3]
 DEFAULT_PAYLOAD_PATH = PROJECT_DIR / "output/dashboard/latest/dashboard_payload.json"
 DEFAULT_DB_PAYLOAD_PATH = PROJECT_DIR / "output/dashboard/latest/dashboard_payload_from_db.json"
 DEFAULT_DB_PATH = PROJECT_DIR / "data/journal/onejournal.duckdb"
-DEFAULT_REVIEWS_PATH = PROJECT_DIR / "data/journal/reviews/manual_reviews.csv"
 REVIEW_FIELDNAMES = ["episode_uid", "review_status", "setup_quality", "entry_reason", "notes"]
 REVIEW_STATUS_LABELS = {
     "Not Reviewed": "unreviewed",
