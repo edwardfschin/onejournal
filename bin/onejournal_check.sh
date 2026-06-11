@@ -73,6 +73,9 @@ check_path "bin/onejournal_git_status.sh" "$PROJECT_DIR/bin/onejournal_git_statu
 check_file_contains "git guard identity title" "$PROJECT_DIR/bin/onejournal_git_status.sh" "ONEJOURNAL GIT IDENTITY"
 check_file_contains "git guard top mismatch" "$PROJECT_DIR/bin/onejournal_git_status.sh" "git top-level mismatch"
 check_file_contains "git guard pass" "$PROJECT_DIR/bin/onejournal_git_status.sh" "ONEJOURNAL_GIT_GUARD=PASS"
+check_file_contains "git guard cloud safe default" "$PROJECT_DIR/bin/onejournal_git_status.sh" "SKIPPED full git status by default"
+check_file_contains "git guard explicit full status" "$PROJECT_DIR/bin/onejournal_git_status.sh" "ONEJOURNAL_FULL_GIT_STATUS"
+check_file_contains "git guard index lock" "$PROJECT_DIR/bin/onejournal_git_status.sh" "index.lock"
 
 echo
 

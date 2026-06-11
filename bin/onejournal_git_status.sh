@@ -24,7 +24,22 @@ if [ "$git_top" != "$PROJECT_DIR" ]; then
   exit 1
 fi
 
+if [ -e "$PROJECT_DIR/.git/index.lock" ]; then
+  echo "FAIL stale git index lock exists: $PROJECT_DIR/.git/index.lock"
+  echo "ACTION: confirm no git process is running, then remove .git/index.lock"
+  exit 1
+fi
+
 echo "===== ONEJOURNAL GIT STATUS ====="
-git status --short
+echo "SKIPPED full git status by default because cloud-synced folders can hang."
+echo "Run this manually only when needed:"
+echo "  git status --short"
 echo
+
+if [ "${ONEJOURNAL_FULL_GIT_STATUS:-0}" = "1" ]; then
+  echo "===== ONEJOURNAL FULL GIT STATUS ====="
+  git status --short
+  echo
+fi
+
 echo "ONEJOURNAL_GIT_GUARD=PASS"
