@@ -2,12 +2,59 @@
 from __future__ import annotations
 
 import argparse
+import csv
 import subprocess
 import sys
 from pathlib import Path
 
+import duckdb
+
 
 PROJECT_DIR = Path(__file__).resolve().parents[2]
+
+
+
+def _csv_row_count(path: Path) -> int:
+    if not path.exists():
+        return 0
+    with path.open(newline="", encoding="utf-8") as fh:
+        return sum(1 for _ in csv.DictReader(fh))
+
+
+def _db_counts(db_path: Path) -> dict[str, int]:
+    if not db_path.exists():
+        return {}
+    con = duckdb.connect(str(db_path), read_only=True)
+    try:
+        return {
+            "import_runs": con.execute("select count(*) from import_runs").fetchone()[0],
+            "normalized_fills": con.execute("select count(*) from normalized_fills").fetchone()[0],
+            "trade_episodes": con.execute("select count(*) from trade_episodes").fetchone()[0],
+            "trade_episode_legs": con.execute("select count(*) from trade_episode_legs").fetchone()[0],
+        }
+    finally:
+        con.close()
+
+
+def _print_operator_summary(*, asof: str, import_db: bool, orders_path: str, transactions_path: str, orders_out: Path, txns_out: Path, db_path: Path, payload_out: Path, cleaned: bool) -> None:
+    print("")
+    print("===== Schwab Operator Summary =====")
+    print(f"ASOF                 : {asof}")
+    print(f"IMPORT_DB            : {import_db}")
+    print(f"ORDERS_FILE          : {orders_path}")
+    print(f"TRANSACTIONS_FILE    : {transactions_path}")
+    print(f"ORDERS_ROWS          : {_csv_row_count(orders_out)}")
+    print(f"TRANSACTIONS_ROWS    : {_csv_row_count(txns_out)}")
+    payload_text = str(payload_out) if import_db else "not built in dry-run"
+    print(f"PAYLOAD_PATH         : {payload_text}")
+    print(f"GENERATED_CSV_CLEANUP: {cleaned}")
+    counts = _db_counts(db_path)
+    if counts:
+        print(f"DB_IMPORT_RUNS       : {counts["import_runs"]}")
+        print(f"DB_NORMALIZED_FILLS  : {counts["normalized_fills"]}")
+        print(f"DB_TRADE_EPISODES    : {counts["trade_episodes"]}")
+        print(f"DB_EPISODE_LEGS      : {counts["trade_episode_legs"]}")
+    print("STATUS               : OK")
 
 
 def run(cmd: list[str]) -> None:
@@ -50,6 +97,7 @@ def main() -> int:
         print("IMPORT NOTE : dry-run only. Add --import-db to import into DuckDB after all gates pass.")
 
     out_dir.mkdir(parents=True, exist_ok=True)
+    cleaned = False
 
     try:
         run([sys.executable, "scripts/journal/convert_schwab_orders_json_to_normalized_fills.py", "--asof", asof, "--input", args.orders, "--output", str(orders_out)])
@@ -79,10 +127,12 @@ def main() -> int:
             for p in [orders_out, txns_out]:
                 try:
                     p.unlink()
+                    cleaned = True
                     print(f"REMOVED     : {p}")
                 except FileNotFoundError:
                     pass
 
+    _print_operator_summary(asof=asof, import_db=args.import_db, orders_path=args.orders, transactions_path=args.transactions, orders_out=orders_out, txns_out=txns_out, db_path=db_path, payload_out=payload_out, cleaned=cleaned)
     run([sys.executable, "scripts/journal/check_odfs_continuity.py"])
     return 0
 
