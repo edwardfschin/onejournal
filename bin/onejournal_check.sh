@@ -345,6 +345,17 @@ check_file_not_contains "streamlit no load_review_rows" "$PROJECT_DIR/src/onejou
 
 echo
 
+check_file_contains "operator phase f runbook" "$PROJECT_DIR/docs/operator_quickstart.md" "Phase F Current Operator Runbook"
+check_file_contains "operator phase f contract check" "$PROJECT_DIR/docs/operator_quickstart.md" "check_db_dashboard_contract.py"
+check_file_contains "operator phase f save flow check" "$PROJECT_DIR/docs/operator_quickstart.md" "check_save_review_flow.py"
+check_file_contains "manual phase f procedure" "$PROJECT_DIR/docs/manual_review_workflow.md" "Phase F Save Review Operating Procedure"
+check_file_contains "manual phase f temp db proof" "$PROJECT_DIR/docs/manual_review_workflow.md" "temporary validation DB copy"
+check_file_contains "manual phase f csv legacy" "$PROJECT_DIR/docs/manual_review_workflow.md" "CSV manual_reviews.csv remains legacy/backfill/export only"
+check_file_not_contains "manual review stale csv enough" "$PROJECT_DIR/docs/manual_review_workflow.md" "For now, CSV is enough"
+check_file_contains "inventory phase f guarded scripts" "$PROJECT_DIR/docs/script_inventory.md" "Phase F Guarded Review Workflow Scripts"
+check_file_contains "inventory save flow checker" "$PROJECT_DIR/docs/script_inventory.md" "check_save_review_flow.py"
+check_file_contains "inventory db contract checker" "$PROJECT_DIR/docs/script_inventory.md" "check_db_dashboard_contract.py"
+
 echo "===== Data contract ====="
 check_path "docs/onejournal_data_contract_v1.md" "$PROJECT_DIR/docs/onejournal_data_contract_v1.md"
 check_file_contains "data contract title" "$PROJECT_DIR/docs/onejournal_data_contract_v1.md" "OneJournal Data Contract v1"

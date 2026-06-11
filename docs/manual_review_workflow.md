@@ -82,7 +82,7 @@ Do not add broker credentials or tokens to this CSV.
 
 Phase B has replaced the normal editable CSV review workflow with DuckDB manual_reviews.
 
-For now, CSV is enough because it is simple, visible, and easy to validate.
+CSV is now legacy/backfill/export only. The normal editable review store is DuckDB manual_reviews.
 
 ## DuckDB Phase B Check
 
@@ -120,3 +120,34 @@ CSV and Custom payloads are read-only in Phase B.
 Use DB payload to save reviews.
 CSV manual_reviews.csv is legacy/backfill/export only.
 No auto-trade.
+
+## Phase F Save Review Operating Procedure
+
+The normal editable review workflow is:
+
+```text
+Streamlit DB payload
+-> Save Review to DuckDB
+-> scripts/journal/upsert_manual_review_to_db.py
+-> DuckDB manual_reviews
+-> scripts/journal/build_dashboard_payload_from_db.py
+-> output/dashboard/latest/dashboard_payload_from_db.json
+-> Streamlit reload
+```
+
+Before relying on the review screen, run:
+
+```text
+./bin/onejournal_check.sh
+```
+
+The baseline includes:
+
+```text
+check_db_dashboard_contract.py
+check_save_review_flow.py
+```
+
+These checks prove the DB payload contract and the Save Review flow using a temporary validation DB copy. They do not write to the production DB during validation and do not call broker APIs.
+
+CSV manual_reviews.csv remains legacy/backfill/export only. CSV and Custom payloads are read-only in Streamlit.

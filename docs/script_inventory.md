@@ -27,3 +27,13 @@ No script in this inventory may place, cancel, or modify broker orders.
 ## Removal Rule
 
 A script can be removed only after the reference matrix shows zero production, baseline, documentation, and migration-safety references, and after this inventory is updated first.
+
+## Phase F Guarded Review Workflow Scripts
+
+| Script | Category | Status | Reason |
+|---|---|---:|---|
+| check_db_dashboard_contract.py | db_phase_c_contract | KEEP | Baseline guard for dashboard_payload_from_db.json schema and DB payload source. |
+| check_save_review_flow.py | db_phase_d_save_flow | KEEP | Baseline guard proving Save Review -> DuckDB manual_reviews -> DB payload rebuild on a temporary DB copy. |
+| src/onejournal/apps/streamlit_app.py | operator_ui | KEEP | Normal operator UI. DB payload is writable; CSV and Custom payloads are read-only. |
+
+Removal rule: none of these can be removed unless the reference matrix and baseline are updated in the same commit.

@@ -171,3 +171,46 @@ CSV and Custom payloads are read-only in Phase B.
 Use DB payload to save reviews.
 CSV manual_reviews.csv is legacy/backfill/export only.
 No auto-trade.
+
+## Phase F Current Operator Runbook
+
+Use this sequence for the normal OneJournal DB review workflow.
+
+```text
+1. Confirm Git identity and clean status.
+2. Run ./bin/onejournal_check.sh.
+3. Build the DB dashboard payload from DuckDB manual_reviews.
+4. Run check_db_dashboard_contract.py to prove dashboard_payload_from_db.json has the expected DB schema.
+5. Run check_save_review_flow.py to prove Save Review works end to end on a temporary DB copy.
+6. Launch Streamlit.
+7. Select DB payload.
+8. Use Save Review to DuckDB.
+9. Treat CSV and Custom payloads as read-only.
+10. Confirm no broker API call, no order placement, no order cancellation, no order modification, and no auto-trade.
+```
+
+Normal DB payload build:
+
+```text
+python scripts/journal/build_dashboard_payload_from_db.py --asof 2026-06-02 --db data/journal/onejournal.duckdb --output output/dashboard/latest/dashboard_payload_from_db.json --write
+```
+
+DB payload contract check:
+
+```text
+python scripts/journal/check_db_dashboard_contract.py --asof 2026-06-02 --payload output/dashboard/latest/dashboard_payload_from_db.json
+```
+
+Save Review flow check:
+
+```text
+python scripts/journal/check_save_review_flow.py --asof 2026-06-02 --db data/journal/onejournal.duckdb
+```
+
+Streamlit launch:
+
+```text
+streamlit run src/onejournal/apps/streamlit_app.py
+```
+
+Operator rule: only DB payload is writable. CSV and Custom payloads are read-only in Phase F.
