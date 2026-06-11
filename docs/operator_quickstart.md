@@ -261,3 +261,12 @@ Use docs/operator_import_runbook.md for the safe import sequence.
 The required sequence is raw evidence, normalized fills validation, DuckDB import, import audit check, DB dashboard build, dashboard contract check, then Streamlit review.
 
 Do not use raw broker CSV directly for dashboard, Streamlit review state, or trade_episodes.
+## Phase J0 Schwab execution boundary
+
+Use docs/schwab_execution_boundary_contract.md as the rule for Schwab journal ingestion and future execution.
+
+Current Schwab journal ingestion is read-only.
+
+Future auto-trading must use order intents, risk gates, approval or policy checks, broker order execution, broker fill feedback, and normalized_fills journal import.
+
+Journal scripts, dashboard scripts, and Streamlit review scripts must not call Schwab order-place, order-cancel, order-replace, or order-modify directly.

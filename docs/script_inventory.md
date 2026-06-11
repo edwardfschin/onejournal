@@ -45,4 +45,9 @@ Removal rule: none of these can be removed unless the reference matrix and basel
 | Item | Phase | Keep/Review | Reason |
 |---|---|---|---|
 | docs/operator_import_runbook.md | db_phase_i_operator_import | KEEP | Defines safe ODFS import sequence before broker-specific adapters. |
+## Phase J0 Schwab Execution Boundary
+
+| Item | Phase | Keep/Review | Reason |
+|---|---|---|---|
+| docs/schwab_execution_boundary_contract.md | db_phase_j0_schwab_execution_boundary | KEEP | Defines journal-vs-execution boundary for Schwab ingestion and future auto-trading readiness. |
 
