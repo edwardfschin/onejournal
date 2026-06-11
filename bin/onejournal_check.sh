@@ -334,6 +334,12 @@ check_file_not_contains "streamlit no csv save wording" "$PROJECT_DIR/src/onejou
 check_file_contains "streamlit csv custom readonly" "$PROJECT_DIR/src/onejournal/apps/streamlit_app.py" "CSV and Custom payloads are read-only in Phase B"
 check_file_contains "streamlit phase b db default order" "$PROJECT_DIR/src/onejournal/apps/streamlit_app.py" "[\"DB payload\", \"CSV payload\", \"Custom path\"]"
 check_file_contains "streamlit phase b db default text" "$PROJECT_DIR/src/onejournal/apps/streamlit_app.py" "DB payload is the Phase B default"
+check_file_contains "streamlit phase e db writable" "$PROJECT_DIR/src/onejournal/apps/streamlit_app.py" "Writable mode: DB payload only"
+check_file_contains "streamlit phase e save button" "$PROJECT_DIR/src/onejournal/apps/streamlit_app.py" "Save Review to DuckDB"
+check_file_contains "streamlit phase e no order modification" "$PROJECT_DIR/src/onejournal/apps/streamlit_app.py" "no order modification"
+check_file_not_contains "streamlit no default reviews path" "$PROJECT_DIR/src/onejournal/apps/streamlit_app.py" "DEFAULT_REVIEWS_PATH"
+check_file_not_contains "streamlit no csv import" "$PROJECT_DIR/src/onejournal/apps/streamlit_app.py" "import csv"
+check_file_not_contains "streamlit no load_review_rows" "$PROJECT_DIR/src/onejournal/apps/streamlit_app.py" "load_review_rows"
 
 
 

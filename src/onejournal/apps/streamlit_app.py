@@ -4,18 +4,20 @@ Purpose
 -------
 Display the published dashboard payload and allow manual journal review edits.
 
-This app is safe for the current prototype:
-- no broker API calls
-- no database writes
-- no order placement
-- no order cancellation
-- no automation
-- only manual review CSV updates
+Phase E operator contract:
+- DB payload is the only writable review mode.
+- Save Review writes DuckDB manual_reviews.
+- Save Review rebuilds dashboard_payload_from_db.json.
+- CSV and Custom payloads are read-only.
+- No broker API calls.
+- No order placement.
+- No order cancellation.
+- No order modification.
+- No auto-trade.
 """
 
 from __future__ import annotations
 
-import csv
 import json
 import subprocess
 import sys
@@ -29,7 +31,6 @@ PROJECT_DIR = Path(__file__).resolve().parents[3]
 DEFAULT_PAYLOAD_PATH = PROJECT_DIR / "output/dashboard/latest/dashboard_payload.json"
 DEFAULT_DB_PAYLOAD_PATH = PROJECT_DIR / "output/dashboard/latest/dashboard_payload_from_db.json"
 DEFAULT_DB_PATH = PROJECT_DIR / "data/journal/onejournal.duckdb"
-REVIEW_FIELDNAMES = ["episode_uid", "review_status", "setup_quality", "entry_reason", "notes"]
 REVIEW_STATUS_LABELS = {
     "Not Reviewed": "unreviewed",
     "Reviewed": "reviewed",
@@ -63,22 +64,6 @@ def money(value: Any) -> str:
         return f"${float(value):,.2f}"
     except (TypeError, ValueError):
         return "$0.00"
-
-
-def load_review_rows(path: Path) -> dict[str, dict[str, str]]:
-    """Load manual review rows keyed by episode_uid."""
-
-    if not path.exists():
-        return {}
-
-    with path.open("r", encoding="utf-8-sig", newline="") as f:
-        reader = csv.DictReader(f)
-        rows: dict[str, dict[str, str]] = {}
-        for row in reader:
-            episode_uid = (row.get("episode_uid") or "").strip()
-            if episode_uid:
-                rows[episode_uid] = {field: (row.get(field) or "") for field in REVIEW_FIELDNAMES}
-        return rows
 
 
 def refresh_db_dashboard_payload(
@@ -165,7 +150,7 @@ def _label_for_value(mapping: dict[str, str], value: str) -> str:
     return next(iter(mapping))
 
 
-def render_review_editor(episodes: list[dict[str, Any]], reviews_path: Path, payload_path: Path, asof: str, payload_source: str, db_path: Path) -> None:
+def render_review_editor(episodes: list[dict[str, Any]], payload_path: Path, asof: str, payload_source: str, db_path: Path) -> None:
     """Render manual review editor."""
 
     if not episodes:
@@ -177,7 +162,8 @@ def render_review_editor(episodes: list[dict[str, Any]], reviews_path: Path, pay
         st.caption("CSV payload is legacy/backfill/export only. No broker action is taken.")
         return
 
-    st.caption("Saves to DuckDB manual_reviews, then rebuilds the DB dashboard payload. No broker action is taken.")
+    st.success("Writable mode: DB payload only. Save Review writes DuckDB manual_reviews and rebuilds dashboard_payload_from_db.json.")
+    st.caption("Safety: no broker API call, no order placement, no order cancellation, no order modification, no auto-trade.")
 
     labels = []
     episode_by_label: dict[str, dict[str, Any]] = {}
@@ -208,7 +194,7 @@ def render_review_editor(episodes: list[dict[str, Any]], reviews_path: Path, pay
         setup_quality = SETUP_QUALITY_LABELS[setup_quality_label]
         entry_reason = st.text_input("Entry Reason", str(selected.get("entry_reason", "")), key=f"entry_reason_{episode_uid}")
         notes = st.text_area("Notes", str(selected.get("notes", "")), height=120, key=f"notes_{episode_uid}")
-        submitted = st.form_submit_button("Save Review")
+        submitted = st.form_submit_button("Save Review to DuckDB")
 
     if submitted:
         result = refresh_db_dashboard_payload(
@@ -221,7 +207,7 @@ def render_review_editor(episodes: list[dict[str, Any]], reviews_path: Path, pay
             entry_reason,
             notes,
         )
-        st.info(f"Saved DB review for: {episode_uid}")
+        st.info(f"Saved DB review to DuckDB manual_reviews for: {episode_uid}")
         st.caption(f"DB path: {db_path}")
         st.caption(f"Payload path: {payload_path}")
         st.caption(f"Refresh return code: {result.returncode}")
@@ -233,7 +219,7 @@ def render_review_editor(episodes: list[dict[str, Any]], reviews_path: Path, pay
             st.session_state["last_review_save"] = f"Saved review for {episode_uid}"
             st.rerun()
         else:
-            st.error("Review saved, but dashboard refresh failed. See output above.")
+            st.error("Review upsert or DB dashboard refresh failed. See output above.")
 
 
 def main() -> None:
@@ -262,8 +248,7 @@ def main() -> None:
         st.sidebar.caption(f"Payload path: {payload_path}")
     else:
         payload_path = Path(st.sidebar.text_input("Payload path", str(DEFAULT_PAYLOAD_PATH)))
-    reviews_path = Path(st.sidebar.text_input("Reviews path", str(DEFAULT_REVIEWS_PATH)))
-
+    
     try:
         payload = load_payload(payload_path)
     except Exception as exc:
@@ -282,7 +267,7 @@ def main() -> None:
         "Internal prototype only. Read-only journal view. "
         "No order placement, no order cancellation, and no auto-trade."
     )
-    st.info(f"Mode: {mode} | Auto-trade: {auto_trade} | Payload source: {metadata.get("source", payload_source)}")
+    st.info(f"Mode: {mode} | Auto-trade: {auto_trade} | Payload source: {metadata.get(chr(34)+chr(115)+chr(111)+chr(117)+chr(114)+chr(99)+chr(101), payload_source)}")
 
     col1, col2, col3, col4 = st.columns(4)
     col1.metric("As of", metadata.get("asof", "-"))
@@ -301,7 +286,7 @@ def main() -> None:
             use_container_width=True,
             hide_index=True,
         )
-        render_review_editor(episodes, reviews_path, payload_path, asof, payload_source, DEFAULT_DB_PATH)
+        render_review_editor(episodes, payload_path, asof, payload_source, DEFAULT_DB_PATH)
     else:
         st.warning("No recent trade episodes found.")
 
