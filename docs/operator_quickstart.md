@@ -243,3 +243,14 @@ DuckDB normalized_fills, trade_episodes, trade_episode_legs, and manual_reviews 
 Dashboard JSON under output/dashboard/ is generated output.
 
 Do not build a broker-specific adapter that writes directly to Streamlit or dashboard JSON.
+## Phase I3 ODFS folder rule
+
+Raw broker files belong under data/raw/schwab, data/raw/ibkr, or data/raw/manual_imports.
+
+Canonical normalized fills belong under data/normalized/fills when a CSV transport/export file is needed.
+
+Do not edit raw broker exports in place.
+
+Do not use raw broker CSV directly for dashboard, Streamlit review state, or trade_episodes.
+
+Normalize first, validate, then import into DuckDB.

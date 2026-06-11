@@ -395,6 +395,18 @@ else
   fail_count=$((fail_count + 1))
 fi
 check_file_contains "normalized fills no direct dashboard" "$PROJECT_DIR/docs/normalized_fills_odfs_contract.md" "broker CSV directly to dashboard"
+check_path "docs/odfs_ingestion_folder_contract.md" "$PROJECT_DIR/docs/odfs_ingestion_folder_contract.md"
+check_path "data/raw/schwab" "$PROJECT_DIR/data/raw/schwab"
+check_path "data/raw/ibkr" "$PROJECT_DIR/data/raw/ibkr"
+check_path "data/raw/manual_imports" "$PROJECT_DIR/data/raw/manual_imports"
+check_path "data/normalized/fills" "$PROJECT_DIR/data/normalized/fills"
+check_path "data/audit/run_log" "$PROJECT_DIR/data/audit/run_log"
+check_file_contains "odfs folder raw schwab" "$PROJECT_DIR/docs/odfs_ingestion_folder_contract.md" "data/raw/schwab stores original Schwab files exactly as exported"
+check_file_contains "odfs folder raw ibkr" "$PROJECT_DIR/docs/odfs_ingestion_folder_contract.md" "data/raw/ibkr stores original IBKR files exactly as exported"
+check_file_contains "odfs folder normalized fills" "$PROJECT_DIR/docs/odfs_ingestion_folder_contract.md" "data/normalized/fills stores canonical OneJournal normalized fills"
+check_file_contains "odfs folder no raw dashboard" "$PROJECT_DIR/docs/odfs_ingestion_folder_contract.md" "Do not use raw broker CSV directly for dashboard payloads"
+check_file_contains "odfs folder no raw episodes" "$PROJECT_DIR/docs/odfs_ingestion_folder_contract.md" "Do not import raw broker CSV directly into trade_episodes"
+check_file_contains "operator phase i3 folder rule" "$PROJECT_DIR/docs/operator_quickstart.md" "Phase I3 ODFS folder rule"
 check_file_contains "operator phase i1 ingestion rule" "$PROJECT_DIR/docs/operator_quickstart.md" "Phase I1 ODFS ingestion rule"
 check_file_contains "data contract phase i1" "$PROJECT_DIR/docs/onejournal_data_contract_v1.md" "Phase I1 normalized fills ODFS rule"
 
