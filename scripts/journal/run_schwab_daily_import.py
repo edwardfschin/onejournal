@@ -36,15 +36,15 @@ def _db_counts(db_path: Path) -> dict[str, int]:
         con.close()
 
 
-def _print_operator_summary(*, asof: str, import_db: bool, orders_path: str, transactions_path: str, orders_out: Path, txns_out: Path, db_path: Path, payload_out: Path, cleaned: bool) -> None:
+def _print_operator_summary(*, asof: str, import_db: bool, orders_path: str, transactions_path: str, orders_rows: int, transactions_rows: int, db_path: Path, payload_out: Path, cleaned: bool) -> None:
     print("")
     print("===== Schwab Operator Summary =====")
     print(f"ASOF                 : {asof}")
     print(f"IMPORT_DB            : {import_db}")
     print(f"ORDERS_FILE          : {orders_path}")
     print(f"TRANSACTIONS_FILE    : {transactions_path}")
-    print(f"ORDERS_ROWS          : {_csv_row_count(orders_out)}")
-    print(f"TRANSACTIONS_ROWS    : {_csv_row_count(txns_out)}")
+    print(f"ORDERS_ROWS          : {orders_rows}")
+    print(f"TRANSACTIONS_ROWS    : {transactions_rows}")
     payload_text = str(payload_out) if import_db else "not built in dry-run"
     print(f"PAYLOAD_PATH         : {payload_text}")
     print(f"GENERATED_CSV_CLEANUP: {cleaned}")
@@ -122,6 +122,8 @@ def main() -> int:
         print("===== Flow Result =====")
         print("STATUS      : OK")
         print("CANONICAL   : transactions-normalized fills are the current import source after strict reconciliation.")
+        orders_rows = _csv_row_count(orders_out)
+        transactions_rows = _csv_row_count(txns_out)
     finally:
         if not args.keep_files:
             for p in [orders_out, txns_out]:
@@ -132,7 +134,7 @@ def main() -> int:
                 except FileNotFoundError:
                     pass
 
-    _print_operator_summary(asof=asof, import_db=args.import_db, orders_path=args.orders, transactions_path=args.transactions, orders_out=orders_out, txns_out=txns_out, db_path=db_path, payload_out=payload_out, cleaned=cleaned)
+    _print_operator_summary(asof=asof, import_db=args.import_db, orders_path=args.orders, transactions_path=args.transactions, orders_rows=orders_rows, transactions_rows=transactions_rows, db_path=db_path, payload_out=payload_out, cleaned=cleaned)
     run([sys.executable, "scripts/journal/check_odfs_continuity.py"])
     return 0
 
