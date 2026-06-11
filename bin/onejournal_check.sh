@@ -375,7 +375,22 @@ done
 echo
 
 if [ "$fail_count" -eq 0 ]; then
-  echo "PASS OneJournal baseline looks good."
+  check_path "scripts/journal/check_db_dashboard_contract.py" "$PROJECT_DIR/scripts/journal/check_db_dashboard_contract.py"
+check_path "docs/dashboard_db_contract.md" "$PROJECT_DIR/docs/dashboard_db_contract.md"
+check_file_contains "dashboard db contract source" "$PROJECT_DIR/docs/dashboard_db_contract.md" "DuckDB table:"
+check_file_contains "dashboard db contract payload" "$PROJECT_DIR/docs/dashboard_db_contract.md" "dashboard_payload_from_db.json"
+check_file_contains "dashboard db contract save flow" "$PROJECT_DIR/docs/dashboard_db_contract.md" "Streamlit Save Review"
+
+echo "===== DB Dashboard Contract ====="
+if "$PY" "$PROJECT_DIR/scripts/journal/check_db_dashboard_contract.py" --asof 2026-06-02 --payload "$PROJECT_DIR/output/dashboard/latest/dashboard_payload_from_db.json" >/tmp/onejournal_db_dashboard_contract.out 2>&1
+then
+  pass "db dashboard contract"
+else
+  fail "db dashboard contract"
+  cat /tmp/onejournal_db_dashboard_contract.out
+fi
+
+echo "PASS OneJournal baseline looks good."
   exit 0
 else
   echo "FAIL OneJournal baseline check found $fail_count issue(s)."
