@@ -66,3 +66,10 @@ Removal rule: none of these can be removed unless the reference matrix and basel
 |---|---|---|---|
 | docs/schwab_orders_json_schema_contract.md | db_phase_j3_schwab_orders_schema | KEEP | Defines read-only Schwab orders JSON to normalized fills extraction rules. |
 
+## Phase J4 Schwab Orders JSON Adapter
+
+| Item | Phase | Keep/Review | Reason |
+|---|---|---|---|
+| src/onejournal/brokers/schwab/orders_json.py | db_phase_j4_schwab_orders_adapter | KEEP | Read-only Schwab orders JSON normalizer. |
+| scripts/journal/convert_schwab_orders_json_to_normalized_fills.py | db_phase_j4_schwab_orders_adapter | KEEP | Operator CLI to write canonical normalized fills CSV from Schwab orders JSON. |
+| docs/schwab_orders_json_adapter.md | db_phase_j4_schwab_orders_adapter | KEEP | Operator and design notes for the adapter. |

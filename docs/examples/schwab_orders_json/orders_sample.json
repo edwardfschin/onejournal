@@ -1,0 +1,122 @@
+[
+  {
+    "session": "NORMAL",
+    "duration": "DAY",
+    "orderType": "LIMIT",
+    "complexOrderStrategyType": "NONE",
+    "quantity": 1.0,
+    "filledQuantity": 1.0,
+    "remainingQuantity": 0.0,
+    "destinationLinkName": "WEXM",
+    "price": 1.0,
+    "orderLegCollection": [
+      {
+        "orderLegType": "OPTION",
+        "legId": 1,
+        "instrument": {
+          "assetType": "OPTION",
+          "symbol": "ACN   250801P00267500",
+          "description": "ACCENTURE PLC IRELAND 08/01/2025 $267.5 Put",
+          "instrumentId": 236903376,
+          "putCall": "PUT",
+          "underlyingSymbol": "ACN",
+          "optionDeliverables": [
+            {
+              "symbol": "ACN",
+              "deliverableUnits": 100.0
+            }
+          ]
+        },
+        "instruction": "SELL_TO_OPEN",
+        "positionEffect": "OPENING",
+        "quantity": 1.0
+      }
+    ],
+    "orderStrategyType": "SINGLE",
+    "orderId": 1003754934184,
+    "status": "FILLED",
+    "enteredTime": "2025-07-18T15:04:18+0000",
+    "closeTime": "2025-07-18T15:21:51+0000",
+    "accountNumber": 41472449,
+    "orderActivityCollection": [
+      {
+        "activityType": "EXECUTION",
+        "activityId": 99817027898,
+        "executionType": "FILL",
+        "quantity": 1.0,
+        "orderRemainingQuantity": 0.0,
+        "executionLegs": [
+          {
+            "legId": 1,
+            "quantity": 1.0,
+            "price": 1.0,
+            "time": "2025-07-18T15:21:51+0000",
+            "instrumentId": 236903376
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "orderStrategyType": "OCO",
+    "orderId": 200,
+    "status": "FILLED",
+    "accountNumber": 41472449,
+    "childOrderStrategies": [
+      {
+        "session": "NORMAL",
+        "duration": "GOOD_TILL_CANCEL",
+        "orderType": "STOP",
+        "complexOrderStrategyType": "NONE",
+        "quantity": 2.0,
+        "filledQuantity": 2.0,
+        "remainingQuantity": 0.0,
+        "destinationLinkName": "WEXM",
+        "orderLegCollection": [
+          {
+            "orderLegType": "OPTION",
+            "legId": 1,
+            "instrument": {
+              "assetType": "OPTION",
+              "symbol": "IBKR  250815C00060000",
+              "description": "INTERACTIVE BROKERS GROUP INC 08/15/2025 $60 Call",
+              "instrumentId": 236077536,
+              "putCall": "CALL",
+              "underlyingSymbol": "IBKR",
+              "optionDeliverables": [
+                {
+                  "symbol": "IBKR",
+                  "deliverableUnits": 100.0
+                }
+              ]
+            },
+            "instruction": "SELL_TO_CLOSE",
+            "positionEffect": "CLOSING",
+            "quantity": 2.0
+          }
+        ],
+        "orderStrategyType": "SINGLE",
+        "orderId": 201,
+        "status": "FILLED",
+        "accountNumber": 41472449,
+        "orderActivityCollection": [
+          {
+            "activityType": "EXECUTION",
+            "activityId": 300,
+            "executionType": "FILL",
+            "quantity": 2.0,
+            "executionLegs": [
+              {
+                "legId": 1,
+                "quantity": 2.0,
+                "price": 2.2,
+                "time": "2025-07-18T16:00:00+0000",
+                "instrumentId": 236077536
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+]

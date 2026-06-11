@@ -295,3 +295,11 @@ The fill source of truth is orderActivityCollection execution records where exec
 The adapter must flatten OCO childOrderStrategies, match executionLegs to orderLegCollection by legId, and emit one normalized fill row per FILL execution leg.
 
 Schwab orders JSON does not reliably carry commissions and fees, so fee enrichment should come later from Schwab transactions transferItems JSON.
+
+## Phase J4 Schwab orders JSON adapter
+
+Use scripts/journal/convert_schwab_orders_json_to_normalized_fills.py to convert Schwab orders JSON into canonical normalized fills CSV.
+
+The adapter is read-only. It does not call Schwab REST APIs and does not place, cancel, replace, or modify orders.
+
+Validate output with scripts/journal/check_normalized_fills_contract.py before importing into DuckDB.
