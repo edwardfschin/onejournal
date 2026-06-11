@@ -69,6 +69,10 @@ check_path "PROJECT_DIR" "$PROJECT_DIR"
 check_path "VENV_DIR" "$VENV_DIR"
 check_path "PRIVATE_DIR" "$PRIVATE_DIR"
 check_path "Python" "$PY"
+check_path "bin/onejournal_git_status.sh" "$PROJECT_DIR/bin/onejournal_git_status.sh"
+check_file_contains "git guard identity title" "$PROJECT_DIR/bin/onejournal_git_status.sh" "ONEJOURNAL GIT IDENTITY"
+check_file_contains "git guard top mismatch" "$PROJECT_DIR/bin/onejournal_git_status.sh" "git top-level mismatch"
+check_file_contains "git guard pass" "$PROJECT_DIR/bin/onejournal_git_status.sh" "ONEJOURNAL_GIT_GUARD=PASS"
 
 echo
 
