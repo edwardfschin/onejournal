@@ -85,3 +85,84 @@ It does not auto-trade.
 When Schwab or IBKR adapters are added later, they must output the canonical normalized fills contract first.
 
 Broker-specific adapters must not write directly to dashboard JSON, Streamlit review state, or trade_episodes.
+
+## Phase M6 Schwab final daily operator workflow
+
+This is the current recommended Schwab daily workflow.
+
+### Place raw files
+
+Place Schwab raw JSON exports under data/raw/schwab, using these folders:
+
+- data/raw/schwab/<snapshot-date>/orders_all/
+- data/raw/schwab/<snapshot-date>/transactions/
+
+The operator finds files by asof date using the filename suffix __YYYY-MM-DD.json.
+
+If multiple snapshots contain the same asof date, the operator warns and uses the newest path by name.
+
+### Dry run
+
+Run this first:
+
+    python scripts/journal/find_and_run_schwab_daily_import.py --asof YYYY-MM-DD
+
+Expected success markers:
+
+    MATCHED_ROWS      : same as ORDERS_ROWS and TXN_ROWS
+    ONLY_ORDERS_ROWS  : 0
+    ONLY_TXNS_ROWS    : 0
+    DRY RUN RESULT    : all gates passed; DuckDB import skipped
+    GENERATED_CSV_CLEANUP: True
+    STATUS            : OK
+
+### Real import
+
+Run this only after dry run passes:
+
+    python scripts/journal/find_and_run_schwab_daily_import.py --asof YYYY-MM-DD --import-db
+
+Expected success markers:
+
+    IMPORT RESULT: DuckDB import and DB dashboard payload checks completed.
+    PAYLOAD_PATH : output/dashboard/validation/YYYY-MM-DD_dashboard_payload_from_db.json
+    GENERATED_CSV_CLEANUP: True
+    STATUS      : OK
+
+### Idempotency check
+
+Use this when validating a date, after changing import logic, or before trusting a new raw Schwab file type:
+
+    python scripts/journal/check_schwab_daily_import_idempotency.py --asof YYYY-MM-DD --orders PATH_TO_ORDERS_JSON --transactions PATH_TO_TRANSACTIONS_JSON
+
+Expected success marker:
+
+    IDEMPOTENT : second import did not duplicate fills or episodes
+    STATUS     : OK
+
+### Current canonical import source
+
+Transactions-normalized fills are the current DuckDB import source after strict reconciliation with orders-normalized fills.
+
+Orders JSON remains the execution cross-check.
+
+Transactions JSON provides fee and commission evidence.
+
+### Do not commit
+
+Do not commit generated files from:
+
+- data/normalized/fills/*.csv
+- data/raw/schwab/**/*.json
+- data/journal/*.duckdb
+- output/**
+
+The ODFS guard should remain clean after every run.
+
+### Safety
+
+The Schwab journal workflow does not call Schwab REST APIs.
+
+It does not place, cancel, replace, or modify orders.
+
+DuckDB import requires explicit --import-db.

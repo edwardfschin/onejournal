@@ -130,3 +130,11 @@ Removal rule: none of these can be removed unless the reference matrix and basel
 | scripts/journal/find_and_run_schwab_daily_import.py | db_phase_m4_schwab_auto_discovery | KEEP | Finds matching Schwab raw files by asof date and runs guarded daily import. |
 | docs/schwab_auto_discovery_import_operator.md | db_phase_m4_schwab_auto_discovery | KEEP | Documents the Schwab auto-discovery import shortcut. |
 
+## Phase M6 Schwab Final Operator Runbook
+
+| Item | Phase | Keep/Review | Reason |
+|---|---|---|---|
+| docs/operator_quickstart.md | db_phase_m6_schwab_runbook_lock | KEEP | Contains final Schwab daily dry-run, import, idempotency, cleanup, and safety workflow. |
+| docs/operator_import_runbook.md | db_phase_m6_schwab_runbook_lock | KEEP | Mirrors final Schwab import operator workflow for operator use. |
+| docs/schwab_auto_discovery_import_operator.md | db_phase_m6_schwab_runbook_lock | KEEP | Documents short --asof auto-discovery operator command. |
+| docs/schwab_daily_import_operator.md | db_phase_m6_schwab_runbook_lock | KEEP | Documents guarded import gates and canonical transaction source. |
