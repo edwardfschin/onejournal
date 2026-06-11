@@ -362,3 +362,9 @@ DuckDB import happens only when --import-db is explicitly provided.
 
 The current canonical import source is transactions-normalized fills after strict reconciliation with orders-normalized fills.
 
+## Phase M3 Schwab import idempotency guard
+
+Use scripts/journal/check_schwab_daily_import_idempotency.py before regular Schwab imports.
+
+It copies DuckDB to a temporary DB, runs the same Schwab import twice, and fails if the second run duplicates fills or episodes.
+

@@ -116,3 +116,10 @@ Removal rule: none of these can be removed unless the reference matrix and basel
 | scripts/journal/run_schwab_daily_import.py | db_phase_m2_schwab_guarded_import | KEEP | Runs guarded Schwab daily flow and optional DuckDB import after strict reconciliation. |
 | docs/schwab_daily_import_operator.md | db_phase_m2_schwab_guarded_import | KEEP | Documents the guarded Schwab daily import operator. |
 
+## Phase M3 Schwab Import Idempotency Guard
+
+| Item | Phase | Keep/Review | Reason |
+|---|---|---|---|
+| scripts/journal/check_schwab_daily_import_idempotency.py | db_phase_m3_schwab_idempotency | KEEP | Verifies rerunning the same Schwab import does not duplicate fills or episodes. |
+| docs/schwab_daily_import_idempotency.md | db_phase_m3_schwab_idempotency | KEEP | Documents the Schwab import idempotency guard. |
+
