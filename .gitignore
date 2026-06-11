@@ -25,3 +25,11 @@ output/
 # OS/editor
 .DS_Store
 .vscode/
+# OneJournal ODFS runtime data
+/data/normalized/fills/*.csv
+!/data/normalized/fills/.gitkeep
+/data/raw/schwab/**/*.json
+/data/raw/ibkr/**
+/output/**
+/data/journal/*.duckdb
+/data/journal/*.duckdb.wal

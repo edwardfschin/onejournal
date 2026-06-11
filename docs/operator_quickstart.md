@@ -310,3 +310,11 @@ Use --asof when converting Schwab orders JSON for import validation.
 
 The normalized fills contract checker validates one asof date at a time.
 
+### ODFS runtime folder rule
+
+Keep required ODFS runtime folders such as data/normalized/fills in place.
+
+Do not commit generated normalized fills CSV files or raw broker files.
+
+The folder is tracked with .gitkeep; generated files are ignored.
+

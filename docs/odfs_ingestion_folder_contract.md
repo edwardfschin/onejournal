@@ -64,3 +64,14 @@ No auto-trade.
 OneJournal will guard folder roles before adding broker-specific adapters.
 
 Schwab and IBKR adapters must follow this folder contract when added later.
+
+## Runtime file tracking rule
+
+ODFS runtime folders must exist continuously.
+
+Use .gitkeep to track required empty runtime folders such as data/normalized/fills.
+
+Generated normalized fills CSV files are operational artifacts and must not be committed.
+
+Raw Schwab and IBKR broker files are private evidence files and must not be committed.
+
