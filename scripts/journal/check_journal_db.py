@@ -56,7 +56,7 @@ def main() -> int:
         if counts["trade_episodes"] <= 0:
             fail("trade_episodes has no rows")
         if counts["manual_reviews"] <= 0:
-            fail("manual_reviews has no rows")
+            print("NOTE manual_reviews has no rows; OK for broker-only imports before manual review")
         if counts["trade_episode_legs"] < counts["trade_episodes"]:
             fail("trade_episode_legs count is less than trade_episodes count")
 
