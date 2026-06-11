@@ -384,10 +384,11 @@ check_file_contains "dashboard db contract save flow" "$PROJECT_DIR/docs/dashboa
 echo "===== DB Dashboard Contract ====="
 if "$PY" "$PROJECT_DIR/scripts/journal/check_db_dashboard_contract.py" --asof 2026-06-02 --payload "$PROJECT_DIR/output/dashboard/latest/dashboard_payload_from_db.json" >/tmp/onejournal_db_dashboard_contract.out 2>&1
 then
-  pass "db dashboard contract"
+  echo "OK   db dashboard contract"
 else
-  fail "db dashboard contract"
+  echo "FAIL db dashboard contract"
   cat /tmp/onejournal_db_dashboard_contract.out
+  FAIL=1
 fi
 
 echo "PASS OneJournal baseline looks good."
