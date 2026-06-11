@@ -38,6 +38,7 @@ def main() -> int:
     parser.add_argument("--db", default="data/journal/onejournal.duckdb")
     parser.add_argument("--import-db", action="store_true", help="Actually import into DuckDB. Without this, runs dry-run gates only.")
     parser.add_argument("--keep-files", action="store_true", help="Keep generated normalized CSV files.")
+    parser.add_argument("--use-latest-snapshot", action="store_true", help="If multiple raw files match the asof date, use the newest path by name. Default is to fail safely.")
     args = parser.parse_args()
 
     asof = args.asof
