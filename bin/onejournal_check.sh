@@ -525,6 +525,8 @@ check_file_contains "schwab autodiscovery import flag" "$PROJECT_DIR/docs/schwab
 check_file_contains "operator quickstart phase m4" "$PROJECT_DIR/docs/operator_quickstart.md" "Phase M4 Schwab auto-discovery import operator"
 check_file_contains "operator quickstart phase m6" "$PROJECT_DIR/docs/operator_quickstart.md" "Phase M6 Schwab final daily operator workflow"
 check_file_contains "schwab duplicate snapshot guard cli" "$PROJECT_DIR/scripts/journal/find_and_run_schwab_daily_import.py" "--use-latest-snapshot"
+check_file_contains "schwab duplicate snapshot duplicate wording" "$PROJECT_DIR/scripts/journal/find_and_run_schwab_daily_import.py" "DUPLICATE: multiple"
+check_file_contains "operator quickstart duplicate wording" "$PROJECT_DIR/docs/operator_quickstart.md" "labelled DUPLICATE rather than FAIL"
 check_file_contains "operator quickstart duplicate snapshot guard" "$PROJECT_DIR/docs/operator_quickstart.md" "fails safely by default"
 check_file_contains "script inventory phase m7" "$PROJECT_DIR/docs/script_inventory.md" "Phase M7 Schwab Duplicate Snapshot Guard"
 check_file_contains "operator import runbook phase m6" "$PROJECT_DIR/docs/operator_import_runbook.md" "Phase M6 Schwab final daily operator workflow"

@@ -118,3 +118,7 @@ DuckDB import requires explicit --import-db.
 ### Duplicate raw snapshots
 
 If duplicate raw snapshots exist for the same asof date, the operator fails safely by default. To deliberately use the newest snapshot by path name, add --use-latest-snapshot.
+
+### Duplicate wording
+
+When --use-latest-snapshot is provided, duplicate snapshot output is labelled DUPLICATE rather than FAIL because the operator made an explicit choice.

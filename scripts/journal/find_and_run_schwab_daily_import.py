@@ -16,8 +16,12 @@ def find_one(pattern: str, label: str, use_latest_snapshot: bool) -> Path:
     if not matches:
         raise SystemExit(f"FAIL: no {label} file found under {RAW_ROOT} using pattern {pattern}")
     if len(matches) > 1:
-        print(f"FAIL: multiple {label} files found for this asof.")
-        print("Choose one by removing or archiving duplicates, or rerun with --use-latest-snapshot.")
+        if use_latest_snapshot:
+            print(f"DUPLICATE: multiple {label} files found for this asof.")
+            print("Operator explicitly allowed latest snapshot selection with --use-latest-snapshot.")
+        else:
+            print(f"FAIL: multiple {label} files found for this asof.")
+            print("Choose one by removing or archiving duplicates, or rerun with --use-latest-snapshot.")
         for m in matches:
             print(f"  {m.relative_to(PROJECT_DIR)}")
         if not use_latest_snapshot:
