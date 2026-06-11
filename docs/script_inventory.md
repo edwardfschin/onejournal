@@ -40,3 +40,9 @@ A script can be removed only after the reference matrix shows zero production, b
 | src/onejournal/apps/streamlit_app.py | operator_ui | KEEP | Normal operator UI. DB payload is writable; CSV and Custom payloads are read-only. |
 
 Removal rule: none of these can be removed unless the reference matrix and baseline are updated in the same commit.
+## Phase I5 Operator Import Runbook
+
+| Item | Phase | Keep/Review | Reason |
+|---|---|---|---|
+| docs/operator_import_runbook.md | db_phase_i_operator_import | KEEP | Defines safe ODFS import sequence before broker-specific adapters. |
+

@@ -254,3 +254,10 @@ Do not edit raw broker exports in place.
 Do not use raw broker CSV directly for dashboard, Streamlit review state, or trade_episodes.
 
 Normalize first, validate, then import into DuckDB.
+## Phase I5 operator import runbook
+
+Use docs/operator_import_runbook.md for the safe import sequence.
+
+The required sequence is raw evidence, normalized fills validation, DuckDB import, import audit check, DB dashboard build, dashboard contract check, then Streamlit review.
+
+Do not use raw broker CSV directly for dashboard, Streamlit review state, or trade_episodes.
