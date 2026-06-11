@@ -159,3 +159,16 @@ Every pipeline stage should be able to answer:
 - No raw broker payloads committed to Git.
 - No private local env files committed to Git.
 - No dashboard number without traceability to source data.
+## Phase I1 normalized fills ODFS rule
+
+CSV is the import and transport layer. DuckDB is the journal source of truth.
+
+Raw broker or manual files stay under data/raw/ as evidence.
+
+Canonical normalized fill exports use the same column contract as docs/examples/manual_csv/fills_template.csv.
+
+Imported fills live in DuckDB normalized_fills.
+
+Import audit records live in DuckDB import_runs.
+
+Dashboard payload files are generated outputs, not source data.

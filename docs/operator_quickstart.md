@@ -230,3 +230,16 @@ python scripts/journal/import_journal_to_db.py --fills docs/examples/manual_csv/
 ```
 
 `--file` is an ODFS alias for `--fills`. `--asof` validates imported fills and fails if fill dates do not match the requested as-of date.
+## Phase I1 ODFS ingestion rule
+
+CSV is allowed as the import and transport format only.
+
+Raw broker exports belong under data/raw/.
+
+Canonical normalized fill exports belong under data/normalized/fills/.
+
+DuckDB normalized_fills, trade_episodes, trade_episode_legs, and manual_reviews are the journal source-of-truth tables.
+
+Dashboard JSON under output/dashboard/ is generated output.
+
+Do not build a broker-specific adapter that writes directly to Streamlit or dashboard JSON.

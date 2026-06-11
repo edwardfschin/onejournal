@@ -376,6 +376,13 @@ check_path "docs/onejournal_data_contract_v1.md" "$PROJECT_DIR/docs/onejournal_d
 check_file_contains "data contract title" "$PROJECT_DIR/docs/onejournal_data_contract_v1.md" "OneJournal Data Contract v1"
 check_file_contains "data contract asof" "$PROJECT_DIR/docs/onejournal_data_contract_v1.md" "--asof YYYY-MM-DD"
 check_file_contains "data contract no auto-trade" "$PROJECT_DIR/docs/onejournal_data_contract_v1.md" "No auto-trade in v1."
+check_path "docs/normalized_fills_odfs_contract.md" "$PROJECT_DIR/docs/normalized_fills_odfs_contract.md"
+check_file_contains "normalized fills csv transport" "$PROJECT_DIR/docs/normalized_fills_odfs_contract.md" "CSV is an ingestion and transport format only"
+check_file_contains "normalized fills duckdb truth" "$PROJECT_DIR/docs/normalized_fills_odfs_contract.md" "DuckDB normalized_fills is the imported fills source of truth"
+check_file_contains "normalized fills import runs" "$PROJECT_DIR/docs/normalized_fills_odfs_contract.md" "Every import into DuckDB must create or update an import_runs row"
+check_file_contains "normalized fills no direct dashboard" "$PROJECT_DIR/docs/normalized_fills_odfs_contract.md" "broker CSV directly to dashboard"
+check_file_contains "operator phase i1 ingestion rule" "$PROJECT_DIR/docs/operator_quickstart.md" "Phase I1 ODFS ingestion rule"
+check_file_contains "data contract phase i1" "$PROJECT_DIR/docs/onejournal_data_contract_v1.md" "Phase I1 normalized fills ODFS rule"
 
 echo
 echo "===== Script inventory doc ====="
