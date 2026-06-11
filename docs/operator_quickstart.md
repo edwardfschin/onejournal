@@ -346,3 +346,11 @@ Use scripts/journal/reconcile_schwab_orders_transactions.py to compare daily Sch
 
 This confirms whether execution truth and accounting truth agree before DuckDB import.
 
+## Phase M1 Schwab daily reconciliation operator
+
+Use scripts/journal/run_schwab_daily_reconciliation.py to run the full safe daily Schwab flow.
+
+The command converts orders and transactions JSON, validates both normalized outputs, reconciles them, removes generated CSVs by default, and runs the ODFS guard.
+
+It does not import into DuckDB and does not call broker or order APIs.
+

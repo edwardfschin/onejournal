@@ -102,3 +102,10 @@ Removal rule: none of these can be removed unless the reference matrix and basel
 | scripts/journal/reconcile_schwab_orders_transactions.py | db_phase_l3_schwab_reconciliation | KEEP | Read-only reconciliation between Schwab execution truth and accounting truth. |
 | docs/schwab_orders_transactions_reconciliation.md | db_phase_l3_schwab_reconciliation | KEEP | Documents Schwab orders vs transactions reconciliation. |
 
+## Phase M1 Schwab Daily Reconciliation Operator
+
+| Item | Phase | Keep/Review | Reason |
+|---|---|---|---|
+| scripts/journal/run_schwab_daily_reconciliation.py | db_phase_m1_schwab_daily_operator | KEEP | Runs safe daily Schwab conversion, validation, reconciliation, cleanup, and ODFS guard. |
+| docs/schwab_daily_reconciliation_operator.md | db_phase_m1_schwab_daily_operator | KEEP | Documents the daily Schwab reconciliation operator command. |
+
