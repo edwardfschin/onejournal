@@ -527,6 +527,8 @@ check_file_contains "operator quickstart phase m6" "$PROJECT_DIR/docs/operator_q
 check_file_contains "schwab duplicate snapshot guard cli" "$PROJECT_DIR/scripts/journal/find_and_run_schwab_daily_import.py" "--use-latest-snapshot"
 check_file_contains "schwab duplicate snapshot duplicate wording" "$PROJECT_DIR/scripts/journal/find_and_run_schwab_daily_import.py" "DUPLICATE: multiple"
 check_file_contains "schwab summary db total labels" "$PROJECT_DIR/scripts/journal/run_schwab_daily_import.py" "DB_TOTAL_IMPORT_RUNS"
+check_file_contains "schwab no fill noop" "$PROJECT_DIR/scripts/journal/run_schwab_daily_import.py" "NO FILL RESULT"
+check_file_contains "operator quickstart no fill noop" "$PROJECT_DIR/docs/operator_quickstart.md" "NO FILL RESULT means both Schwab orders and transactions produced zero normalized fill rows"
 check_file_contains "operator quickstart db total labels" "$PROJECT_DIR/docs/operator_quickstart.md" "DB_TOTAL_IMPORT_RUNS means current DuckDB total"
 check_file_contains "operator quickstart duplicate wording" "$PROJECT_DIR/docs/operator_quickstart.md" "labelled DUPLICATE rather than FAIL"
 check_file_contains "operator quickstart duplicate snapshot guard" "$PROJECT_DIR/docs/operator_quickstart.md" "fails safely by default"

@@ -1,40 +1,54 @@
+#!/usr/bin/env python3
 from __future__ import annotations
 
 import argparse
+import sys
+import time
 from pathlib import Path
 
-from onejournal.brokers.schwab.orders_json import convert_orders_json_to_normalized_csv, validate_asof
+
+PROJECT_DIR = Path(__file__).resolve().parents[2]
+SRC_DIR = PROJECT_DIR / "src"
+if str(SRC_DIR) not in sys.path:
+    sys.path.insert(0, str(SRC_DIR))
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Convert Schwab orders JSON into OneJournal normalized fills CSV.")
-    parser.add_argument("--asof", required=False, help="Optional YYYY-MM-DD filter. When provided, only fills on this date are written.")
-    parser.add_argument("--input", required=True, help="Raw Schwab orders JSON path.")
-    parser.add_argument("--output", required=True, help="Output normalized fills CSV path.")
+    parser = argparse.ArgumentParser(description="Convert Schwab orders JSON to OneJournal normalized fills CSV.")
+    parser.add_argument("--asof", required=True)
+    parser.add_argument("--input", required=True)
+    parser.add_argument("--output", required=True)
     args = parser.parse_args()
 
-    asof = validate_asof(args.asof)
-    stats = convert_orders_json_to_normalized_csv(Path(args.input), Path(args.output), asof=asof)
+    print("===== Schwab orders JSON to normalized fills =====", flush=True)
+    print(f"INPUT     : {args.input}", flush=True)
+    print(f"OUTPUT    : {args.output}", flush=True)
+    print(f"ASOF      : {args.asof}", flush=True)
+    print("MODE      : read-only", flush=True)
+    print("BROKER API: disabled", flush=True)
+    print("ORDER API : disabled", flush=True)
+    print("", flush=True)
 
-    print("===== Schwab orders JSON to normalized fills =====")
-    print(f"INPUT     : {args.input}")
-    print(f"OUTPUT    : {args.output}")
-    print(f"ASOF      : {asof or chr(39)+chr(97)+chr(108)+chr(108)+chr(39)}")
-    print("MODE      : read-only")
-    print("BROKER API: disabled")
-    print("ORDER API : disabled")
+    t = time.time()
+    print("IMPORTING : onejournal.brokers.schwab.orders_json", flush=True)
+    from onejournal.brokers.schwab.orders_json import convert_orders_json_to_normalized_csv, validate_asof
+    print(f"IMPORT_OK : {round(time.time() - t, 3)} sec", flush=True)
+
+    validate_asof(args.asof)
+    stats = convert_orders_json_to_normalized_csv(
+        input_path=Path(args.input),
+        output_path=Path(args.output),
+        asof=args.asof,
+    )
+
     print("")
     print("===== Stats =====")
-    print(f"TOP_LEVEL_ORDERS       : {stats.top_level_orders}")
-    print(f"FLATTENED_ORDERS       : {stats.flattened_orders}")
-    print(f"FILL_ACTIVITIES        : {stats.fill_activities}")
-    print(f"FILL_ROWS_WRITTEN      : {stats.fill_rows}")
-    print(f"SKIPPED_NON_FILL       : {stats.skipped_non_fill_activities}")
-    print(f"SKIPPED_UNMATCHED_LEGS : {stats.skipped_unmatched_legs}")
+    stats_dict = stats if isinstance(stats, dict) else vars(stats)
+    for k, v in stats_dict.items():
+        print(f"{k.upper():24}: {v}")
     print("STATUS    : OK")
     return 0
 
 
 if __name__ == "__main__":
     raise SystemExit(main())
-

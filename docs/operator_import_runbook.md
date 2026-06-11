@@ -179,3 +179,7 @@ When --use-latest-snapshot is provided, duplicate snapshot output is labelled DU
 
 DB_TOTAL_IMPORT_RUNS means current DuckDB total import_runs after the run, not rows imported during this run.
 DB_TOTAL_FILLS, DB_TOTAL_EPISODES, and DB_TOTAL_EPISODE_LEGS are also current DuckDB totals after the run.
+
+### No-fill trading days
+
+NO FILL RESULT means both Schwab orders and transactions produced zero normalized fill rows. This is a clean no-op day for OneJournal. DuckDB import is skipped and generated CSVs are cleaned up.
