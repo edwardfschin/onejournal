@@ -54,6 +54,13 @@ def main() -> int:
         latest_import_status = one(con, "select status from import_runs order by imported_at desc limit 1", "none")
         latest_import_source = one(con, "select source_path from import_runs order by imported_at desc limit 1", "none")
 
+        manual_fill_rows = one(con, "select count(*) from normalized_fills where source_broker = 'manual_csv'", 0)
+        schwab_fill_rows = one(con, "select count(*) from normalized_fills where source_broker = 'schwab'", 0)
+        latest_manual_asof = one(con, "select max(asof_date) from normalized_fills where source_broker = 'manual_csv'", "none")
+        latest_schwab_asof = one(con, "select max(asof_date) from normalized_fills where source_broker = 'schwab'", "none")
+        latest_schwab_import_started = one(con, "select max(imported_at) from import_runs where lower(source_path) like '%schwab%'", "none")
+        latest_schwab_import_source = one(con, "select source_path from import_runs where lower(source_path) like '%schwab%' order by imported_at desc limit 1", "none")
+
         print("===== DB Totals =====")
         print(f"IMPORT_RUNS             : {import_runs}")
         print(f"NORMALIZED_FILLS        : {normalized_fills}")
@@ -67,6 +74,15 @@ def main() -> int:
         print(f"LATEST_IMPORT_STARTED   : {latest_import_started}")
         print(f"LATEST_IMPORT_STATUS    : {latest_import_status}")
         print(f"LATEST_IMPORT_SOURCE    : {latest_import_source}")
+        print("")
+
+        print("===== Source Breakdown =====")
+        print(f"MANUAL_FILL_ROWS        : {manual_fill_rows}")
+        print(f"SCHWAB_FILL_ROWS        : {schwab_fill_rows}")
+        print(f"LATEST_MANUAL_ASOF      : {latest_manual_asof}")
+        print(f"LATEST_SCHWAB_ASOF      : {latest_schwab_asof}")
+        print(f"LATEST_SCHWAB_IMPORT_AT : {latest_schwab_import_started}")
+        print(f"LATEST_SCHWAB_SOURCE    : {latest_schwab_import_source}")
         print("")
 
         payloads = sorted(payload_dir.glob("*_dashboard_payload_from_db.json")) if payload_dir.exists() else []
