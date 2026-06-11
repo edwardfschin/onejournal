@@ -340,3 +340,9 @@ Use scripts/journal/convert_schwab_transactions_json_to_normalized_fills.py with
 
 The adapter is read-only and uses CURRENCY transferItems as fee evidence and security transferItems as fill-leg candidates.
 
+## Phase L3 Schwab reconciliation check
+
+Use scripts/journal/reconcile_schwab_orders_transactions.py to compare daily Schwab orders-normalized fills against transactions-normalized fills.
+
+This confirms whether execution truth and accounting truth agree before DuckDB import.
+

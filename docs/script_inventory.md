@@ -95,3 +95,10 @@ Removal rule: none of these can be removed unless the reference matrix and basel
 | scripts/journal/convert_schwab_transactions_json_to_normalized_fills.py | db_phase_l2_schwab_transactions_adapter | KEEP | Operator CLI to write canonical normalized fills CSV from Schwab transactions JSON. |
 | docs/schwab_transactions_json_adapter.md | db_phase_l2_schwab_transactions_adapter | KEEP | Operator and design notes for the transactions adapter. |
 
+## Phase L3 Schwab Orders Transactions Reconciliation
+
+| Item | Phase | Keep/Review | Reason |
+|---|---|---|---|
+| scripts/journal/reconcile_schwab_orders_transactions.py | db_phase_l3_schwab_reconciliation | KEEP | Read-only reconciliation between Schwab execution truth and accounting truth. |
+| docs/schwab_orders_transactions_reconciliation.md | db_phase_l3_schwab_reconciliation | KEEP | Documents Schwab orders vs transactions reconciliation. |
+
