@@ -380,6 +380,20 @@ check_path "docs/normalized_fills_odfs_contract.md" "$PROJECT_DIR/docs/normalize
 check_file_contains "normalized fills csv transport" "$PROJECT_DIR/docs/normalized_fills_odfs_contract.md" "CSV is an ingestion and transport format only"
 check_file_contains "normalized fills duckdb truth" "$PROJECT_DIR/docs/normalized_fills_odfs_contract.md" "DuckDB normalized_fills is the imported fills source of truth"
 check_file_contains "normalized fills import runs" "$PROJECT_DIR/docs/normalized_fills_odfs_contract.md" "Every import into DuckDB must create or update an import_runs row"
+check_path "scripts/journal/check_import_run_audit.py" "$PROJECT_DIR/scripts/journal/check_import_run_audit.py"
+check_path "docs/import_run_audit_contract.md" "$PROJECT_DIR/docs/import_run_audit_contract.md"
+check_file_contains "import run audit truth" "$PROJECT_DIR/docs/import_run_audit_contract.md" "DuckDB import_runs is the import audit source of truth"
+check_file_contains "import run audit linkage" "$PROJECT_DIR/docs/import_run_audit_contract.md" "every normalized_fills row must have import_run_id"
+check_file_contains "script inventory import audit" "$PROJECT_DIR/docs/script_inventory.md" "check_import_run_audit.py"
+echo "===== Import Run Audit Contract ====="
+if "$PY" "$PROJECT_DIR/scripts/journal/check_import_run_audit.py" --db "$PROJECT_DIR/data/journal/onejournal.duckdb" >/tmp/onejournal_import_run_audit.out 2>/tmp/onejournal_import_run_audit.err; then
+  echo "OK   import run audit contract"
+else
+  echo "FAIL import run audit contract"
+  cat /tmp/onejournal_import_run_audit.out
+  cat /tmp/onejournal_import_run_audit.err
+  fail_count=$((fail_count + 1))
+fi
 check_file_contains "normalized fills no direct dashboard" "$PROJECT_DIR/docs/normalized_fills_odfs_contract.md" "broker CSV directly to dashboard"
 check_file_contains "operator phase i1 ingestion rule" "$PROJECT_DIR/docs/operator_quickstart.md" "Phase I1 ODFS ingestion rule"
 check_file_contains "data contract phase i1" "$PROJECT_DIR/docs/onejournal_data_contract_v1.md" "Phase I1 normalized fills ODFS rule"

@@ -13,6 +13,7 @@ No script in this inventory may place, cancel, or modify broker orders.
 | build_dashboard_payload_from_db.py | db_phase_b | KEEP | Required by Streamlit Phase B DB review/dashboard path. |
 | check_dashboard_payload.py | legacy_csv_backfill | KEEP | Legacy CSV/backfill/export workflow; not the normal Phase B review write path. |
 | check_journal_db.py | production_check | KEEP | Validates DuckDB journal integrity. |
+| check_import_run_audit.py | db_phase_i_import_audit | KEEP | Baseline guard for import_runs and normalized_fills audit linkage. |
 | check_manual_fills.py | baseline_data_quality | KEEP | Used by baseline to validate parser, classification, and episode construction. |
 | check_strategy_classification.py | baseline_data_quality | KEEP | Used by baseline to validate parser, classification, and episode construction. |
 | check_trade_episodes.py | baseline_data_quality | KEEP | Used by baseline to validate parser, classification, and episode construction. |
