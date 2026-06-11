@@ -49,10 +49,10 @@ def main() -> int:
         duplicate_episode_uid = one(con, "select count(*) from (select episode_uid from trade_episodes group by episode_uid having count(*) > 1)", 0)
         duplicate_review_episode_uid = one(con, "select count(*) from (select episode_uid from manual_reviews group by episode_uid having count(*) > 1)", 0)
 
-        latest_asof = one(con, "select max(asof) from normalized_fills", "none")
-        latest_import_started = one(con, "select max(started_at) from import_runs", "none")
-        latest_import_status = one(con, "select status from import_runs order by started_at desc limit 1", "none")
-        latest_import_source = one(con, "select source_file from import_runs order by started_at desc limit 1", "none")
+        latest_asof = one(con, "select max(asof_date) from normalized_fills", "none")
+        latest_import_started = one(con, "select max(imported_at) from import_runs", "none")
+        latest_import_status = one(con, "select status from import_runs order by imported_at desc limit 1", "none")
+        latest_import_source = one(con, "select source_path from import_runs order by imported_at desc limit 1", "none")
 
         print("===== DB Totals =====")
         print(f"IMPORT_RUNS             : {import_runs}")
