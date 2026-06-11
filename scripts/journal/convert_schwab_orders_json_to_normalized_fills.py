@@ -19,7 +19,7 @@ def main() -> int:
     print("===== Schwab orders JSON to normalized fills =====")
     print(f"INPUT     : {args.input}")
     print(f"OUTPUT    : {args.output}")
-    print(f"ASOF      : {asof or all}")
+    print(f"ASOF      : {asof or chr(39)+chr(97)+chr(108)+chr(108)+chr(39)}")
     print("MODE      : read-only")
     print("BROKER API: disabled")
     print("ORDER API : disabled")

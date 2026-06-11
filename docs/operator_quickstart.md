@@ -303,3 +303,10 @@ Use scripts/journal/convert_schwab_orders_json_to_normalized_fills.py to convert
 The adapter is read-only. It does not call Schwab REST APIs and does not place, cancel, replace, or modify orders.
 
 Validate output with scripts/journal/check_normalized_fills_contract.py before importing into DuckDB.
+
+### Schwab orders JSON daily validation rule
+
+Use --asof when converting Schwab orders JSON for import validation.
+
+The normalized fills contract checker validates one asof date at a time.
+

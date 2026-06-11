@@ -35,3 +35,12 @@ Fee enrichment should come later from Schwab transactions transferItems JSON.
 The adapter writes canonical normalized fills CSV only.
 
 DuckDB import remains a separate operator step.
+
+## Daily validation rule
+
+The normalized fills validator is daily and requires --asof.
+
+When converting a date-range Schwab orders JSON file, use --asof and write one daily normalized fills CSV at a time.
+
+Date-range output may be useful for inspection, but it should not be used as the validated import artifact.
+
