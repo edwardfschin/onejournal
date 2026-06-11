@@ -174,3 +174,8 @@ If duplicate raw snapshots exist for the same asof date, the operator fails safe
 ### Duplicate wording
 
 When --use-latest-snapshot is provided, duplicate snapshot output is labelled DUPLICATE rather than FAIL because the operator made an explicit choice.
+
+### DB total labels
+
+DB_TOTAL_IMPORT_RUNS means current DuckDB total import_runs after the run, not rows imported during this run.
+DB_TOTAL_FILLS, DB_TOTAL_EPISODES, and DB_TOTAL_EPISODE_LEGS are also current DuckDB totals after the run.
