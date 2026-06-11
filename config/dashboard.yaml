@@ -1,0 +1,6 @@
+dashboard:
+  framework: streamlit
+  host: 127.0.0.1
+  port: 8501
+  default_page: command_center
+  payload: output/dashboard/latest/dashboard_payload.json

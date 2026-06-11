@@ -1,0 +1,6 @@
+project:
+  name: OneJournal
+  package: onejournal
+  mode: read_only
+  allow_order_placement: false
+  timezone: Asia/Singapore

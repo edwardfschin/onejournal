@@ -1,0 +1,8 @@
+paths:
+  data_dir: data
+  raw_dir: data/raw
+  normalized_dir: data/normalized
+  journal_db: data/journal/onejournal.duckdb
+  audit_dir: data/audit
+  output_dir: output
+  dashboard_payload: output/dashboard/latest/dashboard_payload.json

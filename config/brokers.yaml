@@ -1,0 +1,13 @@
+brokers:
+  manual_csv:
+    enabled: true
+    mode: read_only
+    raw_dir: data/raw/manual_imports
+  schwab:
+    enabled: false
+    mode: read_only
+    raw_dir: data/raw/schwab
+  ibkr:
+    enabled: false
+    mode: read_only
+    raw_dir: data/raw/ibkr

@@ -1,0 +1,3 @@
+marketdata:
+  provider: none
+  mode: read_only

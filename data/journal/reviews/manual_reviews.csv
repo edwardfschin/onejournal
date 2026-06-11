@@ -1,0 +1,9 @@
+episode_uid,review_status,setup_quality,entry_reason,notes
+manual_csv:DEMO_ACCOUNT:option:AAPL_SELL_PUT_001,reviewed,acceptable,Checked and ok setup,We are testing if this get saved.
+manual_csv:DEMO_ACCOUNT:option:IWM_CALL_CREDIT_VERTICAL_001,unreviewed,unknown,,
+manual_csv:DEMO_ACCOUNT:option:MSFT_BUY_CALL_001,unreviewed,unknown,,
+manual_csv:DEMO_ACCOUNT:option:NVDA_CALL_DEBIT_VERTICAL_001,unreviewed,unknown,,
+manual_csv:DEMO_ACCOUNT:option:QQQ_PUT_DEBIT_VERTICAL_001,unreviewed,unknown,,
+manual_csv:DEMO_ACCOUNT:option:SPY_PUT_VERTICAL_001,needs_review,acceptable,,
+manual_csv:DEMO_ACCOUNT:stock:AAPL_STOCK_LONG_001,unreviewed,unknown,,
+manual_csv:DEMO_ACCOUNT:stock:TSLA_STOCK_SHORT_001,unreviewed,unknown,,

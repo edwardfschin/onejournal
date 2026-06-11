@@ -1,0 +1,27 @@
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Local environments
+.venv/
+venv/
+
+# Private/local runtime
+.env
+*.env
+runtime/
+tokens/
+*token*.json
+
+# OneJournal private data
+data/raw/
+data/journal/*.duckdb
+data/journal/*.duckdb.wal
+output/
+
+# OS/editor
+.DS_Store
+.vscode/

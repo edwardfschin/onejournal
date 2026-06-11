@@ -1,0 +1,29 @@
+# OneJournal Script Inventory
+
+This inventory prevents accidental deletion of scripts during Phase B cleanup.
+
+Phase B source of truth: DuckDB manual_reviews.
+Streamlit DB payload is the normal editable review path.
+CSV review files are legacy/backfill/export only.
+
+No script in this inventory may place, cancel, or modify broker orders.
+
+| Script | Category | Status | Reason |
+|---|---|---|---|
+| build_dashboard_payload_from_db.py | db_phase_b | KEEP | Required by Streamlit Phase B DB review/dashboard path. |
+| check_dashboard_payload.py | legacy_csv_backfill | KEEP | Legacy CSV/backfill/export workflow; not the normal Phase B review write path. |
+| check_journal_db.py | production_check | KEEP | Validates DuckDB journal integrity. |
+| check_manual_fills.py | baseline_data_quality | KEEP | Used by baseline to validate parser, classification, and episode construction. |
+| check_strategy_classification.py | baseline_data_quality | KEEP | Used by baseline to validate parser, classification, and episode construction. |
+| check_trade_episodes.py | baseline_data_quality | KEEP | Used by baseline to validate parser, classification, and episode construction. |
+| compare_dashboard_payloads.py | migration_safety | KEEP | Used to verify legacy CSV/backfill and DB payload equivalence during migration. |
+| import_journal_to_db.py | db_bootstrap_backfill | KEEP | Required to initialize or backfill DuckDB from source files. |
+| init_journal_db.py | db_bootstrap_backfill | KEEP | Required to initialize or backfill DuckDB from source files. |
+| refresh_dashboard.py | legacy_csv_backfill | KEEP | Legacy CSV/backfill/export workflow; not the normal Phase B review write path. |
+| refresh_dashboard_db_transition.py | migration_safety | KEEP | Used to verify legacy CSV/backfill and DB payload equivalence during migration. |
+| update_review_template.py | legacy_csv_backfill | KEEP | Legacy CSV/backfill/export workflow; not the normal Phase B review write path. |
+| upsert_manual_review_to_db.py | db_phase_b | KEEP | Required by Streamlit Phase B DB review/dashboard path. |
+
+## Removal Rule
+
+A script can be removed only after the reference matrix shows zero production, baseline, documentation, and migration-safety references, and after this inventory is updated first.

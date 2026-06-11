@@ -1,0 +1,5 @@
+journal:
+  broker_mode: read_only
+  build_trade_episodes: true
+  allow_order_placement: false
+  date_flag: --asof
