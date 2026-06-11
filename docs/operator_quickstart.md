@@ -214,3 +214,19 @@ streamlit run src/onejournal/apps/streamlit_app.py
 ```
 
 Operator rule: only DB payload is writable. CSV and Custom payloads are read-only in Phase F.
+
+## Phase H0 ODFS Import CLI
+
+Preferred ODFS-style journal import command:
+
+```text
+python scripts/journal/import_journal_to_db.py --asof 2026-06-02 --file docs/examples/manual_csv/fills_template.csv --reviews data/journal/reviews/manual_reviews.csv --db data/journal/onejournal.duckdb --replace
+```
+
+Compatibility command remains valid:
+
+```text
+python scripts/journal/import_journal_to_db.py --fills docs/examples/manual_csv/fills_template.csv --reviews data/journal/reviews/manual_reviews.csv --db data/journal/onejournal.duckdb --replace
+```
+
+`--file` is an ODFS alias for `--fills`. `--asof` validates imported fills and fails if fill dates do not match the requested as-of date.

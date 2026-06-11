@@ -109,6 +109,7 @@ def build_episode_previews_from_fills(
         status = _episode_status(sorted_group, net_quantity)
 
         strategy_type, strategy_label = _classify_strategy(sorted_group)
+        primary_symbol = _primary_symbol_for_episode(sorted_group, symbol)
 
         previews.append(
             TradeEpisodePreview(
@@ -117,7 +118,7 @@ def build_episode_previews_from_fills(
                     f"{asset_class}:{symbol}"
                 ),
                 source_account_id=source_account_id,
-                primary_symbol=symbol,
+                primary_symbol=primary_symbol,
                 asset_class=asset_class,
                 opened_at=opened_at,
                 status=status,
@@ -137,6 +138,51 @@ def build_episode_previews_from_fills(
         )
 
     return previews
+
+
+def _primary_symbol_for_episode(fills: list[NormalizedFill], fallback: str) -> str:
+    """Return tradable underlying symbol for a trade episode.
+
+    The episode grouping key may be an operator-friendly episode_group_id such as
+    AAPL_SELL_PUT_001 or SPY_PUT_VERTICAL_001. That key must remain in
+    episode_uid, but it must not be used as the dashboard symbol.
+
+    For option episodes, prefer underlying_symbol.
+    For stock episodes, prefer symbol.
+    """
+
+    option_underlyings = sorted(
+        {
+            (fill.underlying_symbol or "").strip().upper()
+            for fill in fills
+            if fill.asset_class.lower() == "option" and (fill.underlying_symbol or "").strip()
+        }
+    )
+    if len(option_underlyings) == 1:
+        return option_underlyings[0]
+
+    stock_symbols = sorted(
+        {
+            (fill.symbol or "").strip().upper()
+            for fill in fills
+            if fill.asset_class.lower() == "stock" and (fill.symbol or "").strip()
+        }
+    )
+    if len(stock_symbols) == 1:
+        return stock_symbols[0]
+
+    any_underlying = next(
+        ((fill.underlying_symbol or "").strip().upper() for fill in fills if (fill.underlying_symbol or "").strip()),
+        "",
+    )
+    if any_underlying:
+        return any_underlying
+
+    any_symbol = next(
+        ((fill.symbol or "").strip().upper() for fill in fills if (fill.symbol or "").strip()),
+        "",
+    )
+    return any_symbol or fallback
 
 
 def _leg_short_label(fill: NormalizedFill) -> str:

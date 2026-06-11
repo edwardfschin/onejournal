@@ -87,6 +87,19 @@ def main() -> int:
     print(f"total_commission : {first.total_commission}")
     print(f"total_fees       : {first.total_fees}")
 
+    bad_primary_symbols = [
+        episode
+        for episode in episodes
+        if episode.primary_symbol == episode.episode_uid.rsplit(":", 1)[-1]
+        and "_" in episode.primary_symbol
+    ]
+    if bad_primary_symbols:
+        print()
+        print("STATUS    : failed primary_symbol quality check")
+        for episode in bad_primary_symbols:
+            print(f"BAD PRIMARY SYMBOL: {episode.episode_uid} -> {episode.primary_symbol}")
+        return 1
+
     if mismatch_count:
         print()
         print("STATUS    : failed asof consistency check")

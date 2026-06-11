@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import argparse
 import json
-from datetime import datetime
+from datetime import date, datetime
 from pathlib import Path
 
 import duckdb
@@ -27,10 +27,15 @@ DEFAULT_REVIEWS = Path("data/journal/reviews/manual_reviews.csv")
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Import OneJournal journal data into DuckDB.")
     parser.add_argument("--db", default=str(DEFAULT_DB), help="DuckDB database path.")
+    parser.add_argument("--asof", required=False, help="Optional as-of date in YYYY-MM-DD format. When provided, imported fills must match this date.")
+    parser.add_argument("--file", dest="fills_alias", required=False, help="ODFS alias for --fills.")
     parser.add_argument("--fills", default=str(DEFAULT_FILLS), help="Manual fills CSV path.")
     parser.add_argument("--reviews", default=str(DEFAULT_REVIEWS), help="Manual reviews CSV path.")
     parser.add_argument("--replace", action="store_true", help="Replace existing imported journal rows.")
-    return parser.parse_args()
+    args = parser.parse_args()
+    if args.fills_alias:
+        args.fills = args.fills_alias
+    return args
 
 
 def _to_text(value):
@@ -39,10 +44,14 @@ def _to_text(value):
     return str(value)
 
 
-def import_to_db(db_path: Path, fills_path: Path, reviews_path: Path, replace: bool) -> dict[str, int]:
+def import_to_db(db_path: Path, fills_path: Path, reviews_path: Path, replace: bool, asof: date | None = None) -> dict[str, int]:
     import_run_id = "manual_csv:" + datetime.now().astimezone().strftime("%Y%m%d_%H%M%S")
     imported_at = datetime.now().astimezone().replace(tzinfo=None)
     fills = parse_manual_fills_csv(fills_path)
+    if asof is not None:
+        mismatch_count = sum(1 for fill in fills if fill.asof != asof)
+        if mismatch_count:
+            raise ValueError(f"{mismatch_count} fill(s) have asof different from --asof {asof}")
     episodes = build_episode_previews_from_fills(fills)
     reviews = load_manual_reviews(reviews_path)
     con = duckdb.connect(str(db_path))
@@ -129,9 +138,11 @@ def import_to_db(db_path: Path, fills_path: Path, reviews_path: Path, replace: b
 
 def main() -> int:
     args = parse_args()
-    counts = import_to_db(Path(args.db), Path(args.fills), Path(args.reviews), args.replace)
+    asof = date.fromisoformat(args.asof) if args.asof else None
+    counts = import_to_db(Path(args.db), Path(args.fills), Path(args.reviews), args.replace, asof)
     print("===== OneJournal DB import =====")
     print(f"DB        : {args.db}")
+    print(f"ASOF      : {args.asof or "not enforced"}")
     print(f"FILLS     : {args.fills}")
     print(f"REVIEWS   : {args.reviews}")
     for key, value in counts.items():
