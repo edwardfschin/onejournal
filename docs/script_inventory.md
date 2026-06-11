@@ -109,3 +109,10 @@ Removal rule: none of these can be removed unless the reference matrix and basel
 | scripts/journal/run_schwab_daily_reconciliation.py | db_phase_m1_schwab_daily_operator | KEEP | Runs safe daily Schwab conversion, validation, reconciliation, cleanup, and ODFS guard. |
 | docs/schwab_daily_reconciliation_operator.md | db_phase_m1_schwab_daily_operator | KEEP | Documents the daily Schwab reconciliation operator command. |
 
+## Phase M2 Schwab Guarded Daily Import Operator
+
+| Item | Phase | Keep/Review | Reason |
+|---|---|---|---|
+| scripts/journal/run_schwab_daily_import.py | db_phase_m2_schwab_guarded_import | KEEP | Runs guarded Schwab daily flow and optional DuckDB import after strict reconciliation. |
+| docs/schwab_daily_import_operator.md | db_phase_m2_schwab_guarded_import | KEEP | Documents the guarded Schwab daily import operator. |
+

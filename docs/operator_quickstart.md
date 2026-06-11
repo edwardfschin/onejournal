@@ -354,3 +354,11 @@ The command converts orders and transactions JSON, validates both normalized out
 
 It does not import into DuckDB and does not call broker or order APIs.
 
+## Phase M2 Schwab guarded daily import operator
+
+Use scripts/journal/run_schwab_daily_import.py to run Schwab daily conversion, validation, strict reconciliation, and optional DuckDB import.
+
+DuckDB import happens only when --import-db is explicitly provided.
+
+The current canonical import source is transactions-normalized fills after strict reconciliation with orders-normalized fills.
+
