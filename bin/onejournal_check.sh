@@ -230,7 +230,7 @@ check_file_contains "manual fills option fields" "$PROJECT_DIR/docs/examples/man
 
 echo
 
-echo "===== Normalized Fills Contract ====="
+echo "===== Import status script ====="\ncheck_path "scripts/journal/show_import_status.py" "$PROJECT_DIR/scripts/journal/show_import_status.py"\nif [ -x "$PY" ]; then\n  "$PY" "$PROJECT_DIR/scripts/journal/show_import_status.py" --db "$PROJECT_DIR/data/journal/onejournal.duckdb" >/tmp/onejournal_import_status.out 2>&1\n  if [ $? -eq 0 ] && grep -q "STATUS                  : OK" /tmp/onejournal_import_status.out; then\n    echo "OK   import status script"\n  else\n    echo "FAIL import status script failed"\n    cat /tmp/onejournal_import_status.out\n    fail_count=$((fail_count + 1))\n  fi\nfi\necho\n\necho "===== Normalized Fills Contract ====="
 check_path "scripts/journal/check_normalized_fills_contract.py" "$PROJECT_DIR/scripts/journal/check_normalized_fills_contract.py"
 check_path "docs/normalized_fills_validation_contract.md" "$PROJECT_DIR/docs/normalized_fills_validation_contract.md"
 check_file_contains "normalized fills validation command" "$PROJECT_DIR/docs/normalized_fills_validation_contract.md" "check_normalized_fills_contract.py --asof"
