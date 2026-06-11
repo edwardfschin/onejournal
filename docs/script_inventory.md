@@ -87,3 +87,11 @@ Removal rule: none of these can be removed unless the reference matrix and basel
 |---|---|---|---|
 | docs/schwab_transactions_json_contract.md | db_phase_l1_schwab_transactions_contract | KEEP | Defines accounting, fee, and transferItems evidence rules for Schwab transactions JSON. |
 
+## Phase L2 Schwab Transactions JSON Adapter
+
+| Item | Phase | Keep/Review | Reason |
+|---|---|---|---|
+| src/onejournal/brokers/schwab/transactions_json.py | db_phase_l2_schwab_transactions_adapter | KEEP | Read-only Schwab transactions transferItems normalizer. |
+| scripts/journal/convert_schwab_transactions_json_to_normalized_fills.py | db_phase_l2_schwab_transactions_adapter | KEEP | Operator CLI to write canonical normalized fills CSV from Schwab transactions JSON. |
+| docs/schwab_transactions_json_adapter.md | db_phase_l2_schwab_transactions_adapter | KEEP | Operator and design notes for the transactions adapter. |
+

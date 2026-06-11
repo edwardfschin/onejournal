@@ -334,3 +334,9 @@ Schwab orders JSON remains the execution-leg source.
 
 Do not mix these roles silently. Reconcile them later by orderId, symbol, quantity, price, and time.
 
+## Phase L2 Schwab transactions JSON adapter
+
+Use scripts/journal/convert_schwab_transactions_json_to_normalized_fills.py with --asof to write one daily normalized fills CSV from Schwab transactions JSON.
+
+The adapter is read-only and uses CURRENCY transferItems as fee evidence and security transferItems as fill-leg candidates.
+
