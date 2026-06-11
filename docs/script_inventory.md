@@ -73,3 +73,11 @@ Removal rule: none of these can be removed unless the reference matrix and basel
 | src/onejournal/brokers/schwab/orders_json.py | db_phase_j4_schwab_orders_adapter | KEEP | Read-only Schwab orders JSON normalizer. |
 | scripts/journal/convert_schwab_orders_json_to_normalized_fills.py | db_phase_j4_schwab_orders_adapter | KEEP | Operator CLI to write canonical normalized fills CSV from Schwab orders JSON. |
 | docs/schwab_orders_json_adapter.md | db_phase_j4_schwab_orders_adapter | KEEP | Operator and design notes for the adapter. |
+
+## Phase K1 ODFS Continuous Guard
+
+| Item | Phase | Keep/Review | Reason |
+|---|---|---|---|
+| scripts/journal/check_odfs_continuity.py | db_phase_k1_odfs_continuous_guard | KEEP | Prevents ODFS folder and runtime/private file staging drift. |
+| docs/odfs_continuous_guard.md | db_phase_k1_odfs_continuous_guard | KEEP | Documents continuous ODFS enforcement. |
+

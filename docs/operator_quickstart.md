@@ -318,3 +318,9 @@ Do not commit generated normalized fills CSV files or raw broker files.
 
 The folder is tracked with .gitkeep; generated files are ignored.
 
+## Phase K1 ODFS continuous guard
+
+Run python scripts/journal/check_odfs_continuity.py, or simply run ./bin/onejournal_check.sh.
+
+The guard keeps required ODFS folders in place and fails if generated fills, raw broker files, output artifacts, or DuckDB runtime files are staged.
+
