@@ -117,9 +117,33 @@ def main() -> int:
             run([sys.executable, "scripts/journal/check_odfs_continuity.py"])
             return 0
 
-        run([sys.executable, "scripts/journal/check_normalized_fills_contract.py", "--asof", asof, "--file", str(orders_out)])
-        run([sys.executable, "scripts/journal/check_normalized_fills_contract.py", "--asof", asof, "--file", str(txns_out)])
-        run([sys.executable, "scripts/journal/reconcile_schwab_orders_transactions.py", "--asof", asof, "--orders", str(orders_out), "--transactions", str(txns_out), "--strict"])
+        if transactions_rows > 0 and orders_rows == 0:
+            print("")
+            print("TRANSACTION-ONLY RESULT: Schwab transactions produced fill rows but orders produced 0 rows.")
+            print("TRANSACTION-ONLY ACTION: strict orders-vs-transactions reconciliation skipped for historical window.")
+            print("CANONICAL   : transactions-normalized fills are used as the import source.")
+            run([sys.executable, "scripts/journal/check_normalized_fills_contract.py", "--asof", asof, "--file", str(txns_out)])
+        elif transactions_rows == 0 and orders_rows > 0:
+            print("")
+            print("FAIL RESULT : Schwab orders produced fill rows but transactions produced 0 rows.")
+            print("REASON      : transactions-normalized fills are the canonical import source.")
+            raise SystemExit(1)
+        elif transactions_rows > orders_rows:
+            print("")
+            print("TRANSACTION-SUPERSET RESULT: Schwab transactions has more fill rows than orders.")
+            print("TRANSACTION-SUPERSET ACTION: reconciliation report runs non-strict; transactions remain canonical import source.")
+            run([sys.executable, "scripts/journal/check_normalized_fills_contract.py", "--asof", asof, "--file", str(orders_out)])
+            run([sys.executable, "scripts/journal/check_normalized_fills_contract.py", "--asof", asof, "--file", str(txns_out)])
+            run([sys.executable, "scripts/journal/reconcile_schwab_orders_transactions.py", "--asof", asof, "--orders", str(orders_out), "--transactions", str(txns_out)])
+        elif orders_rows > transactions_rows:
+            print("")
+            print("FAIL RESULT : Schwab orders has more fill rows than transactions.")
+            print("REASON      : transactions-normalized fills are the canonical import source, so missing transaction rows are not safe to import.")
+            raise SystemExit(1)
+        else:
+            run([sys.executable, "scripts/journal/check_normalized_fills_contract.py", "--asof", asof, "--file", str(orders_out)])
+            run([sys.executable, "scripts/journal/check_normalized_fills_contract.py", "--asof", asof, "--file", str(txns_out)])
+            run([sys.executable, "scripts/journal/reconcile_schwab_orders_transactions.py", "--asof", asof, "--orders", str(orders_out), "--transactions", str(txns_out), "--strict"])
 
         if args.import_db:
             run([sys.executable, "scripts/journal/import_journal_to_db.py", "--asof", asof, "--file", str(txns_out), "--db", str(db_path)])
