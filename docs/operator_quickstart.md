@@ -270,3 +270,12 @@ Current Schwab journal ingestion is read-only.
 Future auto-trading must use order intents, risk gates, approval or policy checks, broker order execution, broker fill feedback, and normalized_fills journal import.
 
 Journal scripts, dashboard scripts, and Streamlit review scripts must not call Schwab order-place, order-cancel, order-replace, or order-modify directly.
+## Phase J1 Schwab adapter readiness audit
+
+Use docs/schwab_adapter_readiness_audit.md before adding Schwab adapter code.
+
+The first Schwab adapter should be file-based and should convert raw Schwab export CSV into canonical normalized fills CSV.
+
+Do not build against guessed Schwab headers. Review a real Schwab export sample first.
+
+The Schwab journal adapter must remain read-only and separate from future execution modules.

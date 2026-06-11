@@ -50,4 +50,9 @@ Removal rule: none of these can be removed unless the reference matrix and basel
 | Item | Phase | Keep/Review | Reason |
 |---|---|---|---|
 | docs/schwab_execution_boundary_contract.md | db_phase_j0_schwab_execution_boundary | KEEP | Defines journal-vs-execution boundary for Schwab ingestion and future auto-trading readiness. |
+## Phase J1 Schwab Adapter Readiness Audit
+
+| Item | Phase | Keep/Review | Reason |
+|---|---|---|---|
+| docs/schwab_adapter_readiness_audit.md | db_phase_j1_schwab_adapter_readiness | KEEP | Defines planned Schwab adapter shape before adapter code is added. |
 
