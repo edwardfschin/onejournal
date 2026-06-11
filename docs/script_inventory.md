@@ -15,6 +15,7 @@ No script in this inventory may place, cancel, or modify broker orders.
 | check_journal_db.py | production_check | KEEP | Validates DuckDB journal integrity. |
 | check_import_run_audit.py | db_phase_i_import_audit | KEEP | Baseline guard for import_runs and normalized_fills audit linkage. |
 | check_manual_fills.py | baseline_data_quality | KEEP | Used by baseline to validate parser, classification, and episode construction. |
+| check_normalized_fills_contract.py | db_phase_i_normalized_fills_validation | KEEP | Baseline guard for canonical normalized fills CSV contract. |
 | check_strategy_classification.py | baseline_data_quality | KEEP | Used by baseline to validate parser, classification, and episode construction. |
 | check_trade_episodes.py | baseline_data_quality | KEEP | Used by baseline to validate parser, classification, and episode construction. |
 | check_episode_quality_contract.py | db_phase_h_episode_quality | KEEP | Baseline guard for dashboard episode quality contract. |

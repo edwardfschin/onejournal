@@ -227,6 +227,22 @@ check_file_contains "manual fills option fields" "$PROJECT_DIR/docs/examples/man
 
 echo
 
+echo "===== Normalized Fills Contract ====="
+check_path "scripts/journal/check_normalized_fills_contract.py" "$PROJECT_DIR/scripts/journal/check_normalized_fills_contract.py"
+check_path "docs/normalized_fills_validation_contract.md" "$PROJECT_DIR/docs/normalized_fills_validation_contract.md"
+check_file_contains "normalized fills validation command" "$PROJECT_DIR/docs/normalized_fills_validation_contract.md" "check_normalized_fills_contract.py --asof"
+check_file_contains "normalized fills validation transport" "$PROJECT_DIR/docs/normalized_fills_validation_contract.md" "Normalized fills CSV is transport"
+check_file_contains "script inventory normalized fills checker" "$PROJECT_DIR/docs/script_inventory.md" "check_normalized_fills_contract.py"
+if "$PY" "$PROJECT_DIR/scripts/journal/check_normalized_fills_contract.py" --asof 2026-06-02 --file "$PROJECT_DIR/docs/examples/manual_csv/fills_template.csv" >/tmp/onejournal_normalized_fills_contract.out 2>/tmp/onejournal_normalized_fills_contract.err; then
+  echo "OK   normalized fills contract"
+else
+  echo "FAIL normalized fills contract"
+  cat /tmp/onejournal_normalized_fills_contract.out
+  cat /tmp/onejournal_normalized_fills_contract.err
+  fail_count=$((fail_count + 1))
+fi
+echo
+
 echo "===== Strategy classification check ====="
 check_path "scripts/journal/check_strategy_classification.py" "$PROJECT_DIR/scripts/journal/check_strategy_classification.py"
 if [ -x "$PY" ]; then
