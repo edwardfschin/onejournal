@@ -324,3 +324,13 @@ Run python scripts/journal/check_odfs_continuity.py, or simply run ./bin/onejour
 
 The guard keeps required ODFS folders in place and fails if generated fills, raw broker files, output artifacts, or DuckDB runtime files are staged.
 
+## Phase L1 Schwab transactions JSON contract
+
+Use docs/schwab_transactions_json_contract.md before implementing Schwab transactions JSON parsing.
+
+Schwab transactions JSON is the accounting and fee evidence source.
+
+Schwab orders JSON remains the execution-leg source.
+
+Do not mix these roles silently. Reconcile them later by orderId, symbol, quantity, price, and time.
+

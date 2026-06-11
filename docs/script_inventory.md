@@ -81,3 +81,9 @@ Removal rule: none of these can be removed unless the reference matrix and basel
 | scripts/journal/check_odfs_continuity.py | db_phase_k1_odfs_continuous_guard | KEEP | Prevents ODFS folder and runtime/private file staging drift. |
 | docs/odfs_continuous_guard.md | db_phase_k1_odfs_continuous_guard | KEEP | Documents continuous ODFS enforcement. |
 
+## Phase L1 Schwab Transactions JSON Contract
+
+| Item | Phase | Keep/Review | Reason |
+|---|---|---|---|
+| docs/schwab_transactions_json_contract.md | db_phase_l1_schwab_transactions_contract | KEEP | Defines accounting, fee, and transferItems evidence rules for Schwab transactions JSON. |
+
