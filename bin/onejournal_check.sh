@@ -357,6 +357,19 @@ check_file_not_contains "manual review stale csv enough" "$PROJECT_DIR/docs/manu
 check_file_contains "inventory phase f guarded scripts" "$PROJECT_DIR/docs/script_inventory.md" "Phase F Guarded Review Workflow Scripts"
 check_file_contains "inventory save flow checker" "$PROJECT_DIR/docs/script_inventory.md" "check_save_review_flow.py"
 check_file_contains "inventory db contract checker" "$PROJECT_DIR/docs/script_inventory.md" "check_db_dashboard_contract.py"
+check_path "scripts/journal/check_episode_quality_contract.py" "$PROJECT_DIR/scripts/journal/check_episode_quality_contract.py"
+check_path "docs/episode_quality_contract.md" "$PROJECT_DIR/docs/episode_quality_contract.md"
+check_file_contains "episode quality contract primary symbol" "$PROJECT_DIR/docs/episode_quality_contract.md" "primary_symbol must be the tradable underlying symbol"
+check_file_contains "script inventory episode quality" "$PROJECT_DIR/docs/script_inventory.md" "check_episode_quality_contract.py"
+echo "===== Episode Quality Contract ====="
+if "$PY" "$PROJECT_DIR/scripts/journal/check_episode_quality_contract.py" --payload "$PROJECT_DIR/output/dashboard/latest/dashboard_payload_from_db.json" >/tmp/onejournal_episode_quality_check.out 2>/tmp/onejournal_episode_quality_check.err; then
+  echo "OK   episode quality contract"
+else
+  echo "FAIL episode quality contract"
+  cat /tmp/onejournal_episode_quality_check.out
+  cat /tmp/onejournal_episode_quality_check.err
+  fail_count=$((fail_count + 1))
+fi
 
 echo "===== Data contract ====="
 check_path "docs/onejournal_data_contract_v1.md" "$PROJECT_DIR/docs/onejournal_data_contract_v1.md"
@@ -411,7 +424,7 @@ then
 else
   echo "FAIL db dashboard contract"
   cat /tmp/onejournal_db_dashboard_contract.out
-  FAIL=1
+  fail_count=$((fail_count + 1))
 fi
 
 check_path "scripts/journal/check_save_review_flow.py" "$PROJECT_DIR/scripts/journal/check_save_review_flow.py"
@@ -427,7 +440,7 @@ then
 else
   echo "FAIL save review flow"
   cat /tmp/onejournal_save_review_flow.out
-  FAIL=1
+  fail_count=$((fail_count + 1))
 fi
 echo "PASS OneJournal baseline looks good."
   exit 0

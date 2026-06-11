@@ -16,6 +16,7 @@ No script in this inventory may place, cancel, or modify broker orders.
 | check_manual_fills.py | baseline_data_quality | KEEP | Used by baseline to validate parser, classification, and episode construction. |
 | check_strategy_classification.py | baseline_data_quality | KEEP | Used by baseline to validate parser, classification, and episode construction. |
 | check_trade_episodes.py | baseline_data_quality | KEEP | Used by baseline to validate parser, classification, and episode construction. |
+| check_episode_quality_contract.py | db_phase_h_episode_quality | KEEP | Baseline guard for dashboard episode quality contract. |
 | compare_dashboard_payloads.py | migration_safety | KEEP | Used to verify legacy CSV/backfill and DB payload equivalence during migration. |
 | import_journal_to_db.py | db_bootstrap_backfill | KEEP | Required to initialize or backfill DuckDB from source files. |
 | init_journal_db.py | db_bootstrap_backfill | KEEP | Required to initialize or backfill DuckDB from source files. |
