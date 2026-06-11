@@ -387,7 +387,7 @@ Place Schwab raw JSON exports under data/raw/schwab, using these folders:
 
 The operator finds files by asof date using the filename suffix __YYYY-MM-DD.json.
 
-If multiple snapshots contain the same asof date, the operator warns and uses the newest path by name.
+If multiple snapshots contain the same asof date, the operator fails safely by default. Use --use-latest-snapshot only when you deliberately want the newest path by name.
 
 ### Dry run
 
@@ -454,3 +454,7 @@ The Schwab journal workflow does not call Schwab REST APIs.
 It does not place, cancel, replace, or modify orders.
 
 DuckDB import requires explicit --import-db.
+
+### Duplicate raw snapshots
+
+If duplicate raw snapshots exist for the same asof date, the operator fails safely by default. To deliberately use the newest snapshot by path name, add --use-latest-snapshot.

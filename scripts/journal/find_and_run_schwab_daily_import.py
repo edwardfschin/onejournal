@@ -11,14 +11,18 @@ PROJECT_DIR = Path(__file__).resolve().parents[2]
 RAW_ROOT = PROJECT_DIR / "data" / "raw" / "schwab"
 
 
-def find_one(pattern: str, label: str) -> Path:
+def find_one(pattern: str, label: str, use_latest_snapshot: bool) -> Path:
     matches = sorted(RAW_ROOT.glob(pattern))
     if not matches:
         raise SystemExit(f"FAIL: no {label} file found under {RAW_ROOT} using pattern {pattern}")
     if len(matches) > 1:
-        print(f"WARNING: multiple {label} files found; using newest path by name")
+        print(f"FAIL: multiple {label} files found for this asof.")
+        print("Choose one by removing or archiving duplicates, or rerun with --use-latest-snapshot.")
         for m in matches:
             print(f"  {m.relative_to(PROJECT_DIR)}")
+        if not use_latest_snapshot:
+            raise SystemExit(2)
+        print(f"USING LATEST SNAPSHOT BY NAME: {matches[-1].relative_to(PROJECT_DIR)}")
     return matches[-1]
 
 
@@ -37,8 +41,8 @@ def main() -> int:
     args = parser.parse_args()
 
     asof = args.asof
-    orders = find_one(f"*/orders_all/*__{asof}.json", "orders_all")
-    transactions = find_one(f"*/transactions/*__{asof}.json", "transactions")
+    orders = find_one(f"*/orders_all/*__{asof}.json", "orders_all", args.use_latest_snapshot)
+    transactions = find_one(f"*/transactions/*__{asof}.json", "transactions", args.use_latest_snapshot)
 
     print("===== Schwab Auto-Discovery Daily Import =====")
     print(f"PROJECT_DIR : {PROJECT_DIR}")
@@ -47,6 +51,7 @@ def main() -> int:
     print(f"ORDERS      : {orders.relative_to(PROJECT_DIR)}")
     print(f"TRANSACTIONS: {transactions.relative_to(PROJECT_DIR)}")
     print(f"IMPORT_DB   : {args.import_db}")
+    print(f"USE_LATEST  : {args.use_latest_snapshot}")
     print("BROKER API  : disabled")
     print("ORDER API   : disabled")
 

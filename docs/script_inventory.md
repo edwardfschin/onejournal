@@ -138,3 +138,10 @@ Removal rule: none of these can be removed unless the reference matrix and basel
 | docs/operator_import_runbook.md | db_phase_m6_schwab_runbook_lock | KEEP | Mirrors final Schwab import operator workflow for operator use. |
 | docs/schwab_auto_discovery_import_operator.md | db_phase_m6_schwab_runbook_lock | KEEP | Documents short --asof auto-discovery operator command. |
 | docs/schwab_daily_import_operator.md | db_phase_m6_schwab_runbook_lock | KEEP | Documents guarded import gates and canonical transaction source. |
+
+## Phase M7 Schwab Duplicate Snapshot Guard
+
+| Item | Phase | Keep/Review | Reason |
+|---|---|---|---|
+| scripts/journal/find_and_run_schwab_daily_import.py | db_phase_m7_duplicate_snapshot_guard | KEEP | Fails safely on duplicate raw Schwab snapshots unless --use-latest-snapshot is explicit. |
+| docs/operator_quickstart.md | db_phase_m7_duplicate_snapshot_guard | KEEP | Documents duplicate snapshot behavior. |
