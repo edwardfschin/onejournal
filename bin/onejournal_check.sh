@@ -391,6 +391,21 @@ else
   FAIL=1
 fi
 
+check_path "scripts/journal/check_save_review_flow.py" "$PROJECT_DIR/scripts/journal/check_save_review_flow.py"
+check_path "docs/save_review_flow.md" "$PROJECT_DIR/docs/save_review_flow.md"
+check_file_contains "save review flow source" "$PROJECT_DIR/docs/save_review_flow.md" "manual_reviews"
+check_file_contains "save review flow temp db" "$PROJECT_DIR/docs/save_review_flow.md" "temporary validation DB"
+check_file_contains "save review flow no broker" "$PROJECT_DIR/docs/save_review_flow.md" "No broker API call."
+
+echo "===== Save Review Flow ====="
+if "$PY" "$PROJECT_DIR/scripts/journal/check_save_review_flow.py" --asof 2026-06-02 --db "$PROJECT_DIR/data/journal/onejournal.duckdb" >/tmp/onejournal_save_review_flow.out 2>&1
+then
+  echo "OK   save review flow"
+else
+  echo "FAIL save review flow"
+  cat /tmp/onejournal_save_review_flow.out
+  FAIL=1
+fi
 echo "PASS OneJournal baseline looks good."
   exit 0
 else
