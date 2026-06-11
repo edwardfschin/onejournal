@@ -368,3 +368,9 @@ Use scripts/journal/check_schwab_daily_import_idempotency.py before regular Schw
 
 It copies DuckDB to a temporary DB, runs the same Schwab import twice, and fails if the second run duplicates fills or episodes.
 
+## Phase M4 Schwab auto-discovery import operator
+
+Use scripts/journal/find_and_run_schwab_daily_import.py --asof YYYY-MM-DD to find raw Schwab orders and transactions files automatically.
+
+DuckDB import still requires explicit --import-db.
+

@@ -123,3 +123,10 @@ Removal rule: none of these can be removed unless the reference matrix and basel
 | scripts/journal/check_schwab_daily_import_idempotency.py | db_phase_m3_schwab_idempotency | KEEP | Verifies rerunning the same Schwab import does not duplicate fills or episodes. |
 | docs/schwab_daily_import_idempotency.md | db_phase_m3_schwab_idempotency | KEEP | Documents the Schwab import idempotency guard. |
 
+## Phase M4 Schwab Auto-Discovery Import Operator
+
+| Item | Phase | Keep/Review | Reason |
+|---|---|---|---|
+| scripts/journal/find_and_run_schwab_daily_import.py | db_phase_m4_schwab_auto_discovery | KEEP | Finds matching Schwab raw files by asof date and runs guarded daily import. |
+| docs/schwab_auto_discovery_import_operator.md | db_phase_m4_schwab_auto_discovery | KEEP | Documents the Schwab auto-discovery import shortcut. |
+
