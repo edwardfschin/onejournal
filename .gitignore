@@ -33,3 +33,6 @@ output/
 /output/**
 /data/journal/*.duckdb
 /data/journal/*.duckdb.wal
+
+# OneJournal runtime DB backups
+/data/journal/backups/
