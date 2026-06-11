@@ -279,3 +279,10 @@ The first Schwab adapter should be file-based and should convert raw Schwab expo
 Do not build against guessed Schwab headers. Review a real Schwab export sample first.
 
 The Schwab journal adapter must remain read-only and separate from future execution modules.
+## Phase J2 Schwab legacy normalizer findings
+
+Use docs/schwab_legacy_normalizer_findings.md before implementing Schwab parser logic.
+
+Legacy Schwab findings confirm that security transferItems are fill-leg candidates, CURRENCY transferItems are not fill legs, raw transaction JSON should be preserved, and output must be canonical normalized fills.
+
+The uploaded Schwab JSON transaction sample was empty, so a non-empty Schwab transaction JSON or CSV export is still required before adapter implementation.

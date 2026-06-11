@@ -55,4 +55,9 @@ Removal rule: none of these can be removed unless the reference matrix and basel
 | Item | Phase | Keep/Review | Reason |
 |---|---|---|---|
 | docs/schwab_adapter_readiness_audit.md | db_phase_j1_schwab_adapter_readiness | KEEP | Defines planned Schwab adapter shape before adapter code is added. |
+## Phase J2 Schwab Legacy Normalizer Findings
+
+| Item | Phase | Keep/Review | Reason |
+|---|---|---|---|
+| docs/schwab_legacy_normalizer_findings.md | db_phase_j2_schwab_legacy_findings | KEEP | Captures reusable Schwab normalization findings before parser implementation. |
 
