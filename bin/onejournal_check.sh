@@ -4,23 +4,26 @@
 # Purpose
 # -------
 # Validate the local OneJournal baseline setup.
-# This script does not fetch broker data, does not write journal data,
-# and does not place orders.
+# This script does not fetch broker data and does not place orders.
+# Some checks rebuild local generated dashboard/validation artifacts and the
+# legacy manual-review CSV using the repository's fixed validation fixture.
 
 set -u
 set -o pipefail
 set +e
 
-PROJECT_DIR="/Users/edward/Library/Mobile Documents/com~apple~CloudDocs/Projects/onejournal"
-VENV_DIR="/Users/edward/python-envs/onejournal-env"
-PRIVATE_DIR="/Users/edward/.onejournal"
-PY="$VENV_DIR/bin/python"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_DIR="${ONEJOURNAL_PROJECT_DIR:-$(cd "$SCRIPT_DIR/.." && pwd)}"
+DEFAULT_VENV_DIR="/Users/edward/python-envs/onejournal-env"
+VENV_DIR="${ONEJOURNAL_VENV_DIR:-${VIRTUAL_ENV:-$DEFAULT_VENV_DIR}}"
+PRIVATE_DIR="${ONEJOURNAL_PRIVATE_DIR:-$HOME/.onejournal}"
+PY="${ONEJOURNAL_PYTHON:-$VENV_DIR/bin/python}"
 
 fail_count=0
 
 check_path() {
-  label="$1"
-  path="$2"
+  local label="$1"
+  local path="$2"
   if [ -e "$path" ]; then
     echo "OK   $label: $path"
   else
@@ -30,15 +33,15 @@ check_path() {
 }
 
 check_file_contains() {
-  label="$1"
-  path="$2"
-  pattern="$3"
+  local label="$1"
+  local path="$2"
+  local pattern="$3"
   if [ ! -f "$path" ]; then
     echo "FAIL $label missing file: $path"
     fail_count=$((fail_count + 1))
     return
   fi
-  if grep -q -- "$pattern" "$path"; then
+  if grep -Fq -- "$pattern" "$path"; then
     echo "OK   $label: $pattern"
   else
     echo "FAIL $label missing pattern: $pattern in $path"
@@ -50,6 +53,11 @@ check_file_not_contains() {
   local label="$1"
   local file="$2"
   local pattern="$3"
+  if [ ! -f "$file" ]; then
+    echo "FAIL $label missing file: $file"
+    fail_count=$((fail_count + 1))
+    return
+  fi
   if grep -Fq -- "$pattern" "$file"; then
     echo "FAIL $label forbidden pattern present: $pattern in $file"
     fail_count=$((fail_count + 1))
@@ -81,9 +89,11 @@ echo
 
 echo "===== Python/package ====="
 if [ -x "$PY" ]; then
-  "$PY" --version
-  "$PY" -c "import onejournal; print('OK   import onejournal', onejournal.__version__)"
-  if [ $? -ne 0 ]; then
+  if ! "$PY" --version; then
+    echo "FAIL Python version check failed"
+    fail_count=$((fail_count + 1))
+  fi
+  if ! "$PY" -c "import onejournal; print('OK   import onejournal', onejournal.__version__)"; then
     echo "FAIL package import failed"
     fail_count=$((fail_count + 1))
   fi
@@ -154,10 +164,12 @@ echo
 echo "===== Streamlit dashboard app ====="
 check_path "src/onejournal/apps/streamlit_app.py" "$PROJECT_DIR/src/onejournal/apps/streamlit_app.py"
 if [ -x "$PY" ]; then
-  "$PY" -c "import streamlit; from onejournal.apps.streamlit_app import load_payload; from pathlib import Path; payload=load_payload(Path('output/dashboard/latest/dashboard_payload.json')); print('OK   streamlit dashboard app import', payload['metadata']['auto_trade'])"
-  "$PY" -c "from onejournal.apps.streamlit_app import DEFAULT_PAYLOAD_PATH, DEFAULT_DB_PAYLOAD_PATH; print('OK   streamlit payload defaults', DEFAULT_PAYLOAD_PATH.name, DEFAULT_DB_PAYLOAD_PATH.name)"
-  if [ $? -ne 0 ]; then
+  if ! "$PY" -c "import streamlit; from onejournal.apps.streamlit_app import load_payload; from pathlib import Path; payload=load_payload(Path('output/dashboard/latest/dashboard_payload.json')); print('OK   streamlit dashboard app import', payload['metadata']['auto_trade'])"; then
     echo "FAIL streamlit dashboard app import failed"
+    fail_count=$((fail_count + 1))
+  fi
+  if ! "$PY" -c "from onejournal.apps.streamlit_app import DEFAULT_PAYLOAD_PATH, DEFAULT_DB_PAYLOAD_PATH; print('OK   streamlit payload defaults', DEFAULT_PAYLOAD_PATH.name, DEFAULT_DB_PAYLOAD_PATH.name)"; then
+    echo "FAIL streamlit payload defaults import failed"
     fail_count=$((fail_count + 1))
   fi
 fi
@@ -230,7 +242,21 @@ check_file_contains "manual fills option fields" "$PROJECT_DIR/docs/examples/man
 
 echo
 
-echo "===== Import status script ====="\ncheck_path "scripts/journal/show_import_status.py" "$PROJECT_DIR/scripts/journal/show_import_status.py"\nif [ -x "$PY" ]; then\n  "$PY" "$PROJECT_DIR/scripts/journal/show_import_status.py" --db "$PROJECT_DIR/data/journal/onejournal.duckdb" >/tmp/onejournal_import_status.out 2>&1\n  if [ $? -eq 0 ] && grep -q "STATUS                  : OK" /tmp/onejournal_import_status.out; then\n    echo "OK   import status script"\n  else\n    echo "FAIL import status script failed"\n    cat /tmp/onejournal_import_status.out\n    fail_count=$((fail_count + 1))\n  fi\nfi\necho\n\necho "===== Normalized Fills Contract ====="
+echo "===== Import status script ====="
+check_path "scripts/journal/show_import_status.py" "$PROJECT_DIR/scripts/journal/show_import_status.py"
+if [ -x "$PY" ]; then
+  "$PY" "$PROJECT_DIR/scripts/journal/show_import_status.py" --db "$PROJECT_DIR/data/journal/onejournal.duckdb" >/tmp/onejournal_import_status.out 2>&1
+  if [ $? -eq 0 ] && grep -Fq "STATUS                  : OK" /tmp/onejournal_import_status.out; then
+    echo "OK   import status script"
+  else
+    echo "FAIL import status script failed"
+    cat /tmp/onejournal_import_status.out
+    fail_count=$((fail_count + 1))
+  fi
+fi
+
+echo
+echo "===== Normalized Fills Contract ====="
 check_path "scripts/journal/check_normalized_fills_contract.py" "$PROJECT_DIR/scripts/journal/check_normalized_fills_contract.py"
 check_path "docs/normalized_fills_validation_contract.md" "$PROJECT_DIR/docs/normalized_fills_validation_contract.md"
 check_file_contains "normalized fills validation command" "$PROJECT_DIR/docs/normalized_fills_validation_contract.md" "check_normalized_fills_contract.py --asof"
@@ -594,8 +620,7 @@ done
 
 echo
 
-if [ "$fail_count" -eq 0 ]; then
-  check_path "scripts/journal/check_db_dashboard_contract.py" "$PROJECT_DIR/scripts/journal/check_db_dashboard_contract.py"
+check_path "scripts/journal/check_db_dashboard_contract.py" "$PROJECT_DIR/scripts/journal/check_db_dashboard_contract.py"
 check_path "docs/dashboard_db_contract.md" "$PROJECT_DIR/docs/dashboard_db_contract.md"
 check_file_contains "dashboard db contract source" "$PROJECT_DIR/docs/dashboard_db_contract.md" "DuckDB table:"
 check_file_contains "dashboard db contract payload" "$PROJECT_DIR/docs/dashboard_db_contract.md" "dashboard_payload_from_db.json"
@@ -626,7 +651,20 @@ else
   cat /tmp/onejournal_save_review_flow.out
   fail_count=$((fail_count + 1))
 fi
-echo "PASS OneJournal baseline looks good."
+
+echo
+echo "===== Automated Tests ====="
+check_path "tests/README.md" "$PROJECT_DIR/tests/README.md"
+if "$PY" -m unittest discover -s "$PROJECT_DIR/tests" -p "test_*.py" -v >/tmp/onejournal_unittest.out 2>&1; then
+  echo "OK   automated test suite"
+else
+  echo "FAIL automated test suite"
+  cat /tmp/onejournal_unittest.out
+  fail_count=$((fail_count + 1))
+fi
+
+if [ "$fail_count" -eq 0 ]; then
+  echo "PASS OneJournal baseline looks good."
   exit 0
 else
   echo "FAIL OneJournal baseline check found $fail_count issue(s)."

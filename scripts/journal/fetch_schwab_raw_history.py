@@ -4,11 +4,12 @@ Fetch Schwab raw orders/transactions JSON into OneJournal ODFS folders.
 
 READ-ONLY GUARANTEE
 -------------------
-- Uses only GET endpoints.
+- Uses GET endpoints for account, order, and transaction evidence.
+- May use the OAuth token-refresh endpoint when an existing token expires.
 - Does not write DuckDB.
 - Does not normalize CSV.
 - Does not place/modify/cancel orders.
-- Saves raw JSON evidence only.
+- Writes raw JSON evidence and, only when refreshed, a private OneJournal token.
 
 Output:
   data/raw/schwab/<fetch_date>/orders_all/<account_hash>__<start>__<end>.json
@@ -27,7 +28,7 @@ from dataclasses import dataclass
 from datetime import date, datetime
 from pathlib import Path
 from tempfile import NamedTemporaryFile
-from typing import Any
+from typing import Any, Mapping
 
 import requests
 
@@ -35,17 +36,62 @@ import requests
 PROJECT_DIR = Path(__file__).resolve().parents[2]
 RAW_ROOT = PROJECT_DIR / "data" / "raw" / "schwab"
 
-SCHWAB_BASE = os.environ.get("SCHWAB_BASE", "https://api.schwabapi.com").rstrip("/")
+ONEJOURNAL_PRIVATE_DIR = Path.home() / ".onejournal"
+LEGACY_ENVIRONMENT_NAMES = (
+    "TOKEN_PATH",
+    "CLIENT_ID",
+    "CLIENT_SECRET",
+    "REDIRECT_URI",
+    "SCHWAB_BASE",
+    "SCHWAB_RESOURCE_VERSION",
+    "SCHWAB_CLIENT_CORRELID",
+)
+
+
+def default_token_path(environ: Mapping[str, str] | None = None) -> Path:
+    """Return the OneJournal-only default Schwab token path."""
+
+    values = environ if environ is not None else os.environ
+    configured = values.get("ONEJOURNAL_SCHWAB_TOKEN_PATH", "").strip()
+    return Path(configured).expanduser() if configured else ONEJOURNAL_PRIVATE_DIR / "tokens" / "schwab_tokens.json"
+
+
+def validate_runtime_boundary(
+    token_path: Path,
+    environ: Mapping[str, str] | None = None,
+) -> None:
+    """Reject legacy/shared credential configuration before broker access."""
+
+    values = environ if environ is not None else os.environ
+    legacy_variables = [name for name in LEGACY_ENVIRONMENT_NAMES if values.get(name, "").strip()]
+    if legacy_variables:
+        names = ", ".join(legacy_variables)
+        raise RuntimeError(
+            "Refusing legacy/shared Schwab configuration: "
+            f"{names}. Use ONEJOURNAL_SCHWAB_* variables instead."
+        )
+
+    resolved_path = token_path.expanduser().resolve(strict=False)
+    legacy_root = Path.home() / ".onebot"
+    try:
+        resolved_path.relative_to(legacy_root)
+    except ValueError:
+        return
+    raise RuntimeError(
+        "Refusing a OneBot token path. Use ~/.onejournal/tokens/ or "
+        "ONEJOURNAL_SCHWAB_TOKEN_PATH."
+    )
+
+
+DEFAULT_TOKEN_PATH = default_token_path()
+
+SCHWAB_BASE = os.environ.get("ONEJOURNAL_SCHWAB_BASE", "https://api.schwabapi.com").rstrip("/")
 TRADER_V1 = f"{SCHWAB_BASE}/trader/v1"
 OAUTH_TOKEN_URL = f"{SCHWAB_BASE}/v1/oauth/token"
 ACCOUNT_NUMBERS_URL = f"{TRADER_V1}/accounts/accountNumbers"
 
-DEFAULT_TOKEN_PATH = Path(
-    os.environ.get("TOKEN_PATH", os.path.expanduser("~/.onebot/tokens/schwab_tokens.json"))
-)
-
-RESOURCE_VERSION = os.environ.get("SCHWAB_RESOURCE_VERSION", "1")
-CLIENT_CORRELID = os.environ.get("SCHWAB_CLIENT_CORRELID", "onejournal-raw-fetch")
+RESOURCE_VERSION = os.environ.get("ONEJOURNAL_SCHWAB_RESOURCE_VERSION", "1")
+CLIENT_CORRELID = os.environ.get("ONEJOURNAL_SCHWAB_CLIENT_CORRELID", "onejournal-raw-fetch")
 
 
 def _parse_ymd(value: str) -> date:
@@ -266,9 +312,14 @@ def main() -> int:
     if args.end < args.start:
         raise SystemExit("FAIL: --end must be >= --start")
 
-    client_id = os.environ.get("CLIENT_ID", "").strip()
-    client_secret = os.environ.get("CLIENT_SECRET", "").strip()
-    redirect_uri = os.environ.get("REDIRECT_URI", "https://127.0.0.1:8182/callback").strip()
+    token_path = Path(args.token_path).expanduser()
+    validate_runtime_boundary(token_path)
+    client_id = os.environ.get("ONEJOURNAL_SCHWAB_CLIENT_ID", "").strip()
+    client_secret = os.environ.get("ONEJOURNAL_SCHWAB_CLIENT_SECRET", "").strip()
+    redirect_uri = os.environ.get(
+        "ONEJOURNAL_SCHWAB_REDIRECT_URI",
+        "https://127.0.0.1:8182/callback",
+    ).strip()
 
     start_iso = utc_day_start(args.start)
     end_iso = utc_day_end(args.end)
@@ -298,10 +349,10 @@ def main() -> int:
         return 0
 
     if not client_id:
-        raise SystemExit("FAIL: CLIENT_ID environment variable is required")
+        raise SystemExit("FAIL: ONEJOURNAL_SCHWAB_CLIENT_ID environment variable is required")
 
     auth = SchwabAuth(
-        store=TokenStore(Path(args.token_path).expanduser()),
+        store=TokenStore(token_path),
         client_id=client_id,
         client_secret=client_secret,
         redirect_uri=redirect_uri,

@@ -45,6 +45,10 @@ Broker/API/CSV raw data -> Broker adapter -> Normalized OneJournal records -> Tr
 - Private local config: ~/.onejournal/env/*.env
 - Rotating broker session files: ~/.onejournal/tokens/
 
+Broker credentials and environment keys are application-scoped. The Schwab
+raw-history fetcher uses only `ONEJOURNAL_SCHWAB_*` configuration and its
+OneJournal token path; it must reject generic/OneBot credential configuration.
+
 The dashboard is not the source of truth. It is a view.
 
 ## Market Date Standard
