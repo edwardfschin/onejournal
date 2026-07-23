@@ -1,147 +1,99 @@
 # OneJournal Script Inventory
 
-This inventory prevents accidental deletion of scripts during Phase B cleanup.
+## Purpose and scope
 
-Phase B source of truth: DuckDB manual_reviews.
-Streamlit DB payload is the normal editable review path.
-CSV review files are legacy/backfill/export only.
+This is the current, repository-wide inventory of executable material under
+`scripts/`. It distinguishes active OneJournal operator/validation commands
+from retained legacy TradersGPS/OneBot material. It is not a roadmap, and it
+does not make a script production-approved merely because it is retained.
 
-No script in this inventory may place, cancel, or modify broker orders.
+The inventory is based on the source code, current CI/baseline and Streamlit
+call sites, operator documentation, and the full
+[legacy-code audit](legacy_code_audit.md). Last reviewed: 2026-07-23.
 
-| Script | Category | Status | Reason |
+Status meanings:
+
+- **ACTIVE** — part of the present OneJournal validation or operator workflow.
+- **LEGACY_BACKFILL** — retained only for prototype CSV/DB transition or
+  historical recovery; not a future production-service design.
+- **MAINTENANCE_EXPLICIT** — can change local journal data only with an
+  explicit command flag and documented backup/recovery behaviour.
+- **RETAIN_ISOLATED**, **MIGRATE**, **ARCHIVE** — legacy classifications from
+  the legacy-code audit. They are not active OneJournal runtime paths.
+
+No script in this inventory may place, cancel, replace, or modify broker orders
+as part of an active OneJournal path. `scripts/execution/`,
+`scripts/oldjournal/`, and `scripts/tgps_user/` are specifically excluded from
+all active imports, UI actions, CI workflows, and operator commands.
+
+## Active OneJournal scripts
+
+| Path | Status | Role and side effects | Current authority/use |
 |---|---|---|---|
-| build_dashboard_payload_from_db.py | db_phase_b | KEEP | Required by Streamlit Phase B DB review/dashboard path. |
-| check_dashboard_payload.py | legacy_csv_backfill | KEEP | Legacy CSV/backfill/export workflow; not the normal Phase B review write path. |
-| check_journal_db.py | production_check | KEEP | Validates DuckDB journal integrity. |
-| check_import_run_audit.py | db_phase_i_import_audit | KEEP | Baseline guard for import_runs and normalized_fills audit linkage. |
-| check_manual_fills.py | baseline_data_quality | KEEP | Used by baseline to validate parser, classification, and episode construction. |
-| check_normalized_fills_contract.py | db_phase_i_normalized_fills_validation | KEEP | Baseline guard for canonical normalized fills CSV contract. |
-| check_strategy_classification.py | baseline_data_quality | KEEP | Used by baseline to validate parser, classification, and episode construction. |
-| check_trade_episodes.py | baseline_data_quality | KEEP | Used by baseline to validate parser, classification, and episode construction. |
-| check_episode_quality_contract.py | db_phase_h_episode_quality | KEEP | Baseline guard for dashboard episode quality contract. |
-| compare_dashboard_payloads.py | migration_safety | KEEP | Used to verify legacy CSV/backfill and DB payload equivalence during migration. |
-| import_journal_to_db.py | db_bootstrap_backfill | KEEP | Required to initialize or backfill DuckDB from source files. |
-| init_journal_db.py | db_bootstrap_backfill | KEEP | Required to initialize or backfill DuckDB from source files. |
-| refresh_dashboard.py | legacy_csv_backfill | KEEP | Legacy CSV/backfill/export workflow; not the normal Phase B review write path. |
-| refresh_dashboard_db_transition.py | migration_safety | KEEP | Used to verify legacy CSV/backfill and DB payload equivalence during migration. |
-| update_review_template.py | legacy_csv_backfill | KEEP | Legacy CSV/backfill/export workflow; not the normal Phase B review write path. |
-| upsert_manual_review_to_db.py | db_phase_b | KEEP | Required by Streamlit Phase B DB review/dashboard path. |
+| `scripts/ci/__init__.py` | ACTIVE | Package marker; no command entry point. | Supports the repository CI guard module. |
+| `scripts/ci/check_repository.py` | ACTIVE | Read-only Git tracked-file and secret/artifact guard. | Run by `bin/onejournal_ci.sh`. |
+| `scripts/journal/init_journal_db.py` | ACTIVE | Creates the current five-table DuckDB prototype schema if absent. | Local bootstrap only; future durable changes require a versioned migration. |
+| `scripts/journal/import_journal_to_db.py` | ACTIVE | Imports normalized/manual fills and reviews; writes DuckDB rows. `--replace` deletes/rebuilds prototype journal tables. | Controlled local import; not a production migration. |
+| `scripts/journal/build_dashboard_payload_from_db.py` | ACTIVE | Reads DuckDB and writes a dashboard JSON only with `--write`. | Current DB-backed Streamlit payload producer. |
+| `scripts/journal/upsert_manual_review_to_db.py` | ACTIVE | Writes one validated `manual_reviews` row after checking the episode exists. | Current Streamlit Save Review target. |
+| `scripts/journal/check_journal_db.py` | ACTIVE | Read-only DuckDB integrity and duplicate-key check. | Baseline/operator validation. |
+| `scripts/journal/check_import_run_audit.py` | ACTIVE | Read-only import-run and fill-lineage check. | Baseline/operator validation. |
+| `scripts/journal/show_import_status.py` | ACTIVE | Read-only journal/import/payload status report. | Baseline/operator diagnostics. |
+| `scripts/journal/check_manual_fills.py` | ACTIVE | Read-only manual CSV parser and episode-preview check. | Clean CI validation. |
+| `scripts/journal/check_normalized_fills_contract.py` | ACTIVE | Read-only normalized-fill schema, as-of, identity, asset, and option-field validation. | Clean CI and import gate. |
+| `scripts/journal/check_odfs_continuity.py` | ACTIVE | Read-only ODFS directory and Git/runtime-artifact continuity guard. | Baseline and guarded-import validation. |
+| `scripts/journal/check_trade_episodes.py` | ACTIVE | Read-only episode-preview validation. | Clean CI validation; previews are not lifecycle truth. |
+| `scripts/journal/check_strategy_classification.py` | ACTIVE | Read-only dashboard strategy-label validation. | Prototype payload quality check. |
+| `scripts/journal/check_episode_quality_contract.py` | ACTIVE | Read-only DB-payload episode quality check. | DB dashboard validation. |
+| `scripts/journal/check_db_dashboard_contract.py` | ACTIVE | Read-only DB dashboard JSON contract validation. | DB dashboard validation. |
+| `scripts/journal/check_save_review_flow.py` | ACTIVE | Copies the journal DB and writes only a temporary validation DB/payload. | Proves Save Review flow without changing the source DB. |
+| `scripts/journal/check_dashboard_payload.py` | ACTIVE | Builds a prototype CSV payload; writes JSON only with `--write`. | Legacy CSV/backfill payload validation. |
+| `scripts/journal/compare_dashboard_payloads.py` | ACTIVE | Read-only comparison of CSV and DB dashboard payloads. | Transition-validation diagnostic. |
+| `scripts/journal/convert_schwab_orders_json_to_normalized_fills.py` | ACTIVE | Converts raw Schwab orders evidence to a normalized CSV output. | Read-only broker evidence transformation; output is generated. |
+| `scripts/journal/convert_schwab_transactions_json_to_normalized_fills.py` | ACTIVE | Converts raw Schwab transaction evidence to a normalized CSV output. | Current canonical Schwab fill-source transformation after reconciliation. |
+| `scripts/journal/reconcile_schwab_orders_transactions.py` | ACTIVE | Read-only daily comparison of normalized order and transaction fills. | Import gate; strict mode rejects unmatched evidence. |
+| `scripts/journal/run_schwab_daily_reconciliation.py` | ACTIVE | Orchestrates conversion, validation, reconciliation, and generated-CSV cleanup; never writes DuckDB. | Safe daily reconciliation workflow. |
+| `scripts/journal/run_schwab_daily_import.py` | ACTIVE | Orchestrates daily conversion/reconciliation; writes DuckDB and validation payload only with `--import-db`. | Guarded Schwab import workflow. |
+| `scripts/journal/find_and_run_schwab_daily_import.py` | ACTIVE | Locates raw files and invokes guarded daily import; fails on duplicate raw snapshots unless explicitly overridden. | Operator convenience command. |
+| `scripts/journal/check_schwab_daily_import_idempotency.py` | ACTIVE | Copies DB and runs the guarded import twice against the copy. | Proves repeat import does not duplicate active rows. |
+| `scripts/journal/backfill_schwab_history.py` | LEGACY_BACKFILL | Discovers historical raw orders/transactions, writes a backfill report, and imports only with `--import-db`. | Controlled recovery/backfill; duplicate snapshots fail unless explicitly selected. |
+| `scripts/journal/fetch_schwab_raw_history.py` | ACTIVE | Uses Schwab read endpoints, persists raw JSON evidence, and refreshes only a OneJournal-scoped token when needed. `--dry-run` prevents network/file writes. | Credentialed read-only ingestion; generic and OneBot credential configuration are rejected. |
+| `scripts/journal/purge_demo_manual_data_from_db.py` | MAINTENANCE_EXPLICIT | Dry-runs by default; `--apply` backs up then deletes only identified demo manual rows. | Never run against a real journal without explicit approval. |
+| `scripts/journal/refresh_dashboard.py` | LEGACY_BACKFILL | Rebuilds legacy CSV payload and manual-review CSV artifacts. | Prototype/backfill only; Streamlit does not write through this path. |
+| `scripts/journal/update_review_template.py` | LEGACY_BACKFILL | Writes/updates the legacy manual-review CSV from a dashboard payload. | Prototype/backfill only; not read-only despite its old docstring. |
+| `scripts/journal/refresh_dashboard_db_transition.py` | LEGACY_BACKFILL | Runs CSV-to-DB transition checks and writes prototype DB/output artifacts. | Migration-safety validation; not a normal operator command. |
 
-## Removal Rule
+`scripts/journal/migrations/README.md` is migration documentation, not an
+executable script. `scripts/.DS_Store` is ignored operating-system metadata and
+is not a project artifact.
 
-A script can be removed only after the reference matrix shows zero production, baseline, documentation, and migration-safety references, and after this inventory is updated first.
+## Isolated legacy and execution material
 
-## Phase F Guarded Review Workflow Scripts
+The following 36 retained artifacts are outside the active OneJournal runtime.
+Their individual behavior, broker-write capability, dependencies, and
+classification are authoritative in [legacy-code audit](legacy_code_audit.md).
+They may not be called, imported, scheduled, or exposed by OneJournal.
 
-| Script | Category | Status | Reason |
-|---|---|---:|---|
-| check_db_dashboard_contract.py | db_phase_c_contract | KEEP | Baseline guard for dashboard_payload_from_db.json schema and DB payload source. |
-| check_save_review_flow.py | db_phase_d_save_flow | KEEP | Baseline guard proving Save Review -> DuckDB manual_reviews -> DB payload rebuild on a temporary DB copy. |
-| src/onejournal/apps/streamlit_app.py | operator_ui | KEEP | Normal operator UI. DB payload is writable; CSV and Custom payloads are read-only. |
+| Directory | Files | Disposition |
+|---|---:|---|
+| `scripts/execution/` | 1 | `scripts/execution/stage_orders_v0.py` — RETAIN_ISOLATED; Excel/JSONL order staging with no active OneJournal route. |
+| `scripts/oldjournal/` | 18 | `audit_trades.py`, `db_inspect.py`, `export_trx.py`, `fetch_orders_live.py`, `fetch_positions_live.py`, `ideas_runner.py`, `incremental_export.py`, `ingest_acct_activity.py`, `init_journal.sql`, `introspect_journal.py`, `journal_doctor.py`, `migrate_open_orders_lineage.py`, `oms_cli.py`, `positions_report.py`, `rebuild_db.py`, `report_open_orders_live.py`, `run_trading_session.sh`, `transactions_report.py` — individually classified MIGRATE, ARCHIVE, or RETAIN_ISOLATED. |
+| `scripts/tgps_user/` | 17 | `_lock.py`, `actions_capture.py`, `doctor.py`, `exec_plan.py`, `fills_mgt.py`, `fills_normalize.py`, `ibkr_fills_mgt.py`, `ibkr_fills_normalize.py`, `ibkr_order_mgt.py`, `ibkr_sellput_queue.py`, `ideas_runner.py`, `init_ledger.py`, `order_mgt.py`, `policy_eval.py`, `queue_editor.py`, `sellput_day.py`, `sync_ideas.py` — individually classified MIGRATE, ARCHIVE, or RETAIN_ISOLATED. |
 
-Removal rule: none of these can be removed unless the reference matrix and baseline are updated in the same commit.
-## Phase I5 Operator Import Runbook
+The legacy classification is a retention and safety boundary, not authorization
+to reuse, relocate, run, delete, or connect those scripts to OneJournal.
 
-| Item | Phase | Keep/Review | Reason |
-|---|---|---|---|
-| docs/operator_import_runbook.md | db_phase_i_operator_import | KEEP | Defines safe ODFS import sequence before broker-specific adapters. |
-## Phase J0 Schwab Execution Boundary
+## Inventory update rule
 
-| Item | Phase | Keep/Review | Reason |
-|---|---|---|---|
-| docs/schwab_execution_boundary_contract.md | db_phase_j0_schwab_execution_boundary | KEEP | Defines journal-vs-execution boundary for Schwab ingestion and future auto-trading readiness. |
-## Phase J1 Schwab Adapter Readiness Audit
+Before adding, moving, renaming, deprecating, or deleting any script:
 
-| Item | Phase | Keep/Review | Reason |
-|---|---|---|---|
-| docs/schwab_adapter_readiness_audit.md | db_phase_j1_schwab_adapter_readiness | KEEP | Defines planned Schwab adapter shape before adapter code is added. |
-## Phase J2 Schwab Legacy Normalizer Findings
+1. Inspect the complete implementation, its callers, inputs, outputs, writes,
+   dependencies, credentials, and operator documentation.
+2. Update this inventory and any focused contract/runbook in the same change.
+3. Classify data and broker side effects accurately; do not describe a
+   write-capable command as read-only.
+4. Add or update proportionate automated validation.
+5. For legacy/execution material, update the legacy-code audit as well.
 
-| Item | Phase | Keep/Review | Reason |
-|---|---|---|---|
-| docs/schwab_legacy_normalizer_findings.md | db_phase_j2_schwab_legacy_findings | KEEP | Captures reusable Schwab normalization findings before parser implementation. |
-## Phase J3 Schwab Orders JSON Schema Contract
-
-| Item | Phase | Keep/Review | Reason |
-|---|---|---|---|
-| docs/schwab_orders_json_schema_contract.md | db_phase_j3_schwab_orders_schema | KEEP | Defines read-only Schwab orders JSON to normalized fills extraction rules. |
-
-## Phase J4 Schwab Orders JSON Adapter
-
-| Item | Phase | Keep/Review | Reason |
-|---|---|---|---|
-| src/onejournal/brokers/schwab/orders_json.py | db_phase_j4_schwab_orders_adapter | KEEP | Read-only Schwab orders JSON normalizer. |
-| scripts/journal/convert_schwab_orders_json_to_normalized_fills.py | db_phase_j4_schwab_orders_adapter | KEEP | Operator CLI to write canonical normalized fills CSV from Schwab orders JSON. |
-| docs/schwab_orders_json_adapter.md | db_phase_j4_schwab_orders_adapter | KEEP | Operator and design notes for the adapter. |
-
-## Phase K1 ODFS Continuous Guard
-
-| Item | Phase | Keep/Review | Reason |
-|---|---|---|---|
-| scripts/journal/check_odfs_continuity.py | db_phase_k1_odfs_continuous_guard | KEEP | Prevents ODFS folder and runtime/private file staging drift. |
-| docs/odfs_continuous_guard.md | db_phase_k1_odfs_continuous_guard | KEEP | Documents continuous ODFS enforcement. |
-
-## Phase L1 Schwab Transactions JSON Contract
-
-| Item | Phase | Keep/Review | Reason |
-|---|---|---|---|
-| docs/schwab_transactions_json_contract.md | db_phase_l1_schwab_transactions_contract | KEEP | Defines accounting, fee, and transferItems evidence rules for Schwab transactions JSON. |
-
-## Phase L2 Schwab Transactions JSON Adapter
-
-| Item | Phase | Keep/Review | Reason |
-|---|---|---|---|
-| src/onejournal/brokers/schwab/transactions_json.py | db_phase_l2_schwab_transactions_adapter | KEEP | Read-only Schwab transactions transferItems normalizer. |
-| scripts/journal/convert_schwab_transactions_json_to_normalized_fills.py | db_phase_l2_schwab_transactions_adapter | KEEP | Operator CLI to write canonical normalized fills CSV from Schwab transactions JSON. |
-| docs/schwab_transactions_json_adapter.md | db_phase_l2_schwab_transactions_adapter | KEEP | Operator and design notes for the transactions adapter. |
-
-## Phase L3 Schwab Orders Transactions Reconciliation
-
-| Item | Phase | Keep/Review | Reason |
-|---|---|---|---|
-| scripts/journal/reconcile_schwab_orders_transactions.py | db_phase_l3_schwab_reconciliation | KEEP | Read-only reconciliation between Schwab execution truth and accounting truth. |
-| docs/schwab_orders_transactions_reconciliation.md | db_phase_l3_schwab_reconciliation | KEEP | Documents Schwab orders vs transactions reconciliation. |
-
-## Phase M1 Schwab Daily Reconciliation Operator
-
-| Item | Phase | Keep/Review | Reason |
-|---|---|---|---|
-| scripts/journal/run_schwab_daily_reconciliation.py | db_phase_m1_schwab_daily_operator | KEEP | Runs safe daily Schwab conversion, validation, reconciliation, cleanup, and ODFS guard. |
-| docs/schwab_daily_reconciliation_operator.md | db_phase_m1_schwab_daily_operator | KEEP | Documents the daily Schwab reconciliation operator command. |
-
-## Phase M2 Schwab Guarded Daily Import Operator
-
-| Item | Phase | Keep/Review | Reason |
-|---|---|---|---|
-| scripts/journal/run_schwab_daily_import.py | db_phase_m2_schwab_guarded_import | KEEP | Runs guarded Schwab daily flow and optional DuckDB import after strict reconciliation. |
-| docs/schwab_daily_import_operator.md | db_phase_m2_schwab_guarded_import | KEEP | Documents the guarded Schwab daily import operator. |
-
-## Phase M3 Schwab Import Idempotency Guard
-
-| Item | Phase | Keep/Review | Reason |
-|---|---|---|---|
-| scripts/journal/check_schwab_daily_import_idempotency.py | db_phase_m3_schwab_idempotency | KEEP | Verifies rerunning the same Schwab import does not duplicate fills or episodes. |
-| docs/schwab_daily_import_idempotency.md | db_phase_m3_schwab_idempotency | KEEP | Documents the Schwab import idempotency guard. |
-
-## Phase M4 Schwab Auto-Discovery Import Operator
-
-| Item | Phase | Keep/Review | Reason |
-|---|---|---|---|
-| scripts/journal/find_and_run_schwab_daily_import.py | db_phase_m4_schwab_auto_discovery | KEEP | Finds matching Schwab raw files by asof date and runs guarded daily import. |
-| docs/schwab_auto_discovery_import_operator.md | db_phase_m4_schwab_auto_discovery | KEEP | Documents the Schwab auto-discovery import shortcut. |
-
-## Phase M6 Schwab Final Operator Runbook
-
-| Item | Phase | Keep/Review | Reason |
-|---|---|---|---|
-| docs/operator_quickstart.md | db_phase_m6_schwab_runbook_lock | KEEP | Contains final Schwab daily dry-run, import, idempotency, cleanup, and safety workflow. |
-| docs/operator_import_runbook.md | db_phase_m6_schwab_runbook_lock | KEEP | Mirrors final Schwab import operator workflow for operator use. |
-| docs/schwab_auto_discovery_import_operator.md | db_phase_m6_schwab_runbook_lock | KEEP | Documents short --asof auto-discovery operator command. |
-| docs/schwab_daily_import_operator.md | db_phase_m6_schwab_runbook_lock | KEEP | Documents guarded import gates and canonical transaction source. |
-
-## Phase M7 Schwab Duplicate Snapshot Guard
-
-| Item | Phase | Keep/Review | Reason |
-|---|---|---|---|
-| scripts/journal/find_and_run_schwab_daily_import.py | db_phase_m7_duplicate_snapshot_guard | KEEP | Fails safely on duplicate raw Schwab snapshots unless --use-latest-snapshot is explicit. |
-| docs/operator_quickstart.md | db_phase_m7_duplicate_snapshot_guard | KEEP | Documents duplicate snapshot behavior. |
+Deletion or relocation additionally requires the archive/deletion gate in the
+legacy-code audit and explicit approval.
