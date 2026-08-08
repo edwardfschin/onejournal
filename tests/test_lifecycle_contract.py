@@ -23,6 +23,7 @@ class LifecycleContractTests(unittest.TestCase):
         open_close: str | None = None,
         asset_class: str = "stock",
         symbol: str = "AAPL",
+        currency: str = "USD",
         source_account_id: str = "demo",
     ) -> NormalizedFill:
         return NormalizedFill(
@@ -41,7 +42,7 @@ class LifecycleContractTests(unittest.TestCase):
             fill_price=Decimal(fill_price),
             commission=Decimal("0"),
             fees=Decimal("0"),
-            currency="USD",
+            currency=currency,
             fetched_at=datetime(2026, 1, 1, 10, 1, tzinfo=timezone.utc),
             raw_path="tests/fixtures/lifecycle",
             open_close=open_close,
@@ -199,6 +200,28 @@ class LifecycleContractTests(unittest.TestCase):
                 "11",
                 source_order_id="ord-msft-close",
                 symbol="MSFT",
+            ),
+        ]
+        with self.assertRaises(LifecycleContractError):
+            build_lifecycle_fill_events(fills)
+
+    def test_currency_is_part_of_lifecycle_matching_scope(self) -> None:
+        fills = [
+            self._fill(
+                "usd-open",
+                "BUY_TO_OPEN",
+                "100",
+                "10",
+                source_order_id="ord-usd-open",
+                currency="USD",
+            ),
+            self._fill(
+                "aud-close",
+                "SELL_TO_CLOSE",
+                "20",
+                "11",
+                source_order_id="ord-aud-close",
+                currency="AUD",
             ),
         ]
         with self.assertRaises(LifecycleContractError):
