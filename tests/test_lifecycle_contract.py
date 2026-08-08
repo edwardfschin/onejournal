@@ -182,6 +182,28 @@ class LifecycleContractTests(unittest.TestCase):
         with self.assertRaises(LifecycleContractError):
             build_lifecycle_fill_events(fills)
 
+    def test_symbol_is_part_of_lifecycle_matching_scope(self) -> None:
+        fills = [
+            self._fill(
+                "aapl-open",
+                "BUY_TO_OPEN",
+                "100",
+                "10",
+                source_order_id="ord-aapl-open",
+                symbol="AAPL",
+            ),
+            self._fill(
+                "msft-close",
+                "SELL_TO_CLOSE",
+                "20",
+                "11",
+                source_order_id="ord-msft-close",
+                symbol="MSFT",
+            ),
+        ]
+        with self.assertRaises(LifecycleContractError):
+            build_lifecycle_fill_events(fills)
+
     def test_fill_order_is_preserved_when_timestamps_match(self) -> None:
         fills = [
             self._fill("close-later", "SELL_TO_CLOSE", "10", "12", source_order_id="ord-close"),
