@@ -156,6 +156,33 @@ class PnLFifoContractTests(unittest.TestCase):
         self.assertEqual(group.realized_pnl, Decimal("78"))
         self.assertEqual(group.open_quantity, Decimal("0"))
 
+    def test_buy_side_with_explicit_close_open_close(self) -> None:
+        fills = [
+            self._fill(
+                fill_uid="buy-open",
+                side="BUY_TO_OPEN",
+                quantity="1",
+                fill_price="10",
+                asset_class="stock",
+                symbol="AAPL",
+                commission="1",
+            ),
+            self._fill(
+                fill_uid="buy-close",
+                side="BUY",
+                quantity="1",
+                fill_price="9",
+                asset_class="stock",
+                symbol="AAPL",
+                open_close="close",
+                commission="1",
+            ),
+        ]
+        result = calculate_fifo_pnl_from_fills(fills)
+        group = self._group_for_instrument(result, fills[0])
+        self.assertEqual(group.realized_pnl, Decimal("-3"))
+        self.assertEqual(group.open_quantity, Decimal("0"))
+
     def test_unrealized_uses_mark_when_available(self) -> None:
         fill = self._fill(fill_uid="open", side="BUY", quantity="100", fill_price="10", symbol="MSFT")
         mark_key = build_instrument_key(fill)
@@ -212,6 +239,16 @@ class PnLFifoContractTests(unittest.TestCase):
         close_only = [self._fill(fill_uid="sell-only", side="SELL_TO_CLOSE", quantity="1", fill_price="50")]
         with self.assertRaises(LotAllocationError):
             calculate_fifo_pnl_from_fills(close_only)
+
+    def test_unmatched_close_can_be_skipped_for_non_strict_pnl(self) -> None:
+        close_only = [self._fill(fill_uid="sell-only", side="SELL_TO_CLOSE", quantity="1", fill_price="50")]
+        result = calculate_fifo_pnl_from_fills(close_only, allow_unmatched_close=True)
+        self.assertEqual(result.unmatched_close_fill_uids, ("sell-only",))
+        self.assertEqual(result.total_realized_pnl_by_currency, {"USD": Decimal("0")})
+        self.assertEqual(result.total_unrealized_pnl_by_currency, {"USD": None})
+        group = self._group_for_instrument(result, close_only[0])
+        self.assertEqual(group.realized_pnl, Decimal("0"))
+        self.assertEqual(group.open_quantity, Decimal("0"))
 
     def test_unsupported_fill_side_fails_closed(self) -> None:
         unsupported = self._fill(fill_uid="unsupported", side="UNKNOWN", quantity="1", fill_price="10")

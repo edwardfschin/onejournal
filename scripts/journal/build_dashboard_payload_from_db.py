@@ -168,7 +168,14 @@ def build_payload(db_path: Path, asof: str) -> dict[str, Any]:
             con,
             "SELECT * FROM normalized_fills ORDER BY source_account_id, source_broker, filled_at",
         )
-        pnl_result = calculate_fifo_pnl_from_fills(_build_fills_for_pnl(normalized_fill_rows))
+        pnl_result = calculate_fifo_pnl_from_fills(
+            _build_fills_for_pnl(normalized_fill_rows), allow_unmatched_close=True
+        )
+        if pnl_result.unmatched_close_fill_uids:
+            print(
+                "WARN: unmatched close fills skipped: "
+                + ", ".join(sorted(set(pnl_result.unmatched_close_fill_uids)))
+            )
 
         open_episodes = [e for e in payload_episodes if e.get("status") == "open"]
         closed_episodes = [e for e in payload_episodes if e.get("status") == "closed"]

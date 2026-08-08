@@ -46,6 +46,7 @@ class PnLCalculationResult:
     groups: dict[tuple[str, str, str, str], PnLGroupResult]
     total_realized_pnl_by_currency: dict[str, Decimal]
     total_unrealized_pnl_by_currency: dict[str, Decimal | None]
+    unmatched_close_fill_uids: tuple[str, ...] = ()
 
 
 @dataclass
@@ -93,6 +94,7 @@ def calculate_fifo_pnl_from_fills(
     fills: Iterable[NormalizedFill],
     *,
     marks: dict[str, Decimal] | None = None,
+    allow_unmatched_close: bool = False,
 ) -> PnLCalculationResult:
     """Calculate FIFO realized P&L and open-position summaries from fills.
 
@@ -102,6 +104,8 @@ def calculate_fifo_pnl_from_fills(
 
     Returns:
         Aggregated P&L by instrument with total realized/unrealized by currency.
+        Unmatched close fills are included in `unmatched_close_fill_uids` when
+        allow_unmatched_close=True.
 
     Raises:
         LotAllocationError: when a close action cannot be allocated.
@@ -109,18 +113,31 @@ def calculate_fifo_pnl_from_fills(
 
     groups = _group_fills_by_scope(fills)
     results: dict[tuple[str, str, str, str], PnLGroupResult] = {}
+    unmatched_close_fill_uids: list[str] = []
 
     for scope_key, group_fills in groups.items():
         _source_broker, _source_account_id, instrument_key, currency = scope_key
-        ordered = sorted(group_fills, key=lambda f: (f.filled_at, f.fill_uid))
+        classified_fills = []
+        for fill in group_fills:
+            action, close_quantity, direction = _classify_fill(fill)
+            sort_action = 0 if action == "OPEN" else 1
+            classified_fills.append((fill.filled_at, sort_action, fill.fill_uid, fill, action, close_quantity, direction))
+
+        ordered = sorted(classified_fills, key=lambda item: (item[0], item[1], item[2]))
         state = _MatchedLot(instrument_key=instrument_key, open_lots=[])
 
-        for fill in ordered:
-            action, close_quantity, direction = _classify_fill(fill)
+        for _filled_at, _sort_action, _fill_uid, fill, action, close_quantity, direction in ordered:
             if action == "OPEN":
                 state.open_lots.append(_create_open_lot(fill))
                 continue
-            _match_close_fill(state, fill, close_quantity, direction)
+            _match_close_fill(
+                state,
+                close_fill=fill,
+                close_quantity=close_quantity,
+                direction=direction,
+                allow_unmatched_close=allow_unmatched_close,
+                unmatched_close_fill_uids=unmatched_close_fill_uids,
+            )
 
         realized = state.realized_pnl
         direction = _current_direction(state.open_lots)
@@ -166,6 +183,7 @@ def calculate_fifo_pnl_from_fills(
         groups=results,
         total_realized_pnl_by_currency=totals_realized,
         total_unrealized_pnl_by_currency=totals_unrealized,
+        unmatched_close_fill_uids=tuple(unmatched_close_fill_uids),
     )
 
 
@@ -184,10 +202,10 @@ def _classify_fill(fill: NormalizedFill) -> tuple[str, Decimal, str]:
     qty = _normalize_quantity(fill.quantity)
 
     if side in {"BUY", "BUY_TO_OPEN"}:
-        if open_close == "CLOSE":
-            raise LotAllocationError(f"Unexpected close-style side for BUY_TO_OPEN data: {fill.side}")
         if open_close in {"", "OPEN"}:
             return "OPEN", qty, "LONG"
+        if open_close == "CLOSE":
+            return "CLOSE", qty, "LONG"
         raise LotAllocationError(f"Unsupported open_close value for side {fill.side}: {fill.open_close}")
 
     if side == "SELL_TO_CLOSE":
@@ -237,6 +255,9 @@ def _match_close_fill(
     close_fill: NormalizedFill,
     close_quantity: Decimal,
     direction: str,
+    *,
+    allow_unmatched_close: bool,
+    unmatched_close_fill_uids: list[str],
 ) -> None:
     close_remain = close_quantity
     close_costs = close_fill.commission + close_fill.fees
@@ -245,6 +266,9 @@ def _match_close_fill(
     while close_remain > 0:
         open_lot = _find_next_matching_lot(state.open_lots, direction)
         if open_lot is None:
+            if allow_unmatched_close:
+                unmatched_close_fill_uids.append(close_fill.fill_uid)
+                return
             raise LotAllocationError(
                 f"No matching open lot for close fill {close_fill.fill_uid}"
             )
