@@ -8,7 +8,22 @@
 set -euo pipefail
 
 PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-PYTHON_BIN="${ONEJOURNAL_PYTHON:-python}"
+if [ -n "${ONEJOURNAL_PYTHON:-}" ]; then
+  PYTHON_BIN="${ONEJOURNAL_PYTHON}"
+elif [ -x "${PROJECT_DIR}/.venv/bin/python" ]; then
+  PYTHON_BIN="${PROJECT_DIR}/.venv/bin/python"
+elif [ -x "${PROJECT_DIR}/.venv/bin/python3" ]; then
+  PYTHON_BIN="${PROJECT_DIR}/.venv/bin/python3"
+elif [ -x "${PROJECT_DIR}/.venv/bin/python3.13" ]; then
+  PYTHON_BIN="${PROJECT_DIR}/.venv/bin/python3.13"
+elif command -v python >/dev/null 2>&1; then
+  PYTHON_BIN="python"
+elif command -v python3 >/dev/null 2>&1; then
+  PYTHON_BIN="python3"
+else
+  echo "FAIL: unable to find python executable (python or python3)." >&2
+  exit 1
+fi
 FIXTURE="docs/examples/manual_csv/fills_template.csv"
 ASOF="2026-06-02"
 
