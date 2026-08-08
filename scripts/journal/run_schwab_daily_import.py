@@ -49,10 +49,10 @@ def _print_operator_summary(*, asof: str, import_db: bool, orders_path: str, tra
     print(f"GENERATED_CSV_CLEANUP: {cleaned}")
     counts = _db_counts(db_path)
     if counts:
-        print(f"DB_TOTAL_IMPORT_RUNS : {counts["import_runs"]}")
-        print(f"DB_TOTAL_FILLS       : {counts["normalized_fills"]}")
-        print(f"DB_TOTAL_EPISODES    : {counts["trade_episodes"]}")
-        print(f"DB_TOTAL_EPISODE_LEGS: {counts["trade_episode_legs"]}")
+        print(f"DB_TOTAL_IMPORT_RUNS : {counts['import_runs']}")
+        print(f"DB_TOTAL_FILLS       : {counts['normalized_fills']}")
+        print(f"DB_TOTAL_EPISODES    : {counts['trade_episodes']}")
+        print(f"DB_TOTAL_EPISODE_LEGS: {counts['trade_episode_legs']}")
     print("STATUS               : OK")
 
 def _cleanup_generated(paths: list[Path], keep_files: bool) -> bool:
