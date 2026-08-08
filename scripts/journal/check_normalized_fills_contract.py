@@ -6,6 +6,7 @@ from datetime import date
 from pathlib import Path
 
 from onejournal.brokers.manual_csv.fills import parse_manual_fills_csv
+from onejournal.journal.identity import conflicting_fill_identity_report
 
 VALID_ASSET_CLASSES = {"option", "stock"}
 VALID_SIDES = {"buy", "sell"}
@@ -47,8 +48,14 @@ def main() -> int:
 
     fill_uid_counts = Counter(row.fill_uid for row in records)
     duplicate_fill_uids = sorted(uid for uid, count in fill_uid_counts.items() if count > 1)
-    if duplicate_fill_uids:
-        failures.append(f"duplicate fill_uid count {len(duplicate_fill_uids)}")
+    fill_identity_conflicts = conflicting_fill_identity_report(records)
+    if fill_identity_conflicts:
+        failures.append(f"identity conflict count {len(fill_identity_conflicts)}")
+    elif duplicate_fill_uids:
+        # Duplicate fill_uids with identical payload is an idempotent redelivery and is acceptable.
+        pass
+    for msg in sorted(fill_identity_conflicts):
+        failures.append(f"identity conflict: {msg}")
 
     asset_class_bad = 0
     side_bad = 0
@@ -98,6 +105,7 @@ def main() -> int:
     print(f"ROWS                 : {len(records)}")
     print(f"ASOF_MISMATCH        : {asof_mismatch}")
     print(f"DUPLICATE_FILL_UIDS  : {len(duplicate_fill_uids)}")
+    print(f"IDENTITY_CONFLICTS   : {len(fill_identity_conflicts)}")
     print(f"BAD_ASSET_CLASS      : {asset_class_bad}")
     print(f"BAD_SIDE             : {side_bad}")
     print(f"BAD_OPTION_FIELDS    : {option_bad}")

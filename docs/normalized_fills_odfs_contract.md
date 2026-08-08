@@ -58,6 +58,21 @@ Required columns:
 - liquidity_flag
 - episode_group_id
 
+### Stable identity and replay rules
+
+Stable identity is defined by:
+
+- `source_broker`
+- `source_account_id`
+- `source_fill_id`
+
+Replay rules:
+
+- Byte-identical replay of the same stable identity is idempotent and accepted.
+- The same stable identity with changed normalized fields is treated as a
+  correction/revision conflict and must be rejected until a full correction
+  workflow is introduced.
+
 ## Source-of-truth rule
 
 Raw CSV files are evidence.

@@ -18,6 +18,7 @@ import duckdb
 from onejournal.brokers.manual_csv.fills import parse_manual_fills_csv
 from onejournal.journal.episodes import build_episode_previews_from_fills
 from onejournal.journal.reviews import load_manual_reviews
+from onejournal.journal.identity import dedupe_identical_fills
 
 DEFAULT_DB = Path("data/journal/onejournal.duckdb")
 DEFAULT_FILLS = Path("docs/examples/manual_csv/fills_template.csv")
@@ -48,6 +49,7 @@ def import_to_db(db_path: Path, fills_path: Path, reviews_path: Path, replace: b
     import_run_id = "manual_csv:" + datetime.now().astimezone().strftime("%Y%m%d_%H%M%S")
     imported_at = datetime.now().astimezone().replace(tzinfo=None)
     fills = parse_manual_fills_csv(fills_path)
+    fills = dedupe_identical_fills(fills)
     if asof is not None:
         mismatch_count = sum(1 for fill in fills if fill.asof != asof)
         if mismatch_count:
