@@ -103,6 +103,7 @@ Future dashboard payload: output/dashboard/latest/dashboard_payload.json
 Minimum top-level sections:
 
 - metadata
+- metadata.quality
 - trade_summary
 - open_positions
 - recent_trade_episodes

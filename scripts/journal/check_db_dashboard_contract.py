@@ -12,6 +12,16 @@ LOG = logging.getLogger("onejournal.db_dashboard_contract")
 PROJECT_DIR = Path(__file__).resolve().parents[2]
 DEFAULT_PAYLOAD = PROJECT_DIR / "output/dashboard/latest/dashboard_payload_from_db.json"
 REQUIRED_METADATA_KEYS = {"asof", "source"}
+REQUIRED_QUALITY_KEYS = {"overall_status", "checks", "trade_summary_status"}
+REQUIRED_CHECK_KEYS = {"import", "asof", "pnl"}
+REQUIRED_TRADE_SUMMARY_STATUS_KEYS = {
+    "gross_cashflow",
+    "commission",
+    "fees",
+    "realized_pnl_by_currency",
+    "unrealized_pnl_by_currency",
+}
+VALID_DATA_STATUSES = {"valid", "stale", "incomplete", "reconciliation_pending", "unavailable", "failed"}
 REQUIRED_ENTRY_KEYS = {"episode_uid"}
 REQUIRED_REVIEW_KEYS = {"review_status", "setup_quality", "entry_reason", "notes"}
 ENTRY_LIST_KEYS = ("recent_trade_episodes", "journal_review_queue", "closed_trade_episodes")
@@ -52,6 +62,30 @@ def validate_payload(payload: Any, asof: str, payload_path: Path) -> int:
     source = str(metadata.get("source", "")).lower()
     if "db" not in source and "duckdb" not in source:
         return fail("metadata.source must identify DB or DuckDB source, got " + repr(metadata.get("source")))
+    quality = metadata.get("quality")
+    if not isinstance(quality, dict):
+        return fail("metadata quality must be an object")
+    missing_quality = sorted(REQUIRED_QUALITY_KEYS - set(quality))
+    if missing_quality:
+        return fail(f"metadata quality missing keys: {missing_quality}")
+    checks = quality.get("checks")
+    if not isinstance(checks, dict):
+        return fail("metadata quality.checks must be an object")
+    missing_checks = sorted(REQUIRED_CHECK_KEYS - set(checks))
+    if missing_checks:
+        return fail(f"metadata quality.checks missing keys: {missing_checks}")
+    quality_status = str(quality.get("overall_status", ""))
+    if quality_status not in VALID_DATA_STATUSES:
+        return fail(f"metadata quality.overall_status invalid: {quality_status}")
+    trade_summary_status = quality.get("trade_summary_status")
+    if not isinstance(trade_summary_status, dict):
+        return fail("metadata quality.trade_summary_status must be an object")
+    missing_metric_status = sorted(REQUIRED_TRADE_SUMMARY_STATUS_KEYS - set(trade_summary_status))
+    if missing_metric_status:
+        return fail(f"metadata quality.trade_summary_status missing keys: {missing_metric_status}")
+    for metric, metric_status in trade_summary_status.items():
+        if str(metric_status) not in VALID_DATA_STATUSES:
+            return fail(f"metadata quality.trade_summary_status[{metric}] invalid status: {metric_status}")
     entry_key, entries = find_entry_list(payload)
     if entries is None:
         return fail(f"payload must contain one dashboard entry list key: {ENTRY_LIST_KEYS}")

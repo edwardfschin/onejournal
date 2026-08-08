@@ -2,23 +2,21 @@
 
 ## Current state
 
-`scripts/journal/init_journal_db.py` currently creates five DuckDB tables
-directly:
+`scripts/journal/init_journal_db.py` now routes bootstrap and version alignment
+through the journal migration runner and the migration artifact set:
 
 - `import_runs`
 - `normalized_fills`
 - `manual_reviews`
 - `trade_episodes`
 - `trade_episode_legs`
+- `schema_migrations`
 
-The current database has no schema-version or migration-history table. It is an
-unversioned bootstrap baseline.
+The baseline is now versioned at `0001_establish_schema_version`.
 
-This convention governs future durable schema changes. It does not assign a
-version to an existing database, alter the bootstrap script, or authorize a
-migration. Roadmap item JRN-01 will inspect realistic data, establish the
-baseline, implement the migration runner, and validate restoration on a
-temporary database copy.
+Roadmap item JRN-01 now enforces bootstrap validation and migration
+ledger recording on the temporary-copy path before any production database
+upgrade approval.
 
 ## Storage and naming
 

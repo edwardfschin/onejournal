@@ -59,6 +59,9 @@ class JournalPipelineIntegrationTests(unittest.TestCase):
         payload = build_payload(self.db_path, "2026-06-02")
         self.assertEqual(payload["metadata"]["source"], "duckdb")
         self.assertEqual(payload["metadata"]["auto_trade"], "disabled")
+        self.assertEqual(payload["metadata"]["quality"]["overall_status"], "valid")
+        self.assertEqual(payload["metadata"]["trade_summary_status"]["gross_cashflow"], "valid")
+        self.assertEqual(payload["metadata"]["trade_summary_status"]["realized_pnl_by_currency"], "valid")
         self.assertEqual(payload["metadata"]["record_counts"]["trade_episode_previews"], 8)
         self.assertEqual(payload["trade_summary"]["gross_cashflow"], "-10415.00")
         self.assertEqual(payload["trade_summary"]["realized_pnl_by_currency"], {"USD": "0.00"})
@@ -102,6 +105,36 @@ class JournalPipelineIntegrationTests(unittest.TestCase):
         with self.assertLogs("onejournal.db_dashboard_contract", level="ERROR") as captured:
             self.assertEqual(validate_payload(invalid, "2026-06-02", self.db_path), 1)
         self.assertIn("duplicate episode_uid", "\n".join(captured.output))
+
+    def test_payload_quality_flags_incomplete_for_missing_asof(self) -> None:
+        import_to_db(
+            self.db_path,
+            FILLS_FIXTURE,
+            REVIEWS_FIXTURE,
+            replace=True,
+            asof=date(2026, 6, 2),
+        )
+        payload = build_payload(self.db_path, "2026-06-03")
+        self.assertEqual(payload["metadata"]["quality"]["overall_status"], "stale")
+        self.assertEqual(payload["metadata"]["quality"]["checks"]["asof"]["status"], "stale")
+        self.assertEqual(payload["metadata"]["trade_summary_status"]["gross_cashflow"], "stale")
+
+    def test_payload_quality_flags_failed_for_bad_import_status(self) -> None:
+        import_to_db(
+            self.db_path,
+            FILLS_FIXTURE,
+            REVIEWS_FIXTURE,
+            replace=True,
+            asof=date(2026, 6, 2),
+        )
+        with duckdb.connect(str(self.db_path), read_only=False) as con:
+            con.execute("UPDATE import_runs SET status='error' WHERE 1=1")
+
+        payload = build_payload(self.db_path, "2026-06-02")
+        self.assertEqual(payload["metadata"]["quality"]["overall_status"], "failed")
+        self.assertEqual(payload["metadata"]["quality"]["checks"]["import"]["status"], "failed")
+        self.assertEqual(payload["metadata"]["quality"]["checks"]["import"]["reason"], "import status 'error' is not accepted")
+        self.assertEqual(payload["metadata"]["trade_summary_status"]["fees"], "failed")
 
 
 if __name__ == "__main__":

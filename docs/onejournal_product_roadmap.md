@@ -102,7 +102,7 @@ Objective: decide the semantics required for correct portfolio and P&L work.
 | CON-03 | IN_REVIEW | Define realized P&L, unrealized P&L, cost basis, tax-lot policy, fees, commissions, and return calculations. | ADR-0004 plus FIFO lot engine and fail-closed contract tests in `src/onejournal/pnl/` plus mark-sourcing behavior tests added. DB-backed payload now includes realized/unrealized P&L by currency on integration branch `codex/con-03-pnl-contracts`. |
 | CON-04 | IN_REVIEW | Define lifecycle treatment for partial fills, partial exits, multi-leg trades, rolls, assignments, exercises, expirations, dividends, transfers, and corporate actions. | Initial lifecycle-fill matching contract tests added in `tests/test_lifecycle_contract.py`, ADR-0005 under review. |
 | CON-05 | IN_REVIEW | Define stable identifiers, deduplication, idempotency, lineage, corrections, and data-version rules. | `PR #4` introduces stable fill identity, idempotent replay, and identity-conflict rejection. |
-| CON-06 | BLOCKED | Define data freshness, stale-price, missing-data, reconciliation, and fail-closed presentation policies. | UI and calculation policy states when values are valid, stale, incomplete, or unavailable. |
+| CON-06 | IN_REVIEW | Define data freshness, stale-price, missing-data, reconciliation, and fail-closed presentation policies. | DB payload now carries quality status for import/audit/completeness and P&L matching. |
 
 ### Queue 1 exit gate
 
@@ -117,7 +117,7 @@ position state.
 
 | ID | Status | Action | Completion evidence |
 |---|---|---|---|
-| JRN-01 | BLOCKED | Version and migrate the DuckDB schema using the approved migration convention. | Existing data migrates on a temporary copy with integrity and rollback proof. |
+| JRN-01 | IN_REVIEW | Version and migrate the DuckDB schema using the approved migration convention. | PR #7 covers idempotent baseline bootstrap, ledger safety, and validation parity. |
 | JRN-02 | BLOCKED | Persist normalized accounts, orders, positions, transactions, and required source lineage—not only fills. | Contract checks prove all records are broker-independent and traceable. |
 | JRN-03 | BLOCKED | Replace preview grouping with a deterministic trade-lifecycle engine. | Fixtures cover entry, exit, partial fill, partial close, and reopen cases. |
 | JRN-04 | BLOCKED | Add multi-leg lifecycle handling for verticals and later approved strategies. | Legs remain grouped correctly through opens, closes, and adjustments. |
