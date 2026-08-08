@@ -135,11 +135,12 @@ def build_lifecycle_fill_events(
 
 
 def _scope_key(fill: NormalizedFill) -> tuple[str, str, str, str]:
-    if fill.episode_group_id:
+    episode_group = (fill.episode_group_id or "").strip()
+    if episode_group:
         return (
             fill.source_broker,
             fill.source_account_id,
-            f"episode:{fill.episode_group_id.strip()}",
+            f"episode:{episode_group}",
             fill.currency,
         )
     return (

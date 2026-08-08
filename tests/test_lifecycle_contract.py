@@ -266,6 +266,39 @@ class LifecycleContractTests(unittest.TestCase):
         with self.assertRaises(LifecycleContractError):
             build_lifecycle_fill_events(fills)
 
+    def test_whitespace_episode_group_is_treated_as_not_present(self) -> None:
+        fills = [
+            self._fill(
+                "aapl-open",
+                "BUY_TO_OPEN",
+                "20",
+                "10",
+                source_order_id="ord-aapl-open",
+                symbol="AAPL",
+                episode_group_id="   ",
+            ),
+            self._fill(
+                "msft-open",
+                "BUY_TO_OPEN",
+                "20",
+                "12",
+                source_order_id="ord-msft-open",
+                symbol="MSFT",
+                episode_group_id="   ",
+            ),
+            self._fill(
+                "close",
+                "SELL_TO_CLOSE",
+                "40",
+                "11",
+                source_order_id="ord-cross-close",
+                symbol="AAPL",
+                episode_group_id="   ",
+            ),
+        ]
+        with self.assertRaises(LifecycleContractError):
+            build_lifecycle_fill_events(fills)
+
     def test_episode_group_id_unifies_matching_scope_when_present(self) -> None:
         fills = [
             self._fill(
