@@ -118,6 +118,52 @@ class TransactionsJsonAdapterTests(unittest.TestCase):
         self.assertEqual(stats.unsupported_items, 1)
         self.assertEqual(stats.unsupported_activity_counts, {"subType:EXERCISE": 1})
 
+    def test_other_unsupported_activity_markers_are_skipped_as_unsupported(self) -> None:
+        unsupported_markers = [
+            ({"activityType": "EXERCISE"}, "activityType:EXERCISE"),
+            ({"activityType": "CORPORATE_ACTION"}, "activityType:CORPORATE_ACTION"),
+            ({"activityType": "DIVIDEND"}, "activityType:DIVIDEND"),
+            ({"activityType": "EXPIRATION"}, "activityType:EXPIRATION"),
+            ({"activityType": "ASSIGNMENT"}, "activityType:ASSIGNMENT"),
+            ({"activityType": "INTEREST"}, "activityType:INTEREST"),
+            ({"subType": "TRANSFER"}, "subType:TRANSFER"),
+            ({"subType": "DIVIDEND"}, "subType:DIVIDEND"),
+        ]
+        for marker_payload, expected_key in unsupported_markers:
+            with self.subTest(marker=expected_key):
+                fields = {
+                    "type": "TRADE",
+                    "status": "VALID",
+                    "activityId": "A6",
+                    "tradeDate": "2026-07-01T12:00:00-05:00",
+                    "accountNumber": "ACCT1",
+                    "orderId": "ORD-006",
+                    "positionId": "POS-006",
+                    "transferItems": [
+                        {
+                            "amount": -1,
+                            "instrument": {
+                                "assetType": "EQUITY",
+                                "symbol": "AAPL",
+                            },
+                            "positionEffect": "OPENING",
+                            "price": 10,
+                            "cost": 50,
+                        }
+                    ],
+                }
+                fields.update(marker_payload)
+                rows, stats = normalized_rows_from_transactions(
+                    [fields],
+                    asof="2026-07-01",
+                )
+
+                self.assertEqual(rows, [])
+                self.assertEqual(stats.transactions, 1)
+                self.assertEqual(stats.trade_valid, 0)
+                self.assertEqual(stats.unsupported_items, 1)
+                self.assertEqual(stats.unsupported_activity_counts, {expected_key: 1})
+
     def test_assignments_asof_filter_still_applies(self) -> None:
         rows, stats = normalized_rows_from_transactions(
             [
