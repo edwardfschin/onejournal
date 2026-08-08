@@ -36,6 +36,16 @@ NORMALIZED_FILL_COLUMNS = [
     "episode_group_id",
 ]
 
+_UNSUPPORTED_ACTIVITY_TYPES = {
+    "ASSIGNMENT",
+    "EXERCISE",
+    "EXPIRATION",
+    "CORPORATE_ACTION",
+    "DIVIDEND",
+    "INTEREST",
+    "TRANSFER",
+}
+
 _OPTION_SYMBOL_RE = re.compile(r"^(?P<root>.+?)(?P<yymmdd>\d{6})(?P<cp>[CP])(?P<strike>\d{8})$")
 
 
@@ -110,6 +120,18 @@ def _open_close(position_effect: str) -> str:
     return ""
 
 
+def _is_supported_activity(txn: dict[str, Any]) -> bool:
+    activity_type = str(txn.get("activityType", "")).strip().upper()
+    sub_type = str(txn.get("subType", "")).strip().upper()
+    if activity_type in _UNSUPPORTED_ACTIVITY_TYPES:
+        return False
+    if sub_type in _UNSUPPORTED_ACTIVITY_TYPES:
+        return False
+    if activity_type:
+        return activity_type not in _UNSUPPORTED_ACTIVITY_TYPES
+    return True
+
+
 def _multiplier(instrument: dict[str, Any]) -> str:
     raw = instrument.get("optionPremiumMultiplier")
     if raw not in (None, ""):
@@ -155,6 +177,9 @@ def normalized_rows_from_transactions(transactions: list[dict[str, Any]], *, aso
 
     for txn in transactions:
         if str(txn.get("type", "")).upper() != "TRADE" or str(txn.get("status", "")).upper() != "VALID":
+            continue
+        if not _is_supported_activity(txn):
+            unsupported += 1
             continue
         trade_valid += 1
         filled_at = str(txn.get("tradeDate") or txn.get("time") or "").strip()
@@ -270,4 +295,3 @@ def convert_transactions_json_to_normalized_csv(input_path: Path, output_path: P
         writer.writeheader()
         writer.writerows(rows)
     return stats
-
