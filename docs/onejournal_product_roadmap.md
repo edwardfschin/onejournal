@@ -99,10 +99,10 @@ Objective: decide the semantics required for correct portfolio and P&L work.
 |---|---|---|---|
 | CON-01 | COMPLETE | Decide initial product scope: single user or multi-user, supported brokers, accounts, asset classes, and first production use case. | Approved product-scope decision record. |
 | CON-02 | COMPLETE | Define base currency, multi-currency policy, decimal precision, timezone, market-date, and trading-session rules. | Approved financial-units and time contract with examples. |
-| CON-03 | IN_REVIEW | Define realized P&L, unrealized P&L, cost basis, tax-lot policy, fees, commissions, and return calculations. | ADR-0004 plus FIFO lot engine and fail-closed contract tests in `src/onejournal/pnl/` plus mark-sourcing behavior tests added. DB-backed payload now includes realized/unrealized P&L by currency on integration branch `codex/con-03-pnl-contracts`. |
-| CON-04 | IN_REVIEW | Define lifecycle treatment for partial fills, partial exits, multi-leg trades, rolls, assignments, exercises, expirations, dividends, transfers, and corporate actions. | Initial lifecycle-fill matching contract tests added in `tests/test_lifecycle_contract.py`, ADR-0005 under review. |
-| CON-05 | IN_REVIEW | Define stable identifiers, deduplication, idempotency, lineage, corrections, and data-version rules. | `PR #4` introduces stable fill identity, idempotent replay, and identity-conflict rejection. |
-| CON-06 | IN_REVIEW | Define data freshness, stale-price, missing-data, reconciliation, and fail-closed presentation policies. | DB payload now carries quality status for import/audit/completeness and P&L matching. |
+| CON-03 | COMPLETE | Define realized P&L, unrealized P&L, cost basis, tax-lot policy, fees, commissions, and return calculations. | ADR-0004 plus FIFO lot engine and fail-closed contract tests in `src/onejournal/pnl/` plus mark-sourcing behavior tests added. DB-backed payload now includes realized/unrealized P&L by currency on integration branch `codex/con-03-pnl-contracts`. |
+| CON-04 | COMPLETE | Define lifecycle treatment for partial fills, partial exits, multi-leg trades, rolls, assignments, exercises, expirations, dividends, transfers, and corporate actions. | Initial lifecycle-fill matching contract tests added in `tests/test_lifecycle_contract.py`, ADR-0005 adopted. |
+| CON-05 | COMPLETE | Define stable identifiers, deduplication, idempotency, lineage, corrections, and data-version rules. | `PR #4` introduces stable fill identity, idempotent replay, and identity-conflict rejection. |
+| CON-06 | COMPLETE | Define data freshness, stale-price, missing-data, reconciliation, and fail-closed presentation policies. | DB payload now carries quality status for import/audit/completeness and P&L matching. |
 
 ### Queue 1 exit gate
 
@@ -117,8 +117,8 @@ position state.
 
 | ID | Status | Action | Completion evidence |
 |---|---|---|---|
-| JRN-01 | IN_REVIEW | Version and migrate the DuckDB schema using the approved migration convention. | PR #7 covers idempotent baseline bootstrap, ledger safety, and validation parity. |
-| JRN-02 | BLOCKED | Persist normalized accounts, orders, positions, transactions, and required source lineage—not only fills. | Contract checks prove all records are broker-independent and traceable. |
+| JRN-01 | COMPLETE | Version and migrate the DuckDB schema using the approved migration convention. | PR #7 covers idempotent baseline bootstrap, ledger safety, and validation parity. |
+| JRN-02 | NEXT | Persist normalized accounts, orders, positions, transactions, and required source lineage—not only fills. | Contract checks prove all records are broker-independent and traceable. |
 | JRN-03 | BLOCKED | Replace preview grouping with a deterministic trade-lifecycle engine. | Fixtures cover entry, exit, partial fill, partial close, and reopen cases. |
 | JRN-04 | BLOCKED | Add multi-leg lifecycle handling for verticals and later approved strategies. | Legs remain grouped correctly through opens, closes, and adjustments. |
 | JRN-05 | BLOCKED | Add assignments, exercises, expirations, rolls, transfers, dividends, and corporate-action handling. | Each approved event has reconciled lifecycle fixtures. |
@@ -251,11 +251,12 @@ approval and successful completion of every prior safety gate.
 
 The current actionable sequence is:
 
-1. `CON-03` - define realized and unrealized P&L, cost basis, tax lot, and fee treatment.
-2. `CON-04` - define lifecycle treatment for partials, legs, exercises, expirations, and corporate actions.
-3. `CON-05` - define identity, dedupe, correction, version, and lineage rules.
-4. `CON-06` - define freshness, stale-data, and fail-closed presentation policy.
-5. Resolve `JRN-01` through `JRN-07` with these contracts approved.
+1. `JRN-02` - persist normalized accounts, orders, positions, transactions, and required source lineage.
+2. `JRN-03` - replace preview grouping with a deterministic trade-lifecycle engine.
+3. `JRN-04` - add multi-leg lifecycle handling for approved strategy structures.
+4. `JRN-05` - add assignments, exercises, expirations, rolls, transfers, dividends, and corporate actions.
+5. `JRN-06` - add correction/replay support without losing audit history or manual reviews.
+6. `JRN-07` - strengthen reconciliation and add reconciliation blockers by policy.
 
 No P&L, production website, or execution implementation should bypass these
 foundational and contract decisions.
