@@ -34,6 +34,54 @@ accessible, secure, and trustworthy. Visual quality matters, but financial
 correctness, traceability, security, reliability, and maintainability come
 first.
 
+## Model and credit routing
+
+At the start of every new substantive work item, before repository inspection,
+tool use, planning, implementation, or other credit-consuming work, advise the
+user which currently available GPT model and reasoning level should be used.
+
+The advice must state:
+
+- The exact recommended model name
+- The recommended reasoning level
+- Why the task needs that capability level
+- Whether a lower-credit or no-credit model is sufficient
+- Whether the current model is suitable or a switch is recommended
+
+Verify current model names, availability, credit treatment, and intended uses
+against current official OpenAI documentation or the model selector when that
+information could have changed. Do not rely on stale model names or assume that
+a model available in one Codex surface is available in another.
+
+Use the lowest-cost model and lowest reasoning level that can complete the task
+reliably without weakening correctness, safety, understanding, or validation.
+Current routing examples, which must be revalidated as models change, are:
+
+- Use GPT-5.3 Codex Spark, or its current no-credit or lowest-cost equivalent,
+  for bounded, deterministic, low-risk work such as focused repository scans,
+  inventories, small documentation changes, mechanical edits, well-specified
+  tests, routine validation, and concise status reporting.
+- Use GPT-5.6 Terra, or the current balanced equivalent, for everyday multi-file
+  implementation, debugging, and review that require strong reasoning and tool
+  use but do not require the flagship model.
+- Use GPT-5.6 Sol, or the current flagship equivalent, for ambiguous or
+  high-consequence work involving architecture, financial contracts, P&L,
+  lifecycle semantics, database migrations, broker credentials, security,
+  trading safety, difficult root-cause analysis, or final critical review.
+
+If a less expensive model is sufficient and the current model consumes more
+credits, recommend the switch and pause before substantive work so the user can
+change models. If the current model is appropriate, state that and continue
+unless another approval boundary requires a pause.
+
+Reassess the recommendation when the scope, risk, ambiguity, or required
+judgment changes materially during a task. Tell the user before moving to a
+stronger or more credit-intensive model.
+
+Model selection does not relax any inspection, validation, security, financial,
+Git, or approval requirement in this file. A model recommendation is not
+authorization to perform a restricted action.
+
 ## Core working behaviour
 
 Work factually. Do not assume when the answer can be established from the
@@ -461,7 +509,11 @@ warrants it, tested.
 
 ## Git and change hygiene
 
-Inspect Git status before and after work. Preserve unrelated user changes.
+Inspect Git status before and after work. The working tree must be clean (no
+uncommitted changes) before starting any new work item. If it is not clean,
+pause, resolve or explicitly set aside unrelated changes, then re-run the check
+before starting substantive edits.
+Preserve unrelated user changes.
 
 Do not commit secrets, credentials, tokens, private environment files, raw broker
 data, runtime databases, generated outputs, or personal financial information.
