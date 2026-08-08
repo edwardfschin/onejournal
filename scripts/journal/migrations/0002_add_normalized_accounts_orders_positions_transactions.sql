@@ -34,7 +34,6 @@ CREATE TABLE normalized_accounts (
     CONSTRAINT fk_normalized_accounts_import_run
       FOREIGN KEY (import_run_id)
       REFERENCES import_runs (import_run_id)
-      ON DELETE SET NULL
 );
 
 CREATE TABLE normalized_orders (
@@ -67,7 +66,6 @@ CREATE TABLE normalized_orders (
     CONSTRAINT fk_normalized_orders_import_run
       FOREIGN KEY (import_run_id)
       REFERENCES import_runs (import_run_id)
-      ON DELETE SET NULL
 );
 
 CREATE TABLE normalized_positions (
@@ -98,7 +96,6 @@ CREATE TABLE normalized_positions (
     CONSTRAINT fk_normalized_positions_import_run
       FOREIGN KEY (import_run_id)
       REFERENCES import_runs (import_run_id)
-      ON DELETE SET NULL
 );
 
 CREATE TABLE normalized_transactions (
@@ -126,5 +123,4 @@ CREATE TABLE normalized_transactions (
     CONSTRAINT fk_normalized_transactions_import_run
       FOREIGN KEY (import_run_id)
       REFERENCES import_runs (import_run_id)
-      ON DELETE SET NULL
 );
