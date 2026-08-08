@@ -349,7 +349,7 @@ def _insert_derived_normalized_rows(
             currency, asof_date, fetched_at, raw_path, buying_power, cash_balance,
             net_liquidation_value, maintenance_requirement, initial_requirement,
             day_trade_buying_power, status, import_run_id
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """,
         account_rows,
     )
@@ -363,7 +363,7 @@ def _insert_derived_normalized_rows(
             raw_path, limit_price, stop_price, filled_quantity, remaining_quantity,
             average_fill_price, cancelled_at, replaced_by_order_id, parent_order_id,
             broker_strategy_type, notes, import_run_id
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """,
         order_rows,
     )
@@ -376,7 +376,7 @@ def _insert_derived_normalized_rows(
             market_value, currency, fetched_at, raw_path, unrealized_pnl,
             realized_pnl, delta, beta_weighted_delta, option_symbol,
             underlying_symbol, option_type, expiry, strike, multiplier, import_run_id
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """,
         position_rows,
     )
@@ -432,7 +432,7 @@ def import_to_db(db_path: Path, fills_path: Path, reviews_path: Path, replace: b
                 fill_price, commission, fees, currency, fetched_at, raw_path, option_symbol,
                 underlying_symbol, option_type, expiry, strike, multiplier, open_close,
                 execution_venue, liquidity_flag, import_run_id
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             [
                 (
