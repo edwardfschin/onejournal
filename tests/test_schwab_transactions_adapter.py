@@ -180,3 +180,46 @@ class TransactionsJsonAdapterTests(unittest.TestCase):
         self.assertEqual(stats.security_items, 1)
         self.assertEqual(stats.currency_items, 1)
         self.assertEqual(stats.fill_rows, 1)
+
+    def test_unsupported_security_asset_is_skipped_and_does_not_block_supported_legs(self) -> None:
+        rows, stats = normalized_rows_from_transactions(
+            [
+                {
+                    "type": "TRADE",
+                    "status": "VALID",
+                    "activityId": "A5",
+                    "tradeDate": "2026-07-01T12:00:00-05:00",
+                    "accountNumber": "ACCT1",
+                    "orderId": "ORD-005",
+                    "positionId": "POS-005",
+                    "transferItems": [
+                        {
+                            "amount": 1,
+                            "cost": 50,
+                            "price": 50,
+                            "instrument": {
+                                "assetType": "FUTURES",
+                                "symbol": "ESZ6",
+                            },
+                            "positionEffect": "OPENING",
+                        },
+                        {
+                            "amount": 2,
+                            "cost": 300,
+                            "price": 150,
+                            "instrument": {
+                                "assetType": "EQUITY",
+                                "symbol": "AAPL",
+                            },
+                            "positionEffect": "OPENING",
+                        },
+                    ],
+                }
+            ]
+        )
+
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0]["symbol"], "AAPL")
+        self.assertEqual(rows[0]["source_fill_id"].startswith("schwab_txn:A5:order:ORD-005:position:POS-005:item:1"), True)
+        self.assertEqual(stats.security_items, 1)
+        self.assertEqual(stats.unsupported_items, 1)
