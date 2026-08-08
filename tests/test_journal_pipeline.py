@@ -4,6 +4,7 @@ import copy
 import tempfile
 import unittest
 from datetime import date
+from decimal import Decimal
 from pathlib import Path
 
 import duckdb
@@ -163,6 +164,62 @@ class JournalPipelineIntegrationTests(unittest.TestCase):
         self.assertEqual(payload["metadata"]["quality"]["checks"]["import"]["status"], "failed")
         self.assertEqual(payload["metadata"]["quality"]["checks"]["import"]["reason"], "import status 'error' is not accepted")
         self.assertEqual(payload["metadata"]["trade_summary_status"]["fees"], "failed")
+
+    def test_import_accepts_lifecycle_side_variants(self) -> None:
+        fills_csv = Path(self.temp_dir.name) / "lifecycle_side_fills.csv"
+        reviews_csv = Path(self.temp_dir.name) / "lifecycle_side_reviews.csv"
+        fills_csv.write_text(
+            """asof,source_broker,source_account_id,source_fill_id,filled_at,asset_class,symbol,side,quantity,fill_price,commission,fees,currency,source_order_id
+2026-01-01,manual_csv,DEMO_ACCOUNT,F-LONG-OPEN,2026-01-01T10:00:00+00:00,stock,AAPL,BUY_TO_OPEN,1,100,0,0,USD,ORD-1
+2026-01-01,manual_csv,DEMO_ACCOUNT,F-LONG-CLOSE,2026-01-01T11:00:00+00:00,stock,AAPL,SELL_TO_CLOSE,1,110,0,0,USD,ORD-2
+2026-01-01,manual_csv,DEMO_ACCOUNT,F-SHORT-OPEN,2026-01-01T10:15:00+00:00,stock,TSLA,SELL_TO_OPEN,1,50,0,0,USD,ORD-3
+2026-01-01,manual_csv,DEMO_ACCOUNT,F-SHORT-CLOSE,2026-01-01T11:30:00+00:00,stock,TSLA,BUY_TO_CLOSE,1,50,0,0,USD,ORD-4
+""",
+            encoding="utf-8",
+        )
+        reviews_csv.write_text(
+            "episode_uid,review_status,setup_quality,entry_reason,notes\n"
+            "manual_csv:DEMO_ACCOUNT:stock:AAPL,reviewed,acceptable,,\n"
+            "manual_csv:DEMO_ACCOUNT:stock:TSLA,reviewed,acceptable,,\n",
+            encoding="utf-8",
+        )
+
+        counts = import_to_db(
+            self.db_path,
+            fills_csv,
+            reviews_csv,
+            replace=True,
+            asof=date(2026, 1, 1),
+        )
+
+        self.assertEqual(counts["normalized_fills"], 4)
+        self.assertEqual(counts["normalized_positions"], 2)
+        self.assertEqual(counts["normalized_transactions"], 4)
+
+        with duckdb.connect(str(self.db_path), read_only=True) as con:
+            positions = con.execute(
+                "SELECT symbol, quantity FROM normalized_positions ORDER BY symbol"
+            ).fetchall()
+            self.assertEqual(
+                positions,
+                [
+                    ("AAPL", Decimal("0")),
+                    ("TSLA", Decimal("0")),
+                ],
+            )
+
+            txns = con.execute(
+                "SELECT symbol, amount FROM normalized_transactions ORDER BY symbol, transaction_at"
+            ).fetchall()
+            self.assertEqual(
+                txns,
+                [
+                    ("AAPL", Decimal("-100")),
+                    ("AAPL", Decimal("110")),
+                    ("TSLA", Decimal("50")),
+                    ("TSLA", Decimal("-50")),
+                ],
+            )
 
 
 if __name__ == "__main__":

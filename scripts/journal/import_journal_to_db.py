@@ -41,11 +41,12 @@ def parse_args() -> argparse.Namespace:
 
 
 def _side_sign(side: str) -> Decimal:
-    if side == "BUY":
+    normalized = side.strip().upper()
+    if normalized in {"BUY", "BUY_TO_OPEN", "BUY_TO_CLOSE"}:
         return Decimal(1)
-    if side == "SELL":
+    if normalized in {"SELL", "SELL_TO_OPEN", "SELL_TO_CLOSE"}:
         return Decimal(-1)
-    raise ValueError(f"unexpected side {side}; expected BUY or SELL")
+    raise ValueError(f"unexpected side {side}; expected BUY/SELL family")
 
 
 def _position_key(fill) -> tuple:
@@ -293,14 +294,15 @@ def _derive_normalized_positions(fills, import_run_id: str, imported_at: datetim
 def _derive_normalized_transactions(fills, import_run_id: str, imported_at: datetime) -> list[tuple]:
     rows: list[tuple] = []
     for fill in fills:
+        side = fill.side.strip().upper()
         gross = fill.quantity * fill.fill_price * (fill.multiplier or Decimal(1))
         fee_total = fill.fees + fill.commission
-        if fill.side == "BUY":
+        if side in {"BUY", "BUY_TO_OPEN", "BUY_TO_CLOSE"}:
             amount = -(gross + fee_total)
-        elif fill.side == "SELL":
+        elif side in {"SELL", "SELL_TO_OPEN", "SELL_TO_CLOSE"}:
             amount = gross - fee_total
         else:
-            continue
+            raise ValueError(f"unexpected side for normalized transaction amount: {fill.side}")
 
         rows.append(
             (
