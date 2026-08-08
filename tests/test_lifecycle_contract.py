@@ -227,6 +227,38 @@ class LifecycleContractTests(unittest.TestCase):
         with self.assertRaises(LifecycleContractError):
             build_lifecycle_fill_events(fills)
 
+    def test_negative_or_zero_quantity_is_rejected(self) -> None:
+        fills = [self._fill("bad", "BUY_TO_OPEN", "0", "10", source_order_id="ord-zero")]
+        with self.assertRaises(LifecycleContractError):
+            build_lifecycle_fill_events(fills)
+
+        fills = [self._fill("bad", "SELL_TO_CLOSE", "-1", "10", source_order_id="ord-negative")]
+        with self.assertRaises(LifecycleContractError):
+            build_lifecycle_fill_events(fills)
+
+    def test_case_and_whitespace_side_is_normalized(self) -> None:
+        fills = [
+            self._fill(
+                "open",
+                "  buy_to_open ",
+                "10",
+                "10",
+                source_order_id="ord-open",
+                open_close=" open ",
+            ),
+            self._fill(
+                "close",
+                "  sell_to_close ",
+                "10",
+                "11",
+                source_order_id="ord-close",
+            ),
+        ]
+        result = build_lifecycle_fill_events(fills)
+        self.assertEqual(result.events[0].status, "open")
+        self.assertEqual(result.events[1].status, "close_full")
+        self.assertEqual(result.events[1].matched_open_quantity, Decimal("10"))
+
     def test_fill_order_is_preserved_when_timestamps_match(self) -> None:
         fills = [
             self._fill("close-later", "SELL_TO_CLOSE", "10", "12", source_order_id="ord-close"),

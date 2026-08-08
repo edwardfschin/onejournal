@@ -146,8 +146,8 @@ def _scope_key(fill: NormalizedFill) -> tuple[str, str, str, str]:
 def _classify_fill(fill: NormalizedFill) -> tuple[LifecycleAction, Decimal, LifecycleDirection]:
     """Classify a fill by action/direction with conservative validation."""
 
-    side = fill.side.upper()
-    open_close = (fill.open_close or "").upper()
+    side = fill.side.strip().upper()
+    open_close = (fill.open_close or "").strip().upper()
     qty = _normalize_quantity(fill.quantity)
 
     if side in {"BUY", "BUY_TO_OPEN"}:
