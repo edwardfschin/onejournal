@@ -24,6 +24,13 @@ The DB dashboard payload must contain:
 
 ```text
 metadata
+  quality
+    - overall_status
+    - checks
+    - checks.import
+    - checks.asof
+    - checks.pnl
+    - trade_summary_status
 recent_trade_episodes
 ```
 
@@ -35,6 +42,19 @@ source
 ```
 
 source must identify the DB/DuckDB path.
+
+Valid status values are:
+
+`valid`, `stale`, `incomplete`, `reconciliation_pending`, `unavailable`, `failed`.
+
+`overall_status` starts as the most restrictive result across import health, as-of coverage, and P&L completeness.
+
+- `valid`: accepted import status and requested as-of slice is present for required metrics.
+- `stale`: requested as-of is newer than latest fill as-of.
+- `incomplete`: required requested as-of rows are missing or unmatched close fills were skipped.
+- `failed`: latest import status is not `ok`, `success`, or `completed`.
+
+`trade_summary_status` maps per metric status using the same value vocabulary.
 
 Each dashboard entry must contain:
 

@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import argparse
 import json
-from datetime import datetime
+from datetime import date, datetime
 from decimal import Decimal
 from pathlib import Path
 from typing import Any
@@ -23,6 +23,9 @@ from onejournal.pnl import calculate_fifo_pnl_from_fills
 DASHBOARD_PAYLOAD_VERSION = "0.1.0-db"
 DEFAULT_DB = Path("data/journal/onejournal.duckdb")
 DEFAULT_OUTPUT = Path("output/dashboard/latest/dashboard_payload_from_db.json")
+VALID_IMPORT_STATUSES = {"ok", "success", "completed"}
+DATA_STATUSES = ("valid", "incomplete", "stale", "reconciliation_pending", "unavailable", "failed")
+DATA_STATUS_ORDER = {status: rank for rank, status in enumerate(DATA_STATUSES)}
 
 
 def parse_args() -> argparse.Namespace:
@@ -104,7 +107,118 @@ def _build_currency_totals(values: dict[str, Decimal | None]) -> dict[str, str |
     }
 
 
+def _max_status(*statuses: str | None) -> str:
+    valid = [status for status in statuses if status in DATA_STATUS_ORDER]
+    if not valid:
+        return "valid"
+    return max(valid, key=DATA_STATUS_ORDER.get)
+
+
+def _format_optional_datetime(value: Any) -> str | None:
+    if value is None:
+        return None
+    if isinstance(value, datetime):
+        return value.astimezone().isoformat()
+    if hasattr(value, "isoformat"):
+        return value.isoformat()
+    return str(value)
+
+
+def _build_dataset_quality(con: duckdb.DuckDBPyConnection, asof: date, *,
+                          unmatched_close_count: int) -> dict[str, Any]:
+    latest_import = con.execute(
+        """
+        SELECT import_run_id, source_type, source_path, asof_date, imported_at, row_count, status, notes
+        FROM import_runs
+        ORDER BY imported_at DESC, import_run_id DESC
+        LIMIT 1
+        """
+    ).fetchone()
+
+    total_fill_rows = con.execute("SELECT COUNT(*) FROM normalized_fills").fetchone()[0]
+    requested_fill_rows = con.execute(
+        "SELECT COUNT(*) FROM normalized_fills WHERE asof_date = ?",
+        [asof],
+    ).fetchone()[0]
+    latest_fill_asof = con.execute("SELECT MAX(asof_date) FROM normalized_fills").fetchone()[0]
+
+    import_status = "unavailable"
+    import_check: dict[str, Any] = {"status": "unavailable", "reason": "no import_runs rows"}
+    pnl_status = "valid"
+    if unmatched_close_count:
+        pnl_status = "incomplete"
+
+    if latest_import:
+        import_run_id, source_type, source_path, latest_asof, imported_at, row_count, status, notes = latest_import
+        source_status = str(status or "").strip().lower()
+        import_status = source_status if source_status in VALID_IMPORT_STATUSES else "failed"
+        import_check = {
+            "status": import_status,
+            "source_type": source_type,
+            "source_path": source_path,
+            "asof": _format_optional_datetime(latest_asof),
+            "imported_at": _format_optional_datetime(imported_at),
+            "row_count": int(row_count or 0),
+            "notes": notes,
+        }
+        if source_status not in VALID_IMPORT_STATUSES:
+            import_status = "failed"
+            import_check["reason"] = f"import status '{status}' is not accepted"
+        elif total_fill_rows <= 0:
+            import_status = "unavailable"
+            import_check["reason"] = "normalized_fills is empty"
+        elif row_count is None or row_count <= 0:
+            import_status = "failed"
+            import_check["reason"] = "latest import run has non-positive row_count"
+        elif requested_fill_rows <= 0:
+            import_status = "incomplete"
+            import_check["reason"] = f"no normalized fills for requested asof {asof.isoformat()}"
+        else:
+            import_check["reason"] = None
+
+    asof_check: dict[str, Any] = {
+        "status": "valid",
+        "requested_asof": asof.isoformat(),
+        "latest_fill_asof": _format_optional_datetime(latest_fill_asof),
+        "requested_fill_rows": int(requested_fill_rows),
+    }
+    if latest_fill_asof is not None and asof > latest_fill_asof:
+        asof_check["status"] = "stale"
+        asof_check["reason"] = f"requested asof {asof.isoformat()} > latest fill asof {latest_fill_asof}"
+    elif requested_fill_rows <= 0:
+        asof_check["status"] = "incomplete"
+        asof_check["reason"] = f"no normalized fills for requested asof {asof.isoformat()}"
+    else:
+        asof_check["reason"] = None
+
+    if latest_import is None:
+        pnl_status = _max_status(pnl_status, "unavailable")
+
+    overall_status = _max_status(import_status, asof_check["status"], pnl_status)
+
+    return {
+        "overall_status": overall_status,
+        "checks": {
+            "import": import_check,
+            "asof": asof_check,
+            "pnl": {
+                "status": pnl_status,
+                "unmatched_close_fill_count": unmatched_close_count,
+                "reason": "incomplete: unmatched close fills were skipped" if unmatched_close_count else None,
+            },
+        },
+        "trade_summary_status": {
+            "gross_cashflow": _max_status(import_status, asof_check["status"]),
+            "commission": _max_status(import_status, asof_check["status"]),
+            "fees": _max_status(import_status, asof_check["status"]),
+            "realized_pnl_by_currency": _max_status(import_status, asof_check["status"], pnl_status),
+            "unrealized_pnl_by_currency": _max_status(import_status, asof_check["status"], pnl_status),
+        },
+    }
+
+
 def build_payload(db_path: Path, asof: str) -> dict[str, Any]:
+    asof_date = date.fromisoformat(asof)
     con = duckdb.connect(str(db_path), read_only=True)
     try:
         episodes = _rows(con, """
@@ -168,9 +282,11 @@ def build_payload(db_path: Path, asof: str) -> dict[str, Any]:
             con,
             "SELECT * FROM normalized_fills ORDER BY source_account_id, source_broker, filled_at",
         )
+        unmatched_close_fill_count = 0
         pnl_result = calculate_fifo_pnl_from_fills(
             _build_fills_for_pnl(normalized_fill_rows), allow_unmatched_close=True
         )
+        unmatched_close_fill_count = len(set(pnl_result.unmatched_close_fill_uids))
         if pnl_result.unmatched_close_fill_uids:
             print(
                 "WARN: unmatched close fills skipped: "
@@ -182,6 +298,11 @@ def build_payload(db_path: Path, asof: str) -> dict[str, Any]:
         gross_cashflow = con.execute("SELECT COALESCE(SUM(gross_cashflow), 0) FROM trade_episodes").fetchone()[0]
         commission = con.execute("SELECT COALESCE(SUM(commission), 0) FROM trade_episodes").fetchone()[0]
         fees = con.execute("SELECT COALESCE(SUM(fees), 0) FROM trade_episodes").fetchone()[0]
+        dataset_quality = _build_dataset_quality(
+            con,
+            asof_date,
+            unmatched_close_count=unmatched_close_fill_count,
+        )
 
         return {
             "metadata": {
@@ -191,11 +312,13 @@ def build_payload(db_path: Path, asof: str) -> dict[str, Any]:
                 "mode": "read_only",
                 "auto_trade": "disabled",
                 "source": "duckdb",
+                "quality": dataset_quality,
                 "record_counts": {
                     "trade_episode_previews": len(payload_episodes),
                     "open_trade_episode_previews": len(open_episodes),
                     "closed_trade_episode_previews": len(closed_episodes),
                 },
+                "trade_summary_status": dataset_quality["trade_summary_status"],
             },
             "trade_summary": {
                 "gross_cashflow": _decimal_to_string(gross_cashflow),
