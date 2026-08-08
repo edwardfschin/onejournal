@@ -8,6 +8,7 @@
 set -euo pipefail
 
 PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+export PYTHONPATH="${PROJECT_DIR}/src${PYTHONPATH:+:${PYTHONPATH}}"
 if [ -n "${ONEJOURNAL_PYTHON:-}" ]; then
   PYTHON_BIN="${ONEJOURNAL_PYTHON}"
 elif [ -x "${PROJECT_DIR}/.venv/bin/python" ]; then
