@@ -247,3 +247,68 @@ class TransactionsJsonAdapterTests(unittest.TestCase):
         self.assertEqual(stats.security_items, 1)
         self.assertEqual(stats.unsupported_items, 1)
         self.assertEqual(stats.unsupported_asset_counts, {"FUTURES": 1})
+
+    def test_empty_transfer_items_is_unsupported_record(self) -> None:
+        rows, stats = normalized_rows_from_transactions(
+            [
+                {
+                    "type": "TRADE",
+                    "status": "VALID",
+                    "activityId": "A6",
+                    "tradeDate": "2026-07-01T12:00:00-05:00",
+                    "accountNumber": "ACCT1",
+                    "orderId": "ORD-006",
+                    "positionId": "POS-006",
+                    "transferItems": [],
+                }
+            ]
+        )
+
+        self.assertEqual(len(rows), 0)
+        self.assertEqual(stats.unsupported_items, 1)
+        self.assertEqual(stats.unsupported_record_counts, {"record_items:empty": 1})
+
+    def test_non_list_transfer_items_is_unsupported_record(self) -> None:
+        rows, stats = normalized_rows_from_transactions(
+            [
+                {
+                    "type": "TRADE",
+                    "status": "VALID",
+                    "activityId": "A7",
+                    "tradeDate": "2026-07-01T12:00:00-05:00",
+                    "accountNumber": "ACCT1",
+                    "orderId": "ORD-007",
+                    "positionId": "POS-007",
+                    "transferItems": "not-a-list",
+                }
+            ]
+        )
+
+        self.assertEqual(len(rows), 0)
+        self.assertEqual(stats.unsupported_items, 1)
+        self.assertEqual(stats.unsupported_record_counts, {"record_items:non_list": 1})
+
+    def test_transfer_item_without_instrument_is_unsupported_record(self) -> None:
+        rows, stats = normalized_rows_from_transactions(
+            [
+                {
+                    "type": "TRADE",
+                    "status": "VALID",
+                    "activityId": "A8",
+                    "tradeDate": "2026-07-01T12:00:00-05:00",
+                    "accountNumber": "ACCT1",
+                    "orderId": "ORD-008",
+                    "positionId": "POS-008",
+                    "transferItems": [
+                        {
+                            "amount": 1,
+                            "cost": 50,
+                        }
+                    ],
+                }
+            ]
+        )
+
+        self.assertEqual(len(rows), 0)
+        self.assertEqual(stats.unsupported_items, 2)
+        self.assertEqual(stats.unsupported_record_counts, {"record_items:missing_instrument": 1, "record_security:unsupported_or_missing": 1})

@@ -208,15 +208,33 @@ def normalized_rows_from_transactions(transactions: list[dict[str, Any]], *, aso
 
         items = txn.get("transferItems") or []
         if not isinstance(items, list):
+            unsupported += 1
+            unsupported_record_counts["record_items:non_list"] = unsupported_record_counts.get("record_items:non_list", 0) + 1
+            continue
+        if not items:
+            unsupported += 1
+            unsupported_record_counts["record_items:empty"] = unsupported_record_counts.get("record_items:empty", 0) + 1
             continue
         commission_total, fees_total, currency_count = _fee_totals([i for i in items if isinstance(i, dict)])
         currency_items += currency_count
         security = []
         for idx, item in enumerate(items):
             if not isinstance(item, dict):
+                unsupported += 1
+                unsupported_record_counts["record_items:non_object"] = unsupported_record_counts.get("record_items:non_object", 0) + 1
                 continue
-            instrument = item.get("instrument") or {}
+            instrument = item.get("instrument")
+            if instrument is None:
+                unsupported += 1
+                unsupported_record_counts["record_items:missing_instrument"] = unsupported_record_counts.get("record_items:missing_instrument", 0) + 1
+                continue
             if not isinstance(instrument, dict):
+                unsupported += 1
+                unsupported_record_counts["record_items:missing_instrument"] = unsupported_record_counts.get("record_items:missing_instrument", 0) + 1
+                continue
+            if not instrument:
+                unsupported += 1
+                unsupported_record_counts["record_items:missing_instrument"] = unsupported_record_counts.get("record_items:missing_instrument", 0) + 1
                 continue
             asset_type = str(instrument.get("assetType", "")).upper()
             if asset_type == "CURRENCY":
@@ -227,6 +245,8 @@ def normalized_rows_from_transactions(transactions: list[dict[str, Any]], *, aso
                 continue
             security.append((idx, item, instrument))
         if not security:
+            unsupported += 1
+            unsupported_record_counts["record_security:unsupported_or_missing"] = unsupported_record_counts.get("record_security:unsupported_or_missing", 0) + 1
             continue
 
         per_leg_commission = commission_total / len(security) if security else 0.0

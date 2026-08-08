@@ -36,6 +36,12 @@ Non-trade and non-valid records are also tracked as unsupported record reasons
 (for example `record_type:TRANSFER`, `record_status:INVALID`) so that each skip
 is explicitly auditable.
 
+Additional skip diagnostics include structural reasons such as empty transfer items
+(`record_items:empty`), non-list payloads
+(`record_items:non_list`), malformed transfer items
+(`record_items:non_object`), or missing instruments
+(`record_items:missing_instrument`/`record_security:unsupported_or_missing`).
+
 CURRENCY transferItems are fee and commission evidence.
 
 Security transferItems are fill-leg candidates.
