@@ -46,6 +46,15 @@ SETUP_QUALITY_LABELS = {
 }
 REVIEW_STATUSES = list(REVIEW_STATUS_LABELS)
 SETUP_QUALITIES = list(SETUP_QUALITY_LABELS)
+QUALITY_STATES = ("valid", "stale", "incomplete", "reconciliation_pending", "unavailable", "failed")
+QUALITY_STATE_LABELS = {
+    "valid": "✅ Valid",
+    "stale": "🕒 Stale",
+    "incomplete": "⚠️ Incomplete",
+    "reconciliation_pending": "🔎 Reconciliation Pending",
+    "unavailable": "❓ Unavailable",
+    "failed": "❌ Failed",
+}
 
 
 def load_payload(path: Path) -> dict[str, Any]:
@@ -148,6 +157,47 @@ def _label_for_value(mapping: dict[str, str], value: str) -> str:
         if stored_value == value:
             return label
     return next(iter(mapping))
+
+
+def _quality_label(status: str) -> str:
+    return QUALITY_STATE_LABELS.get(status, f"({status})")
+
+
+def _render_quality_status(metadata: dict[str, Any], payload_source: str) -> None:
+    quality = metadata.get("quality")
+    if not isinstance(quality, dict):
+        return
+    overall_status = str(quality.get("overall_status", "unavailable"))
+    if overall_status not in QUALITY_STATES:
+        overall_status = "failed"
+
+    checks = quality.get("checks", {})
+    trade_summary_status = quality.get("trade_summary_status", {})
+
+    st.subheader(f"Dataset quality: {_quality_label(overall_status)}")
+    st.caption(f"Payload source: {payload_source}")
+
+    if overall_status != "valid":
+        st.warning("Some dashboard values were generated with dataset conditions that are not fully authoritative.")
+
+    if isinstance(checks, dict) and checks:
+        with st.expander("Quality checks", expanded=overall_status != "valid"):
+            for check_name in ("import", "asof", "pnl"):
+                check = checks.get(check_name, {})
+                status = str(check.get("status", "unavailable"))
+                if status not in QUALITY_STATES:
+                    status = "failed"
+                reason = check.get("reason")
+                text = f"{check_name}: {_quality_label(status)}"
+                if reason:
+                    text += f" — {reason}"
+                st.text(text)
+
+    if isinstance(trade_summary_status, dict):
+        st.json({
+            metric: _quality_label(str(metric_status) if str(metric_status) in QUALITY_STATES else "failed")
+            for metric, metric_status in trade_summary_status.items()
+        })
 
 
 def render_review_editor(episodes: list[dict[str, Any]], payload_path: Path, asof: str, payload_source: str, db_path: Path) -> None:
@@ -267,7 +317,10 @@ def main() -> None:
         "Internal prototype only. Read-only journal view. "
         "No order placement, no order cancellation, and no auto-trade."
     )
-    st.info(f"Mode: {mode} | Auto-trade: {auto_trade} | Payload source: {metadata.get(chr(34)+chr(115)+chr(111)+chr(117)+chr(114)+chr(99)+chr(101), payload_source)}")
+    st.info(f"Mode: {mode} | Auto-trade: {auto_trade} | Payload source: {payload_source}")
+
+    if payload_source == "DB payload":
+        _render_quality_status(metadata, payload_source)
 
     col1, col2, col3, col4 = st.columns(4)
     col1.metric("As of", metadata.get("asof", "-"))
