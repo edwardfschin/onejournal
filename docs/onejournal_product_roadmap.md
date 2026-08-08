@@ -120,7 +120,7 @@ position state.
 | JRN-01 | IN_REVIEW | Version and migrate the DuckDB schema using the approved migration convention. | PR #7 covers idempotent baseline bootstrap, ledger safety, and validation parity. |
 | JRN-02 | IN_PROGRESS | Persist normalized accounts, orders, positions, transactions, and required source lineage—not only fills. | Contract checks prove all records are broker-independent and traceable. |
 | JRN-03 | IN_REVIEW | Replace preview grouping with a deterministic trade-lifecycle engine. | Fixtures cover entry, exit, partial fill, partial close, and reopen cases. |
-| JRN-04 | BLOCKED | Add multi-leg lifecycle handling for verticals and later approved strategies. | Legs remain grouped correctly through opens, closes, and adjustments. |
+| JRN-04 | IN_PROGRESS | Add multi-leg lifecycle handling for verticals and later approved strategies. | Added preview-level lifecycle regression fixtures for multi-leg open/close behavior and partial close persistence. |
 | JRN-05 | BLOCKED | Add assignments, exercises, expirations, rolls, transfers, dividends, and corporate-action handling. | Each approved event has reconciled lifecycle fixtures. |
 | JRN-06 | BLOCKED | Add correction/replay support without losing audit history or manual reviews. | Re-import and correction tests are deterministic and idempotent. |
 | JRN-07 | BLOCKED | Strengthen broker-to-journal reconciliation at fill, transaction, position, cash, and account levels. | Differences are classified and block publication when policy requires it. |
