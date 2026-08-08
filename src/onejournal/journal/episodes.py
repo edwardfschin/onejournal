@@ -1,10 +1,11 @@
-"""Simple trade episode preview builder.
+"""Trade episode preview builders for read-only dashboard and DB import surfaces.
 
 Purpose
 -------
-Convert broker-normalized fills into simple trade episode previews.
+Build deterministic trade-episode previews from broker-normalized fills.
 
-This is intentionally small. It is not the final trade lifecycle engine.
+This implementation uses lifecycle matching to determine deterministic group and
+close behavior while keeping the public preview format stable.
 
 Read-only:
 - no broker API calls
@@ -21,8 +22,14 @@ from dataclasses import asdict, dataclass
 from datetime import datetime
 from decimal import Decimal
 from typing import Any
+from collections import defaultdict
 
 from onejournal.brokers.normalized import NormalizedFill
+from onejournal.journal.lifecycle import (
+    LifecycleContractError,
+    build_lifecycle_fill_events,
+)
+from onejournal.pnl.calculations import build_instrument_key
 
 
 @dataclass(frozen=True)
@@ -55,73 +62,87 @@ class TradeEpisodePreview:
 def build_episode_previews_from_fills(
     fills: list[NormalizedFill],
 ) -> list[TradeEpisodePreview]:
-    """Build simple trade episode previews from normalized fills.
+    """Build deterministic trade episode previews from normalized fills."""
+    if not fills:
+        return []
 
-    Grouping rule v1:
-    - source_account_id
-    - asset_class
-    - symbol
+    try:
+        lifecycle_result = build_lifecycle_fill_events(fills)
+    except LifecycleContractError as exc:
+        raise ValueError(str(exc))
 
-    This is deliberately simple. Later, we can improve grouping for rolls,
-    multi-leg options, partial exits, assignments, and adjustments.
-    """
+    fill_lookup = {fill.fill_uid: fill for fill in fills}
+    if len(fill_lookup) != len(fills):
+        raise ValueError("Duplicate fill_uid values were supplied to episode builder")
 
-    grouped: dict[tuple[str, str, str, str], list[NormalizedFill]] = {}
-
-    for fill in fills:
-        episode_key = fill.episode_group_id or fill.symbol
-        key = (
-            fill.source_broker,
-            fill.source_account_id,
-            fill.asset_class,
-            episode_key,
-        )
-        grouped.setdefault(key, []).append(fill)
+    grouped_events: dict[tuple[str, str, str, str, str], list] = defaultdict(list)
+    for event in lifecycle_result.events:
+        grouped_events[_episode_bucket_key(fill_lookup[event.fill_uid])].append(event)
 
     previews: list[TradeEpisodePreview] = []
+    for grouped_key in sorted(grouped_events):
+        previews.extend(
+            _build_previews_from_lifecycle_bucket(
+                grouped_key,
+                grouped_events[grouped_key],
+                fill_lookup,
+            )
+        )
 
-    for (
-        source_broker,
-        source_account_id,
-        asset_class,
-        symbol,
-    ), group in sorted(grouped.items()):
-        sorted_group = sorted(group, key=lambda f: f.filled_at)
+    return previews
+
+
+def _build_previews_from_lifecycle_bucket(
+    grouped_key: tuple[str, str, str, str, str],
+    events: list,
+    fill_lookup: dict[str, NormalizedFill],
+) -> list[TradeEpisodePreview]:
+    source_broker, source_account_id, asset_class, currency, episode_key = grouped_key
+    previews: list[TradeEpisodePreview] = []
+    episode_fills: list[NormalizedFill] = []
+    open_long = Decimal("0")
+    open_short = Decimal("0")
+    episode_index = 1
+
+    def flush_episode() -> None:
+        nonlocal episode_fills, open_long, open_short, episode_index
+        if not episode_fills:
+            return
+
+        sorted_group = sorted(episode_fills, key=lambda f: f.filled_at)
         opened_at = sorted_group[0].filled_at
 
         net_quantity = sum(
             (_signed_quantity(fill) for fill in sorted_group),
             Decimal("0"),
         )
-        gross_cashflow = sum(
-            (_cashflow(fill) for fill in sorted_group),
-            Decimal("0"),
-        )
-        total_commission = sum(
-            (fill.commission for fill in sorted_group),
-            Decimal("0"),
-        )
-        total_fees = sum(
-            (fill.fees for fill in sorted_group),
-            Decimal("0"),
-        )
+        gross_cashflow = sum((_cashflow(fill) for fill in sorted_group), Decimal("0"))
+        total_commission = sum((fill.commission for fill in sorted_group), Decimal("0"))
+        total_fees = sum((fill.fees for fill in sorted_group), Decimal("0"))
 
-        status = _episode_status(sorted_group, net_quantity)
-
+        open_status = _episode_status(
+            sorted_group,
+            net_quantity,
+            "open" if (open_long or open_short) else "closed",
+        )
         strategy_type, strategy_label = _classify_strategy(sorted_group)
-        primary_symbol = _primary_symbol_for_episode(sorted_group, symbol)
+        primary_symbol = _primary_symbol_for_episode(sorted_group, episode_key)
 
         previews.append(
             TradeEpisodePreview(
-                episode_uid=(
-                    f"{source_broker}:{source_account_id}:"
-                    f"{asset_class}:{symbol}"
+                episode_uid=_episode_uid_from_parts(
+                    source_broker,
+                    source_account_id,
+                    asset_class,
+                    episode_key,
+                    episode_index,
+                    currency,
                 ),
                 source_account_id=source_account_id,
                 primary_symbol=primary_symbol,
                 asset_class=asset_class,
                 opened_at=opened_at,
-                status=status,
+                status=open_status,
                 fill_count=len(sorted_group),
                 net_quantity=net_quantity,
                 gross_cashflow=gross_cashflow,
@@ -137,7 +158,63 @@ def build_episode_previews_from_fills(
             )
         )
 
+        episode_index += 1
+        episode_fills = []
+        open_long = Decimal("0")
+        open_short = Decimal("0")
+
+    for event in events:
+        fill = fill_lookup[event.fill_uid]
+        if event.action == "OPEN":
+            if event.direction == "LONG":
+                open_long += event.fill_quantity
+            else:
+                open_short += event.fill_quantity
+            episode_fills.append(fill)
+            continue
+
+        if event.direction == "LONG":
+            open_long -= event.matched_open_quantity
+            if open_long < 0:
+                raise ValueError(f"Lifecycle open state underflow in bucket {grouped_key}")
+        else:
+            open_short -= event.matched_open_quantity
+            if open_short < 0:
+                raise ValueError(f"Lifecycle open state underflow in bucket {grouped_key}")
+
+        episode_fills.append(fill)
+        if open_long == 0 and open_short == 0:
+            flush_episode()
+
+    if episode_fills:
+        flush_episode()
+
     return previews
+
+
+def _episode_bucket_key(fill: NormalizedFill) -> tuple[str, str, str, str, str]:
+    episode_key = fill.episode_group_id or build_instrument_key(fill)
+    return (
+        fill.source_broker,
+        fill.source_account_id,
+        fill.asset_class,
+        (fill.currency or "").upper(),
+        episode_key,
+    )
+
+
+def _episode_uid_from_parts(
+    source_broker: str,
+    source_account_id: str,
+    asset_class: str,
+    episode_key: str,
+    episode_index: int,
+    _currency: str,
+) -> str:
+    base_uid = f"{source_broker}:{source_account_id}:{asset_class}:{episode_key}"
+    if episode_index == 1:
+        return base_uid
+    return f"{base_uid}:{episode_index}"
 
 
 def _primary_symbol_for_episode(fills: list[NormalizedFill], fallback: str) -> str:
@@ -218,7 +295,11 @@ def _leg_to_payload(fill: NormalizedFill) -> dict[str, Any]:
         "fees": format(fill.fees, "f"),
     }
 
-def _episode_status(fills: list[NormalizedFill], net_quantity: Decimal) -> str:
+def _episode_status(
+    fills: list[NormalizedFill],
+    net_quantity: Decimal,
+    fallback_status: str,
+) -> str:
     """Classify simple preview status.
 
     Single-leg trades can use net quantity.
@@ -230,7 +311,7 @@ def _episode_status(fills: list[NormalizedFill], net_quantity: Decimal) -> str:
         return "open"
     if net_quantity == 0:
         return "closed"
-    return "open"
+    return fallback_status
 
 
 def _classify_strategy(fills: list[NormalizedFill]) -> tuple[str, str]:

@@ -4,8 +4,10 @@ import unittest
 from dataclasses import replace
 from decimal import Decimal
 from pathlib import Path
+from datetime import datetime, timezone
 
 from onejournal.brokers.manual_csv.fills import parse_manual_fills_csv
+from onejournal.brokers.normalized import NormalizedFill
 from onejournal.journal.episodes import build_episode_previews_from_fills
 
 
@@ -50,6 +52,116 @@ class TradeEpisodePreviewTests(unittest.TestCase):
         invalid = replace(self.fills[0], side="HOLD")
         with self.assertRaisesRegex(ValueError, "Unsupported fill side"):
             build_episode_previews_from_fills([invalid])
+
+
+class LifecycleEpisodePreviewTests(unittest.TestCase):
+    def _fill(
+        self,
+        *,
+        fill_uid: str,
+        side: str,
+        quantity: str,
+        fill_price: str,
+        source_order_id: str,
+        source_account_id: str = "acct",
+        symbol: str = "AAPL",
+        source_fill_id: str | None = None,
+        open_close: str | None = None,
+    ) -> NormalizedFill:
+        return NormalizedFill(
+            fill_uid=fill_uid,
+            source_broker="manual_csv",
+            source_account_id=source_account_id,
+            source_fill_id=source_fill_id or f"{fill_uid}-src",
+            source_order_id=source_order_id,
+            episode_group_id=None,
+            asof=datetime(2026, 1, 1).date(),
+            filled_at=datetime(2026, 1, 1, 10, 0, tzinfo=timezone.utc),
+            asset_class="stock",
+            symbol=symbol,
+            side=side,
+            quantity=Decimal(quantity),
+            fill_price=Decimal(fill_price),
+            commission=Decimal("0"),
+            fees=Decimal("0"),
+            currency="USD",
+            fetched_at=datetime(2026, 1, 1, 10, 1, tzinfo=timezone.utc),
+            raw_path="tests/fixtures/lifecycle",
+            open_close=open_close,
+            execution_venue=None,
+            liquidity_flag=None,
+            option_symbol=None,
+            underlying_symbol=None,
+            option_type=None,
+            expiry=None,
+            strike=None,
+            multiplier=None,
+        )
+
+    def test_lifecycle_reopen_splits_episodes_with_deterministic_ids(self) -> None:
+        fills = [
+            self._fill(
+                fill_uid="fill-open-1",
+                side="BUY",
+                quantity="100",
+                fill_price="10",
+                source_order_id="ord-open-1",
+            ),
+            self._fill(
+                fill_uid="fill-close-1",
+                side="SELL_TO_CLOSE",
+                quantity="100",
+                fill_price="11",
+                source_order_id="ord-close-1",
+                open_close="CLOSE",
+            ),
+            self._fill(
+                fill_uid="fill-open-2",
+                side="BUY",
+                quantity="30",
+                fill_price="12",
+                source_order_id="ord-open-2",
+            ),
+            self._fill(
+                fill_uid="fill-close-2",
+                side="SELL_TO_CLOSE",
+                quantity="10",
+                fill_price="13",
+                source_order_id="ord-close-2",
+                open_close="CLOSE",
+            ),
+        ]
+        previews = build_episode_previews_from_fills(fills)
+        self.assertEqual(len(previews), 2)
+        self.assertEqual(previews[0].status, "closed")
+        self.assertEqual(previews[0].fill_count, 2)
+        self.assertEqual(previews[1].status, "open")
+        self.assertEqual(previews[1].fill_count, 2)
+        self.assertEqual(previews[0].episode_uid, "manual_csv:acct:stock:stock|AAPL")
+        self.assertEqual(previews[1].episode_uid, "manual_csv:acct:stock:stock|AAPL:2")
+
+    def test_partial_close_keeps_episode_open(self) -> None:
+        fills = [
+            self._fill(
+                fill_uid="fill-open-partial",
+                side="BUY",
+                quantity="100",
+                fill_price="10",
+                source_order_id="ord-open-partial",
+            ),
+            self._fill(
+                fill_uid="fill-close-partial",
+                side="SELL_TO_CLOSE",
+                quantity="40",
+                fill_price="11",
+                source_order_id="ord-close-partial",
+                open_close="CLOSE",
+            ),
+        ]
+        previews = build_episode_previews_from_fills(fills)
+        self.assertEqual(len(previews), 1)
+        self.assertEqual(previews[0].status, "open")
+        self.assertEqual(previews[0].fill_count, 2)
 
 
 if __name__ == "__main__":
