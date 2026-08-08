@@ -78,7 +78,7 @@ website features.
 | FND-02 | COMPLETE | Repair the baseline checker so every command is executed, every error increments failure state, and PASS cannot follow an uncounted error. | A deliberately failing check produces a non-zero exit; the repaired full baseline passes. |
 | FND-03 | COMPLETE | Declare all runtime and development dependencies and define a reproducible clean-environment setup. | A clean environment can install OneJournal and run its checks from documented commands. |
 | FND-04 | COMPLETE | Establish automated unit, integration, contract, and regression test structure. | Tests run through one documented command and include initial DB, payload, adapter, and lifecycle coverage. |
-| FND-05 | NEXT | Activate the committed GitHub workflow for package installation, tests, contract checks, and secret/runtime-artifact guards. Local implementation and Python 3.13.9 validation are complete; the Git remote is configured. | The pushed branch runs the workflow successfully without private broker data. |
+| FND-05 | COMPLETE | Activate the committed GitHub workflow for package installation, tests, contract checks, and secret/runtime-artifact guards. | The pushed branch runs the workflow successfully without private broker data; PR 1 run 6 passed. |
 | FND-06 | COMPLETE | Replace the stale Phase 0 README with the current architecture, setup, safety boundary, and roadmap link. | README matches the verified repository and points to current operator documentation. |
 | FND-07 | COMPLETE | Audit and classify `scripts/oldjournal`, `scripts/tgps_user`, and execution-related legacy code. | Each legacy path is marked migrate, retain-isolated, archive, or delete with evidence. |
 | FND-08 | COMPLETE | Define architecture-decision-record and schema-migration conventions. | A documented template and storage location exist and one initial decision is recorded. |
@@ -98,9 +98,9 @@ Objective: decide the semantics required for correct portfolio and P&L work.
 | ID | Status | Action | Completion evidence |
 |---|---|---|---|
 | CON-01 | COMPLETE | Decide initial product scope: single user or multi-user, supported brokers, accounts, asset classes, and first production use case. | Approved product-scope decision record. |
-| CON-02 | NEXT | Define base currency, multi-currency policy, decimal precision, timezone, market-date, and trading-session rules. | Approved financial-units and time contract with examples. |
-| CON-03 | BLOCKED | Define realized P&L, unrealized P&L, cost basis, tax-lot policy, fees, commissions, and return calculations. | Approved P&L contract with worked examples that reconcile exactly. |
-| CON-04 | BLOCKED | Define lifecycle treatment for partial fills, partial exits, multi-leg trades, rolls, assignments, exercises, expirations, dividends, transfers, and corporate actions. | Approved lifecycle contract covering normal and exceptional cases. |
+| CON-02 | COMPLETE | Define base currency, multi-currency policy, decimal precision, timezone, market-date, and trading-session rules. | Approved financial-units and time contract with examples. |
+| CON-03 | IN_REVIEW | Define realized P&L, unrealized P&L, cost basis, tax-lot policy, fees, commissions, and return calculations. | ADR-0004 plus FIFO lot engine and fail-closed contract tests in `src/onejournal/pnl/` plus mark-sourcing behavior tests added. DB-backed payload now includes realized/unrealized P&L by currency on integration branch `codex/con-03-pnl-contracts`. |
+| CON-04 | IN_REVIEW | Define lifecycle treatment for partial fills, partial exits, multi-leg trades, rolls, assignments, exercises, expirations, dividends, transfers, and corporate actions. | Initial lifecycle-fill matching contract tests added in `tests/test_lifecycle_contract.py`, ADR-0005 under review. |
 | CON-05 | BLOCKED | Define stable identifiers, deduplication, idempotency, lineage, corrections, and data-version rules. | Contract proves records can be replayed and traced without duplication. |
 | CON-06 | BLOCKED | Define data freshness, stale-price, missing-data, reconciliation, and fail-closed presentation policies. | UI and calculation policy states when values are valid, stale, incomplete, or unavailable. |
 
@@ -251,11 +251,11 @@ approval and successful completion of every prior safety gate.
 
 The current actionable sequence is:
 
-1. `FND-05` - push the branch and verify hosted continuous integration.
-2. `FND-06` - update the README and current architecture entry point.
-3. `FND-07` - audit and isolate legacy code.
-4. `FND-08` - establish decision and migration conventions.
-5. Resolve `CON-01` through `CON-06` with explicit product decisions.
+1. `CON-03` - define realized and unrealized P&L, cost basis, tax lot, and fee treatment.
+2. `CON-04` - define lifecycle treatment for partials, legs, exercises, expirations, and corporate actions.
+3. `CON-05` - define identity, dedupe, correction, version, and lineage rules.
+4. `CON-06` - define freshness, stale-data, and fail-closed presentation policy.
+5. Resolve `JRN-01` through `JRN-07` with these contracts approved.
 
 No P&L, production website, or execution implementation should bypass these
 foundational and contract decisions.

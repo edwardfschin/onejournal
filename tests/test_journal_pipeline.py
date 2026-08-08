@@ -61,6 +61,8 @@ class JournalPipelineIntegrationTests(unittest.TestCase):
         self.assertEqual(payload["metadata"]["auto_trade"], "disabled")
         self.assertEqual(payload["metadata"]["record_counts"]["trade_episode_previews"], 8)
         self.assertEqual(payload["trade_summary"]["gross_cashflow"], "-10415.00")
+        self.assertEqual(payload["trade_summary"]["realized_pnl_by_currency"], {"USD": "0.00"})
+        self.assertEqual(payload["trade_summary"]["unrealized_pnl_by_currency"], {"USD": None})
         self.assertEqual(validate_payload(payload, "2026-06-02", self.db_path), 0)
 
         reviewed = next(

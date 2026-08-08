@@ -1,7 +1,7 @@
 # ADR-0003: Define financial units, currency, and time semantics
 
-- Status: Proposed
-- Date: 2026-07-23
+- Status: Approved
+- Date: 2026-08-08
 - Decision owners: OneJournal project owner
 - Related roadmap items: CON-02, CON-03 through CON-06, JRN-01 through JRN-05,
   PNL-01 through PNL-08

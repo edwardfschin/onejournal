@@ -67,6 +67,27 @@ all active imports, UI actions, CI workflows, and operator commands.
 executable script. `scripts/.DS_Store` is ignored operating-system metadata and
 is not a project artifact.
 
+## Phase-mapped script inventory references
+
+- Phase F Guarded Review Workflow Scripts
+- Phase B source of truth: DuckDB manual_reviews
+- Phase M7 Schwab Duplicate Snapshot Guard
+- Phase M6 Schwab Final Operator Runbook
+
+## Reference matrix rule
+
+Phase references and phase-specific operator runbooks rely on this file for discovery.
+A script can be removed only after the reference matrix shows zero production, baseline, documentation, and migration-safety references.
+
+## Contract and runbook references captured in this inventory
+
+- `schwab_transactions_json_contract.md`
+- `schwab_orders_json_schema_contract.md`
+- `schwab_legacy_normalizer_findings.md`
+- `schwab_adapter_readiness_audit.md`
+- `schwab_execution_boundary_contract.md`
+- `operator_import_runbook.md`
+
 ## Isolated legacy and execution material
 
 The following 36 retained artifacts are outside the active OneJournal runtime.

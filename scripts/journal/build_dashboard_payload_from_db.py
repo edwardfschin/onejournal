@@ -17,6 +17,9 @@ from typing import Any
 
 import duckdb
 
+from onejournal.brokers.normalized import NormalizedFill
+from onejournal.pnl import calculate_fifo_pnl_from_fills
+
 DASHBOARD_PAYLOAD_VERSION = "0.1.0-db"
 DEFAULT_DB = Path("data/journal/onejournal.duckdb")
 DEFAULT_OUTPUT = Path("output/dashboard/latest/dashboard_payload_from_db.json")
@@ -49,6 +52,58 @@ def _rows(con: duckdb.DuckDBPyConnection, sql: str, params: list[Any] | None = N
     return [dict(zip(cols, row)) for row in result.fetchall()]
 
 
+def _to_decimal(value: Any, field: str) -> Decimal:
+    if value is None:
+        raise ValueError(f"{field} must not be None for normalized fills")
+    return value if isinstance(value, Decimal) else Decimal(str(value))
+
+
+def _build_fills_for_pnl(fills_rows: list[dict[str, Any]]) -> list[NormalizedFill]:
+    return [
+        NormalizedFill(
+            fill_uid=row["fill_uid"],
+            source_broker=row["source_broker"],
+            source_account_id=row["source_account_id"],
+            source_fill_id=row["source_fill_id"],
+            source_order_id=row.get("source_order_id"),
+            episode_group_id=row.get("episode_group_id"),
+            asof=(
+                row["asof_date"]
+                if hasattr(row["asof_date"], "isoformat")
+                else datetime.fromisoformat(str(row["asof_date"])).date()
+            ),
+            filled_at=row["filled_at"],
+            asset_class=row["asset_class"],
+            symbol=row["symbol"],
+            side=row["side"],
+            quantity=_to_decimal(row["quantity"], "quantity"),
+            fill_price=_to_decimal(row["fill_price"], "fill_price"),
+            commission=_to_decimal(row["commission"], "commission"),
+            fees=_to_decimal(row["fees"], "fees"),
+            currency=(row["currency"] or "USD").upper(),
+            fetched_at=row["fetched_at"],
+            raw_path=row.get("raw_path"),
+            option_symbol=row.get("option_symbol"),
+            underlying_symbol=row.get("underlying_symbol"),
+            option_type=row.get("option_type"),
+            expiry=row.get("expiry"),
+            strike=_to_decimal(row["strike"], "strike") if row.get("strike") is not None else None,
+            multiplier=_to_decimal(row["multiplier"], "multiplier") if row.get("multiplier") is not None else None,
+            open_close=row.get("open_close"),
+            execution_venue=row.get("execution_venue"),
+            liquidity_flag=row.get("liquidity_flag"),
+        )
+        for row in fills_rows
+    ]
+
+
+def _build_currency_totals(values: dict[str, Decimal | None]) -> dict[str, str | None]:
+    return {
+        currency: _decimal_to_string(amount) if amount is not None else None
+        for currency, amount in sorted(values.items())
+    }
+
+
 def build_payload(db_path: Path, asof: str) -> dict[str, Any]:
     con = duckdb.connect(str(db_path), read_only=True)
     try:
@@ -59,8 +114,8 @@ def build_payload(db_path: Path, asof: str) -> dict[str, Any]:
                 e.leg_summary, e.cashflow_label, e.net_quantity, e.gross_cashflow, e.commission, e.fees,
                 COALESCE(r.review_status, 'unreviewed') AS review_status,
                 COALESCE(r.setup_quality, 'unknown') AS setup_quality,
-                COALESCE(r.entry_reason, ) AS entry_reason,
-                COALESCE(r.notes, ) AS notes
+                COALESCE(r.entry_reason, '') AS entry_reason,
+                COALESCE(r.notes, '') AS notes
             FROM trade_episodes e
             LEFT JOIN manual_reviews r ON r.episode_uid = e.episode_uid
             ORDER BY e.opened_at DESC, e.episode_uid
@@ -109,6 +164,19 @@ def build_payload(db_path: Path, asof: str) -> dict[str, Any]:
                 "fees": _decimal_to_string(e["fees"]),
             })
 
+        normalized_fill_rows = _rows(
+            con,
+            "SELECT * FROM normalized_fills ORDER BY source_account_id, source_broker, filled_at",
+        )
+        pnl_result = calculate_fifo_pnl_from_fills(
+            _build_fills_for_pnl(normalized_fill_rows), allow_unmatched_close=True
+        )
+        if pnl_result.unmatched_close_fill_uids:
+            print(
+                "WARN: unmatched close fills skipped: "
+                + ", ".join(sorted(set(pnl_result.unmatched_close_fill_uids)))
+            )
+
         open_episodes = [e for e in payload_episodes if e.get("status") == "open"]
         closed_episodes = [e for e in payload_episodes if e.get("status") == "closed"]
         gross_cashflow = con.execute("SELECT COALESCE(SUM(gross_cashflow), 0) FROM trade_episodes").fetchone()[0]
@@ -133,6 +201,12 @@ def build_payload(db_path: Path, asof: str) -> dict[str, Any]:
                 "gross_cashflow": _decimal_to_string(gross_cashflow),
                 "commission": _decimal_to_string(commission),
                 "fees": _decimal_to_string(fees),
+                "realized_pnl_by_currency": _build_currency_totals(
+                    pnl_result.total_realized_pnl_by_currency
+                ),
+                "unrealized_pnl_by_currency": _build_currency_totals(
+                    pnl_result.total_unrealized_pnl_by_currency
+                ),
             },
             "open_positions": [],
             "recent_trade_episodes": payload_episodes,
@@ -154,8 +228,8 @@ def main() -> int:
     print(f"DB        : {db_path}")
     print(f"OUTPUT    : {output_path}")
     print(f"ASOF      : {args.asof}")
-    print(f"EPISODES  : {len(payload["recent_trade_episodes"])}")
-    print(f"SOURCE    : {payload["metadata"]["source"]}")
+    print(f"EPISODES  : {len(payload['recent_trade_episodes'])}")
+    print(f"SOURCE    : {payload['metadata']['source']}")
     print("MODE      : read-only")
     print("AUTO TRADE: disabled")
     if args.write:

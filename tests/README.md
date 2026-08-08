@@ -13,6 +13,7 @@ foundation simple and dependency-free.
 
 - Unit: manual CSV parsing, episode grouping/classification, and dashboard
   payload construction.
+- Lifecycle contract: partial fill events and partial close behavior.
 - Adapter contract: deterministic Schwab orders JSON normalization.
 - Integration: schema initialization, import, review merge, DuckDB reads, and
   DB dashboard payload construction using a temporary database.

@@ -142,7 +142,7 @@ def main() -> int:
     counts = import_to_db(Path(args.db), Path(args.fills), Path(args.reviews), args.replace, asof)
     print("===== OneJournal DB import =====")
     print(f"DB        : {args.db}")
-    print(f"ASOF      : {args.asof or "not enforced"}")
+    print(f"ASOF      : {args.asof or 'not enforced'}")
     print(f"FILLS     : {args.fills}")
     print(f"REVIEWS   : {args.reviews}")
     for key, value in counts.items():
