@@ -23,12 +23,30 @@ Activity and subtype hints that represent lifecycle-only events are excluded fro
 - `ASSIGNMENT`
 - `EXERCISE`
 - `EXPIRATION`
+- `ROLL`
+- `ROLLOVER`
 - `CORPORATE_ACTION`
 - `DIVIDEND`
 - `INTEREST`
 - `TRANSFER`
 
 These skipped rows are counted as unsupported in adapter statistics.
+
+In addition to unsupported counters, the converter now emits a lifecycle-event
+summary for observability:
+
+- `LIFECYCLE_EVENTS` prints how many lifecycle-only rows were extracted from
+  `TRADE`/`VALID` transactions in the same as-of slice.
+- Each event row includes:
+  `event_uid`, `source_broker`, `source_account_id`, `source_activity_id`,
+  `source_order_id`, `source_position_id`, `event_class`, `event_type`,
+  `asof`, `event_at`, and `event_name`.
+
+This is read-only visibility only; event rows are not yet written into the
+journal database until ADR-0005 is accepted.
+
+Optionally add `--lifecycle-events <path>` to write these rows as a CSV file for
+audit or future event-ledger ingestion.
 Unsupported activity reasons are reported by key (for example `activityType:ASSIGNMENT`,
 `subType:EXERCISE`) and unsupported security asset types are reported separately.
 

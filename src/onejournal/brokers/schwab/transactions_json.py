@@ -43,6 +43,8 @@ _UNSUPPORTED_ACTIVITY_TYPES = {
     "CORPORATE_ACTION",
     "DIVIDEND",
     "INTEREST",
+    "ROLL",
+    "ROLLOVER",
     "TRANSFER",
 }
 
@@ -133,6 +135,64 @@ def _unsupported_activity_key(txn: dict[str, Any]) -> str | None:
     if activity_type:
         return None
     return None
+
+
+def extract_lifecycle_events_from_transactions(
+    transactions: list[dict[str, Any]],
+    *,
+    asof: str | None = None,
+) -> list[dict[str, str]]:
+    """Return lifecycle-only activity rows for future event-ledger wiring.
+
+    This keeps non-fill broker events visible without interpreting them as fills.
+    """
+
+    events: list[dict[str, str]] = []
+
+    for txn_index, txn in enumerate(transactions):
+        if str(txn.get("type", "")).upper().strip() != "TRADE":
+            continue
+        if str(txn.get("status", "")).upper().strip() != "VALID":
+            continue
+
+        activity_type = str(txn.get("activityType", "")).strip()
+        sub_type = str(txn.get("subType", "")).strip()
+        if not activity_type and not sub_type:
+            continue
+
+        reason = _unsupported_activity_key(txn)
+        if reason is None:
+            continue
+
+        filled_at = str(txn.get("tradeDate") or txn.get("time") or "").strip()
+        row_asof = _date_part(filled_at)
+        if asof and row_asof != asof:
+            continue
+
+        activity_id = str(txn.get("activityId", "")).strip()
+        event_uid = (
+            f"schwab_txn:{activity_id}:event:{str(txn.get('type', '')).strip()}"
+            if activity_id
+            else f"schwab_txn:{row_asof or 'na'}:event:{str(txn.get('type', '')).strip()}:row:{txn_index}"
+        )
+
+        events.append(
+            {
+                "event_uid": event_uid,
+                "source_broker": "schwab",
+                "source_account_id": str(txn.get("accountNumber", "")).strip(),
+                "source_activity_id": activity_id,
+                "source_order_id": str(txn.get("orderId", "")).strip(),
+                "source_position_id": str(txn.get("positionId", "")).strip(),
+                "event_class": "TRANSACTION_LIFECYCLE",
+                "event_type": reason,
+                "asof": row_asof,
+                "event_at": filled_at,
+                "event_name": reason,
+            }
+        )
+
+    return events
 
 
 def _multiplier(instrument: dict[str, Any]) -> str:
@@ -331,6 +391,15 @@ def normalized_rows_from_transactions(transactions: list[dict[str, Any]], *, aso
 
 def convert_transactions_json_to_normalized_csv(input_path: Path, output_path: Path, *, asof: str | None = None) -> SchwabTransactionsJsonStats:
     transactions = load_transactions_json(input_path)
+    return convert_transactions_json_to_normalized_csv_from_rows(transactions, output_path, asof=asof)
+
+
+def convert_transactions_json_to_normalized_csv_from_rows(
+    transactions: list[dict[str, Any]],
+    output_path: Path,
+    *,
+    asof: str | None = None,
+) -> SchwabTransactionsJsonStats:
     rows, stats = normalized_rows_from_transactions(transactions, asof=asof)
     output_path.parent.mkdir(parents=True, exist_ok=True)
     with output_path.open("w", newline="", encoding="utf-8") as fh:
