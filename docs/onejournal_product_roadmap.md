@@ -100,7 +100,7 @@ Objective: decide the semantics required for correct portfolio and P&L work.
 | CON-01 | COMPLETE | Decide initial product scope: single user or multi-user, supported brokers, accounts, asset classes, and first production use case. | Approved product-scope decision record. |
 | CON-02 | COMPLETE | Define base currency, multi-currency policy, decimal precision, timezone, market-date, and trading-session rules. | Approved financial-units and time contract with examples. |
 | CON-03 | COMPLETE | Define realized P&L, unrealized P&L, cost basis, tax-lot policy, fees, commissions, and return calculations. | ADR-0004 plus FIFO lot engine and fail-closed contract tests in `src/onejournal/pnl/` plus mark-sourcing behavior tests. DB-backed payload now includes realized/unrealized P&L by currency. |
-| CON-04 | COMPLETE | Define lifecycle treatment for partial fills, partial exits, multi-leg trades, rolls, assignments, exercises, expirations, dividends, transfers, and corporate actions. | Lifecycle and preview contract tests are in place, and ADR-0005 is adopted. |
+| CON-04 | COMPLETE | Define lifecycle treatment for partial fills, partial exits, and multi-leg trade matching by episode scope. | Lifecycle and preview contract tests are in place; complex lifecycle event types remain blocked under ADR-0005. |
 | CON-05 | COMPLETE | Define stable identifiers, deduplication, idempotency, lineage, corrections, and data-version rules. | Stable fill identity, idempotent replay, and identity-conflict rejection are enforced and tested. |
 | CON-06 | COMPLETE | Define data freshness, stale-price, missing-data, reconciliation, and fail-closed presentation policies. | DB payload now carries quality status for import/audit/completeness and fail-closed policy status checks. |
 
@@ -121,7 +121,7 @@ position state.
 | JRN-02 | COMPLETE | Persist normalized accounts, orders, positions, transactions, and required source lineage—not only fills. | Normalized family derivation, import-run linkage checks, and contract coverage now exercise all families. |
 | JRN-03 | COMPLETE | Replace preview grouping with a deterministic trade-lifecycle engine. | Entry/exit/partial/reopen fixtures and deterministic lifecycle tests are implemented and merge-validated. |
 | JRN-04 | COMPLETE | Add multi-leg lifecycle handling for verticals and later approved strategies. | Preview-level and lifecycle-contract fixtures for multi-leg and cross-symbol matching using explicit episode-group scope are in place. |
-| JRN-05 | BLOCKED | Add assignments, exercises, expirations, rolls, transfers, dividends, and corporate-action handling. | Each approved event has reconciled lifecycle fixtures. |
+| JRN-05 | BLOCKED | Add assignments, exercises, expirations, rolls, transfers, dividends, and corporate-action handling. | ADR-0005 remains open; event fixtures are pending. |
 | JRN-06 | BLOCKED | Add correction/replay support without losing audit history or manual reviews. | Re-import and correction tests are deterministic and idempotent. |
 | JRN-07 | BLOCKED | Strengthen broker-to-journal reconciliation at fill, transaction, position, cash, and account levels. | Differences are classified and block publication when policy requires it. |
 
