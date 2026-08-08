@@ -60,6 +60,7 @@ class TransactionsJsonAdapterTests(unittest.TestCase):
         self.assertEqual(stats.transactions, 1)
         self.assertEqual(stats.trade_valid, 0)
         self.assertEqual(stats.unsupported_items, 1)
+        self.assertEqual(stats.unsupported_activity_counts, {"activityType:ASSIGNMENT": 1})
 
     def test_sub_type_marked_as_lifecycle_activity_is_skipped_as_unsupported(self) -> None:
         rows, stats = normalized_rows_from_transactions(
@@ -95,6 +96,7 @@ class TransactionsJsonAdapterTests(unittest.TestCase):
         self.assertEqual(rows, [])
         self.assertEqual(stats.trade_valid, 0)
         self.assertEqual(stats.unsupported_items, 1)
+        self.assertEqual(stats.unsupported_activity_counts, {"subType:EXERCISE": 1})
 
     def test_assignments_asof_filter_still_applies(self) -> None:
         rows, stats = normalized_rows_from_transactions(
@@ -129,6 +131,7 @@ class TransactionsJsonAdapterTests(unittest.TestCase):
         self.assertEqual(stats.transactions, 1)
         self.assertEqual(stats.trade_valid, 0)
         self.assertEqual(stats.unsupported_items, 1)
+        self.assertEqual(stats.unsupported_activity_counts, {"activityType:ASSIGNMENT": 1})
 
     def test_supported_activity_with_multiple_transfer_items_still_flattens_only_security_legs(self) -> None:
         rows, stats = normalized_rows_from_transactions(
@@ -223,3 +226,4 @@ class TransactionsJsonAdapterTests(unittest.TestCase):
         self.assertEqual(rows[0]["source_fill_id"].startswith("schwab_txn:A5:order:ORD-005:position:POS-005:item:1"), True)
         self.assertEqual(stats.security_items, 1)
         self.assertEqual(stats.unsupported_items, 1)
+        self.assertEqual(stats.unsupported_asset_counts, {"FUTURES": 1})

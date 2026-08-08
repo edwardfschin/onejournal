@@ -3,7 +3,7 @@ from __future__ import annotations
 import csv
 import json
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -57,6 +57,8 @@ class SchwabTransactionsJsonStats:
     currency_items: int = 0
     fill_rows: int = 0
     unsupported_items: int = 0
+    unsupported_activity_counts: dict[str, int] = field(default_factory=dict)
+    unsupported_asset_counts: dict[str, int] = field(default_factory=dict)
 
 
 def validate_asof(value: str | None) -> str | None:
@@ -120,16 +122,16 @@ def _open_close(position_effect: str) -> str:
     return ""
 
 
-def _is_supported_activity(txn: dict[str, Any]) -> bool:
+def _unsupported_activity_key(txn: dict[str, Any]) -> str | None:
     activity_type = str(txn.get("activityType", "")).strip().upper()
     sub_type = str(txn.get("subType", "")).strip().upper()
     if activity_type in _UNSUPPORTED_ACTIVITY_TYPES:
-        return False
+        return f"activityType:{activity_type}"
     if sub_type in _UNSUPPORTED_ACTIVITY_TYPES:
-        return False
+        return f"subType:{sub_type}"
     if activity_type:
-        return activity_type not in _UNSUPPORTED_ACTIVITY_TYPES
-    return True
+        return None
+    return None
 
 
 def _multiplier(instrument: dict[str, Any]) -> str:
@@ -175,11 +177,16 @@ def normalized_rows_from_transactions(transactions: list[dict[str, Any]], *, aso
     currency_items = 0
     unsupported = 0
 
+    unsupported_activity_counts: dict[str, int] = {}
+    unsupported_asset_counts: dict[str, int] = {}
+
     for txn in transactions:
         if str(txn.get("type", "")).upper() != "TRADE" or str(txn.get("status", "")).upper() != "VALID":
             continue
-        if not _is_supported_activity(txn):
+        reason = _unsupported_activity_key(txn)
+        if reason is not None:
             unsupported += 1
+            unsupported_activity_counts[reason] = unsupported_activity_counts.get(reason, 0) + 1
             continue
         trade_valid += 1
         filled_at = str(txn.get("tradeDate") or txn.get("time") or "").strip()
@@ -203,6 +210,7 @@ def normalized_rows_from_transactions(transactions: list[dict[str, Any]], *, aso
             if asset_type == "CURRENCY":
                 continue
             if asset_type not in {"OPTION", "EQUITY", "STOCK"}:
+                unsupported_asset_counts[asset_type] = unsupported_asset_counts.get(asset_type, 0) + 1
                 unsupported += 1
                 continue
             security.append((idx, item, instrument))
@@ -283,6 +291,8 @@ def normalized_rows_from_transactions(transactions: list[dict[str, Any]], *, aso
         currency_items=currency_items,
         fill_rows=len(rows),
         unsupported_items=unsupported,
+        unsupported_activity_counts=unsupported_activity_counts,
+        unsupported_asset_counts=unsupported_asset_counts,
     )
 
 

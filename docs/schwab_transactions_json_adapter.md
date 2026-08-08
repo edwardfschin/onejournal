@@ -29,6 +29,8 @@ Activity and subtype hints that represent lifecycle-only events are excluded fro
 - `TRANSFER`
 
 These skipped rows are counted as unsupported in adapter statistics.
+Unsupported activity reasons are reported by key (for example `activityType:ASSIGNMENT`,
+`subType:EXERCISE`) and unsupported security asset types are reported separately.
 
 CURRENCY transferItems are fee and commission evidence.
 
