@@ -10,6 +10,10 @@ through the journal migration runner and the migration artifact set:
 - `manual_reviews`
 - `trade_episodes`
 - `trade_episode_legs`
+- `normalized_accounts`
+- `normalized_orders`
+- `normalized_positions`
+- `normalized_transactions`
 - `schema_migrations`
 
 The baseline is now versioned at `0001_establish_schema_version`.
@@ -36,7 +40,7 @@ Examples:
 
 ```text
 0001_establish_schema_version.sql
-0002_add_normalized_accounts.sql
+0002_add_normalized_accounts_orders_positions_transactions.sql
 ```
 
 Rules:

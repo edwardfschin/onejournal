@@ -40,6 +40,10 @@ class JournalPipelineIntegrationTests(unittest.TestCase):
             {
                 "import_runs": 1,
                 "normalized_fills": 12,
+                "normalized_accounts": 1,
+                "normalized_orders": 8,
+                "normalized_positions": 12,
+                "normalized_transactions": 12,
                 "trade_episodes": 8,
                 "trade_episode_legs": 12,
                 "manual_reviews": 8,
@@ -55,6 +59,30 @@ class JournalPipelineIntegrationTests(unittest.TestCase):
                 "SELECT COUNT(*) FROM normalized_fills WHERE import_run_id IS NOT NULL"
             ).fetchone()[0]
             self.assertEqual(linked_imports, 12)
+            self.assertEqual(
+                con.execute(
+                    "SELECT COUNT(*) FROM normalized_accounts WHERE import_run_id IS NOT NULL"
+                ).fetchone()[0],
+                1,
+            )
+            self.assertEqual(
+                con.execute(
+                    "SELECT COUNT(*) FROM normalized_orders WHERE import_run_id IS NOT NULL"
+                ).fetchone()[0],
+                8,
+            )
+            self.assertEqual(
+                con.execute(
+                    "SELECT COUNT(*) FROM normalized_positions WHERE import_run_id IS NOT NULL"
+                ).fetchone()[0],
+                12,
+            )
+            self.assertEqual(
+                con.execute(
+                    "SELECT COUNT(*) FROM normalized_transactions WHERE import_run_id IS NOT NULL"
+                ).fetchone()[0],
+                12,
+            )
 
         payload = build_payload(self.db_path, "2026-06-02")
         self.assertEqual(payload["metadata"]["source"], "duckdb")

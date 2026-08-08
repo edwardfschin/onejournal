@@ -35,13 +35,16 @@ class JournalMigrationTests(unittest.TestCase):
             self.assertIn("manual_reviews", tables)
             self.assertIn("trade_episodes", tables)
             self.assertIn("trade_episode_legs", tables)
+            self.assertIn("normalized_accounts", tables)
+            self.assertIn("normalized_orders", tables)
+            self.assertIn("normalized_positions", tables)
+            self.assertIn("normalized_transactions", tables)
 
-            row = con.execute(
-                "SELECT version, status FROM schema_migrations WHERE version = '0001'"
-            ).fetchone()
-            self.assertIsNotNone(row)
-            self.assertEqual(row[0], "0001")
-            self.assertEqual(row[1], "applied")
+            rows = con.execute("SELECT version, status FROM schema_migrations ORDER BY version").fetchall()
+            self.assertEqual(rows[0][0], "0001")
+            self.assertEqual(rows[0][1], "applied")
+            self.assertEqual(rows[1][0], "0002")
+            self.assertEqual(rows[1][1], "applied")
 
     def test_init_schema_is_idempotent(self) -> None:
         init_schema(self.db_path)
@@ -49,7 +52,7 @@ class JournalMigrationTests(unittest.TestCase):
 
         with duckdb.connect(str(self.db_path), read_only=True) as con:
             count = con.execute("SELECT COUNT(*) FROM schema_migrations").fetchone()[0]
-            self.assertEqual(count, 1)
+            self.assertEqual(count, 2)
 
     def test_checksum_mismatch_blocks_reapply(self) -> None:
         with tempfile.TemporaryDirectory() as local_migration_dir:

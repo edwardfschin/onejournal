@@ -3,11 +3,15 @@
 This directory is reserved for ordered DuckDB migration artifacts governed by
 `docs/database_migrations.md`.
 
-There are currently one baseline migration file:
+There are currently two migration files:
 
 - `0001_establish_schema_version.sql`:
   create the migration ledger (`schema_migrations`) with run metadata and audit
   fields.
+- `0002_add_normalized_accounts_orders_positions_transactions.sql`:
+  add broker-neutral `normalized_accounts`, `normalized_orders`,
+  `normalized_positions`, and `normalized_transactions` with `import_runs`
+  lineage.
 
 The existing DuckDB schema is a prototype bootstrap baseline created (and now
 versioned) by `scripts/journal/init_journal_db.py`.

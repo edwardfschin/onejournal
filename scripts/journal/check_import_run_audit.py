@@ -16,10 +16,24 @@ REQUIRED_IMPORT_RUN_COLUMNS = {
     "notes",
 }
 
+NORMALIZED_TABLES = (
+    "normalized_fills",
+    "normalized_accounts",
+    "normalized_orders",
+    "normalized_positions",
+    "normalized_transactions",
+)
+
+
+def _query_scalar_int(con: duckdb.DuckDBPyConnection, sql: str, *params: object) -> int:
+    return int(con.execute(sql, params).fetchone()[0])
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Check OneJournal import_runs audit integrity.")
     parser.add_argument("--db", default="data/journal/onejournal.duckdb", help="DuckDB journal database path.")
     return parser.parse_args()
+
 
 def main() -> int:
     args = parse_args()
@@ -43,6 +57,9 @@ def main() -> int:
         for table in ("import_runs", "normalized_fills"):
             if table not in tables:
                 failures.append(f"missing table {table}")
+        for table in NORMALIZED_TABLES:
+            if table not in tables:
+                failures.append(f"missing table {table}")
 
         if failures:
             print()
@@ -58,7 +75,11 @@ def main() -> int:
             failures.append(f"import_runs missing column {col}")
 
         import_count = con.execute("SELECT COUNT(*) FROM import_runs").fetchone()[0]
-        fill_count = con.execute("SELECT COUNT(*) FROM normalized_fills").fetchone()[0]
+        fill_count = _query_scalar_int(con, "SELECT COUNT(*) FROM normalized_fills")
+        account_count = _query_scalar_int(con, "SELECT COUNT(*) FROM normalized_accounts")
+        order_count = _query_scalar_int(con, "SELECT COUNT(*) FROM normalized_orders")
+        position_count = _query_scalar_int(con, "SELECT COUNT(*) FROM normalized_positions")
+        transaction_count = _query_scalar_int(con, "SELECT COUNT(*) FROM normalized_transactions")
 
         blank_required = con.execute(
             """
@@ -101,10 +122,86 @@ def main() -> int:
             """
         ).fetchone()[0]
 
+        missing_account_import_id = con.execute(
+            """
+            SELECT COUNT(*)
+            FROM normalized_accounts
+            WHERE COALESCE(import_run_id, '') = ''
+            """
+        ).fetchone()[0]
+
+        orphan_account_import_id = con.execute(
+            """
+            SELECT COUNT(*)
+            FROM normalized_accounts a
+            LEFT JOIN import_runs r ON r.import_run_id = a.import_run_id
+            WHERE r.import_run_id IS NULL
+            """
+        ).fetchone()[0]
+
+        missing_order_import_id = con.execute(
+            """
+            SELECT COUNT(*)
+            FROM normalized_orders
+            WHERE COALESCE(import_run_id, '') = ''
+            """
+        ).fetchone()[0]
+
+        orphan_order_import_id = con.execute(
+            """
+            SELECT COUNT(*)
+            FROM normalized_orders o
+            LEFT JOIN import_runs r ON r.import_run_id = o.import_run_id
+            WHERE r.import_run_id IS NULL
+            """
+        ).fetchone()[0]
+
+        missing_position_import_id = con.execute(
+            """
+            SELECT COUNT(*)
+            FROM normalized_positions
+            WHERE COALESCE(import_run_id, '') = ''
+            """
+        ).fetchone()[0]
+
+        orphan_position_import_id = con.execute(
+            """
+            SELECT COUNT(*)
+            FROM normalized_positions p
+            LEFT JOIN import_runs r ON r.import_run_id = p.import_run_id
+            WHERE r.import_run_id IS NULL
+            """
+        ).fetchone()[0]
+
+        missing_transaction_import_id = con.execute(
+            """
+            SELECT COUNT(*)
+            FROM normalized_transactions
+            WHERE COALESCE(import_run_id, '') = ''
+            """
+        ).fetchone()[0]
+
+        orphan_transaction_import_id = con.execute(
+            """
+            SELECT COUNT(*)
+            FROM normalized_transactions t
+            LEFT JOIN import_runs r ON r.import_run_id = t.import_run_id
+            WHERE r.import_run_id IS NULL
+            """
+        ).fetchone()[0]
+
         if import_count <= 0:
             failures.append("import_runs has no rows")
         if fill_count <= 0:
             failures.append("normalized_fills has no rows")
+        if account_count <= 0:
+            failures.append("normalized_accounts has no rows")
+        if order_count <= 0:
+            failures.append("normalized_orders has no rows")
+        if position_count <= 0:
+            failures.append("normalized_positions has no rows")
+        if transaction_count <= 0:
+            failures.append("normalized_transactions has no rows")
         if blank_required:
             failures.append(f"import_runs has {blank_required} row(s) with missing required audit fields")
         if non_ok_status:
@@ -113,15 +210,43 @@ def main() -> int:
             failures.append(f"normalized_fills has {missing_fill_import_id} row(s) without import_run_id")
         if orphan_fill_import_id:
             failures.append(f"normalized_fills has {orphan_fill_import_id} row(s) with orphan import_run_id")
+        if missing_account_import_id:
+            failures.append(f"normalized_accounts has {missing_account_import_id} row(s) without import_run_id")
+        if orphan_account_import_id:
+            failures.append(f"normalized_accounts has {orphan_account_import_id} row(s) with orphan import_run_id")
+        if missing_order_import_id:
+            failures.append(f"normalized_orders has {missing_order_import_id} row(s) without import_run_id")
+        if orphan_order_import_id:
+            failures.append(f"normalized_orders has {orphan_order_import_id} row(s) with orphan import_run_id")
+        if missing_position_import_id:
+            failures.append(f"normalized_positions has {missing_position_import_id} row(s) without import_run_id")
+        if orphan_position_import_id:
+            failures.append(f"normalized_positions has {orphan_position_import_id} row(s) with orphan import_run_id")
+        if missing_transaction_import_id:
+            failures.append(f"normalized_transactions has {missing_transaction_import_id} row(s) without import_run_id")
+        if orphan_transaction_import_id:
+            failures.append(f"normalized_transactions has {orphan_transaction_import_id} row(s) with orphan import_run_id")
 
         print()
         print("===== Counts =====")
         print(f"IMPORT_RUNS       : {import_count}")
         print(f"NORMALIZED_FILLS  : {fill_count}")
+        print(f"NORMALIZED_ACCOUNTS: {account_count}")
+        print(f"NORMALIZED_ORDERS : {order_count}")
+        print(f"NORMALIZED_POSITIONS: {position_count}")
+        print(f"NORMALIZED_TRANSACTIONS: {transaction_count}")
         print(f"BLANK_REQUIRED    : {blank_required}")
         print(f"NON_OK_STATUS     : {non_ok_status}")
         print(f"MISSING_IMPORT_ID : {missing_fill_import_id}")
         print(f"ORPHAN_IMPORT_ID  : {orphan_fill_import_id}")
+        print(f"MISSING_ACCT_ID : {missing_account_import_id}")
+        print(f"ORPHAN_ACCT_ID  : {orphan_account_import_id}")
+        print(f"MISSING_ORDER_ID : {missing_order_import_id}")
+        print(f"ORPHAN_ORDER_ID  : {orphan_order_import_id}")
+        print(f"MISSING_POSITION_ID : {missing_position_import_id}")
+        print(f"ORPHAN_POSITION_ID  : {orphan_position_import_id}")
+        print(f"MISSING_TXN_ID : {missing_transaction_import_id}")
+        print(f"ORPHAN_TXN_ID  : {orphan_transaction_import_id}")
 
     print()
     print("===== Result =====")
