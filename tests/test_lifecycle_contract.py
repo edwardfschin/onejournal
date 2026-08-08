@@ -23,6 +23,7 @@ class LifecycleContractTests(unittest.TestCase):
         open_close: str | None = None,
         asset_class: str = "stock",
         symbol: str = "AAPL",
+        episode_group_id: str | None = None,
         currency: str = "USD",
         source_account_id: str = "demo",
     ) -> NormalizedFill:
@@ -32,7 +33,7 @@ class LifecycleContractTests(unittest.TestCase):
             source_account_id=source_account_id,
             source_fill_id=f"{fill_uid}-src",
             source_order_id=source_order_id,
-            episode_group_id=None,
+            episode_group_id=episode_group_id,
             asof=datetime(2026, 1, 1).date(),
             filled_at=datetime(2026, 1, 1, 10, 0, tzinfo=timezone.utc),
             asset_class=asset_class,
@@ -222,6 +223,75 @@ class LifecycleContractTests(unittest.TestCase):
                 "11",
                 source_order_id="ord-aud-close",
                 currency="AUD",
+            ),
+        ]
+        with self.assertRaises(LifecycleContractError):
+            build_lifecycle_fill_events(fills)
+
+    def test_episode_group_id_unifies_matching_scope_when_present(self) -> None:
+        fills = [
+            self._fill(
+                "aapl-open",
+                "BUY_TO_OPEN",
+                "20",
+                "10",
+                source_order_id="ord-aapl-open",
+                symbol="AAPL",
+                episode_group_id="V0001",
+            ),
+            self._fill(
+                "msft-open",
+                "BUY_TO_OPEN",
+                "20",
+                "12",
+                source_order_id="ord-msft-open",
+                symbol="MSFT",
+                episode_group_id="V0001",
+            ),
+            self._fill(
+                "close",
+                "SELL_TO_CLOSE",
+                "40",
+                "11",
+                source_order_id="ord-cross-close",
+                symbol="AAPL",
+                episode_group_id="V0001",
+            ),
+        ]
+        result = build_lifecycle_fill_events(fills)
+        self.assertEqual(len(result.events), 3)
+        self.assertEqual(result.events[2].status, "close_full")
+        self.assertEqual(result.events[2].matched_open_quantity, Decimal("40"))
+        self.assertEqual(result.events[2].unmatched_close_quantity, Decimal("0"))
+        self.assertEqual(
+            result.scope_open_quantity[result.events[2].scope_key], (Decimal("0"), Decimal("0"))
+        )
+
+    def test_episode_group_id_required_to_unify_cross_symbol_matching(self) -> None:
+        fills = [
+            self._fill(
+                "aapl-open",
+                "BUY_TO_OPEN",
+                "20",
+                "10",
+                source_order_id="ord-aapl-open",
+                symbol="AAPL",
+            ),
+            self._fill(
+                "msft-open",
+                "BUY_TO_OPEN",
+                "20",
+                "12",
+                source_order_id="ord-msft-open",
+                symbol="MSFT",
+            ),
+            self._fill(
+                "close",
+                "SELL_TO_CLOSE",
+                "40",
+                "11",
+                source_order_id="ord-cross-close",
+                symbol="AAPL",
             ),
         ]
         with self.assertRaises(LifecycleContractError):
