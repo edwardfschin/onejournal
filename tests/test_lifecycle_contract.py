@@ -103,6 +103,15 @@ class LifecycleContractTests(unittest.TestCase):
         with self.assertRaises(LifecycleContractError):
             build_lifecycle_fill_events(fills)
 
+    def test_sell_to_open_with_close_flag_is_rejected(self) -> None:
+        fills = [
+            self._fill(
+                "bad", "SELL_TO_OPEN", "10", "10", source_order_id="ord-bad", open_close="CLOSE"
+            )
+        ]
+        with self.assertRaises(LifecycleContractError):
+            build_lifecycle_fill_events(fills)
+
     def test_short_close_consume_short_inventory(self) -> None:
         fills = [
             self._fill(
