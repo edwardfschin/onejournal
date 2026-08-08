@@ -265,9 +265,10 @@ def _existing_column_specs(con: duckdb.DuckDBPyConnection, table: str) -> dict[s
 
 def _ensure_baseline_tables(con: duckdb.DuckDBPyConnection) -> None:
     existing = _table_names(con)
+    existing_without_ledger = existing - {SCHEMA_MIGRATIONS_TABLE}
     required_tables = set(BASELINE_TABLE_DEFINITIONS.keys())
-    missing = required_tables - existing
-    if not existing:
+    missing = required_tables - existing_without_ledger
+    if not existing_without_ledger:
         for table_name in ("import_runs", "normalized_fills", "manual_reviews", "trade_episodes", "trade_episode_legs"):
             con.execute(BASELINE_TABLE_DEFINITIONS[table_name])
         return
