@@ -40,6 +40,10 @@ def main() -> int:
         print("UNSUPPORTED_ASSET_COUNTS:")
         for key, count in sorted(stats.unsupported_asset_counts.items()):
             print(f"  - {key:<24} : {count}")
+    if stats.unsupported_record_counts:
+        print("UNSUPPORTED_RECORD_COUNTS:")
+        for key, count in sorted(stats.unsupported_record_counts.items()):
+            print(f"  - {key:<24} : {count}")
     print("STATUS    : OK")
     return 0
 

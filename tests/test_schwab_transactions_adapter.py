@@ -27,6 +27,26 @@ class TransactionsJsonAdapterTests(unittest.TestCase):
         self.assertEqual(stats.transactions, 1)
         self.assertEqual(stats.trade_valid, 0)
         self.assertEqual(stats.fill_rows, 0)
+        self.assertEqual(stats.unsupported_record_counts, {"record_type:TRANSFER": 1})
+        self.assertEqual(stats.unsupported_items, 1)
+
+    def test_invalid_status_transaction_is_counted_as_unsupported_record(self) -> None:
+        rows, stats = normalized_rows_from_transactions(
+            [
+                {
+                    "type": "TRADE",
+                    "status": "INVALID",
+                    "tradeDate": "2026-07-01T12:00:00-05:00",
+                    "transferItems": [],
+                    "activityType": "OPTION_EXERCISE",
+                }
+            ]
+        )
+
+        self.assertEqual(len(rows), 0)
+        self.assertEqual(stats.trade_valid, 0)
+        self.assertEqual(stats.unsupported_items, 1)
+        self.assertEqual(stats.unsupported_record_counts, {"record_status:INVALID": 1})
 
     def test_activity_type_that_requires_non_fill_support_is_skipped_as_unsupported(self) -> None:
         rows, stats = normalized_rows_from_transactions(

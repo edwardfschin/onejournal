@@ -59,6 +59,7 @@ class SchwabTransactionsJsonStats:
     unsupported_items: int = 0
     unsupported_activity_counts: dict[str, int] = field(default_factory=dict)
     unsupported_asset_counts: dict[str, int] = field(default_factory=dict)
+    unsupported_record_counts: dict[str, int] = field(default_factory=dict)
 
 
 def validate_asof(value: str | None) -> str | None:
@@ -179,9 +180,20 @@ def normalized_rows_from_transactions(transactions: list[dict[str, Any]], *, aso
 
     unsupported_activity_counts: dict[str, int] = {}
     unsupported_asset_counts: dict[str, int] = {}
+    unsupported_record_counts: dict[str, int] = {}
 
     for txn in transactions:
-        if str(txn.get("type", "")).upper() != "TRADE" or str(txn.get("status", "")).upper() != "VALID":
+        record_type = str(txn.get("type", "")).upper().strip() or "EMPTY"
+        record_status = str(txn.get("status", "")).upper().strip() or "EMPTY"
+        if record_type != "TRADE":
+            unsupported += 1
+            key = f"record_type:{record_type}"
+            unsupported_record_counts[key] = unsupported_record_counts.get(key, 0) + 1
+            continue
+        if record_status != "VALID":
+            unsupported += 1
+            key = f"record_status:{record_status}"
+            unsupported_record_counts[key] = unsupported_record_counts.get(key, 0) + 1
             continue
         reason = _unsupported_activity_key(txn)
         if reason is not None:
@@ -285,14 +297,15 @@ def normalized_rows_from_transactions(transactions: list[dict[str, Any]], *, aso
             })
 
     return rows, SchwabTransactionsJsonStats(
-        transactions=len(transactions),
-        trade_valid=trade_valid,
-        security_items=security_items,
-        currency_items=currency_items,
-        fill_rows=len(rows),
-        unsupported_items=unsupported,
-        unsupported_activity_counts=unsupported_activity_counts,
-        unsupported_asset_counts=unsupported_asset_counts,
+    transactions=len(transactions),
+    trade_valid=trade_valid,
+    security_items=security_items,
+    currency_items=currency_items,
+    fill_rows=len(rows),
+    unsupported_items=unsupported,
+    unsupported_activity_counts=unsupported_activity_counts,
+    unsupported_asset_counts=unsupported_asset_counts,
+    unsupported_record_counts=unsupported_record_counts,
     )
 
 

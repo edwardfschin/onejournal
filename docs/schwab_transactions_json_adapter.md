@@ -32,6 +32,10 @@ These skipped rows are counted as unsupported in adapter statistics.
 Unsupported activity reasons are reported by key (for example `activityType:ASSIGNMENT`,
 `subType:EXERCISE`) and unsupported security asset types are reported separately.
 
+Non-trade and non-valid records are also tracked as unsupported record reasons
+(for example `record_type:TRANSFER`, `record_status:INVALID`) so that each skip
+is explicitly auditable.
+
 CURRENCY transferItems are fee and commission evidence.
 
 Security transferItems are fill-leg candidates.
