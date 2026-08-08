@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import re
 from dataclasses import dataclass
 from datetime import datetime
 from hashlib import sha256
@@ -258,9 +259,13 @@ def _table_names(con: duckdb.DuckDBPyConnection) -> set[str]:
     return {row[0] for row in con.execute("SHOW TABLES").fetchall()}
 
 
+def _normalize_type_decl(type_decl: str) -> str:
+    return re.sub(r"\s+", "", str(type_decl).upper())
+
+
 def _existing_column_specs(con: duckdb.DuckDBPyConnection, table: str) -> dict[str, tuple[str, bool]]:
     rows = con.execute(f"PRAGMA table_info({table})").fetchall()
-    return {row[1]: (str(row[2]).upper(), bool(row[3])) for row in rows}
+    return {row[1]: (_normalize_type_decl(row[2]), bool(row[3])) for row in rows}
 
 
 def _ensure_baseline_tables(con: duckdb.DuckDBPyConnection) -> None:
@@ -289,7 +294,7 @@ def _ensure_baseline_tables(con: duckdb.DuckDBPyConnection) -> None:
             )
         for expected in expected_columns:
             existing_type, existing_not_null = existing_columns[expected.name]
-            if expected.type_decl != existing_type:
+            if _normalize_type_decl(expected.type_decl) != existing_type:
                 raise RuntimeError(
                     f"baseline schema mismatch for {table_name}.{expected.name}: "
                     f"expected {expected.type_decl}, found {existing_type}"
