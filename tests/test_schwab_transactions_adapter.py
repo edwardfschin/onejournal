@@ -312,3 +312,37 @@ class TransactionsJsonAdapterTests(unittest.TestCase):
         self.assertEqual(len(rows), 0)
         self.assertEqual(stats.unsupported_items, 2)
         self.assertEqual(stats.unsupported_record_counts, {"record_items:missing_instrument": 1, "record_security:unsupported_or_missing": 1})
+
+    def test_non_dict_transfer_item_does_not_block_supported_leg(self) -> None:
+        rows, stats = normalized_rows_from_transactions(
+            [
+                {
+                    "type": "TRADE",
+                    "status": "VALID",
+                    "activityId": "A9",
+                    "tradeDate": "2026-07-01T12:00:00-05:00",
+                    "accountNumber": "ACCT1",
+                    "orderId": "ORD-009",
+                    "positionId": "POS-009",
+                    "transferItems": [
+                        "BAD_ITEM",
+                        {
+                            "amount": 1,
+                            "cost": 100,
+                            "price": 100,
+                            "instrument": {
+                                "assetType": "EQUITY",
+                                "symbol": "MSFT",
+                            },
+                            "positionEffect": "OPENING",
+                        },
+                    ],
+                }
+            ]
+        )
+
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0]["symbol"], "MSFT")
+        self.assertEqual(stats.security_items, 1)
+        self.assertEqual(stats.unsupported_items, 1)
+        self.assertEqual(stats.unsupported_record_counts, {"record_items:non_object": 1})
