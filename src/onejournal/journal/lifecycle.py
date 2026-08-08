@@ -164,6 +164,15 @@ def _classify_fill(fill: NormalizedFill) -> tuple[LifecycleAction, Decimal, Life
             return "CLOSE", qty, "SHORT"
         raise LifecycleContractError(f"Unsupported open_close value for side {fill.side}: {fill.open_close}")
 
+    if side == "BUY_TO_CLOSE":
+        if open_close in {"", "CLOSE"}:
+            return "CLOSE", qty, "SHORT"
+        if open_close == "OPEN":
+            raise LifecycleContractError(
+                f"Unsupported open_close value for side {fill.side}: {fill.open_close}"
+            )
+        raise LifecycleContractError(f"Unsupported open_close value for side {fill.side}: {fill.open_close}")
+
     if side == "SELL_TO_CLOSE":
         return "CLOSE", qty, "LONG"
 
