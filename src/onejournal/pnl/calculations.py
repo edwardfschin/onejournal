@@ -197,22 +197,31 @@ def _classify_fill(fill: NormalizedFill) -> tuple[str, Decimal, str]:
           - direction: LONG for long positions opened/closed, SHORT for short.
     """
 
-    side = fill.side.upper()
-    open_close = (fill.open_close or "").upper()
+    side = (fill.side or "").strip().upper()
+    open_close = (fill.open_close or "").strip().upper()
     qty = _normalize_quantity(fill.quantity)
 
-    if side in {"BUY", "BUY_TO_OPEN"}:
+    if side == "BUY":
         if open_close in {"", "OPEN"}:
             return "OPEN", qty, "LONG"
         if open_close == "CLOSE":
-            return "CLOSE", qty, "LONG"
+            return "CLOSE", qty, "SHORT"
+        raise LotAllocationError(f"Unsupported open_close value for side {fill.side}: {fill.open_close}")
+
+    if side == "BUY_TO_OPEN":
+        if open_close in {"", "OPEN"}:
+            return "OPEN", qty, "LONG"
         raise LotAllocationError(f"Unsupported open_close value for side {fill.side}: {fill.open_close}")
 
     if side == "SELL_TO_CLOSE":
         return "CLOSE", qty, "LONG"
 
     if side == "BUY_TO_CLOSE":
-        return "CLOSE", qty, "SHORT"
+        if open_close in {"", "CLOSE"}:
+            return "CLOSE", qty, "SHORT"
+        if open_close == "OPEN":
+            raise LotAllocationError(f"Unsupported open_close value for side {fill.side}: {fill.open_close}")
+        raise LotAllocationError(f"Unsupported open_close value for side {fill.side}: {fill.open_close}")
 
     if side in {"SELL", "SELL_TO_OPEN"}:
         if open_close in {"", "OPEN"}:

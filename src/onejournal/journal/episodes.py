@@ -193,12 +193,12 @@ def _build_previews_from_lifecycle_bucket(
 
 
 def _episode_bucket_key(fill: NormalizedFill) -> tuple[str, str, str, str, str]:
-    episode_key = fill.episode_group_id or build_instrument_key(fill)
+    episode_key = (fill.episode_group_id or "").strip() or build_instrument_key(fill)
     return (
         fill.source_broker,
         fill.source_account_id,
         fill.asset_class,
-        (fill.currency or "").upper(),
+        (fill.currency or "").strip().upper(),
         episode_key,
     )
 
@@ -263,9 +263,9 @@ def _primary_symbol_for_episode(fills: list[NormalizedFill], fallback: str) -> s
 
 
 def _leg_short_label(fill: NormalizedFill) -> str:
-    side = fill.side.upper()
+    side = (fill.side or "").strip().upper()
     qty = format(fill.quantity, "f")
-    symbol = fill.option_symbol or fill.symbol
+    symbol = (fill.option_symbol or fill.symbol or "").strip()
     return f"{side} {qty} {symbol}"
 
 
@@ -281,11 +281,11 @@ def _cashflow_label(value: Decimal) -> str:
 def _leg_to_payload(fill: NormalizedFill) -> dict[str, Any]:
     cashflow = _cashflow(fill)
     return {
-        "side": fill.side.upper(),
-        "symbol": fill.symbol,
-        "option_symbol": fill.option_symbol,
-        "underlying_symbol": fill.underlying_symbol,
-        "option_type": fill.option_type,
+        "side": (fill.side or "").strip().upper(),
+        "symbol": (fill.symbol or "").strip(),
+        "option_symbol": (fill.option_symbol or "").strip(),
+        "underlying_symbol": (fill.underlying_symbol or "").strip(),
+        "option_type": (fill.option_type or "").strip().upper(),
         "expiry": fill.expiry.isoformat() if fill.expiry else None,
         "strike": format(fill.strike, "f") if fill.strike is not None else None,
         "quantity": format(fill.quantity, "f"),
@@ -294,6 +294,7 @@ def _leg_to_payload(fill: NormalizedFill) -> dict[str, Any]:
         "commission": format(fill.commission, "f"),
         "fees": format(fill.fees, "f"),
     }
+
 
 def _episode_status(
     fills: list[NormalizedFill],
@@ -306,7 +307,7 @@ def _episode_status(
     Multi-leg opening spreads may net to zero but are still open.
     """
 
-    open_close_values = {(fill.open_close or "").upper() for fill in fills}
+    open_close_values = {(fill.open_close or "").strip().upper() for fill in fills}
     if "OPEN" in open_close_values:
         return "open"
     if net_quantity == 0:
@@ -331,7 +332,7 @@ def _classify_strategy(fills: list[NormalizedFill]) -> tuple[str, str]:
         underlyings = {(fill.underlying_symbol or "").upper() for fill in option_fills}
         expiries = {fill.expiry for fill in option_fills}
         option_types = {(fill.option_type or "").upper() for fill in option_fills}
-        sides = {fill.side.upper() for fill in option_fills}
+        sides = {(fill.side or "").strip().upper() for fill in option_fills}
         has_buy = bool(sides & {"BUY", "BUY_TO_OPEN", "BUY_TO_CLOSE"})
         has_sell = bool(sides & {"SELL", "SELL_TO_OPEN", "SELL_TO_CLOSE"})
         if len(underlyings) == 1 and len(expiries) == 1 and len(option_types) == 1 and has_buy and has_sell:
@@ -352,9 +353,9 @@ def _classify_strategy(fills: list[NormalizedFill]) -> tuple[str, str]:
 
     first = fills[0]
     asset_class = first.asset_class.lower()
-    side = first.side.upper()
+    side = (first.side or "").strip().upper()
     option_type = (first.option_type or "").upper()
-    open_close = (first.open_close or "").upper()
+    open_close = (first.open_close or "").strip().upper()
 
     if asset_class == "option" and open_close in {"", "OPEN"}:
         if side in {"SELL", "SELL_TO_OPEN"} and option_type == "PUT":
@@ -377,7 +378,7 @@ def _classify_strategy(fills: list[NormalizedFill]) -> tuple[str, str]:
 def _signed_quantity(fill: NormalizedFill) -> Decimal:
     """Return signed quantity using simple BUY/SELL side convention."""
 
-    side = fill.side.upper()
+    side = (fill.side or "").strip().upper()
 
     if side in {"BUY", "BUY_TO_OPEN", "BUY_TO_CLOSE"}:
         return fill.quantity
@@ -397,7 +398,7 @@ def _cashflow(fill: NormalizedFill) -> Decimal:
     For options, multiplier is applied when available.
     """
 
-    side = fill.side.upper()
+    side = (fill.side or "").strip().upper()
     multiplier = fill.multiplier if fill.multiplier is not None else Decimal("1")
     notional = fill.quantity * fill.fill_price * multiplier
 

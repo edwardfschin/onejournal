@@ -156,32 +156,46 @@ class PnLFifoContractTests(unittest.TestCase):
         self.assertEqual(group.realized_pnl, Decimal("78"))
         self.assertEqual(group.open_quantity, Decimal("0"))
 
-    def test_buy_side_with_explicit_close_open_close(self) -> None:
+    def test_buy_side_with_explicit_close_open_close_closes_short(self) -> None:
         fills = [
             self._fill(
-                fill_uid="buy-open",
-                side="BUY_TO_OPEN",
+                fill_uid="short-open",
+                side="SELL_TO_OPEN",
                 quantity="1",
                 fill_price="10",
                 asset_class="stock",
                 symbol="AAPL",
-                commission="1",
             ),
             self._fill(
-                fill_uid="buy-close",
+                fill_uid="buy-open",
                 side="BUY",
                 quantity="1",
                 fill_price="9",
                 asset_class="stock",
                 symbol="AAPL",
                 open_close="close",
-                commission="1",
             ),
         ]
         result = calculate_fifo_pnl_from_fills(fills)
         group = self._group_for_instrument(result, fills[0])
-        self.assertEqual(group.realized_pnl, Decimal("-3"))
+        self.assertEqual(group.realized_pnl, Decimal("1"))
         self.assertEqual(group.open_quantity, Decimal("0"))
+
+    def test_buy_to_open_with_explicit_close_open_close_is_rejected(self) -> None:
+        with self.assertRaises(LotAllocationError):
+            calculate_fifo_pnl_from_fills(
+                [
+                    self._fill(
+                        fill_uid="buy-open",
+                        side="BUY_TO_OPEN",
+                        quantity="1",
+                        fill_price="10",
+                        asset_class="stock",
+                        symbol="AAPL",
+                        open_close="close",
+                    )
+                ]
+            )
 
     def test_unrealized_uses_mark_when_available(self) -> None:
         fill = self._fill(fill_uid="open", side="BUY", quantity="100", fill_price="10", symbol="MSFT")

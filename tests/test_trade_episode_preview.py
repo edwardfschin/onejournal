@@ -293,6 +293,32 @@ class LifecycleEpisodePreviewTests(unittest.TestCase):
         self.assertEqual(previews[0].status, "open")
         self.assertEqual(previews[0].fill_count, 3)
 
+    def test_whitespace_episode_group_id_is_ignored_for_bucketing(self) -> None:
+        fills = [
+            self._fill(
+                fill_uid="aapl-open",
+                side="BUY",
+                quantity="10",
+                fill_price="10",
+                source_order_id="ord-aapl-open",
+                symbol="AAPL",
+                episode_group_id="   ",
+            ),
+            self._fill(
+                fill_uid="msft-open",
+                side="BUY",
+                quantity="10",
+                fill_price="20",
+                source_order_id="ord-msft-open",
+                symbol="MSFT",
+                episode_group_id="   ",
+            ),
+        ]
+        previews = build_episode_previews_from_fills(fills)
+        self.assertEqual(len(previews), 2)
+        self.assertEqual(previews[0].episode_uid, "manual_csv:acct:stock:stock|AAPL")
+        self.assertEqual(previews[1].episode_uid, "manual_csv:acct:stock:stock|MSFT")
+
 
 if __name__ == "__main__":
     unittest.main()

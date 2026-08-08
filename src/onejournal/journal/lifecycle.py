@@ -141,13 +141,13 @@ def _scope_key(fill: NormalizedFill) -> tuple[str, str, str, str]:
             fill.source_broker,
             fill.source_account_id,
             f"episode:{episode_group}",
-            fill.currency,
+            (fill.currency or "").strip().upper(),
         )
     return (
         fill.source_broker,
         fill.source_account_id,
         build_instrument_key(fill),
-        fill.currency,
+        (fill.currency or "").strip().upper(),
     )
 
 
@@ -158,11 +158,16 @@ def _classify_fill(fill: NormalizedFill) -> tuple[LifecycleAction, Decimal, Life
     open_close = (fill.open_close or "").strip().upper()
     qty = _normalize_quantity(fill.quantity)
 
-    if side in {"BUY", "BUY_TO_OPEN"}:
+    if side == "BUY":
         if open_close in {"", "OPEN"}:
             return "OPEN", qty, "LONG"
         if open_close == "CLOSE":
             return "CLOSE", qty, "SHORT"
+        raise LifecycleContractError(f"Unsupported open_close value for side {fill.side}: {fill.open_close}")
+
+    if side == "BUY_TO_OPEN":
+        if open_close in {"", "OPEN"}:
+            return "OPEN", qty, "LONG"
         raise LifecycleContractError(f"Unsupported open_close value for side {fill.side}: {fill.open_close}")
 
     if side == "BUY_TO_CLOSE":
@@ -174,16 +179,13 @@ def _classify_fill(fill: NormalizedFill) -> tuple[LifecycleAction, Decimal, Life
             )
         raise LifecycleContractError(f"Unsupported open_close value for side {fill.side}: {fill.open_close}")
 
-    if side == "SELL_TO_CLOSE":
-        return "CLOSE", qty, "LONG"
-
-    if side == "BUY_TO_CLOSE":
-        return "CLOSE", qty, "SHORT"
-
     if side == "SELL_TO_OPEN":
         if open_close in {"", "OPEN"}:
             return "OPEN", qty, "SHORT"
         raise LifecycleContractError(f"Unsupported open_close value for side {fill.side}: {fill.open_close}")
+
+    if side == "SELL_TO_CLOSE":
+        return "CLOSE", qty, "LONG"
 
     if side == "SELL":
         if open_close in {"", "OPEN"}:

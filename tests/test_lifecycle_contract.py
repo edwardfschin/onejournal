@@ -162,6 +162,20 @@ class LifecycleContractTests(unittest.TestCase):
         self.assertEqual(result.events[1].matched_open_quantity, Decimal("10"))
         self.assertEqual(result.scope_open_quantity[result.events[1].scope_key], (Decimal("0"), Decimal("20")))
 
+    def test_buy_to_open_with_close_open_close_flag_is_rejected(self) -> None:
+        fills = [
+            self._fill(
+                "bad",
+                "BUY_TO_OPEN",
+                "10",
+                "10",
+                source_order_id="ord-bad",
+                open_close="CLOSE",
+            )
+        ]
+        with self.assertRaises(LifecycleContractError):
+            build_lifecycle_fill_events(fills)
+
     def test_buy_to_close_default_is_supported_when_open_close_not_explicit(self) -> None:
         fills = [
             self._fill(
