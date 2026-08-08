@@ -126,6 +126,31 @@ class LifecycleContractTests(unittest.TestCase):
         self.assertEqual(result.events[1].matched_open_quantity, Decimal("25"))
         self.assertEqual(result.scope_open_quantity[result.events[0].scope_key], (Decimal("0"), Decimal("50")))
 
+    def test_buy_to_close_short_is_supported(self) -> None:
+        fills = [
+            self._fill(
+                "short-open",
+                "SELL_TO_OPEN",
+                "30",
+                "4",
+                source_order_id="ord-short-open",
+            ),
+            self._fill(
+                "short-close",
+                "BUY",
+                "10",
+                "3.5",
+                source_order_id="ord-short-close",
+                open_close="CLOSE",
+            ),
+        ]
+        result = build_lifecycle_fill_events(fills)
+        self.assertEqual(result.events[1].status, "close_full")
+        self.assertEqual(result.events[1].direction, "SHORT")
+        self.assertEqual(result.events[1].fill_uid, "short-close")
+        self.assertEqual(result.events[1].matched_open_quantity, Decimal("10"))
+        self.assertEqual(result.scope_open_quantity[result.events[1].scope_key], (Decimal("0"), Decimal("20")))
+
     def test_account_is_part_of_lifecycle_matching_scope(self) -> None:
         fills = [
             self._fill(
