@@ -119,8 +119,8 @@ position state.
 |---|---|---|---|
 | JRN-01 | COMPLETE | Version and migrate the DuckDB schema using the approved migration convention. | Migration ledger, baseline tables, schema checks, and contract tests are in place. |
 | JRN-02 | COMPLETE | Persist normalized accounts, orders, positions, transactions, and required source lineage—not only fills. | Normalized family derivation, import-run linkage checks, and contract coverage now exercise all families. |
-| JRN-03 | IN_REVIEW | Replace preview grouping with a deterministic trade-lifecycle engine. | Entry/exit/partial/reopen fixtures and deterministic lifecycle tests are implemented. |
-| JRN-04 | IN_REVIEW | Add multi-leg lifecycle handling for verticals and later approved strategies. | Preview-level and lifecycle-contract fixtures for multi-leg and cross-symbol matching using explicit episode-group scope are in place. |
+| JRN-03 | COMPLETE | Replace preview grouping with a deterministic trade-lifecycle engine. | Entry/exit/partial/reopen fixtures and deterministic lifecycle tests are implemented and merge-validated. |
+| JRN-04 | COMPLETE | Add multi-leg lifecycle handling for verticals and later approved strategies. | Preview-level and lifecycle-contract fixtures for multi-leg and cross-symbol matching using explicit episode-group scope are in place. |
 | JRN-05 | BLOCKED | Add assignments, exercises, expirations, rolls, transfers, dividends, and corporate-action handling. | Each approved event has reconciled lifecycle fixtures. |
 | JRN-06 | BLOCKED | Add correction/replay support without losing audit history or manual reviews. | Re-import and correction tests are deterministic and idempotent. |
 | JRN-07 | BLOCKED | Strengthen broker-to-journal reconciliation at fill, transaction, position, cash, and account levels. | Differences are classified and block publication when policy requires it. |
@@ -251,11 +251,9 @@ approval and successful completion of every prior safety gate.
 
 The current actionable sequence is:
 
-1. `JRN-03` - finalize deterministic lifecycle grouping and reconcile edge-case handling.
-2. `JRN-04` - continue multi-leg and strategy-expansion lifecycle handling.
-3. `JRN-05` - add assignments, exercises, expirations, rolls, transfers, dividends, and corporate actions.
-4. `JRN-06` - add correction/replay support without losing audit history or manual reviews.
-5. `JRN-07` - strengthen reconciliation and enforce policy-based blockers.
+1. `JRN-05` - add assignments, exercises, expirations, rolls, transfers, dividends, and corporate actions.
+2. `JRN-06` - add correction/replay support without losing audit history or manual reviews.
+3. `JRN-07` - strengthen reconciliation and enforce policy-based blockers.
 
 No P&L, production website, or execution implementation should bypass these
 foundational and contract decisions.
