@@ -117,7 +117,7 @@ position state.
 
 | ID | Status | Action | Completion evidence |
 |---|---|---|---|
-| JRN-01 | BLOCKED | Version and migrate the DuckDB schema using the approved migration convention. | Existing data migrates on a temporary copy with integrity and rollback proof. |
+| JRN-01 | IN_REVIEW | Version and migrate the DuckDB schema using the approved migration convention. | PR #7 covers idempotent baseline bootstrap, ledger safety, and validation parity. |
 | JRN-02 | BLOCKED | Persist normalized accounts, orders, positions, transactions, and required source lineage—not only fills. | Contract checks prove all records are broker-independent and traceable. |
 | JRN-03 | BLOCKED | Replace preview grouping with a deterministic trade-lifecycle engine. | Fixtures cover entry, exit, partial fill, partial close, and reopen cases. |
 | JRN-04 | BLOCKED | Add multi-leg lifecycle handling for verticals and later approved strategies. | Legs remain grouped correctly through opens, closes, and adjustments. |
