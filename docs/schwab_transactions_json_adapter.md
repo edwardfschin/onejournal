@@ -18,6 +18,18 @@ python scripts/journal/check_normalized_fills_contract.py --asof 2025-05-19 --fi
 
 Only TRADE and VALID transaction records are converted.
 
+Activity and subtype hints that represent lifecycle-only events are excluded from fill conversion in this version:
+
+- `ASSIGNMENT`
+- `EXERCISE`
+- `EXPIRATION`
+- `CORPORATE_ACTION`
+- `DIVIDEND`
+- `INTEREST`
+- `TRANSFER`
+
+These skipped rows are counted as unsupported in adapter statistics.
+
 CURRENCY transferItems are fee and commission evidence.
 
 Security transferItems are fill-leg candidates.
