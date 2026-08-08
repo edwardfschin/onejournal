@@ -30,10 +30,7 @@ CREATE TABLE normalized_accounts (
     initial_requirement DECIMAL(38, 10),
     day_trade_buying_power DECIMAL(38, 10),
     status VARCHAR,
-    import_run_id VARCHAR,
-    CONSTRAINT fk_normalized_accounts_import_run
-      FOREIGN KEY (import_run_id)
-      REFERENCES import_runs (import_run_id)
+    import_run_id VARCHAR
 );
 
 CREATE TABLE normalized_orders (
@@ -62,10 +59,7 @@ CREATE TABLE normalized_orders (
     parent_order_id VARCHAR,
     broker_strategy_type VARCHAR,
     notes VARCHAR,
-    import_run_id VARCHAR,
-    CONSTRAINT fk_normalized_orders_import_run
-      FOREIGN KEY (import_run_id)
-      REFERENCES import_runs (import_run_id)
+    import_run_id VARCHAR
 );
 
 CREATE TABLE normalized_positions (
@@ -92,10 +86,7 @@ CREATE TABLE normalized_positions (
     expiry DATE,
     strike DECIMAL(38, 10),
     multiplier DECIMAL(38, 10),
-    import_run_id VARCHAR,
-    CONSTRAINT fk_normalized_positions_import_run
-      FOREIGN KEY (import_run_id)
-      REFERENCES import_runs (import_run_id)
+    import_run_id VARCHAR
 );
 
 CREATE TABLE normalized_transactions (
@@ -119,8 +110,5 @@ CREATE TABLE normalized_transactions (
     description VARCHAR,
     linked_order_id VARCHAR,
     linked_fill_id VARCHAR,
-    import_run_id VARCHAR,
-    CONSTRAINT fk_normalized_transactions_import_run
-      FOREIGN KEY (import_run_id)
-      REFERENCES import_runs (import_run_id)
+    import_run_id VARCHAR
 );

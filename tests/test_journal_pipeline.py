@@ -221,6 +221,113 @@ class JournalPipelineIntegrationTests(unittest.TestCase):
                 ],
             )
 
+    def test_import_rejects_conflicting_fill_replays_without_replace(self) -> None:
+        base_fills_csv = Path(self.temp_dir.name) / "base_fills.csv"
+        conflict_fills_csv = Path(self.temp_dir.name) / "conflict_fills.csv"
+        reviews_csv = Path(self.temp_dir.name) / "reviews.csv"
+
+        base_fills_csv.write_text(
+            """asof,source_broker,source_account_id,source_fill_id,filled_at,asset_class,symbol,side,quantity,fill_price,commission,fees,currency,source_order_id,option_symbol,underlying_symbol,option_type,expiry,strike,multiplier,open_close,execution_venue,liquidity_flag,episode_group_id
+2026-06-02,manual_csv,DEMO_ACCOUNT,FILL-001,2026-06-02T10:00:00+00:00,stock,AAPL,BUY,1,150,0.10,0.20,USD,ORDER-001,,,,,,,,,,
+""",
+            encoding="utf-8",
+        )
+        conflict_fills_csv.write_text(
+            """asof,source_broker,source_account_id,source_fill_id,filled_at,asset_class,symbol,side,quantity,fill_price,commission,fees,currency,source_order_id,option_symbol,underlying_symbol,option_type,expiry,strike,multiplier,open_close,execution_venue,liquidity_flag,episode_group_id
+2026-06-02,manual_csv,DEMO_ACCOUNT,FILL-001,2026-06-02T10:00:00+00:00,stock,AAPL,BUY,1,150,1.99,0.20,USD,ORDER-001,,,,,,,,,,
+""",
+            encoding="utf-8",
+        )
+        reviews_csv.write_text(
+            "episode_uid,review_status,setup_quality,entry_reason,notes\n"
+            "manual_csv:DEMO_ACCOUNT:stock:AAPL,reviewed,acceptable,,\n",
+            encoding="utf-8",
+        )
+
+        import_to_db(
+            self.db_path,
+            base_fills_csv,
+            reviews_csv,
+            replace=True,
+            asof=date(2026, 6, 2),
+        )
+
+        with self.assertRaisesRegex(
+            ValueError, "conflicting fill replays detected; run import with --replace"
+        ):
+            import_to_db(
+                self.db_path,
+                conflict_fills_csv,
+                reviews_csv,
+                replace=False,
+                asof=date(2026, 6, 2),
+            )
+
+    def test_replace_reimport_tracks_fill_revisions_and_preserves_manual_reviews(self) -> None:
+        base_fills_csv = Path(self.temp_dir.name) / "base_fills.csv"
+        corrected_fills_csv = Path(self.temp_dir.name) / "corrected_fills.csv"
+        reviews_csv = Path(self.temp_dir.name) / "reviews.csv"
+
+        base_fills_csv.write_text(
+            """asof,source_broker,source_account_id,source_fill_id,filled_at,asset_class,symbol,side,quantity,fill_price,commission,fees,currency,source_order_id,option_symbol,underlying_symbol,option_type,expiry,strike,multiplier,open_close,execution_venue,liquidity_flag,episode_group_id
+2026-06-02,manual_csv,DEMO_ACCOUNT,FILL-001,2026-06-02T10:00:00+00:00,stock,AAPL,BUY,1,150,0.10,0.20,USD,ORDER-001,,,,,,,,,,
+""",
+            encoding="utf-8",
+        )
+        corrected_fills_csv.write_text(
+            """asof,source_broker,source_account_id,source_fill_id,filled_at,asset_class,symbol,side,quantity,fill_price,commission,fees,currency,source_order_id,option_symbol,underlying_symbol,option_type,expiry,strike,multiplier,open_close,execution_venue,liquidity_flag,episode_group_id
+2026-06-02,manual_csv,DEMO_ACCOUNT,FILL-001,2026-06-02T10:00:00+00:00,stock,AAPL,BUY,1,150,0.15,0.20,USD,ORDER-001,,,,,,,,,,
+""",
+            encoding="utf-8",
+        )
+        reviews_csv.write_text(
+            "episode_uid,review_status,setup_quality,entry_reason,notes\n"
+            "manual_csv:DEMO_ACCOUNT:stock:AAPL,reviewed,acceptable,,\n",
+            encoding="utf-8",
+        )
+
+        import_to_db(
+            self.db_path,
+            base_fills_csv,
+            reviews_csv,
+            replace=True,
+            asof=date(2026, 6, 2),
+        )
+        with duckdb.connect(str(self.db_path), read_only=True) as con:
+            first_reviews_expected = con.execute(
+                "SELECT COUNT(*) FROM manual_reviews"
+            ).fetchone()[0]
+
+        import_to_db(
+            self.db_path,
+            corrected_fills_csv,
+            reviews_csv,
+            replace=True,
+            asof=date(2026, 6, 2),
+        )
+
+        with duckdb.connect(str(self.db_path), read_only=True) as con:
+            self.assertEqual(
+                con.execute("SELECT COUNT(*) FROM manual_reviews").fetchone()[0],
+                first_reviews_expected,
+            )
+            revisions = con.execute(
+                """
+                SELECT event_type, prior_signature, next_signature, prior_payload_json, next_payload_json
+                FROM normalized_fill_revisions
+                """
+            ).fetchall()
+            self.assertEqual(len(revisions), 1)
+            self.assertEqual(revisions[0][0], "correction_rewrite")
+            self.assertIsNotNone(revisions[0][3])
+            self.assertIsNotNone(revisions[0][4])
+            self.assertNotEqual(revisions[0][1], revisions[0][2])
+            self.assertEqual(
+                con.execute(
+                    "SELECT commission FROM normalized_fills WHERE source_fill_id='FILL-001'"
+                ).fetchone()[0],
+                Decimal("0.15"),
+            )
 
 if __name__ == "__main__":
     unittest.main()

@@ -149,6 +149,7 @@ def main() -> int:
             run([sys.executable, "scripts/journal/import_journal_to_db.py", "--asof", asof, "--file", str(txns_out), "--db", str(db_path)])
             run([sys.executable, "scripts/journal/check_journal_db.py", "--db", str(db_path)])
             run([sys.executable, "scripts/journal/check_import_run_audit.py", "--db", str(db_path)])
+            run([sys.executable, "scripts/journal/check_journal_reconciliation.py", "--db", str(db_path), "--asof", asof, "--policy", "publish"])
             run([sys.executable, "scripts/journal/build_dashboard_payload_from_db.py", "--asof", asof, "--db", str(db_path), "--output", str(payload_out), "--write"])
             run([sys.executable, "scripts/journal/check_db_dashboard_contract.py", "--asof", asof, "--payload", str(payload_out)])
             print("")

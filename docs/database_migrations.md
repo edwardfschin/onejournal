@@ -14,6 +14,7 @@ through the journal migration runner and the migration artifact set:
 - `normalized_orders`
 - `normalized_positions`
 - `normalized_transactions`
+- `normalized_fill_revisions`
 - `schema_migrations`
 
 The baseline is now versioned at `0001_establish_schema_version`.
@@ -41,6 +42,7 @@ Examples:
 ```text
 0001_establish_schema_version.sql
 0002_add_normalized_accounts_orders_positions_transactions.sql
+0003_add_normalized_fill_revisions.sql
 ```
 
 Rules:

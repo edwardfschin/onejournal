@@ -17,8 +17,13 @@ from pathlib import Path
 import duckdb
 
 from onejournal.brokers.manual_csv.fills import parse_manual_fills_csv
+from onejournal.brokers.normalized import NormalizedFill
 from onejournal.journal.episodes import build_episode_previews_from_fills
-from onejournal.journal.identity import dedupe_identical_fills
+from onejournal.journal.identity import (
+    build_fill_identity_signature,
+    conflicting_fill_identity_report,
+    dedupe_identical_fills,
+)
 from onejournal.journal.reviews import load_manual_reviews
 
 DEFAULT_DB = Path("data/journal/onejournal.duckdb")
@@ -70,6 +75,276 @@ def _position_uid_for(key: tuple) -> str:
         str(part) if part is not None else ""
         for part in key
     )
+
+
+def _fill_record_signature(fill: NormalizedFill | dict[str, object]) -> tuple:
+    if not isinstance(fill, dict):
+        fill = fill.__dict__
+    if isinstance(fill, dict):
+        record = {
+            "fill_uid": fill["fill_uid"],
+            "source_broker": fill["source_broker"],
+            "source_account_id": fill["source_account_id"],
+            "source_fill_id": fill["source_fill_id"],
+            "source_order_id": fill["source_order_id"],
+            "episode_group_id": fill["episode_group_id"],
+            "asof": fill["asof_date"],
+            "filled_at": fill["filled_at"],
+            "asset_class": fill["asset_class"],
+            "symbol": fill["symbol"],
+            "side": fill["side"],
+            "quantity": fill["quantity"],
+            "fill_price": fill["fill_price"],
+            "commission": fill["commission"],
+            "fees": fill["fees"],
+            "currency": fill["currency"],
+            "fetched_at": fill["fetched_at"],
+            "raw_path": fill["raw_path"],
+            "option_symbol": fill["option_symbol"],
+            "underlying_symbol": fill["underlying_symbol"],
+            "option_type": fill["option_type"],
+            "expiry": fill["expiry"],
+            "strike": fill["strike"],
+            "multiplier": fill["multiplier"],
+            "open_close": fill["open_close"],
+            "execution_venue": fill["execution_venue"],
+            "liquidity_flag": fill["liquidity_flag"],
+        }
+    return build_fill_identity_signature(NormalizedFill(**record))
+
+
+def _normalize_fills_by_uid(fills: list[NormalizedFill]) -> dict[str, tuple[tuple, NormalizedFill]]:
+    by_uid: dict[str, tuple[tuple, NormalizedFill]] = {}
+    for fill in fills:
+        by_uid[fill.fill_uid] = (build_fill_identity_signature(fill), fill)
+    return by_uid
+
+
+def _load_existing_fill_signatures(
+    con: duckdb.DuckDBPyConnection,
+) -> dict[str, tuple]:
+    rows = con.execute(
+        """
+        SELECT
+            fill_uid, source_broker, source_account_id, source_fill_id,
+            source_order_id, episode_group_id, asof_date, filled_at, asset_class, symbol,
+            side, quantity, fill_price, commission, fees, currency, fetched_at,
+            raw_path, option_symbol, underlying_symbol, option_type, expiry, strike,
+            multiplier, open_close, execution_venue, liquidity_flag
+        FROM normalized_fills
+        """
+    ).fetchall()
+    signatures_by_uid: dict[str, tuple] = {}
+    for row in rows:
+        (
+            fill_uid,
+            source_broker,
+            source_account_id,
+            source_fill_id,
+            source_order_id,
+            episode_group_id,
+            asof_date,
+            filled_at,
+            asset_class,
+            symbol,
+            side,
+            quantity,
+            fill_price,
+            commission,
+            fees,
+            currency,
+            fetched_at,
+            raw_path,
+            option_symbol,
+            underlying_symbol,
+            option_type,
+            expiry,
+            strike,
+            multiplier,
+            open_close,
+            execution_venue,
+            liquidity_flag,
+        ) = row
+        signatures_by_uid[fill_uid] = _fill_record_signature(
+            {
+                "fill_uid": fill_uid,
+                "source_broker": source_broker,
+                "source_account_id": source_account_id,
+                "source_fill_id": source_fill_id,
+                "source_order_id": source_order_id,
+                "episode_group_id": episode_group_id,
+                "asof_date": asof_date,
+                "filled_at": filled_at,
+                "asset_class": asset_class,
+                "symbol": symbol,
+                "side": side,
+                "quantity": quantity,
+                "fill_price": fill_price,
+                "commission": commission,
+                "fees": fees,
+                "currency": currency,
+                "fetched_at": fetched_at,
+                "raw_path": raw_path,
+                "option_symbol": option_symbol,
+                "underlying_symbol": underlying_symbol,
+                "option_type": option_type,
+                "expiry": expiry,
+                "strike": strike,
+                "multiplier": multiplier,
+                "open_close": open_close,
+                "execution_venue": execution_venue,
+                "liquidity_flag": liquidity_flag,
+            }
+        )
+    return signatures_by_uid
+
+
+def _snapshot_replaced_fill_rows(
+    con: duckdb.DuckDBPyConnection,
+    *,
+    replacement_run_id: str,
+    replacement_fills_by_uid: dict[str, tuple[tuple, NormalizedFill]],
+) -> None:
+    existing = con.execute(
+        """
+        SELECT fill_uid, source_broker, source_account_id, source_fill_id, source_order_id,
+               episode_group_id, asof_date, filled_at, asset_class, symbol, side,
+               quantity, fill_price, commission, fees, currency, fetched_at, raw_path,
+               option_symbol, underlying_symbol, option_type, expiry, strike, multiplier,
+               open_close, execution_venue, liquidity_flag, import_run_id
+        FROM normalized_fills
+        """
+    ).fetchall()
+
+    for row in existing:
+        (
+            fill_uid,
+            source_broker,
+            source_account_id,
+            source_fill_id,
+            source_order_id,
+            episode_group_id,
+            asof_date,
+            filled_at,
+            asset_class,
+            symbol,
+            side,
+            quantity,
+            fill_price,
+            commission,
+            fees,
+            currency,
+            fetched_at,
+            raw_path,
+            option_symbol,
+            underlying_symbol,
+            option_type,
+            expiry,
+            strike,
+            multiplier,
+            open_close,
+            execution_venue,
+            liquidity_flag,
+            prior_import_run_id,
+        ) = row
+
+        prior_signature = _fill_record_signature(
+            {
+                "fill_uid": fill_uid,
+                "source_broker": source_broker,
+                "source_account_id": source_account_id,
+                "source_fill_id": source_fill_id,
+                "source_order_id": source_order_id,
+                "episode_group_id": episode_group_id,
+                "asof_date": asof_date,
+                "filled_at": filled_at,
+                "asset_class": asset_class,
+                "symbol": symbol,
+                "side": side,
+                "quantity": quantity,
+                "fill_price": fill_price,
+                "commission": commission,
+                "fees": fees,
+                "currency": currency,
+                "fetched_at": fetched_at,
+                "raw_path": raw_path,
+                "option_symbol": option_symbol,
+                "underlying_symbol": underlying_symbol,
+                "option_type": option_type,
+                "expiry": expiry,
+                "strike": strike,
+                "multiplier": multiplier,
+                "open_close": open_close,
+                "execution_venue": execution_venue,
+                "liquidity_flag": liquidity_flag,
+            }
+        )
+        next_signature, next_fill = replacement_fills_by_uid.get(fill_uid, (None, None))
+        if next_signature is None:
+            event_type = "evicted_from_reimport"
+            next_signature_value = None
+            next_payload = None
+        elif next_signature == prior_signature:
+            continue
+        else:
+            event_type = "correction_rewrite"
+            next_signature_value = "|".join(next_signature)
+            next_payload = json.dumps(next_fill.__dict__, default=str)
+
+        con.execute(
+            """
+            INSERT INTO normalized_fill_revisions (
+                fill_uid, source_broker, source_account_id, source_fill_id,
+                prior_import_run_id, next_import_run_id, event_type,
+                prior_signature, next_signature, prior_payload_json, next_payload_json,
+                archived_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                fill_uid,
+                source_broker,
+                source_account_id,
+                source_fill_id,
+                prior_import_run_id,
+                replacement_run_id,
+                event_type,
+                "|".join(prior_signature),
+                next_signature_value,
+                json.dumps(
+                    {
+                        "fill_uid": fill_uid,
+                        "source_broker": source_broker,
+                        "source_account_id": source_account_id,
+                        "source_fill_id": source_fill_id,
+                        "source_order_id": source_order_id,
+                        "episode_group_id": episode_group_id,
+                        "asof_date": str(asof_date),
+                        "filled_at": str(filled_at),
+                        "asset_class": asset_class,
+                        "symbol": symbol,
+                        "side": side,
+                        "quantity": str(quantity),
+                        "fill_price": str(fill_price),
+                        "commission": str(commission),
+                        "fees": str(fees),
+                        "currency": currency,
+                        "raw_path": raw_path,
+                        "option_symbol": option_symbol,
+                        "underlying_symbol": underlying_symbol,
+                        "option_type": option_type,
+                        "expiry": str(expiry) if expiry is not None else None,
+                        "strike": str(strike) if strike is not None else None,
+                        "multiplier": str(multiplier) if multiplier is not None else None,
+                        "open_close": open_close,
+                        "execution_venue": execution_venue,
+                        "liquidity_flag": liquidity_flag,
+                    },
+                    default=str,
+                ),
+                next_payload,
+                datetime.now().astimezone().replace(tzinfo=None),
+            ),
+        )
 
 
 def _derive_normalized_accounts(fills, import_run_id: str, imported_at: datetime) -> list[tuple]:
@@ -400,29 +675,68 @@ def import_to_db(db_path: Path, fills_path: Path, reviews_path: Path, replace: b
     import_run_id = "manual_csv:" + datetime.now().astimezone().strftime("%Y%m%d_%H%M%S")
     imported_at = datetime.now().astimezone().replace(tzinfo=None)
     fills = parse_manual_fills_csv(fills_path)
-    fills = dedupe_identical_fills(fills)
-
-    if asof is not None:
-        mismatch_count = sum(1 for fill in fills if fill.asof != asof)
-        if mismatch_count:
-            raise ValueError(f"{mismatch_count} fill(s) have asof different from --asof {asof}")
-
-    episodes = build_episode_previews_from_fills(fills)
-    reviews = load_manual_reviews(reviews_path)
+    conflicts = conflicting_fill_identity_report(fills)
+    if conflicts:
+        if not replace:
+            raise ValueError(
+                "conflicting fill replays detected; run import with --replace to apply correction-safe re-import"
+            )
+    fills = dedupe_identical_fills(fills, allow_conflicts=True)
+    fills_by_uid = _normalize_fills_by_uid(fills)
 
     con = duckdb.connect(str(db_path))
     try:
+        if not replace:
+            existing_signatures = _load_existing_fill_signatures(con)
+            for fill_uid, (incoming_signature, _fill) in fills_by_uid.items():
+                existing_signature = existing_signatures.get(fill_uid)
+                if existing_signature is None:
+                    continue
+                if existing_signature != incoming_signature:
+                    raise ValueError(
+                        "conflicting fill replays detected; run import with --replace to apply correction-safe re-import"
+                    )
+
+        if asof is not None:
+            mismatch_count = sum(1 for fill in fills if fill.asof != asof)
+            if mismatch_count:
+                raise ValueError(f"{mismatch_count} fill(s) have asof different from --asof {asof}")
+
+        episodes = build_episode_previews_from_fills(fills)
+        reviews = load_manual_reviews(reviews_path)
+
         if replace:
+            con.execute(
+                """
+                INSERT OR REPLACE INTO import_runs (
+                    import_run_id, source_type, source_path, asof_date, imported_at, row_count, status, notes
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    import_run_id,
+                    "manual_csv",
+                    str(fills_path),
+                    fills[0].asof if fills else None,
+                    imported_at,
+                    len(fills),
+                    "ok",
+                    "DB-1D correction-safe replace",
+                ),
+            )
+        if replace:
+            _snapshot_replaced_fill_rows(
+                con,
+                replacement_run_id=import_run_id,
+                replacement_fills_by_uid=fills_by_uid,
+            )
             for table_name in [
                 "trade_episode_legs",
                 "trade_episodes",
-                "manual_reviews",
                 "normalized_fills",
                 "normalized_accounts",
                 "normalized_orders",
                 "normalized_positions",
                 "normalized_transactions",
-                "import_runs",
             ]:
                 con.execute(f"DELETE FROM {table_name}")
 
@@ -541,23 +855,24 @@ def import_to_db(db_path: Path, fills_path: Path, reviews_path: Path, replace: b
             leg_rows,
         )
 
-        con.execute(
-            """
-            INSERT OR REPLACE INTO import_runs (
-                import_run_id, source_type, source_path, asof_date, imported_at, row_count, status, notes
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-            """,
-            (
-                import_run_id,
-                "manual_csv",
-                str(fills_path),
-                fills[0].asof if fills else None,
-                imported_at,
-                len(fills),
-                "ok",
-                "DB-1D initial CSV import",
-            ),
-        )
+        if not replace:
+            con.execute(
+                """
+                INSERT OR REPLACE INTO import_runs (
+                    import_run_id, source_type, source_path, asof_date, imported_at, row_count, status, notes
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    import_run_id,
+                    "manual_csv",
+                    str(fills_path),
+                    fills[0].asof if fills else None,
+                    imported_at,
+                    len(fills),
+                    "ok",
+                    "DB-1D initial CSV import",
+                ),
+            )
 
         _insert_derived_normalized_rows(con, fills, import_run_id=import_run_id, imported_at=imported_at)
 

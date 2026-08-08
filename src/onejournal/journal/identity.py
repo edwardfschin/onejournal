@@ -59,7 +59,11 @@ def _normalize_signature_value(value: Any) -> str:
     return str(value)
 
 
-def dedupe_identical_fills(fills: list[NormalizedFill]) -> list[NormalizedFill]:
+def dedupe_identical_fills(
+    fills: list[NormalizedFill],
+    *,
+    allow_conflicts: bool = False,
+) -> list[NormalizedFill]:
     """Deduplicate redelivered fills by identity key.
 
     Returns the input fills list with identical-by-key-and-signature duplicates
@@ -77,11 +81,18 @@ def dedupe_identical_fills(fills: list[NormalizedFill]) -> list[NormalizedFill]:
             deduped.append(fill)
             continue
 
-        if previous_signature != signature:
-            raise ValueError(
-                f"conflicting normalized fill payload for identity key {key}: "
-                f"signature changed across replayed records"
-            )
+        if previous_signature == signature:
+            continue
+
+        if allow_conflicts:
+            signature_by_key[key] = signature
+            deduped.append(fill)
+            continue
+
+        raise ValueError(
+            f"conflicting normalized fill payload for identity key {key}: "
+            f"signature changed across replayed records"
+        )
 
     return deduped
 

@@ -22,9 +22,10 @@ python scripts/journal/run_schwab_daily_import.py --asof 2025-05-19 --orders dat
 6. Import transactions-normalized fills into DuckDB only when --import-db is present.
 7. Check journal DB.
 8. Check import run audit.
-9. Build DB dashboard payload.
-10. Check DB dashboard contract.
-11. Run ODFS continuity guard.
+9. Check journal-family reconciliation (publish policy by default).
+10. Build DB dashboard payload.
+11. Check DB dashboard contract.
+12. Run ODFS continuity guard.
 
 ## Current canonical import source
 

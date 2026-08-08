@@ -81,6 +81,12 @@ class NormalizedFillIdentityContractTests(unittest.TestCase):
         ):
             dedupe_identical_fills([fill_a, fill_b])
 
+    def test_conflicting_fill_replays_allow_conflicts(self) -> None:
+        fill_a = self._fill(fill_uid="u1", source_fill_id="FILL-001", commission="1.00")
+        fill_b = self._fill(fill_uid="u2", source_fill_id="FILL-001", commission="2.00")
+        deduped = dedupe_identical_fills([fill_a, fill_b], allow_conflicts=True)
+        self.assertEqual(deduped, [fill_a, fill_b])
+
     def test_signature_ignores_fill_uid_and_raw_path(self) -> None:
         fill_a = self._fill(fill_uid="u1", source_fill_id="FILL-001")
         fill_b = self._fill(fill_uid="u2", source_fill_id="FILL-001")

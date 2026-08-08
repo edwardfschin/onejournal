@@ -38,6 +38,7 @@ all active imports, UI actions, CI workflows, and operator commands.
 | `scripts/journal/build_dashboard_payload_from_db.py` | ACTIVE | Reads DuckDB and writes a dashboard JSON only with `--write`. | Current DB-backed Streamlit payload producer. |
 | `scripts/journal/upsert_manual_review_to_db.py` | ACTIVE | Writes one validated `manual_reviews` row after checking the episode exists. | Current Streamlit Save Review target. |
 | `scripts/journal/check_journal_db.py` | ACTIVE | Read-only DuckDB integrity and duplicate-key check. | Baseline/operator validation. |
+| `scripts/journal/check_journal_reconciliation.py` | ACTIVE | Read-only cross-family reconciliation check for fills, transactions, positions, cash, and account scope with policy modes. | Added JRN-07 publication blocker gate in the Schwab import flow. |
 | `scripts/journal/check_import_run_audit.py` | ACTIVE | Read-only import-run and fill-lineage check. | Baseline/operator validation. |
 | `scripts/journal/show_import_status.py` | ACTIVE | Read-only journal/import/payload status report. | Baseline/operator diagnostics. |
 | `scripts/journal/check_manual_fills.py` | ACTIVE | Read-only manual CSV parser and episode-preview check. | Clean CI validation. |
