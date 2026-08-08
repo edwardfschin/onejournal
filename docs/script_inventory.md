@@ -32,7 +32,8 @@ all active imports, UI actions, CI workflows, and operator commands.
 |---|---|---|---|
 | `scripts/ci/__init__.py` | ACTIVE | Package marker; no command entry point. | Supports the repository CI guard module. |
 | `scripts/ci/check_repository.py` | ACTIVE | Read-only Git tracked-file and secret/artifact guard. | Run by `bin/onejournal_ci.sh`. |
-| `scripts/journal/init_journal_db.py` | ACTIVE | Creates the current five-table DuckDB prototype schema if absent. | Local bootstrap only; future durable changes require a versioned migration. |
+| `scripts/journal/init_journal_db.py` | ACTIVE | Runs migration-aligned bootstrap/schema init for DuckDB and prints a read-only schema summary. | Local bootstrap only; versioned migrations are authoritative. |
+| `scripts/journal/migrate_journal_db.py` | ACTIVE | Reads migration artifacts and applies ordered SQL migrations with ledger enforcement and checksum validation. | Supports explicit DB migration runs and failure-safe re-entry behavior. |
 | `scripts/journal/import_journal_to_db.py` | ACTIVE | Imports normalized/manual fills and reviews; writes DuckDB rows. `--replace` deletes/rebuilds prototype journal tables. | Controlled local import; not a production migration. |
 | `scripts/journal/build_dashboard_payload_from_db.py` | ACTIVE | Reads DuckDB and writes a dashboard JSON only with `--write`. | Current DB-backed Streamlit payload producer. |
 | `scripts/journal/upsert_manual_review_to_db.py` | ACTIVE | Writes one validated `manual_reviews` row after checking the episode exists. | Current Streamlit Save Review target. |
