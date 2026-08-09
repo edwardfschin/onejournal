@@ -56,7 +56,7 @@ pilot:
       - name: "options-income"
         max_contracts_per_order: 1
         max_orders_per_day: 4
-  schedule:
+schedule:
     enabled:
       - start_utc: "13:30"
         end_utc: "19:30"
@@ -64,6 +64,23 @@ pilot:
         end_utc: "00:00"
         disallow: true
 ```
+
+Validation tooling:
+
+- `scripts/liv/validate_pilot_config.py` validates LIV-02 pilot config documents as
+  contract-compliance tests before any pilot-specific stage can be operationalized.
+
+Validation command:
+
+```bash
+python scripts/liv/validate_pilot_config.py --config docs/live_trading_pilot_config.example.yaml
+```
+
+Failure behavior:
+
+- Missing/invalid schema fields fail the check.
+- Test/sandbox account IDs in a `live` status produce warnings.
+- `--strict` upgrades warnings to hard failures and is required for staged progression.
 
 ## LIV-03 — Human approval for initial live intents
 

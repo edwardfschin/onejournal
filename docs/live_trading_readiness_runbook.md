@@ -38,11 +38,13 @@ No step may be executed if a hard blocker exists.
    (control boundary should reject missing allow-lists).
 2. Use `docs/live_trading_pilot_config.example.yaml` as the pilot template and
    persist an approved instance in your environment-specific config path.
-2. Ensure pilot policy is fail-closed by default and explicit about:
+3. Validate the environment-specific policy with:
+   `python scripts/liv/validate_pilot_config.py --config <path-to-approved-pilot-config>`.
+4. Ensure pilot policy is fail-closed by default and explicit about:
    accounts, symbols, strategies, size limits, and schedule.
-3. Link pilot policy artifact to
+5. Link pilot policy artifact to
    `docs/live_trading_control_contract.md` and `docs/live_trading_readiness_evidence_pack.md`.
-4. Advance roadmap:
+6. Advance roadmap:
    `LIV-01` → `COMPLETE`, `LIV-02` → `NEXT`.
 
 ## LIV-03 Execution Steps

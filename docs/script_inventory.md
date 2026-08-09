@@ -9,7 +9,7 @@ does not make a script production-approved merely because it is retained.
 
 The inventory is based on the source code, current CI/baseline and Streamlit
 call sites, operator documentation, and the full
-[legacy-code audit](legacy_code_audit.md). Last reviewed: 2026-07-23.
+[legacy-code audit](legacy_code_audit.md). Last reviewed: 2026-08-09.
 
 Status meanings:
 
@@ -56,6 +56,7 @@ all active imports, UI actions, CI workflows, and operator commands.
 | `scripts/journal/reconcile_schwab_orders_transactions.py` | ACTIVE | Read-only daily comparison of normalized order and transaction fills. | Import gate; strict mode rejects unmatched evidence. |
 | `scripts/journal/run_schwab_daily_reconciliation.py` | ACTIVE | Orchestrates conversion, validation, reconciliation, and generated-CSV cleanup; never writes DuckDB. | Safe daily reconciliation workflow. |
 | `scripts/journal/run_schwab_daily_import.py` | ACTIVE | Orchestrates daily conversion/reconciliation; writes DuckDB and validation payload only with `--import-db`. | Guarded Schwab import workflow. |
+| `scripts/liv/validate_pilot_config.py` | ACTIVE | Read-only LIV-02 pilot-config validator (allow-list, risk controls, schedule, and controls schema). | Prevents invalid pilot policy from being used in staged execution planning. |
 | `scripts/journal/find_and_run_schwab_daily_import.py` | ACTIVE | Locates raw files and invokes guarded daily import; fails on duplicate raw snapshots unless explicitly overridden. | Operator convenience command. |
 | `scripts/journal/check_schwab_daily_import_idempotency.py` | ACTIVE | Copies DB and runs the guarded import twice against the copy. | Proves repeat import does not duplicate active rows. |
 | `scripts/journal/backfill_schwab_history.py` | LEGACY_BACKFILL | Discovers historical raw orders/transactions, writes a backfill report, and imports only with `--import-db`. | Controlled recovery/backfill; duplicate snapshots fail unless explicitly selected. |
