@@ -1,0 +1,57 @@
+# Example (template-only) LIV-02 pilot configuration
+pilot:
+  version: 1
+  policy_id: "liv-pilot-001"
+  status: "disabled"           # explicit: disabled | paper | live
+  environment: "paper"
+  effective_from_utc: "2026-08-10T00:00:00Z"
+  force_paper_first: true
+  kill_switch_required: true
+  kill_switch_env_var: "ONEJOURNAL_LIV_KILL_SWITCH"
+
+  allow_list:
+    accounts:
+      - id: "ACCOUNT_ID_1"
+        currency: "USD"
+        max_notional: 2500.00
+        max_daily_loss_limit: 250.00
+        max_orders_per_day: 4
+      - id: "ACCOUNT_ID_2"
+        currency: "USD"
+        max_notional: 1000.00
+        max_daily_loss_limit: 100.00
+        max_orders_per_day: 2
+    symbols:
+      - symbol: "SPY"
+        max_qty: 1
+      - symbol: "SPXW"
+        max_qty: 1
+    strategies:
+      - "options-income"
+      - "defined-risk-spreads"
+
+  risk_limits:
+    max_notional_per_order: 500.00
+    max_notional_daily: 1500.00
+    max_quantity_per_order: 2
+    max_position_delta_notional: 2500.00
+    min_market_hours_only: true
+    allowed_sessions:
+      - "RTH"
+
+  schedule:
+    timezone: "America/New_York"
+    enabled_windows_utc:
+      - start_time: "13:30"
+        end_time: "20:00"
+      - start_time: "21:00"
+        end_time: "23:59"
+        allow: false
+
+  controls:
+    duplicate_prevention:
+      require_idempotency_key: true
+      duplicate_tolerance_seconds: 120
+    approvals:
+      requires_two_step_approval: false
+      default_ttl_minutes: 120
