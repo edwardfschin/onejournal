@@ -23,6 +23,10 @@ PLACEHOLDER_MARKERS = {"placeholder", "TBD", "TODO", "TBA"}
 READY_STATUS = "OK"
 
 
+def _normalize_cell(value: str) -> str:
+    return value.strip().strip("`").strip()
+
+
 REQUIRED_LIV_01 = {
     "LIV-01-1 (Legal)": {"evidence_id": "EVID-LIV-01-01"},
     "LIV-01-2 (Security)": {"evidence_id": "EVID-LIV-01-02"},
@@ -162,19 +166,19 @@ def _map_table_rows(rows: list[list[str]], *, col_key: str) -> dict[str, dict[st
         if len(row) < expected_len:
             # skip malformed rows; validation logic handles shape via warning upstream if needed
             continue
-        key = row[key_index].strip()
+        key = _normalize_cell(row[key_index])
         if key == "":
             continue
         if col_key == "item":
             mapped[key] = {
-                "artifact": row[2].strip() if len(row) > 2 else "",
-                "status": row[3].strip() if len(row) > 3 else "",
+                "artifact": _normalize_cell(row[2]) if len(row) > 2 else "",
+                "status": _normalize_cell(row[3]) if len(row) > 3 else "",
             }
         else:
             mapped[key] = {
-                "queue": row[1].strip() if len(row) > 1 else "",
-                "status": row[3].strip() if len(row) > 3 else "",
-                "artifact": row[2].strip() if len(row) > 2 else "",
+                "queue": _normalize_cell(row[1]) if len(row) > 1 else "",
+                "status": _normalize_cell(row[3]) if len(row) > 3 else "",
+                "artifact": _normalize_cell(row[2]) if len(row) > 2 else "",
             }
     return mapped
 
