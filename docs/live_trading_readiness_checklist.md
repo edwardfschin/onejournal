@@ -85,3 +85,5 @@ Track proof in rows:
 
 - Queue 8 execution control details for LIV-02..LIV-05 are documented in
   `docs/live_trading_control_contract.md`.
+- Execution sequencing for LIV-01..LIV-05 is documented in
+  `docs/live_trading_readiness_runbook.md`.
