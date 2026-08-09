@@ -122,8 +122,8 @@ position state.
 | JRN-03 | COMPLETE | Replace preview grouping with a deterministic trade-lifecycle engine. | Entry/exit/partial/reopen fixtures and deterministic lifecycle tests are implemented and merge-validated. |
 | JRN-04 | COMPLETE | Add multi-leg lifecycle handling for verticals and later approved strategies. | Preview-level and lifecycle-contract fixtures for multi-leg and cross-symbol matching using explicit episode-group scope are in place. |
 | JRN-05 | BLOCKED | Add assignments, exercises, expirations, rolls, transfers, dividends, and corporate-action handling. | ADR-0005 remains open; lifecycle extraction fixtures are implemented and waiting for event-ledger migration approval. |
-| JRN-06 | BLOCKED | Add correction/replay support without losing audit history or manual reviews. | Re-import and correction tests are deterministic and idempotent. |
-| JRN-07 | BLOCKED | Strengthen broker-to-journal reconciliation at fill, transaction, position, cash, and account levels. | Differences are classified and block publication when policy requires it. |
+| JRN-06 | COMPLETE | Add correction/replay support without losing audit history or manual reviews. | Replay-safe replace imports are implemented with manual-review preservation and signed revision rows. |
+| JRN-07 | COMPLETE | Strengthen broker-to-journal reconciliation at fill, transaction, position, cash, and account levels. | Fill/transaction/position/cash/account checks are classified and policy-gated before publication. |
 
 ### Queue 2 exit gate
 
@@ -241,7 +241,7 @@ approval and successful completion of every prior safety gate.
 
 | ID | Status | Action | Completion evidence |
 |---|---|---|---|
-| LIV-01 | LATER | Perform legal, regulatory, broker-permission, security, operational, and financial-risk readiness review. | Written approval records all accepted risks and constraints. |
+| LIV-01 | NEXT | Perform legal, regulatory, broker-permission, security, operational, and financial-risk readiness review. | Written approval records all accepted risks and constraints. |
 | LIV-02 | LATER | Define a minimal live pilot with allow-listed accounts, symbols, strategies, sizes, schedules, and loss limits. | Configuration fails closed outside the pilot scope. |
 | LIV-03 | LATER | Require human approval for initial live order intents. | Approval and submission are independently audited. |
 | LIV-04 | LATER | Reconcile every live intent, broker order, fill, position, cash movement, and journal record. | No unexplained discrepancy remains before expansion. |
@@ -252,8 +252,8 @@ approval and successful completion of every prior safety gate.
 The current actionable sequence is:
 
 1. `JRN-05` - add assignments, exercises, expirations, rolls, transfers, dividends, and corporate actions.
-2. `JRN-06` - add correction/replay support without losing audit history or manual reviews.
-3. `JRN-07` - strengthen reconciliation and enforce policy-based blockers.
+2. `JRN-05` remains blocked until ADR-0005 is approved and event-ledger migration completes.
+3. `LIV-01` - legal/regulatory/security/operational readiness for guarded execution in Queue 8.
 
 No P&L, production website, or execution implementation should bypass these
 foundational and contract decisions.
