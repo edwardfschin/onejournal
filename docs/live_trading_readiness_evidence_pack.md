@@ -21,9 +21,9 @@ queue so the project can move from documentation to review.
 
 | Evidence ID | Queue item | Artifact | Status | Owner | Timestamp (UTC) | Notes |
 |---|---|---|---|---|---|---|
-| EVID-LIV-01-01 | LIV-01 | `docs/live_trading_readiness_checklist.md` | PENDING | Project owner | — | Legal/compliance sign-off evidence still to be attached. |
-| EVID-LIV-01-02 | LIV-01 | `docs/live_trading_control_contract.md` | PENDING | Project owner | — | Secret/session control model and separation controls pending draft/approval. |
-| EVID-LIV-01-03 | LIV-01 | `docs/live_trading_readiness_runbook.md` | PENDING | Project owner | — | Runbook sequencing defined; first completed run entry pending. |
+| EVID-LIV-01-01 | LIV-01 | `docs/live_trading_readiness_evidence/legal_readiness_template.md` | PENDING | Project owner | — | Legal/compliance sign-off evidence still to be attached. |
+| EVID-LIV-01-02 | LIV-01 | `docs/live_trading_readiness_evidence/security_readiness_template.md` | PENDING | Project owner | — | Secret/session control model and separation controls pending draft/approval. |
+| EVID-LIV-01-03 | LIV-01 | `docs/live_trading_readiness_evidence/risk_readiness_template.md` | PENDING | Project owner | — | Risk-control policy evidence still to be attached. |
 | EVID-LIV-02-01 | LIV-02 | `docs/live_trading_control_contract.md` | PENDING | Project owner | — | Pilot scope policy template present; operational config file not yet produced. |
 | EVID-LIV-02-02 | LIV-02 | `docs/live_trading_pilot_config.example.yaml` | PENDING | Project owner | — | Template pilot control file created for versioned governance. |
 | EVID-LIV-02-03 | LIV-02 | `scripts/liv/validate_pilot_config.py` | IN_REVIEW | Project owner | — | Contract validator added; add proof of first production-approved signed config file. |
