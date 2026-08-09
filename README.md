@@ -22,16 +22,23 @@ Implemented and validated today:
 - Import audit records and idempotency checks
 - DuckDB journal tables for normalized fills, trade-episode previews, legs,
   and manual reviews
+- Deterministic trade-lifecycle matching and replay-safe correction support
+- FIFO lot calculations for supported confirmed-fill scopes, with fail-closed
+  handling for unmatched closes and unsupported lifecycle cases
+- As-of-filtered dashboard positions, portfolio snapshots, performance metrics,
+  breakdowns, and per-metric quality states
 - Generated dashboard payloads and a Streamlit review interface
 - Reproducible locked dependencies, automated tests, and clean-checkout CI
   tooling
 
 Not implemented or not yet trustworthy:
 
-- A complete trade-lifecycle engine
-- Broker-reconciled positions, cash, and portfolio history
-- Realized or unrealized P&L
-- Market-data valuation and freshness handling
+- Broker-reconciled, lifecycle-event-allocated P&L across the complete
+  portfolio scope (including the remaining complex lifecycle cases)
+- Provider-backed market-data valuation with approved freshness, licensing, and
+  reconciliation policy
+- Daily, monthly, and custom-period reports and exports, plus an approved
+  return-denominator and equity-curve policy
 - Production authentication, API, frontend, hosting, or deployment
 - IBKR ingestion beyond its reserved adapter/configuration boundary
 - Paper or live automated trading

@@ -40,9 +40,11 @@ The repository already has:
 
 The repository does not yet have:
 
-- A complete trade-lifecycle engine.
-- Trustworthy realized and unrealized P&L.
-- Current position, valuation, market-data, or portfolio-history pipelines.
+- Broker-reconciled, lifecycle-event-allocated P&L across the complete
+  portfolio scope.
+- Provider-backed market-data valuation with approved freshness and licensing
+  policy.
+- Time-period reporting and export workflows that reconcile to canonical P&L.
 - Production web architecture, authentication, or deployment.
 - Hosted-CI execution evidence from the GitHub workflow.
 - Paper or live trading within the OneJournal architecture.
@@ -143,15 +145,32 @@ presentation layer.
 | PNL-03 | COMPLETE | Implement current positions, cost basis, market value, and unrealized P&L. | Position totals reconcile to broker snapshots under the approved policy. |
 | PNL-04 | COMPLETE | Build account and consolidated portfolio snapshots over time. | Historical snapshots are reproducible by as-of date. |
 | PNL-05 | COMPLETE | Implement performance metrics: total P&L, returns, win rate, profit factor, average win/loss, holding period, drawdown, and exposure. | Every metric has a definition, unit tests, and source lineage. |
-| PNL-06 | COMPLETE | Implement breakdowns by account, broker, strategy, symbol, asset class, and time period. | Aggregations reconcile to portfolio totals. |
+| PNL-06 | COMPLETE | Implement breakdowns by account, broker, strategy, symbol, and asset class. Time-period reporting belongs to PNL-07. | Aggregations reconcile to portfolio totals. |
 | PNL-07 | BLOCKED | Build daily, monthly, and custom-period reports and exports. | Reports reconcile to canonical calculations and identify their as-of state. |
 | PNL-08 | COMPLETE | Add data-quality and stale-data indicators to every published financial payload. | Missing or stale evidence cannot appear as a silently valid number. |
 
-### Queue 3 exit gate
+### Queue 3 closure record
+
+**Status: closed with carried-forward blockers (2026-08-09).** All ready Queue
+3 work is implemented and validated. PNL-01, PNL-02, and PNL-07 remain in the
+roadmap as explicit blockers; they are not silently completed or discarded.
+They must be resolved before the financial exit gate below can be claimed.
+
+### Queue 3 financial exit gate (not yet satisfied)
 
 - Realized and unrealized P&L reconcile to approved examples and broker evidence.
 - Portfolio totals and all breakdowns reconcile.
 - Every displayed metric is traceable, dated, and freshness-aware.
+
+The remaining closure conditions are:
+
+- PNL-01: lifecycle-event allocation must reconcile realized P&L to approved
+  examples and broker evidence across the remaining complex event scope.
+- PNL-02: the project owner must approve a market-data provider, quote policy,
+  licensing treatment, and freshness threshold before valuation can be called
+  current or valid.
+- PNL-07: period-reporting and export scope must be defined and reconciled to
+  canonical calculations.
 
 ## Queue 4 - Complete the journaling product
 

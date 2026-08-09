@@ -526,7 +526,7 @@ def _build_performance_metrics(
         },
         "returns_by_currency": {
             "status": "unavailable",
-            "reason": "Return denominator and benchmark policy is pending approval for PNL-05.",
+            "reason": "Return denominator and benchmark policy has not been approved.",
             "values": {currency: None for currency in total_realized.keys()},
         },
         "win_rate": (

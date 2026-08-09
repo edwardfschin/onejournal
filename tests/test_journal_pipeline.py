@@ -111,7 +111,7 @@ class JournalPipelineIntegrationTests(unittest.TestCase):
         self.assertEqual(payload["performance"]["returns_by_currency"]["status"], "unavailable")
         self.assertEqual(
             payload["performance"]["returns_by_currency"]["reason"],
-            "Return denominator and benchmark policy is pending approval for PNL-05.",
+            "Return denominator and benchmark policy has not been approved.",
         )
         self.assertEqual(
             payload["performance"]["breakdowns"]["by_broker"],
