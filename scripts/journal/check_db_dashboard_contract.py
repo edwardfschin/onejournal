@@ -24,6 +24,12 @@ REQUIRED_TRADE_SUMMARY_STATUS_KEYS = {
 VALID_DATA_STATUSES = {"valid", "stale", "incomplete", "reconciliation_pending", "unavailable", "failed"}
 REQUIRED_ENTRY_KEYS = {"episode_uid"}
 REQUIRED_REVIEW_KEYS = {"review_status", "setup_quality", "entry_reason", "notes"}
+REQUIRED_QUEUE_KEYS = {
+    "queue", "episode_uid", "source_broker", "source_account_id",
+    "primary_symbol", "opened_at", "episode_status", "review_status",
+    "setup_quality", "reason_codes",
+}
+VALID_REVIEW_QUEUES = {"unreviewed", "incomplete", "risk_flagged", "mistake"}
 ENTRY_LIST_KEYS = ("recent_trade_episodes", "journal_review_queue", "closed_trade_episodes")
 
 def fail(message: str) -> int:
@@ -108,6 +114,21 @@ def validate_payload(payload: Any, asof: str, payload_path: Path) -> int:
         seen.add(episode_uid)
     if duplicates:
         return fail(f"duplicate episode_uid values found: {sorted(duplicates)[:5]}")
+    review_queue = payload.get("journal_review_queue")
+    if not isinstance(review_queue, list):
+        return fail("journal_review_queue must be a list")
+    for row in review_queue:
+        if not isinstance(row, dict):
+            return fail("journal_review_queue must contain objects only")
+        missing_queue = sorted(REQUIRED_QUEUE_KEYS - set(row))
+        if missing_queue:
+            return fail(f"journal review queue item missing keys: {missing_queue}")
+        if row["queue"] not in VALID_REVIEW_QUEUES:
+            return fail(f"invalid journal review queue: {row['queue']}")
+        if not isinstance(row["reason_codes"], list) or not row["reason_codes"]:
+            return fail("journal review queue reason_codes must be a non-empty list")
+        if "entry_reason" in row or "notes" in row or "body" in row:
+            return fail("journal review queue must not publish private journal narrative")
     LOG.info("PASS: DB dashboard payload contract is valid")
     LOG.info("PAYLOAD: %s", payload_path)
     LOG.info("ASOF: %s", asof)

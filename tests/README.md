@@ -15,10 +15,14 @@ foundation simple and dependency-free.
   payload construction.
 - Lifecycle contract: partial fill events and partial close behavior.
 - Adapter contract: deterministic Schwab orders JSON normalization.
-- Integration: schema initialization, import, review merge, DuckDB reads, and
-  DB dashboard payload construction using a temporary database.
+- Integration: schema initialization and migration, import, append-only journal
+  history, review compatibility projection, replay preservation, DuckDB reads,
+  and DB dashboard payload construction using a temporary database.
 - Regression: invalid inputs, as-of mismatches, duplicate payload entries, and
   unsupported fill sides must fail explicitly.
+- Journal product: deterministic review queues, private structured entry
+  history, search/filter/saved-view behavior, attachment fail-closed policy,
+  process goals, habits, and explicit-period recurring review transitions.
 
 Tests must not use the production journal database, private broker data, broker
 APIs, or order APIs.

@@ -178,12 +178,12 @@ Objective: provide the workflows needed to learn from trading activity.
 
 | ID | Status | Action | Completion evidence |
 |---|---|---|---|
-| UXJ-01 | BLOCKED | Define the journal-entry, review, tag, strategy, mistake, lesson, and attachment model. | Approved schema and representative journal examples. |
-| UXJ-02 | BLOCKED | Build review queues for unreviewed, incomplete, risk-flagged, and mistake trades. | Queue membership is deterministic and traceable. |
-| UXJ-03 | BLOCKED | Add structured pre-trade plan, entry thesis, execution review, exit review, and post-trade reflection. | Entries survive lifecycle rebuilds and maintain history. |
-| UXJ-04 | BLOCKED | Add search, filters, saved views, and navigation by date, strategy, symbol, account, and review state. | Usability tests cover primary review journeys. |
-| UXJ-05 | BLOCKED | Add charts, screenshots, notes, and evidence attachments with privacy and retention controls. | Attachments are authorized, traceable, and excluded from public output. |
-| UXJ-06 | BLOCKED | Add goal, habit, and recurring review workflows only after the core trade journal is stable. | Weekly/monthly review workflows use canonical portfolio metrics. |
+| UXJ-01 | COMPLETE | Define the journal-entry, review, tag, strategy, mistake, lesson, and attachment model. | Accepted ADR-0008, contract v1, migration 0005, append-only domain services, compatibility dual-write, replay preservation, and temporary-database tests are in place; the runtime database has not been migrated. |
+| UXJ-02 | COMPLETE | Build review queues for unreviewed, incomplete, risk-flagged, and mistake trades. | Deterministic reason-coded queues, as-of filtering, pre-0005 compatibility, payload privacy checks, and internal prototype navigation are implemented and tested. |
+| UXJ-03 | COMPLETE | Add structured pre-trade plan, entry thesis, execution review, exit review, and post-trade reflection. | All structured types use stable entry identities and append-only revisions; unlinked plans can later link to episodes, replay tests retain history, and local Streamlit/operator workflows are available after migration 0005. |
+| UXJ-04 | COMPLETE | Add search, filters, saved views, and navigation by date, strategy, symbol, account, and review state. | Current-revision search and structured saved views cover all listed dimensions; queue and private journal navigation are wired into the internal prototype and contract-tested. |
+| UXJ-05 | BLOCKED | Add charts, screenshots, notes, and evidence attachments with privacy and retention controls. | Metadata schema, validation, payload exclusion, and fail-closed writes are implemented; storage, authorization, encryption, deletion, retention, backup, and incident policy remain approval blockers. |
+| UXJ-06 | BLOCKED | Add goal, habit, and recurring review workflows only after the core trade journal is stable. | Process goals, append-only check-ins, habits, and explicit-period weekly/monthly review events are implemented locally; financial evaluation remains disabled until PNL-02 and PNL-07 are resolved. |
 
 ### Queue 4 exit gate
 

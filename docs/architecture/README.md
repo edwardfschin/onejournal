@@ -93,3 +93,4 @@ policy.
 | [ADR-0005](decisions/0005-trade-lifecycle-event-contract.md) | Proposed | Model fills and exceptional trade activity as immutable typed lifecycle events |
 | [ADR-0006](decisions/0006-record-identity-lineage-and-correction-contract.md) | Proposed | Preserve source identity, lineage, idempotency, corrections, and calculation versions |
 | [ADR-0007](decisions/0007-data-freshness-and-fail-closed-presentation-contract.md) | Proposed | Publish explicit freshness, completeness, reconciliation, and failure states |
+| [ADR-0008](decisions/0008-durable-journal-domain-and-history.md) | Accepted | Preserve journal/review history and define private strategy, tag, lesson, mistake, and attachment boundaries |

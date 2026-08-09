@@ -10,9 +10,12 @@ It does not place orders, cancel orders, replace orders, or auto-trade.
 
 ## Current Review File
 
-Phase B review source of truth: DuckDB manual_reviews in data/journal/onejournal.duckdb.
+Current durable review history is DuckDB `journal_reviews` after migration
+0005. `manual_reviews` remains the Streamlit compatibility projection.
 
-Streamlit DB payload Save Review writes DuckDB manual_reviews. CSV manual_reviews.csv is legacy/backfill/export only.
+Streamlit DB payload Save Review appends `journal_reviews` and updates
+`manual_reviews` atomically. Before migration 0005 it safely retains the legacy
+projection-only behavior. CSV manual_reviews.csv is legacy/backfill/export only.
 
 ## Review File Columns
 
@@ -44,7 +47,7 @@ Current prototype validates these strategy labels: Sell Put, Buy Call, Sell Call
 
 ## Current Flow
 
-manual CSV fill -> NormalizedFill -> strategy classification -> TradeEpisodePreview -> DuckDB manual_reviews -> dashboard_payload_from_db.json -> Streamlit dashboard
+manual CSV fill -> NormalizedFill -> strategy classification -> TradeEpisodePreview -> DuckDB journal review history and compatibility projection -> dashboard_payload_from_db.json -> Streamlit dashboard
 
 ## How to Update the Review Template
 
@@ -62,7 +65,7 @@ This is a legacy/backfill helper for data/journal/reviews/manual_reviews.csv. It
 
 3. Use Save Review in Streamlit.
 
-4. Save Review writes DuckDB manual_reviews.
+4. Save Review appends durable history and updates the compatibility projection.
 
 5. Save Review rebuilds output/dashboard/latest/dashboard_payload_from_db.json.
 
@@ -80,13 +83,14 @@ Do not add broker credentials or tokens to this CSV.
 
 ## Future Direction
 
-Phase B has replaced the normal editable CSV review workflow with DuckDB manual_reviews.
+Phase B replaced the normal editable CSV review workflow with DuckDB.
 
-CSV is now legacy/backfill/export only. The normal editable review store is DuckDB manual_reviews.
+CSV is now legacy/backfill/export only. After migration 0005 the durable review
+store is `journal_reviews`; `manual_reviews` is the current compatibility view.
 
 ## DuckDB Phase B Check
 
-Manual reviews are still stored in:
+Legacy review import/backfill evidence remains in:
 
 ```text
 data/journal/reviews/manual_reviews.csv
@@ -104,13 +108,15 @@ The important line is:
 CSV_VS_DB_PAYLOAD_COMPARE=PASS
 ```
 
-This is a migration safety check. The normal Phase B review write path is Streamlit DB payload Save Review -> DuckDB manual_reviews -> dashboard_payload_from_db.json.
+This is a migration safety check. The normal review write path is Streamlit DB
+payload Save Review -> DuckDB `journal_reviews` plus `manual_reviews`
+projection -> dashboard payload.
 
 
 ## Phase B Default Payload
 
 DB payload is the default Streamlit payload in Phase B.
-Save Review writes DuckDB manual_reviews.
+Save Review appends durable history and updates the compatibility projection.
 CSV payload is legacy/backfill/export only.
 No auto-trade.
 
@@ -129,7 +135,7 @@ The normal editable review workflow is:
 Streamlit DB payload
 -> Save Review to DuckDB
 -> scripts/journal/upsert_manual_review_to_db.py
--> DuckDB manual_reviews
+-> DuckDB journal_reviews + manual_reviews compatibility projection
 -> scripts/journal/build_dashboard_payload_from_db.py
 -> output/dashboard/latest/dashboard_payload_from_db.json
 -> Streamlit reload

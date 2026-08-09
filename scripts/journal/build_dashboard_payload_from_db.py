@@ -20,6 +20,7 @@ import duckdb
 
 from onejournal.brokers.normalized import NormalizedFill
 from onejournal.pnl import PnLCalculationResult, calculate_fifo_pnl_from_fills, build_instrument_key
+from onejournal.journal.workflows import build_review_queues, flatten_review_queues
 
 DASHBOARD_PAYLOAD_VERSION = "0.1.0-db"
 DEFAULT_DB = Path("data/journal/onejournal.duckdb")
@@ -764,6 +765,8 @@ def build_payload(db_path: Path, asof: str) -> dict[str, Any]:
                 value is not None for value in pnl_result.total_unrealized_pnl_by_currency.values()
             ),
         )
+        review_queues = build_review_queues(con, asof=asof_date)
+        review_queue_items = flatten_review_queues(review_queues)
 
         return {
             "metadata": {
@@ -778,6 +781,7 @@ def build_payload(db_path: Path, asof: str) -> dict[str, Any]:
                     "trade_episode_previews": len(payload_episodes),
                     "open_trade_episode_previews": len(open_episodes),
                     "closed_trade_episode_previews": len(closed_episodes),
+                    "journal_review_queue_items": len(review_queue_items),
                 },
                 "trade_summary_status": dataset_quality["trade_summary_status"],
             },
@@ -799,7 +803,7 @@ def build_payload(db_path: Path, asof: str) -> dict[str, Any]:
             "closed_trade_episodes": closed_episodes,
             "metrics_by_strategy": performance_breakdowns["by_strategy"],
             "risk_events": [],
-            "journal_review_queue": [],
+            "journal_review_queue": review_queue_items,
         }
     finally:
         con.close()

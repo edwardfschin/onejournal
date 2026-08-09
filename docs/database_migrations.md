@@ -16,6 +16,19 @@ through the journal migration runner and the migration artifact set:
 - `normalized_transactions`
 - `normalized_lifecycle_events`
 - `normalized_fill_revisions`
+- `journal_entries`
+- `journal_entry_revisions`
+- `journal_reviews`
+- `journal_strategies`
+- `journal_tags`
+- `journal_entry_tag_events`
+- `journal_attachments` (metadata schema only; writes disabled by policy)
+- `journal_saved_views`
+- `journal_goals`
+- `journal_goal_checkins`
+- `journal_habits`
+- `journal_habit_events`
+- `journal_review_period_events`
 - `schema_migrations`
 
 The baseline is now versioned at `0001_establish_schema_version`.
@@ -44,6 +57,10 @@ Examples:
 0001_establish_schema_version.sql
 0002_add_normalized_accounts_orders_positions_transactions.sql
 0003_add_normalized_fill_revisions.sql
+0004_add_normalized_lifecycle_events.sql
+0005_add_durable_journal_domain.sql
+0006_add_journal_saved_views.sql
+0007_add_journal_goals_habits_reviews.sql
 ```
 
 Rules:

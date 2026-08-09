@@ -25,6 +25,7 @@ from onejournal.journal.identity import (
     conflicting_fill_identity_report,
     dedupe_identical_fills,
 )
+from onejournal.journal.domain import save_review
 from onejournal.journal.reviews import load_manual_reviews
 
 DEFAULT_DB = Path("data/journal/onejournal.duckdb")
@@ -984,18 +985,6 @@ def import_to_db(
 
         con.executemany(
             """
-            INSERT OR REPLACE INTO manual_reviews (
-                episode_uid, review_status, setup_quality, entry_reason, notes, updated_at
-            ) VALUES (?, ?, ?, ?, ?, ?)
-            """,
-            [
-                (r.episode_uid, r.review_status, r.setup_quality, r.entry_reason, r.notes, imported_at)
-                for r in reviews.values()
-            ],
-        )
-
-        con.executemany(
-            """
             INSERT OR REPLACE INTO trade_episodes (
                 episode_uid, source_broker, source_account_id, primary_symbol, asset_class,
                 strategy_type, strategy_label, opened_at, status, fill_count, leg_count,
@@ -1026,6 +1015,22 @@ def import_to_db(
                 for e in episodes
             ],
         )
+
+        imported_episode_uids = {episode.episode_uid for episode in episodes}
+        for review in reviews.values():
+            if review.episode_uid not in imported_episode_uids:
+                continue
+            save_review(
+                con,
+                episode_uid=review.episode_uid,
+                review_status=review.review_status,
+                setup_quality=review.setup_quality,
+                entry_reason=review.entry_reason,
+                notes=review.notes,
+                source="import",
+                created_at=imported_at,
+                skip_if_unchanged=True,
+            )
 
         leg_rows = []
         for e in episodes:

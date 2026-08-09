@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
-"""Upsert one OneJournal manual review row into DuckDB.
+"""Append one OneJournal review and update its compatibility projection.
 
 Safe scope:
-- writes only to manual_reviews
+- writes journal_reviews history when migration 0005 is present
+- updates manual_reviews compatibility projection
 - does not touch fills or trade episodes
 - does not call broker APIs
 - does not place, cancel, or modify orders
@@ -12,10 +13,11 @@ Safe scope:
 from __future__ import annotations
 
 import argparse
-from datetime import datetime
 from pathlib import Path
 
 import duckdb
+
+from onejournal.journal.domain import ReviewWriteResult, save_review
 
 DEFAULT_DB = Path("data/journal/onejournal.duckdb")
 ALLOWED_REVIEW_STATUS = {"unreviewed", "reviewed", "needs_review", "mistake_review"}
@@ -33,23 +35,24 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def upsert_review(db_path: Path, episode_uid: str, review_status: str, setup_quality: str, entry_reason: str, notes: str) -> None:
-    updated_at = datetime.now().astimezone().replace(tzinfo=None)
+def upsert_review(
+    db_path: Path,
+    episode_uid: str,
+    review_status: str,
+    setup_quality: str,
+    entry_reason: str,
+    notes: str,
+) -> ReviewWriteResult:
     con = duckdb.connect(str(db_path))
     try:
-        existing_episode = con.execute(
-            "SELECT COUNT(*) FROM trade_episodes WHERE episode_uid = ?",
-            [episode_uid],
-        ).fetchone()[0]
-        if existing_episode == 0:
-            raise SystemExit(f"Episode UID not found in trade_episodes: {episode_uid}")
-        con.execute(
-            """
-            INSERT OR REPLACE INTO manual_reviews (
-                episode_uid, review_status, setup_quality, entry_reason, notes, updated_at
-            ) VALUES (?, ?, ?, ?, ?, ?)
-            """,
-            [episode_uid, review_status, setup_quality, entry_reason, notes, updated_at],
+        return save_review(
+            con,
+            episode_uid=episode_uid,
+            review_status=review_status,
+            setup_quality=setup_quality,
+            entry_reason=entry_reason,
+            notes=notes,
+            source="streamlit",
         )
     finally:
         con.close()
@@ -58,7 +61,7 @@ def upsert_review(db_path: Path, episode_uid: str, review_status: str, setup_qua
 def main() -> int:
     args = parse_args()
     db_path = Path(args.db)
-    upsert_review(
+    result = upsert_review(
         db_path=db_path,
         episode_uid=args.episode_uid,
         review_status=args.review_status,
@@ -71,7 +74,9 @@ def main() -> int:
     print(f"EPISODE_UID   : {args.episode_uid}")
     print(f"REVIEW_STATUS : {args.review_status}")
     print(f"SETUP_QUALITY : {args.setup_quality}")
-    print("SCOPE         : manual_reviews only")
+    print(f"HISTORY_WRITE : {'yes' if result.history_written else 'no'}")
+    print(f"COMPATIBILITY : {'legacy projection only' if result.compatibility_only else 'dual-write'}")
+    print("SCOPE         : journal_reviews + manual_reviews compatibility projection")
     print("AUTO TRADE    : disabled")
     print("STATUS        : OK")
     return 0

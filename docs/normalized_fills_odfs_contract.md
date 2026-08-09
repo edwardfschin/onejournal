@@ -79,7 +79,8 @@ Raw CSV files are evidence.
 Normalized CSV files are transport or export artifacts.
 DuckDB normalized_fills is the imported fills source of truth.
 DuckDB trade_episodes is the episode source of truth.
-DuckDB manual_reviews is the review source of truth.
+DuckDB journal_reviews is durable review history after migration 0005;
+manual_reviews is the current compatibility projection.
 Dashboard JSON is generated output.
 
 ## Import audit rule

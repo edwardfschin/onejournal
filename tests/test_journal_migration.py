@@ -3,6 +3,7 @@ from __future__ import annotations
 import shutil
 import tempfile
 import unittest
+from datetime import datetime
 from pathlib import Path
 
 import duckdb
@@ -40,6 +41,19 @@ class JournalMigrationTests(unittest.TestCase):
             self.assertIn("normalized_positions", tables)
             self.assertIn("normalized_transactions", tables)
             self.assertIn("normalized_lifecycle_events", tables)
+            self.assertIn("journal_entries", tables)
+            self.assertIn("journal_entry_revisions", tables)
+            self.assertIn("journal_reviews", tables)
+            self.assertIn("journal_strategies", tables)
+            self.assertIn("journal_tags", tables)
+            self.assertIn("journal_entry_tag_events", tables)
+            self.assertIn("journal_attachments", tables)
+            self.assertIn("journal_saved_views", tables)
+            self.assertIn("journal_goals", tables)
+            self.assertIn("journal_goal_checkins", tables)
+            self.assertIn("journal_habits", tables)
+            self.assertIn("journal_habit_events", tables)
+            self.assertIn("journal_review_period_events", tables)
 
             rows = con.execute("SELECT version, status FROM schema_migrations ORDER BY version").fetchall()
             self.assertEqual(rows[0][0], "0001")
@@ -50,6 +64,12 @@ class JournalMigrationTests(unittest.TestCase):
             self.assertEqual(rows[2][1], "applied")
             self.assertEqual(rows[3][0], "0004")
             self.assertEqual(rows[3][1], "applied")
+            self.assertEqual(rows[4][0], "0005")
+            self.assertEqual(rows[4][1], "applied")
+            self.assertEqual(rows[5][0], "0006")
+            self.assertEqual(rows[5][1], "applied")
+            self.assertEqual(rows[6][0], "0007")
+            self.assertEqual(rows[6][1], "applied")
 
     def test_init_schema_is_idempotent(self) -> None:
         init_schema(self.db_path)
@@ -57,7 +77,67 @@ class JournalMigrationTests(unittest.TestCase):
 
         with duckdb.connect(str(self.db_path), read_only=True) as con:
             count = con.execute("SELECT COUNT(*) FROM schema_migrations").fetchone()[0]
-            self.assertEqual(count, 4)
+            self.assertEqual(count, 7)
+
+    def test_migration_0005_backfills_existing_reviews_from_version_0002(self) -> None:
+        apply_schema_migrations(
+            self.db_path,
+            target_version="0002",
+            migrations_dir=MIGRATIONS_DIR,
+        )
+        with duckdb.connect(str(self.db_path)) as con:
+            con.execute(
+                """
+                INSERT INTO trade_episodes (
+                    episode_uid, source_broker, source_account_id, primary_symbol,
+                    asset_class, strategy_type, strategy_label, opened_at, status,
+                    fill_count, leg_count, updated_at
+                ) VALUES (
+                    'episode-1', 'manual_csv', 'account-1', 'AAPL', 'stock',
+                    'stock_long', 'Stock Long', TIMESTAMP '2026-01-01 10:00:00',
+                    'open', 1, 1, TIMESTAMP '2026-01-01 10:00:00'
+                )
+                """
+            )
+            con.execute(
+                """
+                INSERT INTO manual_reviews (
+                    episode_uid, review_status, setup_quality, entry_reason, notes, updated_at
+                ) VALUES (
+                    'episode-1', 'reviewed', 'good', 'planned', 'kept risk small',
+                    TIMESTAMP '2026-01-02 12:30:00'
+                )
+                """
+            )
+
+        resulting_version = apply_schema_migrations(
+            self.db_path,
+            migrations_dir=MIGRATIONS_DIR,
+        )
+        self.assertEqual(resulting_version, 7)
+
+        with duckdb.connect(str(self.db_path), read_only=True) as con:
+            rows = con.execute(
+                """
+                SELECT episode_uid, review_status, setup_quality, entry_reason,
+                       notes, source, created_at
+                FROM journal_reviews
+                """
+            ).fetchall()
+            self.assertEqual(
+                rows,
+                [
+                    (
+                        "episode-1",
+                        "reviewed",
+                        "good",
+                        "planned",
+                        "kept risk small",
+                        "legacy_backfill",
+                        datetime(2026, 1, 2, 12, 30),
+                    )
+                ],
+            )
 
     def test_checksum_mismatch_blocks_reapply(self) -> None:
         with tempfile.TemporaryDirectory() as local_migration_dir:

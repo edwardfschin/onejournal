@@ -4,10 +4,11 @@ Phase C locks the normal dashboard review path to DuckDB.
 
 ## Source of Truth
 
-DuckDB table:
+DuckDB records:
 
 ```text
-data/journal/onejournal.duckdb :: manual_reviews
+data/journal/onejournal.duckdb :: journal_reviews (durable history)
+data/journal/onejournal.duckdb :: manual_reviews (current compatibility projection)
 ```
 
 ## Published Payload
@@ -32,6 +33,7 @@ metadata
     - checks.pnl
     - trade_summary_status
 recent_trade_episodes
+journal_review_queue
 ```
 
 metadata must contain:
@@ -66,6 +68,12 @@ entry_reason
 notes
 ```
 
+Each `journal_review_queue` item must contain queue name, episode identity,
+broker/account/symbol identifiers, episode and review state, opening time, and
+at least one deterministic `reason_codes` value. Queue items must not contain
+`entry_reason`, `notes`, journal body text, attachment metadata, or storage
+keys. Queue data is a derived navigation view, not journal source truth.
+
 ## Save Review Contract
 
 Streamlit DB payload Save Review must follow this flow:
@@ -73,7 +81,7 @@ Streamlit DB payload Save Review must follow this flow:
 ```text
 Streamlit Save Review
 -> scripts/journal/upsert_manual_review_to_db.py
--> DuckDB manual_reviews
+-> DuckDB journal_reviews append-only event + manual_reviews compatibility projection
 -> scripts/journal/build_dashboard_payload_from_db.py
 -> output/dashboard/latest/dashboard_payload_from_db.json
 ```

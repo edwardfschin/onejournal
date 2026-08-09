@@ -13,6 +13,7 @@ from scripts.journal.build_dashboard_payload_from_db import build_payload
 from scripts.journal.check_db_dashboard_contract import validate_payload
 from scripts.journal.import_journal_to_db import import_to_db
 from scripts.journal.init_journal_db import init_schema
+from onejournal.journal.domain import create_entry
 
 
 PROJECT_DIR = Path(__file__).resolve().parents[1]
@@ -100,6 +101,14 @@ class JournalPipelineIntegrationTests(unittest.TestCase):
         self.assertEqual(payload["metadata"]["trade_summary_status"]["realized_pnl_by_currency"], "valid")
         self.assertEqual(payload["metadata"]["trade_summary_status"]["unrealized_pnl_by_currency"], "unavailable")
         self.assertEqual(payload["metadata"]["record_counts"]["trade_episode_previews"], 8)
+        self.assertEqual(payload["metadata"]["record_counts"]["journal_review_queue_items"], 7)
+        self.assertEqual(
+            {row["queue"] for row in payload["journal_review_queue"]},
+            {"unreviewed", "incomplete"},
+        )
+        self.assertTrue(
+            all("entry_reason" not in row and "notes" not in row for row in payload["journal_review_queue"])
+        )
         self.assertEqual(payload["trade_summary"]["gross_cashflow"], "-10415.00")
         self.assertEqual(payload["trade_summary"]["realized_pnl_by_currency"], {"USD": "0.00"})
         self.assertEqual(payload["trade_summary"]["unrealized_pnl_by_currency"], {"USD": None})
@@ -491,6 +500,17 @@ swab:DEMO:evt:001,manual_csv,DEMO_ACCOUNT,ACT-001,ORDER-001,POS-001,TRANSACTION_
             first_reviews_expected = con.execute(
                 "SELECT COUNT(*) FROM manual_reviews"
             ).fetchone()[0]
+            imported_episode_uid = con.execute(
+                "SELECT episode_uid FROM trade_episodes ORDER BY episode_uid LIMIT 1"
+            ).fetchone()[0]
+        with duckdb.connect(str(self.db_path)) as con:
+            journal_entry = create_entry(
+                con,
+                entry_type="post_trade_reflection",
+                body="Preserve this reflection across replay.",
+                created_source="streamlit",
+                episode_uid=imported_episode_uid,
+            )
 
         import_to_db(
             self.db_path,
@@ -504,6 +524,13 @@ swab:DEMO:evt:001,manual_csv,DEMO_ACCOUNT,ACT-001,ORDER-001,POS-001,TRANSACTION_
             self.assertEqual(
                 con.execute("SELECT COUNT(*) FROM manual_reviews").fetchone()[0],
                 first_reviews_expected,
+            )
+            self.assertEqual(
+                con.execute(
+                    "SELECT COUNT(*) FROM journal_entry_revisions WHERE entry_uid = ?",
+                    [journal_entry.entry_uid],
+                ).fetchone()[0],
+                1,
             )
             revisions = con.execute(
                 """

@@ -6,7 +6,7 @@ Display the published dashboard payload and allow manual journal review edits.
 
 Phase E operator contract:
 - DB payload is the only writable review mode.
-- Save Review writes DuckDB manual_reviews.
+- Save Review appends DuckDB journal_reviews and updates manual_reviews.
 - Save Review rebuilds dashboard_payload_from_db.json.
 - CSV and Custom payloads are read-only.
 - No broker API calls.
@@ -19,18 +19,44 @@ Phase E operator contract:
 from __future__ import annotations
 
 import json
+import os
 import subprocess
 import sys
 from pathlib import Path
 from typing import Any
 
 import streamlit as st
+import duckdb
+
+from onejournal.journal.domain import JournalPolicyError, create_entry, table_exists
+from onejournal.journal.search import (
+    JournalSearchFilters,
+    create_saved_view,
+    list_saved_views,
+    load_saved_view,
+    search_journal,
+)
 
 
 PROJECT_DIR = Path(__file__).resolve().parents[3]
-DEFAULT_PAYLOAD_PATH = PROJECT_DIR / "output/dashboard/latest/dashboard_payload.json"
-DEFAULT_DB_PAYLOAD_PATH = PROJECT_DIR / "output/dashboard/latest/dashboard_payload_from_db.json"
-DEFAULT_DB_PATH = PROJECT_DIR / "data/journal/onejournal.duckdb"
+DEFAULT_PAYLOAD_PATH = Path(
+    os.environ.get(
+        "ONEJOURNAL_CSV_PAYLOAD_PATH",
+        PROJECT_DIR / "output/dashboard/latest/dashboard_payload.json",
+    )
+)
+DEFAULT_DB_PAYLOAD_PATH = Path(
+    os.environ.get(
+        "ONEJOURNAL_DB_PAYLOAD_PATH",
+        PROJECT_DIR / "output/dashboard/latest/dashboard_payload_from_db.json",
+    )
+)
+DEFAULT_DB_PATH = Path(
+    os.environ.get(
+        "ONEJOURNAL_DB_PATH",
+        PROJECT_DIR / "data/journal/onejournal.duckdb",
+    )
+)
 REVIEW_STATUS_LABELS = {
     "Not Reviewed": "unreviewed",
     "Reviewed": "reviewed",
@@ -54,6 +80,25 @@ QUALITY_STATE_LABELS = {
     "reconciliation_pending": "🔎 Reconciliation Pending",
     "unavailable": "❓ Unavailable",
     "failed": "❌ Failed",
+}
+ENTRY_TYPE_LABELS = {
+    "Pre-trade Plan": "pre_trade_plan",
+    "Entry Thesis": "entry_thesis",
+    "Execution Review": "execution_review",
+    "Exit Review": "exit_review",
+    "Post-trade Reflection": "post_trade_reflection",
+    "Weekly Review": "weekly_review",
+    "Monthly Review": "monthly_review",
+    "Mistake": "mistake",
+    "Lesson": "lesson",
+    "Note": "note",
+}
+QUEUE_LABELS = {
+    "All Trades": None,
+    "Unreviewed": "unreviewed",
+    "Incomplete": "incomplete",
+    "Risk Flagged": "risk_flagged",
+    "Mistakes": "mistake",
 }
 
 
@@ -212,7 +257,7 @@ def render_review_editor(episodes: list[dict[str, Any]], payload_path: Path, aso
         st.caption("CSV payload is legacy/backfill/export only. No broker action is taken.")
         return
 
-    st.success("Writable mode: DB payload only. Save Review writes DuckDB manual_reviews and rebuilds dashboard_payload_from_db.json.")
+    st.success("Writable mode: DB payload only. Save Review appends durable history, updates the compatibility projection, and rebuilds dashboard_payload_from_db.json.")
     st.caption("Safety: no broker API call, no order placement, no order cancellation, no order modification, no auto-trade.")
 
     labels = []
@@ -257,7 +302,7 @@ def render_review_editor(episodes: list[dict[str, Any]], payload_path: Path, aso
             entry_reason,
             notes,
         )
-        st.info(f"Saved DB review to DuckDB manual_reviews for: {episode_uid}")
+        st.info(f"Saved DB review history and compatibility projection for: {episode_uid}")
         st.caption(f"DB path: {db_path}")
         st.caption(f"Payload path: {payload_path}")
         st.caption(f"Refresh return code: {result.returncode}")
@@ -270,6 +315,189 @@ def render_review_editor(episodes: list[dict[str, Any]], payload_path: Path, aso
             st.rerun()
         else:
             st.error("Review upsert or DB dashboard refresh failed. See output above.")
+
+
+def journal_domain_available(db_path: Path) -> bool:
+    """Return whether the runtime DB has the durable journal schema."""
+
+    if not db_path.exists():
+        return False
+    con = duckdb.connect(str(db_path), read_only=True)
+    try:
+        return table_exists(con, "journal_entry_revisions")
+    finally:
+        con.close()
+
+
+def filter_episodes_by_queue(
+    episodes: list[dict[str, Any]],
+    queue_items: list[dict[str, Any]],
+    queue_name: str | None,
+) -> list[dict[str, Any]]:
+    """Filter payload episodes using traceable queue membership only."""
+
+    if queue_name is None:
+        return episodes
+    episode_uids = {
+        str(row.get("episode_uid"))
+        for row in queue_items
+        if row.get("queue") == queue_name
+    }
+    return [row for row in episodes if str(row.get("episode_uid")) in episode_uids]
+
+
+def render_review_queue_selector(
+    episodes: list[dict[str, Any]],
+    queue_items: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    """Render deterministic queue counts and return the selected episode scope."""
+
+    counts = {
+        queue_name: sum(1 for row in queue_items if row.get("queue") == queue_name)
+        for queue_name in (value for value in QUEUE_LABELS.values() if value is not None)
+    }
+    labels = [
+        label if queue_name is None else f"{label} ({counts.get(queue_name, 0)})"
+        for label, queue_name in QUEUE_LABELS.items()
+    ]
+    selected_label = st.selectbox("Review queue", labels, key="review_queue_selector")
+    base_label = next(label for label in QUEUE_LABELS if selected_label.startswith(label))
+    return filter_episodes_by_queue(episodes, queue_items, QUEUE_LABELS[base_label])
+
+
+def render_structured_journal(db_path: Path, episodes: list[dict[str, Any]]) -> None:
+    """Render the private UXJ-03/04 local prototype workflow."""
+
+    st.subheader("Structured Journal")
+    st.caption(
+        "Private local prototype. Journal text is read from DuckDB directly and is not added to the dashboard payload."
+    )
+    if not journal_domain_available(db_path):
+        st.info(
+            "Structured journal is unavailable until migration 0005 is explicitly applied to the runtime database."
+        )
+        return
+
+    create_tab, search_tab = st.tabs(["New Entry", "Search Journal"])
+    with create_tab:
+        episode_options = {"Unlinked / pre-trade": None}
+        for episode in episodes:
+            episode_uid = str(episode.get("episode_uid", ""))
+            label = f"{episode.get('primary_symbol', '-')} | {episode.get('strategy_label', '-')} | {episode_uid}"
+            episode_options[label] = episode_uid
+        with st.form("structured_journal_create_form"):
+            entry_type_label = st.selectbox("Entry type", list(ENTRY_TYPE_LABELS))
+            episode_label = st.selectbox("Linked trade", list(episode_options))
+            title = st.text_input("Title")
+            body = st.text_area("Private journal entry", height=180)
+            submitted = st.form_submit_button("Save Private Journal Entry")
+        if submitted:
+            try:
+                con = duckdb.connect(str(db_path))
+                try:
+                    revision = create_entry(
+                        con,
+                        entry_type=ENTRY_TYPE_LABELS[entry_type_label],
+                        body=body,
+                        title=title,
+                        episode_uid=episode_options[episode_label],
+                        created_source="streamlit",
+                    )
+                finally:
+                    con.close()
+                st.success(f"Saved entry {revision.entry_uid} revision {revision.revision_no}.")
+            except Exception as exc:
+                st.error(f"Journal entry was not saved ({type(exc).__name__}). Private content was not logged.")
+
+    with search_tab:
+        con = duckdb.connect(str(db_path), read_only=True)
+        try:
+            saved_views = list_saved_views(con)
+        finally:
+            con.close()
+        saved_view_options = {"None": None}
+        saved_view_options.update(
+            {row["name"]: row["saved_view_uid"] for row in saved_views}
+        )
+        selected_saved_view = st.selectbox(
+            "Saved view",
+            list(saved_view_options),
+            key="journal_saved_view_selector",
+        )
+        run_saved_view = st.button(
+            "Run Saved View",
+            disabled=saved_view_options[selected_saved_view] is None,
+        )
+        with st.form("structured_journal_search_form"):
+            query_text = st.text_input("Search title or journal text")
+            symbol = st.text_input("Symbol")
+            review_status = st.selectbox(
+                "Review state",
+                ["Any", *REVIEW_STATUSES],
+            )
+            entry_type_label = st.selectbox(
+                "Entry type",
+                ["Any", *ENTRY_TYPE_LABELS],
+                key="journal_search_entry_type",
+            )
+            saved_view_name = st.text_input("Save these filters as (optional)")
+            search_submitted = st.form_submit_button("Search Private Journal")
+            save_submitted = st.form_submit_button("Save View and Search")
+        filters = JournalSearchFilters(
+            query_text=query_text or None,
+            symbol=symbol or None,
+            review_status=(
+                None if review_status == "Any" else REVIEW_STATUS_LABELS[review_status]
+            ),
+            entry_type=(
+                None if entry_type_label == "Any" else ENTRY_TYPE_LABELS[entry_type_label]
+            ),
+        )
+        result = None
+        try:
+            if run_saved_view:
+                con = duckdb.connect(str(db_path), read_only=True)
+                try:
+                    _, filters = load_saved_view(
+                        con,
+                        str(saved_view_options[selected_saved_view]),
+                    )
+                    result = search_journal(con, filters)
+                finally:
+                    con.close()
+            elif search_submitted or save_submitted:
+                if save_submitted:
+                    if not saved_view_name.strip():
+                        raise ValueError("a saved-view name is required")
+                    con = duckdb.connect(str(db_path))
+                    try:
+                        create_saved_view(con, name=saved_view_name, filters=filters)
+                    finally:
+                        con.close()
+                    st.success(f"Saved view: {saved_view_name.strip()}")
+                con = duckdb.connect(str(db_path), read_only=True)
+                try:
+                    result = search_journal(con, filters)
+                finally:
+                    con.close()
+            if result is not None:
+                _render_journal_search_result(result)
+        except (JournalPolicyError, ValueError, duckdb.Error) as exc:
+            st.error(f"Journal search or saved-view action failed: {exc}")
+
+
+def _render_journal_search_result(result: Any) -> None:
+    st.caption(
+        f"Found {len(result.episodes)} trade(s) and {len(result.entries)} current journal entry/entries."
+    )
+    for entry in result.entries:
+        heading = entry.get("title") or entry.get("entry_type") or "Journal entry"
+        st.markdown(f"**{heading}**")
+        st.caption(
+            f"{entry.get('entry_type')} | revision {entry.get('revision_no')} | "
+            f"symbol {entry.get('primary_symbol') or 'unlinked'}"
+        )
+        st.write(entry.get("body", ""))
 
 
 def main() -> None:
@@ -288,7 +516,7 @@ def main() -> None:
         "Payload source",
         ["DB payload", "CSV payload", "Custom path"],
         index=0,
-        help="DB payload is the Phase B default. Save Review writes DuckDB manual_reviews. CSV payload is legacy/backfill.",
+        help="DB payload is the default. Save Review appends durable history and updates the compatibility projection. CSV payload is legacy/backfill.",
     )
     if payload_source == "CSV payload":
         payload_path = DEFAULT_PAYLOAD_PATH
@@ -308,6 +536,7 @@ def main() -> None:
     metadata = payload.get("metadata", {})
     trade_summary = payload.get("trade_summary", {})
     episodes = payload.get("recent_trade_episodes", [])
+    queue_items = payload.get("journal_review_queue", [])
 
     mode = metadata.get("mode", "unknown")
     auto_trade = metadata.get("auto_trade", "unknown")
@@ -334,12 +563,18 @@ def main() -> None:
     st.subheader("Recent Trade Episodes")
 
     if episodes:
+        visible_episodes = render_review_queue_selector(episodes, queue_items)
         st.dataframe(
-            build_episode_display_rows(episodes),
-            use_container_width=True,
+            build_episode_display_rows(visible_episodes),
+            width="stretch",
             hide_index=True,
         )
-        render_review_editor(episodes, payload_path, asof, payload_source, DEFAULT_DB_PATH)
+        if visible_episodes:
+            render_review_editor(visible_episodes, payload_path, asof, payload_source, DEFAULT_DB_PATH)
+        else:
+            st.info("No trades are currently in this review queue.")
+        if payload_source == "DB payload":
+            render_structured_journal(DEFAULT_DB_PATH, episodes)
     else:
         st.warning("No recent trade episodes found.")
 

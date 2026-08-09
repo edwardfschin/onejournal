@@ -36,7 +36,8 @@ all active imports, UI actions, CI workflows, and operator commands.
 | `scripts/journal/migrate_journal_db.py` | ACTIVE | Reads migration artifacts and applies ordered SQL migrations with ledger enforcement and checksum validation. | Supports explicit DB migration runs and failure-safe re-entry behavior. |
 | `scripts/journal/import_journal_to_db.py` | ACTIVE | Imports normalized/manual fills, optional lifecycle-event rows, and reviews; writes DuckDB rows. `--replace` deletes/rebuilds prototype journal tables. | Controlled local import; not a production migration. |
 | `scripts/journal/build_dashboard_payload_from_db.py` | ACTIVE | Reads DuckDB and writes a dashboard JSON only with `--write`. | Current DB-backed Streamlit payload producer. |
-| `scripts/journal/upsert_manual_review_to_db.py` | ACTIVE | Writes one validated `manual_reviews` row after checking the episode exists. | Current Streamlit Save Review target. |
+| `scripts/journal/upsert_manual_review_to_db.py` | ACTIVE | Appends one validated `journal_reviews` event when migration 0005 exists and atomically updates the `manual_reviews` compatibility projection after checking the episode. | Current Streamlit Save Review target; retains projection-only compatibility before migration 0005. |
+| `scripts/journal/upsert_journal_entry_to_db.py` | ACTIVE | Creates or appends a durable private journal-entry revision; reads body text from a file/stdin and never prints it. | Local UXJ-03 operator workflow after migration 0005; no broker or execution writes. |
 | `scripts/journal/check_journal_db.py` | ACTIVE | Read-only DuckDB integrity and duplicate-key check. | Baseline/operator validation. |
 | `scripts/journal/check_journal_reconciliation.py` | ACTIVE | Read-only cross-family reconciliation check for fills, transactions, positions, cash, and account scope with policy modes. | Added JRN-07 publication blocker gate in the Schwab import flow. |
 | `scripts/journal/check_import_run_audit.py` | ACTIVE | Read-only import-run and fill-lineage check. | Baseline/operator validation. |
@@ -79,7 +80,7 @@ is not a project artifact.
 ## Phase-mapped script inventory references
 
 - Phase F Guarded Review Workflow Scripts
-- Phase B source of truth: DuckDB manual_reviews
+- Phase B review compatibility projection: DuckDB manual_reviews; durable history after migration 0005: journal_reviews
 - Phase M7 Schwab Duplicate Snapshot Guard
 - Phase M6 Schwab Final Operator Runbook
 

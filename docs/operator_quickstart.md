@@ -24,17 +24,20 @@ If it fails, fix the failing section before continuing.
 
 Run: python scripts/journal/build_dashboard_payload_from_db.py --asof 2026-06-02 --db data/journal/onejournal.duckdb --output output/dashboard/latest/dashboard_payload_from_db.json --write
 
-This rebuilds output/dashboard/latest/dashboard_payload_from_db.json from DuckDB manual_reviews.
+This rebuilds the generated DB payload from DuckDB canonical episode and
+current review-projection state.
 
 ## Edit Manual Reviews
 
-Phase B review source of truth: DuckDB manual_reviews
+After migration 0005, durable review history is DuckDB `journal_reviews` and
+`manual_reviews` is the current compatibility projection.
 
 Edit review_status, setup_quality, entry_reason, and notes.
 
 Do not edit episode_uid unless the trade episode itself changes.
 
-After saving reviews in Streamlit, the DB dashboard payload is rebuilt from DuckDB manual_reviews.
+After saving reviews in Streamlit, the DB dashboard payload is rebuilt from the
+current compatibility projection.
 
 ## Start Dashboard
 
@@ -79,7 +82,7 @@ Current prototype validates these strategy labels:
 
 ## Current Flow
 
-manual CSV fill -> NormalizedFill -> strategy classification -> TradeEpisodePreview -> DuckDB manual_reviews -> dashboard_payload_from_db.json -> Streamlit dashboard
+manual CSV fill -> NormalizedFill -> strategy classification -> TradeEpisodePreview -> DuckDB journal history and current projection -> dashboard payload -> Streamlit dashboard
 
 ## Safety Rules
 
@@ -103,9 +106,9 @@ No broker credentials in CSV files.
 
 3. python scripts/journal/build_dashboard_payload_from_db.py --asof 2026-06-02 --db data/journal/onejournal.duckdb --output output/dashboard/latest/dashboard_payload_from_db.json --write
 
-4. Use Streamlit DB payload Save Review to write DuckDB manual_reviews.
+4. Use Streamlit DB payload Save Review to append history and update the current projection.
 
-5. Save Review in Streamlit writes DuckDB manual_reviews and rebuilds the DB dashboard payload.
+5. Save Review in Streamlit atomically writes both review layers and rebuilds the DB dashboard payload.
 
 6. streamlit run src/onejournal/apps/streamlit_app.py
 
@@ -113,7 +116,8 @@ No broker credentials in CSV files.
 
 ## DuckDB Phase B Review Store
 
-OneJournal Phase B uses DuckDB manual_reviews as the primary editable review store.
+OneJournal uses DuckDB `journal_reviews` as durable history after migration
+0005 and `manual_reviews` as the temporary editable compatibility projection.
 
 Use this command when you want to refresh the dashboard and prove that the CSV-built payload and DB-built payload still match:
 
@@ -154,14 +158,14 @@ Safety notes:
 
 ## Phase B Review Save
 
-Streamlit DB payload Save Review writes DuckDB manual_reviews.
+Streamlit DB payload Save Review appends durable history and updates the compatibility projection.
 CSV manual_reviews.csv is legacy/backfill/export only.
 No auto-trade.
 
 ## Phase B Default Payload
 
 DB payload is the default Streamlit payload in Phase B.
-Save Review writes DuckDB manual_reviews.
+Save Review appends durable history and updates the compatibility projection.
 CSV payload is legacy/backfill/export only.
 No auto-trade.
 
@@ -179,7 +183,7 @@ Use this sequence for the normal OneJournal DB review workflow.
 ```text
 1. Confirm Git identity and clean status.
 2. Run ./bin/onejournal_check.sh.
-3. Build the DB dashboard payload from DuckDB manual_reviews.
+3. Build the DB dashboard payload from DuckDB canonical state and the current review projection.
 4. Run check_db_dashboard_contract.py to prove dashboard_payload_from_db.json has the expected DB schema.
 5. Run check_save_review_flow.py to prove Save Review works end to end on a temporary DB copy.
 6. Launch Streamlit.
