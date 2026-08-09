@@ -5,6 +5,7 @@ Owner: Project owner
 Date created: 2026-08-09
 
 This file is a structured evidence pack placeholder for `LIV-01-2 (Security)`.
+Evidence ID: `EVID-LIV-01-02`
 
 ## Required evidence
 
