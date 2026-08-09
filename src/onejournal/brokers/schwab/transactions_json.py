@@ -48,6 +48,10 @@ _UNSUPPORTED_ACTIVITY_TYPES = {
     "TRANSFER",
 }
 
+_LIFECYCLE_ACTIVITY_ALIASES = {
+    "OPTION_EXERCISE": "EXERCISE",
+}
+
 _OPTION_SYMBOL_RE = re.compile(r"^(?P<root>.+?)(?P<yymmdd>\d{6})(?P<cp>[CP])(?P<strike>\d{8})$")
 
 
@@ -130,8 +134,14 @@ def _unsupported_activity_key(txn: dict[str, Any]) -> str | None:
     sub_type = str(txn.get("subType", "")).strip().upper()
     if activity_type in _UNSUPPORTED_ACTIVITY_TYPES:
         return f"activityType:{activity_type}"
+    canonical_activity_type = _LIFECYCLE_ACTIVITY_ALIASES.get(activity_type)
+    if canonical_activity_type is not None:
+        return f"activityType:{canonical_activity_type}"
     if sub_type in _UNSUPPORTED_ACTIVITY_TYPES:
         return f"subType:{sub_type}"
+    canonical_subtype = _LIFECYCLE_ACTIVITY_ALIASES.get(sub_type)
+    if canonical_subtype is not None:
+        return f"subType:{canonical_subtype}"
     if activity_type:
         return None
     return None

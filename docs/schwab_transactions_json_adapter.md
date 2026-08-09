@@ -22,6 +22,7 @@ Activity and subtype hints that represent lifecycle-only events are excluded fro
 
 - `ASSIGNMENT`
 - `EXERCISE`
+- `OPTION_EXERCISE` (normalized as `EXERCISE`)
 - `EXPIRATION`
 - `ROLL`
 - `ROLLOVER`

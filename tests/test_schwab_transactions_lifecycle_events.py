@@ -105,6 +105,24 @@ class TransactionsLifecycleEventTests(unittest.TestCase):
         self.assertEqual(len(events), 1)
         self.assertEqual(events[0]["event_type"], "activityType:ASSIGNMENT")
 
+    def test_option_exercise_activity_type_is_normalized(self) -> None:
+        events = extract_lifecycle_events_from_transactions(
+            [
+                {
+                    "type": "TRADE",
+                    "status": "VALID",
+                    "activityType": "OPTION_EXERCISE",
+                    "activityId": "EVT-EX-001",
+                    "tradeDate": "2026-07-01T11:30:00-05:00",
+                }
+            ],
+            asof="2026-07-01",
+        )
+
+        self.assertEqual(len(events), 1)
+        self.assertEqual(events[0]["event_type"], "activityType:EXERCISE")
+        self.assertEqual(events[0]["event_uid"], "schwab_txn:EVT-EX-001:event:TRADE")
+
     def test_extract_rollover_activity_event(self) -> None:
         events = extract_lifecycle_events_from_transactions(
             [
