@@ -270,11 +270,14 @@ approval and successful completion of every prior safety gate.
 
 The current actionable sequence is:
 
-1. `JRN-05` - add assignments, exercises, expirations, rolls, transfers, dividends, and corporate actions.
-2. `LIV-02` - live pilot policy and controls evidence.
-3. `LIV-03` - human-approval intent evidence and contracts.
-4. `LIV-04` - live reconciliation-chain governance.
-5. `LIV-05` - expansion governance and staged-control evidence.
+1. `PNL-01` - finalize realized P&L from closed lifecycle allocations with worked examples.
+2. `PNL-02` - approve market-data provider, quote ingestion/storage policy, licensing, and freshness contract.
+3. `PNL-07` - deliver daily/monthly/custom period report and export contracts with reconciliation behavior.
+4. `UXJ-05` - finalize attachment controls policy (storage, authorization, encryption, retention, backup, incident response).
+5. `UXJ-06` - enable non-financial journal process workflows after financial contracts are stable.
+6. `WEB-01` - decide and approve production architecture, security, and hosting stack.
+7. `WEB-02` to `WEB-09` - define IA/design system to production rollout in dependency order.
 
-No P&L, production website, or execution implementation should bypass these
-foundational and contract decisions.
+No implementation should bypass unresolved blockers above, especially P&L
+financial correctness, quote governance, attachment controls, and production
+architecture security.
