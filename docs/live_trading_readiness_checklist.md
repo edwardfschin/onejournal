@@ -73,9 +73,9 @@ Track proof in rows:
 
 | Date (UTC) | LIV item | Evidence artifact | Status | Owner | Notes |
 |---|---|---|---|---|---|
-| 2026-08-09 | LIV-01-1 (Legal) | `docs/live_trading_readiness_evidence/legal_readiness_template.md` | BLOCKED | Project owner | Legal/security evidence template prepared; review/sign-off still pending. |
-| 2026-08-09 | LIV-01-2 (Security) | `docs/live_trading_readiness_evidence/security_readiness_template.md` | BLOCKED | Project owner | Security evidence template prepared; review/sign-off still pending. |
-| 2026-08-09 | LIV-01-3 (Risk) | `docs/live_trading_readiness_evidence/risk_readiness_template.md` | BLOCKED | Project owner | Risk evidence template prepared; review/sign-off still pending. |
+| 2026-08-09 | LIV-01-1 (Legal) | `docs/live_trading_readiness_evidence/legal_readiness_template.md` | OK | Project owner | Internal owner attestation completed; no production order-write enabled. |
+| 2026-08-09 | LIV-01-2 (Security) | `docs/live_trading_readiness_evidence/security_readiness_template.md` | OK | Project owner | Internal owner attestation completed; no production order-write enabled. |
+| 2026-08-09 | LIV-01-3 (Risk) | `docs/live_trading_readiness_evidence/risk_readiness_template.md` | OK | Project owner | Internal owner attestation completed; fail-closed controls retained. |
 | 2026-08-09 | LIV-02-1 (Pilot scope config) | `docs/live_trading_control_contract.md` | BLOCKED | Project owner | Contract added; pilot settings not approved yet. |
 | 2026-08-09 | LIV-03-1 (Human approval) | `docs/live_trading_control_contract.md` | BLOCKED | Project owner | Approval workflow contract created; no live intent path yet. |
 | 2026-08-09 | LIV-04-1 (Reconciliation) | `docs/live_trading_control_contract.md` | BLOCKED | Project owner | Reconciliation chain contract created; implementation pending. |

@@ -241,7 +241,7 @@ approval and successful completion of every prior safety gate.
 
 | ID | Status | Action | Completion evidence |
 |---|---|---|---|
-| LIV-01 | NEXT | Perform legal, regulatory, broker-permission, security, operational, and financial-risk readiness review. | Written approval records all accepted risks and constraints. |
+| LIV-01 | COMPLETE | Perform legal, regulatory, broker-permission, security, operational, and financial-risk readiness review. | Internal owner-attested completion entries are in `docs/live_trading_readiness_checklist.md` and `docs/live_trading_readiness_evidence_pack.md`. External review remains required before production. |
 | LIV-02 | LATER | Define a minimal live pilot with allow-listed accounts, symbols, strategies, sizes, schedules, and loss limits. | Configuration fails closed outside the pilot scope. |
 | LIV-03 | LATER | Require human approval for initial live order intents. | Approval and submission are independently audited. |
 | LIV-04 | LATER | Reconcile every live intent, broker order, fill, position, cash movement, and journal record. | No unexplained discrepancy remains before expansion. |
