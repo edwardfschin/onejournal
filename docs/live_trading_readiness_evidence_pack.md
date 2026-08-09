@@ -33,6 +33,7 @@ queue so the project can move from documentation to review.
 | EVID-LIV-04-02 | LIV-04 | `scripts/liv/validate_reconciliation_chain.py` | IN_REVIEW | Project owner | — | Reconciliation chain validator added for orphan checks and aggregate consistency. |
 | EVID-LIV-05-01 | LIV-05 | `docs/live_trading_control_contract.md` | PENDING | Project owner | — | Expansion gates defined; expansion decision record pending. |
 | EVID-LIV-05-02 | LIV-05 | `docs/live_trading_readiness_decision_log.md` | PENDING | Project owner | — | Stage decisions and approvals are logged; initial entries show deferred state. |
+| EVID-LIV-05-03 | LIV-05 | `scripts/liv/validate_expansion_governance.py` | IN_REVIEW | Project owner | — | Governance validator added for decision log and evidence-readiness consistency. |
 
 ## Completion rule
 

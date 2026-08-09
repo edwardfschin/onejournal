@@ -161,3 +161,11 @@ Expansion decision record:
 
 All expansion moves remain advisory until a separate owner approval is recorded
 in a project decision record.
+
+Executable check:
+
+- `scripts/liv/validate_expansion_governance.py \
+  --decision-log docs/live_trading_readiness_decision_log.md \
+  --evidence-pack docs/live_trading_readiness_evidence_pack.md`
+  validates decision-log structure and evidence completeness before expansion is
+  proposed.

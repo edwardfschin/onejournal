@@ -75,6 +75,8 @@ No step may be executed if a hard blocker exists.
    - confirm rollback and kill-switch drill.
 2. Require at least two-owner approval for scope change.
 3. Publish a decision record with timestamp + scope delta + reasons.
+4. Validate governance artifacts before approving expansion with:
+   `python scripts/liv/validate_expansion_governance.py --decision-log docs/live_trading_readiness_decision_log.md --evidence-pack docs/live_trading_readiness_evidence_pack.md`.
 
 ## Exit and handoff
 
