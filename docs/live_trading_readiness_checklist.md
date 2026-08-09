@@ -89,3 +89,5 @@ Track proof in rows:
   `docs/live_trading_readiness_runbook.md`.
 - Evidence registry for completed artifacts is tracked in
   `docs/live_trading_readiness_evidence_pack.md`.
+- Stage-completion decisions are recorded in
+  `docs/live_trading_readiness_decision_log.md`.
