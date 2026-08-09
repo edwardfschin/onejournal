@@ -198,6 +198,40 @@ class TransactionsJsonAdapterTests(unittest.TestCase):
                 self.assertEqual(stats.unsupported_items, 1)
                 self.assertEqual(stats.unsupported_activity_counts, {expected_key: 1})
 
+    def test_option_exercise_sub_type_is_normalized_as_exercise_for_lifecycle(self) -> None:
+        rows, stats = normalized_rows_from_transactions(
+            [
+                {
+                    "type": "TRADE",
+                    "status": "VALID",
+                    "subType": "OPTION_EXERCISE",
+                    "activityId": "A7",
+                    "tradeDate": "2026-07-01T12:00:00-05:00",
+                    "accountNumber": "ACCT1",
+                    "orderId": "ORD-07X",
+                    "positionId": "POS-07X",
+                    "transferItems": [
+                        {
+                            "amount": 5,
+                            "instrument": {
+                                "assetType": "EQUITY",
+                                "symbol": "AAPL",
+                            },
+                            "positionEffect": "OPENING",
+                            "price": 10,
+                            "cost": 50,
+                        }
+                    ],
+                }
+            ]
+        )
+
+        self.assertEqual(rows, [])
+        self.assertEqual(stats.transactions, 1)
+        self.assertEqual(stats.trade_valid, 0)
+        self.assertEqual(stats.unsupported_items, 1)
+        self.assertEqual(stats.unsupported_activity_counts, {"subType:EXERCISE": 1})
+
     def test_assignments_asof_filter_still_applies(self) -> None:
         rows, stats = normalized_rows_from_transactions(
             [
