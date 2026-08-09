@@ -3,7 +3,7 @@
 This directory is reserved for ordered DuckDB migration artifacts governed by
 `docs/database_migrations.md`.
 
-There are currently three migration files:
+There are currently four migration files:
 
 - `0001_establish_schema_version.sql`:
   create the migration ledger (`schema_migrations`) with run metadata and audit
@@ -15,6 +15,9 @@ There are currently three migration files:
 - `0003_add_normalized_fill_revisions.sql`:
   add broker-neutral `normalized_fill_revisions` to preserve prior fill rows
   during correction-safe replace re-imports without dropping manual reviews.
+- `0004_add_normalized_lifecycle_events.sql`:
+  add `normalized_lifecycle_events` for ADR-0005 lifecycle-event ledger persistence
+  with import lineage and as-of/ingest metadata.
 
 The existing DuckDB schema is a prototype bootstrap baseline created (and now
 versioned) by `scripts/journal/init_journal_db.py`.

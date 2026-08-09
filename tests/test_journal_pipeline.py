@@ -45,6 +45,7 @@ class JournalPipelineIntegrationTests(unittest.TestCase):
                 "normalized_orders": 8,
                 "normalized_positions": 12,
                 "normalized_transactions": 12,
+                "normalized_lifecycle_events": 0,
                 "trade_episodes": 8,
                 "trade_episode_legs": 12,
                 "manual_reviews": 8,
@@ -83,6 +84,12 @@ class JournalPipelineIntegrationTests(unittest.TestCase):
                     "SELECT COUNT(*) FROM normalized_transactions WHERE import_run_id IS NOT NULL"
                 ).fetchone()[0],
                 12,
+            )
+            self.assertEqual(
+                con.execute(
+                    "SELECT COUNT(*) FROM normalized_lifecycle_events WHERE import_run_id IS NOT NULL"
+                ).fetchone()[0],
+                0,
             )
 
         payload = build_payload(self.db_path, "2026-06-02")
@@ -219,6 +226,46 @@ class JournalPipelineIntegrationTests(unittest.TestCase):
                     ("TSLA", Decimal("50")),
                     ("TSLA", Decimal("-50")),
                 ],
+            )
+
+    def test_import_writes_lifecycle_events(self) -> None:
+        fills_csv = Path(self.temp_dir.name) / "lifecycle_fills.csv"
+        reviews_csv = Path(self.temp_dir.name) / "lifecycle_reviews.csv"
+        lifecycle_csv = Path(self.temp_dir.name) / "lifecycle_rows.csv"
+        fills_csv.write_text(
+            """asof,source_broker,source_account_id,source_fill_id,filled_at,asset_class,symbol,side,quantity,fill_price,commission,fees,currency,source_order_id
+2026-06-02,manual_csv,DEMO_ACCOUNT,FILL-001,2026-06-02T10:00:00+00:00,stock,AAPL,BUY,1,150,0,0,USD,ORDER-001
+""",
+            encoding="utf-8",
+        )
+        reviews_csv.write_text(
+            "episode_uid,review_status,setup_quality,entry_reason,notes\n"
+            "manual_csv:DEMO_ACCOUNT:stock:AAPL,reviewed,acceptable,,\n",
+            encoding="utf-8",
+        )
+        lifecycle_csv.write_text(
+            """event_uid,source_broker,source_account_id,source_activity_id,source_order_id,source_position_id,event_class,event_type,asof,event_at,event_name
+swab:DEMO:evt:001,manual_csv,DEMO_ACCOUNT,ACT-001,ORDER-001,POS-001,TRANSACTION_LIFECYCLE,activityType:ASSIGNMENT,2026-06-02,2026-06-02T10:00:00+00:00,assignment
+""",
+            encoding="utf-8",
+        )
+
+        counts = import_to_db(
+            self.db_path,
+            fills_csv,
+            reviews_csv,
+            replace=True,
+            lifecycle_events=lifecycle_csv,
+            asof=date(2026, 6, 2),
+        )
+
+        self.assertEqual(counts["normalized_lifecycle_events"], 1)
+        with duckdb.connect(str(self.db_path), read_only=True) as con:
+            self.assertEqual(
+                con.execute(
+                    "SELECT event_class FROM normalized_lifecycle_events WHERE event_uid='swab:DEMO:evt:001'"
+                ).fetchone()[0],
+                "TRANSACTION_LIFECYCLE",
             )
 
     def test_import_rejects_conflicting_fill_replays_without_replace(self) -> None:

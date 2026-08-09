@@ -14,6 +14,7 @@ through the journal migration runner and the migration artifact set:
 - `normalized_orders`
 - `normalized_positions`
 - `normalized_transactions`
+- `normalized_lifecycle_events`
 - `normalized_fill_revisions`
 - `schema_migrations`
 

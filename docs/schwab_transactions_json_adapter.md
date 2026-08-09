@@ -42,8 +42,9 @@ summary for observability:
   `source_order_id`, `source_position_id`, `event_class`, `event_type`,
   `asof`, `event_at`, and `event_name`.
 
-This is read-only visibility only; event rows are not yet written into the
-journal database until ADR-0005 is accepted.
+ADR-0005 is accepted and event rows are now persisted to the normalized lifecycle
+event ledger via the Schwab daily import pipeline when `--lifecycle-events` is
+forwarded to `import_journal_to_db.py`.
 
 Optionally add `--lifecycle-events <path>` to write these rows as a CSV file for
 audit or future event-ledger ingestion.

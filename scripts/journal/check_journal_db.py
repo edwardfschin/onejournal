@@ -21,6 +21,7 @@ REQUIRED_TABLES = [
     "normalized_orders",
     "normalized_positions",
     "normalized_transactions",
+    "normalized_lifecycle_events",
     "trade_episodes",
     "trade_episode_legs",
     "manual_reviews",
@@ -93,6 +94,9 @@ def main() -> int:
         duplicate_transactions = con.execute(
             "SELECT COUNT(*) FROM (SELECT transaction_uid FROM normalized_transactions GROUP BY transaction_uid HAVING COUNT(*) > 1)"
         ).fetchone()[0]
+        duplicate_lifecycle_events = con.execute(
+            "SELECT COUNT(*) FROM (SELECT event_uid FROM normalized_lifecycle_events GROUP BY event_uid HAVING COUNT(*) > 1)"
+        ).fetchone()[0]
         duplicate_episodes = con.execute(
             "SELECT COUNT(*) FROM (SELECT episode_uid FROM trade_episodes GROUP BY episode_uid HAVING COUNT(*) > 1)"
         ).fetchone()[0]
@@ -105,6 +109,7 @@ def main() -> int:
         print(f"duplicate_order_uid: {duplicate_orders}")
         print(f"duplicate_position_uid: {duplicate_positions}")
         print(f"duplicate_transaction_uid: {duplicate_transactions}")
+        print(f"duplicate_lifecycle_event_uid: {duplicate_lifecycle_events}")
         print(f"duplicate_episode_uid: {duplicate_episodes}")
         print(f"duplicate_review_episode_uid: {duplicate_reviews}")
 
@@ -118,6 +123,8 @@ def main() -> int:
             fail("duplicate position_uid found")
         if duplicate_transactions:
             fail("duplicate transaction_uid found")
+        if duplicate_lifecycle_events:
+            fail("duplicate lifecycle event_uid found")
         if duplicate_episodes:
             fail("duplicate episode_uid found")
         if duplicate_reviews:

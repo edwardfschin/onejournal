@@ -51,8 +51,7 @@ class ImportRunAuditContractTests(unittest.TestCase):
             asof=date(2026, 6, 2),
         )
 
-        # Break lineage on one record in a new table we now actively
-        # enforce in JRN-02.
+        # Break lineage on one record in active tables we now enforce.
         import duckdb
 
         with duckdb.connect(str(self.db_path), read_only=False) as con:
@@ -63,6 +62,48 @@ class ImportRunAuditContractTests(unittest.TestCase):
         rc, output = self._run_checker(["--db", str(self.db_path)])
         self.assertEqual(rc, 1)
         self.assertIn("normalized_accounts has", output)
+        self.assertIn("without import_run_id", output)
+
+    def test_audit_detects_orphaned_normalized_lifecycle_records(self) -> None:
+        fills_csv = Path(self.temp_dir.name) / "lifecycle_fills.csv"
+        reviews_csv = Path(self.temp_dir.name) / "lifecycle_reviews.csv"
+        lifecycle_csv = Path(self.temp_dir.name) / "lifecycle_rows.csv"
+        fills_csv.write_text(
+            """asof,source_broker,source_account_id,source_fill_id,filled_at,asset_class,symbol,side,quantity,fill_price,commission,fees,currency,source_order_id
+2026-06-02,manual_csv,DEMO_ACCOUNT,FILL-001,2026-06-02T10:00:00+00:00,stock,AAPL,BUY,1,150,0,0,USD,ORDER-001
+""",
+            encoding="utf-8",
+        )
+        reviews_csv.write_text(
+            "episode_uid,review_status,setup_quality,entry_reason,notes\n"
+            "manual_csv:DEMO_ACCOUNT:stock:AAPL,reviewed,acceptable,,\n",
+            encoding="utf-8",
+        )
+        lifecycle_csv.write_text(
+            """event_uid,source_broker,source_account_id,source_activity_id,source_order_id,source_position_id,event_class,event_type,asof,event_at,event_name
+swab:DEMO:evt:001,manual_csv,DEMO_ACCOUNT,ACT-001,ORDER-001,POS-001,TRANSACTION_LIFECYCLE,activityType:ASSIGNMENT,2026-06-02,2026-06-02T10:00:00+00:00,assignment
+""",
+            encoding="utf-8",
+        )
+
+        import_to_db(
+            self.db_path,
+            fills_csv,
+            reviews_csv,
+            replace=True,
+            lifecycle_events=lifecycle_csv,
+            asof=date(2026, 6, 2),
+        )
+
+        import duckdb
+        with duckdb.connect(str(self.db_path), read_only=False) as con:
+            con.execute(
+                "UPDATE normalized_lifecycle_events SET import_run_id = NULL WHERE event_uid='swab:DEMO:evt:001'"
+            )
+
+        rc, output = self._run_checker(["--db", str(self.db_path)])
+        self.assertEqual(rc, 1)
+        self.assertIn("normalized_lifecycle_events has", output)
         self.assertIn("without import_run_id", output)
 
     def test_audit_fails_when_import_status_not_ok(self) -> None:

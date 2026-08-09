@@ -10,8 +10,9 @@ from __future__ import annotations
 
 import argparse
 import json
+from csv import DictReader
 from decimal import Decimal
-from datetime import date, datetime
+from datetime import UTC, date, datetime
 from pathlib import Path
 
 import duckdb
@@ -29,6 +30,7 @@ from onejournal.journal.reviews import load_manual_reviews
 DEFAULT_DB = Path("data/journal/onejournal.duckdb")
 DEFAULT_FILLS = Path("docs/examples/manual_csv/fills_template.csv")
 DEFAULT_REVIEWS = Path("data/journal/reviews/manual_reviews.csv")
+DEFAULT_LIFECYCLE_EVENTS = None
 
 
 def parse_args() -> argparse.Namespace:
@@ -38,11 +40,32 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--file", dest="fills_alias", required=False, help="ODFS alias for --fills.")
     parser.add_argument("--fills", default=str(DEFAULT_FILLS), help="Manual fills CSV path.")
     parser.add_argument("--reviews", default=str(DEFAULT_REVIEWS), help="Manual reviews CSV path.")
+    parser.add_argument(
+        "--lifecycle-events",
+        dest="lifecycle_events",
+        default=DEFAULT_LIFECYCLE_EVENTS,
+        help="Optional lifecycle events CSV path emitted by the Schwab transactions converter.",
+    )
     parser.add_argument("--replace", action="store_true", help="Replace existing imported journal rows.")
     args = parser.parse_args()
     if args.fills_alias:
         args.fills = args.fills_alias
     return args
+
+
+def _parse_event_at(value: str) -> datetime:
+    if not value:
+        raise ValueError("lifecycle event row has empty event_at")
+    normalized = value.strip()
+    if normalized.endswith("Z"):
+        normalized = normalized[:-1] + "+00:00"
+    try:
+        event_at = datetime.fromisoformat(normalized)
+    except ValueError as exc:
+        raise ValueError(f"invalid lifecycle event_at value: {value}") from exc
+    if event_at.tzinfo is None:
+        return event_at
+    return event_at.astimezone(UTC).replace(tzinfo=None)
 
 
 def _side_sign(side: str) -> Decimal:
@@ -75,6 +98,115 @@ def _position_uid_for(key: tuple) -> str:
         str(part) if part is not None else ""
         for part in key
     )
+
+
+LIFECYCLE_EVENT_COLUMNS = (
+    "event_uid",
+    "source_broker",
+    "source_account_id",
+    "source_activity_id",
+    "source_order_id",
+    "source_position_id",
+    "event_class",
+    "event_type",
+    "asof_date",
+    "event_at",
+    "event_name",
+    "raw_path",
+    "import_run_id",
+)
+
+
+def _load_lifecycle_events(
+    lifecycle_events_path: Path | None,
+    *,
+    import_run_id: str,
+    fills_asof: date | None,
+) -> list[tuple]:
+    if lifecycle_events_path is None:
+        return []
+
+    if not lifecycle_events_path.exists():
+        raise ValueError(f"lifecycle-events file missing: {lifecycle_events_path}")
+
+    events: list[tuple] = []
+    with lifecycle_events_path.open(newline="", encoding="utf-8") as fh:
+        reader = DictReader(fh)
+        if reader.fieldnames is None:
+            raise ValueError(f"lifecycle-events file has no header: {lifecycle_events_path}")
+
+        headers = set(reader.fieldnames)
+        missing = [
+            name
+            for name in (
+                "event_uid",
+                "source_broker",
+                "source_account_id",
+                "source_activity_id",
+                "source_order_id",
+                "source_position_id",
+                "event_class",
+                "event_type",
+                "event_name",
+                "event_at",
+            )
+            if name not in headers
+        ]
+        if "asof" not in headers and "asof_date" not in headers:
+            missing.append("asof_date")
+        if missing:
+            raise ValueError(
+                f"lifecycle-events file missing required columns {missing} in {lifecycle_events_path}"
+            )
+
+        for row_index, row in enumerate(reader, start=2):
+            event_uid = str(row.get("event_uid", "")).strip()
+            source_broker = str(row.get("source_broker", "")).strip()
+            source_account_id = str(row.get("source_account_id", "")).strip()
+            asof_value = str(row.get("asof_date", "")).strip() or str(row.get("asof", "")).strip()
+            event_at_value = str(row.get("event_at", "")).strip()
+            event_class = str(row.get("event_class", "")).strip()
+            event_type = str(row.get("event_type", "")).strip()
+            event_name = str(row.get("event_name", "")).strip()
+
+            source_activity_id = str(row.get("source_activity_id", "")).strip()
+            source_order_id = str(row.get("source_order_id", "")).strip()
+            source_position_id = str(row.get("source_position_id", "")).strip()
+
+            if not event_uid or not source_broker or not event_class or not event_type:
+                raise ValueError(
+                    f"invalid lifecycle-events row {row_index}: required fields missing "
+                    f"(event_uid/source_broker/event_class/event_type)"
+                )
+            if not asof_value:
+                raise ValueError(f"invalid lifecycle-events row {row_index}: missing asof")
+            if fills_asof and asof_value != str(fills_asof):
+                raise ValueError(
+                    f"lifecycle-events asof mismatch at row {row_index}: row_asof={asof_value} import_asof={fills_asof}"
+                )
+            try:
+                asof_date = date.fromisoformat(asof_value)
+            except ValueError as exc:
+                raise ValueError(f"invalid lifecycle-events row {row_index}: asof must be YYYY-MM-DD") from exc
+
+            events.append(
+                (
+                    event_uid,
+                    source_broker,
+                    source_account_id,
+                    source_activity_id,
+                    source_order_id,
+                    source_position_id,
+                    event_class,
+                    event_type,
+                    asof_date,
+                    _parse_event_at(event_at_value),
+                    event_name,
+                    str(lifecycle_events_path),
+                    import_run_id,
+                )
+            )
+    return events
 
 
 def _fill_record_signature(fill: NormalizedFill | dict[str, object]) -> tuple:
@@ -671,7 +803,66 @@ def _insert_derived_normalized_rows(
     )
 
 
-def import_to_db(db_path: Path, fills_path: Path, reviews_path: Path, replace: bool, asof: date | None = None) -> dict[str, int]:
+def _insert_derived_lifecycle_events(
+    con: duckdb.DuckDBPyConnection,
+    lifecycle_events: list[tuple],
+    *,
+    import_run_id: str,
+) -> None:
+    if not lifecycle_events:
+        return
+    con.executemany(
+        """
+        INSERT OR REPLACE INTO normalized_lifecycle_events (
+            event_uid, source_broker, source_account_id,
+            source_activity_id, source_order_id, source_position_id,
+            event_class, event_type, asof_date, event_at,
+            event_name, raw_path, import_run_id
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """,
+        [
+            (
+                event_uid,
+                source_broker,
+                source_account_id,
+                source_activity_id,
+                source_order_id,
+                source_position_id,
+                event_class,
+                event_type,
+                asof_date,
+                event_at,
+                event_name,
+                raw_path,
+                import_run_id,
+            )
+            for (
+                event_uid,
+                source_broker,
+                source_account_id,
+                source_activity_id,
+                source_order_id,
+                source_position_id,
+                event_class,
+                event_type,
+                asof_date,
+                event_at,
+                event_name,
+                raw_path,
+                _event_import_run_id,
+            ) in lifecycle_events
+        ],
+    )
+
+
+def import_to_db(
+    db_path: Path,
+    fills_path: Path,
+    reviews_path: Path,
+    replace: bool,
+    lifecycle_events: Path | None = None,
+    asof: date | None = None,
+) -> dict[str, int]:
     import_run_id = "manual_csv:" + datetime.now().astimezone().strftime("%Y%m%d_%H%M%S")
     imported_at = datetime.now().astimezone().replace(tzinfo=None)
     fills = parse_manual_fills_csv(fills_path)
@@ -704,6 +895,11 @@ def import_to_db(db_path: Path, fills_path: Path, reviews_path: Path, replace: b
 
         episodes = build_episode_previews_from_fills(fills)
         reviews = load_manual_reviews(reviews_path)
+        lifecycle_rows = _load_lifecycle_events(
+            lifecycle_events,
+            import_run_id=import_run_id,
+            fills_asof=asof if asof is not None else (fills[0].asof if fills else None),
+        )
 
         if replace:
             con.execute(
@@ -737,6 +933,7 @@ def import_to_db(db_path: Path, fills_path: Path, reviews_path: Path, replace: b
                 "normalized_orders",
                 "normalized_positions",
                 "normalized_transactions",
+                "normalized_lifecycle_events",
             ]:
                 con.execute(f"DELETE FROM {table_name}")
 
@@ -875,6 +1072,7 @@ def import_to_db(db_path: Path, fills_path: Path, reviews_path: Path, replace: b
             )
 
         _insert_derived_normalized_rows(con, fills, import_run_id=import_run_id, imported_at=imported_at)
+        _insert_derived_lifecycle_events(con, lifecycle_rows, import_run_id=import_run_id)
 
         return {
             "import_runs": con.execute("SELECT COUNT(*) FROM import_runs").fetchone()[0],
@@ -883,6 +1081,9 @@ def import_to_db(db_path: Path, fills_path: Path, reviews_path: Path, replace: b
             "normalized_orders": con.execute("SELECT COUNT(*) FROM normalized_orders").fetchone()[0],
             "normalized_positions": con.execute("SELECT COUNT(*) FROM normalized_positions").fetchone()[0],
             "normalized_transactions": con.execute("SELECT COUNT(*) FROM normalized_transactions").fetchone()[0],
+            "normalized_lifecycle_events": con.execute(
+                "SELECT COUNT(*) FROM normalized_lifecycle_events"
+            ).fetchone()[0],
             "trade_episodes": con.execute("SELECT COUNT(*) FROM trade_episodes").fetchone()[0],
             "trade_episode_legs": con.execute("SELECT COUNT(*) FROM trade_episode_legs").fetchone()[0],
             "manual_reviews": con.execute("SELECT COUNT(*) FROM manual_reviews").fetchone()[0],
@@ -894,12 +1095,20 @@ def import_to_db(db_path: Path, fills_path: Path, reviews_path: Path, replace: b
 def main() -> int:
     args = parse_args()
     asof = date.fromisoformat(args.asof) if args.asof else None
-    counts = import_to_db(Path(args.db), Path(args.fills), Path(args.reviews), args.replace, asof)
+    counts = import_to_db(
+        Path(args.db),
+        Path(args.fills),
+        Path(args.reviews),
+        args.replace,
+        lifecycle_events=(Path(args.lifecycle_events) if args.lifecycle_events else None),
+        asof=asof,
+    )
     print("===== OneJournal DB import =====")
     print(f"DB        : {args.db}")
     print(f"ASOF      : {args.asof or 'not enforced'}")
     print(f"FILLS     : {args.fills}")
     print(f"REVIEWS   : {args.reviews}")
+    print(f"LIFECYCLE : {args.lifecycle_events or 'not provided'}")
     for key, value in counts.items():
         print(f"{key}: {value}")
     print("STATUS    : OK")
