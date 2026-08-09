@@ -132,6 +132,12 @@ Required checks:
 Any mismatch type must carry reasoned status (`reconciliation_pending`,
 `unavailable`, `failed`) and block silent production publication.
 
+Executable check:
+
+- `scripts/liv/validate_reconciliation_chain.py --manifest <reconciliation-manifest>.json`
+  validates orphaned intents/orders/fills, fill-to-intent consistency, and
+  completeness checks before advancing LIV-04.
+
 ## LIV-05 — Controlled expansion criteria
 
 No live automation expansion should occur until all previous LIV gates are complete

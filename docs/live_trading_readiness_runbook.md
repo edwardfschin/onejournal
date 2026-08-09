@@ -64,6 +64,8 @@ No step may be executed if a hard blocker exists.
 2. Define mismatch handling:
    hard mismatch → `failed`, partial uncertainty → `reconciliation_pending`.
 3. Ensure publication/reporting remains fail-closed on unresolved hard mismatch.
+4. Validate every batch manifest before handoff with:
+   `python scripts/liv/validate_reconciliation_chain.py --manifest <reconciliation-manifest>.json`.
 
 ## LIV-05 Execution Steps
 
