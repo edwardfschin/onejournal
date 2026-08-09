@@ -28,6 +28,7 @@ queue so the project can move from documentation to review.
 | EVID-LIV-02-02 | LIV-02 | `docs/live_trading_pilot_config.example.yaml` | PENDING | Project owner | — | Template pilot control file created for versioned governance. |
 | EVID-LIV-02-03 | LIV-02 | `scripts/liv/validate_pilot_config.py` | IN_REVIEW | Project owner | — | Contract validator added; add proof of first production-approved signed config file. |
 | EVID-LIV-03-01 | LIV-03 | `docs/live_trading_control_contract.md` | PENDING | Project owner | — | Approval and intent schema requirements defined; implementation pending. |
+| EVID-LIV-03-02 | LIV-03 | `scripts/liv/validate_intent_event.py` | IN_REVIEW | Project owner | — | Intent payload validator added for approval/risk consistency checks. |
 | EVID-LIV-04-01 | LIV-04 | `docs/live_trading_control_contract.md` | PENDING | Project owner | — | Reconciliation chain requirements defined; checks pending implementation. |
 | EVID-LIV-05-01 | LIV-05 | `docs/live_trading_control_contract.md` | PENDING | Project owner | — | Expansion gates defined; expansion decision record pending. |
 | EVID-LIV-05-02 | LIV-05 | `docs/live_trading_readiness_decision_log.md` | PENDING | Project owner | — | Stage decisions and approvals are logged; initial entries show deferred state. |

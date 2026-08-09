@@ -54,6 +54,8 @@ No step may be executed if a hard blocker exists.
    request → risk result → approval/deny → expiry/retry behavior.
 3. Require explicit `approved_by` and audit correlation IDs for every send.
 4. Validate there is no path where `approved=False` reaches execution.
+5. Validate each intent artifact before handoff with:
+   `python scripts/liv/validate_intent_event.py --payload <path-to-intent>.json`.
 
 ## LIV-04 Execution Steps
 

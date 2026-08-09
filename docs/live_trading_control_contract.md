@@ -91,12 +91,18 @@ Before any live action in a new pilot stage:
 - an explicit human approval event must be recorded
 - no implicit defaults may cause approval
 
+Executable check:
+
+- `scripts/liv/validate_intent_event.py --payload <path-to-intent>.json`
+  validates mandatory intent fields, status enums, approval fields, and risk/approval
+  consistency before an intent can move into execution handoff.
+
 Required intent fields (minimum):
 
 - `intent_id` (stable UUID), `source_signal_id`, `account_id`, `broker`
 - `symbol`, `asset_class`, `side`, `quantity`, `order_type`, `limit_price`
 - `strategy_id`, `created_at`, `status`, `risk_status`, `approval_status`,
-  `approved_by`, `approved_at`
+  `approved_by`, `approved_at` (required when `approval_status=APPROVED`)
 - `pilot_version`, `idempotency_key`
 
 Required evidence:
