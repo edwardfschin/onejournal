@@ -25,16 +25,16 @@ APIs, or order APIs.
 
 ## Run
 
-From the repository root with the OneJournal environment active:
+From the repository root with `PYTHONPATH=.:src` (or via `./bin/onejournal_ci.sh`):
 
 ```bash
-python -m unittest discover -s tests -p "test_*.py" -v
+PYTHONPATH=.:src python3 -m unittest discover -s tests -p "test_*.py" -v
 ```
 
 The full baseline also runs this suite:
 
 ```bash
-./bin/onejournal_check.sh
+./bin/onejournal_ci.sh
 ```
 
 The clean-checkout CI entry point also runs this suite together with dependency,
