@@ -87,3 +87,5 @@ Track proof in rows:
   `docs/live_trading_control_contract.md`.
 - Execution sequencing for LIV-01..LIV-05 is documented in
   `docs/live_trading_readiness_runbook.md`.
+- Evidence registry for completed artifacts is tracked in
+  `docs/live_trading_readiness_evidence_pack.md`.
