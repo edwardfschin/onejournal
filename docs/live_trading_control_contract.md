@@ -18,15 +18,15 @@ Status
 The pilot must be explicitly declared before any write-capable execution path can
 be built:
 
-- `allowed_accounts`: allow-list of brokerage accounts
-- `allowed_symbols`: allow-list of tradable symbols
-- `allowed_strategies`: allow-list of approved strategy tags
-- `max_quantity_by_symbol` and `max_notional_by_account`
-- `max_daily_loss_notional`
-- `allowed_hours`: broker/local market-hours windows
-- `enabled_markets`: asset classes and option/stock restrictions
+- `pilot.allow_list.accounts`: allow-list of brokerage accounts
+- `pilot.allow_list.symbols`: allow-list of tradable symbols
+- `pilot.allow_list.strategies`: allow-list of approved strategy tags
+- `pilot.risk_limits.max_quantity_per_order`, `...max_notional_per_order`, `...max_notional_daily`
+- `pilot.allow_list.accounts[].max_daily_loss_limit`
+- `pilot.schedule.enabled_windows_utc`: broker-market-time windows in UTC
+- `pilot.risk_limits.allowed_sessions` and `pilot.schedule.timezone`
 - `kill_switch_required`: true
-- `force_paper_first`: true
+- `force_paper_first`: true in paper-first phases
 
 Pilot execution policy for the first live stage:
 
@@ -35,34 +35,56 @@ Pilot execution policy for the first live stage:
 - Any mismatch between operator config and control file must fail closed.
 - Changes must be versioned and auditable.
 
-Suggested pilot config evidence artifact (example structure):
+Suggested pilot config evidence artifact (matching schema fields):
 
 ```yaml
 pilot:
   version: 1
-  env: paper | live
-  effective_from: 2026-08-10
+  policy_id: "liv-pilot-001"
+  status: paper | live
+  environment: paper | live
+  effective_from_utc: "2026-08-10T00:00:00Z"
   force_paper_first: true
   kill_switch_required: true
+  kill_switch_env_var: "ONEJOURNAL_LIV_KILL_SWITCH"
   allow_list:
     accounts:
-      - account_id: "..."
-        daily_loss_limit: 100
+      - id: "ACCOUNT_ID_1"
+        currency: "USD"
         max_notional: 250
-    symbols:
-      - SPXW
-      - SPY
-    strategies:
-      - name: "options-income"
-        max_contracts_per_order: 1
+        max_daily_loss_limit: 100
         max_orders_per_day: 4
+    symbols:
+      - symbol: "SPY"
+        max_qty: 1
+      - symbol: "SPXW"
+        max_qty: 1
+    strategies:
+      - "options-income"
+      - "defined-risk-spreads"
+  risk_limits:
+    max_notional_per_order: 500
+    max_notional_daily: 1500
+    max_quantity_per_order: 2
+    max_position_delta_notional: 2500
+    min_market_hours_only: true
+    allowed_sessions:
+      - "RTH"
 schedule:
-    enabled:
-      - start_utc: "13:30"
-        end_utc: "19:30"
-      - start_utc: "00:00"
-        end_utc: "00:00"
-        disallow: true
+  timezone: "America/New_York"
+  enabled_windows_utc:
+    - start_time: "13:30"
+      end_time: "20:00"
+    - start_time: "21:00"
+      end_time: "23:59"
+      allow: false
+  controls:
+    duplicate_prevention:
+      require_idempotency_key: true
+      duplicate_tolerance_seconds: 120
+    approvals:
+      requires_two_step_approval: false
+      default_ttl_minutes: 120
 ```
 
 Validation tooling:

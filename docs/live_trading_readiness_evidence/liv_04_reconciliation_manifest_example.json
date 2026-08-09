@@ -1,0 +1,6 @@
+{
+  "intents_csv": "docs/live_trading_readiness_evidence/liv_04_sample_intents.csv",
+  "broker_orders_csv": "docs/live_trading_readiness_evidence/liv_04_sample_orders.csv",
+  "fills_csv": "docs/live_trading_readiness_evidence/liv_04_sample_fills.csv",
+  "asof": "2026-08-10T12:00:00Z"
+}

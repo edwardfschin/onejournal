@@ -1,0 +1,2 @@
+intent_id,account_id,broker,status,risk_status,approval_status,approved_by,approved_at,asof
+11111111-1111-4111-b111-111111111111,ACCT-001,SCHWAB,FILLED,PASS,APPROVED,owner,2026-08-10T11:00:00Z,2026-08-10T11:30:00Z

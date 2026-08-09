@@ -45,7 +45,8 @@ No step may be executed if a hard blocker exists.
 4. Ensure pilot policy is fail-closed by default and explicit about:
    accounts, symbols, strategies, size limits, and schedule.
 5. Link pilot policy artifact to
-   `docs/live_trading_control_contract.md` and `docs/live_trading_readiness_evidence_pack.md`.
+   `docs/live_trading_control_contract.md`, `docs/live_trading_pilot_config.example.yaml`,
+   and `docs/live_trading_readiness_evidence_pack.md`.
 6. Advance roadmap:
    `LIV-01` → `COMPLETE`, `LIV-02` → `NEXT`.
 

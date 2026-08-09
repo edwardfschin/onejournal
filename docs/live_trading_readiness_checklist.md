@@ -76,10 +76,10 @@ Track proof in rows:
 | 2026-08-09 | LIV-01-1 (Legal) | `docs/live_trading_readiness_evidence/legal_readiness_template.md` | OK | Project owner | Internal owner attestation completed; no production order-write enabled. |
 | 2026-08-09 | LIV-01-2 (Security) | `docs/live_trading_readiness_evidence/security_readiness_template.md` | OK | Project owner | Internal owner attestation completed; no production order-write enabled. |
 | 2026-08-09 | LIV-01-3 (Risk) | `docs/live_trading_readiness_evidence/risk_readiness_template.md` | OK | Project owner | Internal owner attestation completed; fail-closed controls retained. |
-| 2026-08-09 | LIV-02-1 (Pilot scope config) | `docs/live_trading_control_contract.md` | BLOCKED | Project owner | Contract added; pilot settings not approved yet. |
-| 2026-08-09 | LIV-03-1 (Human approval) | `docs/live_trading_control_contract.md` | BLOCKED | Project owner | Approval workflow contract created; no live intent path yet. |
-| 2026-08-09 | LIV-04-1 (Reconciliation) | `docs/live_trading_control_contract.md` | BLOCKED | Project owner | Reconciliation chain contract created; implementation pending. |
-| 2026-08-09 | LIV-05-1 (Expansion controls) | `docs/live_trading_control_contract.md` | BLOCKED | Project owner | Expansion gate contract created; no expansion in effect. |
+| 2026-08-09 | LIV-02-1 (Pilot scope config) | `docs/live_trading_readiness_evidence/liv_02_pilot_config_evidence.md` | IN_REVIEW | Project owner | Control contract and schema-aligned example config captured; awaiting approval. |
+| 2026-08-09 | LIV-03-1 (Human approval) | `docs/live_trading_readiness_evidence/liv_03_intent_event_evidence.md` | IN_REVIEW | Project owner | Intent payload schema and validator evidence captured; no live intent path yet. |
+| 2026-08-09 | LIV-04-1 (Reconciliation) | `docs/live_trading_readiness_evidence/liv_04_reconciliation_evidence.md` | IN_REVIEW | Project owner | Reconciliation chain contract and validator evidence captured; live fill-journal feedback still not enabled. |
+| 2026-08-09 | LIV-05-1 (Expansion controls) | `docs/live_trading_readiness_evidence/liv_05_expansion_governance_evidence.md` | IN_REVIEW | Project owner | Expansion decision template and governance validator evidence captured; approvals still deferred. |
 
 ## Linkages
 
