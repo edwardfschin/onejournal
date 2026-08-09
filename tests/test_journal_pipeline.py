@@ -98,10 +98,26 @@ class JournalPipelineIntegrationTests(unittest.TestCase):
         self.assertEqual(payload["metadata"]["quality"]["overall_status"], "valid")
         self.assertEqual(payload["metadata"]["trade_summary_status"]["gross_cashflow"], "valid")
         self.assertEqual(payload["metadata"]["trade_summary_status"]["realized_pnl_by_currency"], "valid")
+        self.assertEqual(payload["metadata"]["trade_summary_status"]["unrealized_pnl_by_currency"], "unavailable")
         self.assertEqual(payload["metadata"]["record_counts"]["trade_episode_previews"], 8)
         self.assertEqual(payload["trade_summary"]["gross_cashflow"], "-10415.00")
         self.assertEqual(payload["trade_summary"]["realized_pnl_by_currency"], {"USD": "0.00"})
         self.assertEqual(payload["trade_summary"]["unrealized_pnl_by_currency"], {"USD": None})
+        self.assertIn("performance", payload)
+        self.assertEqual(payload["performance"]["trade_counts"], {"closed_trades": 0, "total_scope_groups": 12})
+        self.assertEqual(payload["performance"]["currency"]["total_realized_pnl_by_currency"], {"USD": "0.00"})
+        self.assertEqual(payload["performance"]["currency"]["total_unrealized_pnl_by_currency"], {"USD": None})
+        self.assertEqual(payload["performance"]["currency"]["exposure_by_currency"], {"USD": "10004.15"})
+        self.assertEqual(payload["performance"]["returns_by_currency"]["status"], "unavailable")
+        self.assertEqual(
+            payload["performance"]["returns_by_currency"]["reason"],
+            "Return denominator and benchmark policy is pending approval for PNL-05.",
+        )
+        self.assertEqual(
+            payload["performance"]["breakdowns"]["by_broker"],
+            [{"source_broker": "manual_csv", "currency": "USD", "realized_pnl": "0.00", "unrealized_pnl": None}],
+        )
+        self.assertEqual(payload["performance"]["breakdowns"]["by_strategy"], payload["metrics_by_strategy"])
         self.assertEqual(validate_payload(payload, "2026-06-02", self.db_path), 0)
 
         reviewed = next(
@@ -111,6 +127,137 @@ class JournalPipelineIntegrationTests(unittest.TestCase):
         )
         self.assertEqual(reviewed["review_status"], "reviewed")
         self.assertEqual(reviewed["setup_quality"], "acceptable")
+
+    def test_open_positions_and_portfolio_snapshots_are_asof_filtered(self) -> None:
+        day1_fills = Path(self.temp_dir.name) / "asof_filter_day1.csv"
+        day2_fills = Path(self.temp_dir.name) / "asof_filter_day2.csv"
+        day1_fills.write_text(
+            """asof,source_broker,source_account_id,source_fill_id,filled_at,asset_class,symbol,side,quantity,fill_price,commission,fees,currency,source_order_id
+2026-01-01,manual_csv,DEMO_ACCOUNT,FILL-D1,2026-01-01T10:00:00+00:00,stock,AAPL,BUY,1,10.00,0,0,USD,ORDER-D1
+""",
+            encoding="utf-8",
+        )
+        day2_fills.write_text(
+            """asof,source_broker,source_account_id,source_fill_id,filled_at,asset_class,symbol,side,quantity,fill_price,commission,fees,currency,source_order_id
+2026-01-02,manual_csv,DEMO_ACCOUNT,FILL-D2A,2026-01-02T10:00:00+00:00,stock,AAPL,BUY,1,10.00,0,0,USD,ORDER-D2A
+2026-01-02,manual_csv,DEMO_ACCOUNT,FILL-D2B,2026-01-02T11:00:00+00:00,stock,AAPL,SELL_TO_CLOSE,1,12.00,0,0,USD,ORDER-D2B
+""",
+            encoding="utf-8",
+        )
+
+        import_to_db(
+            self.db_path,
+            day1_fills,
+            REVIEWS_FIXTURE,
+            replace=True,
+            asof=date(2026, 1, 1),
+        )
+
+        payload_day1 = build_payload(self.db_path, "2026-01-01")
+        self.assertEqual(payload_day1["metadata"]["quality"]["checks"]["positions"]["status"], "valid")
+        self.assertEqual(payload_day1["metadata"]["quality"]["checks"]["positions"]["position_count"], 1)
+        self.assertEqual(payload_day1["open_positions"], [
+            {
+                "position_uid": payload_day1["open_positions"][0]["position_uid"],
+                "source_broker": "manual_csv",
+                "source_account_id": "DEMO_ACCOUNT",
+                "asof": "2026-01-01",
+                "asset_class": "stock",
+                "symbol": "AAPL",
+                "option_symbol": None,
+                "underlying_symbol": None,
+                "option_type": None,
+                "expiry": None,
+                "strike": None,
+                "multiplier": None,
+                "quantity": "1.00",
+                "direction": "LONG",
+                "average_cost": "10.00",
+                "market_price": "10.00",
+                "market_value": "10.00",
+                "cost_basis": "10.00",
+                "realized_pnl": None,
+                "unrealized_pnl": None,
+                "currency": "USD",
+                "fetched_at": payload_day1["open_positions"][0]["fetched_at"],
+                "raw_path": str(day1_fills),
+            },
+        ])
+        self.assertEqual(payload_day1["portfolio_snapshots"], [
+            {
+                "source_broker": "manual_csv",
+                "source_account_id": "DEMO_ACCOUNT",
+                "currency": "USD",
+                "position_count": 1,
+                "market_value": "10.00",
+                "cost_basis": "10.00",
+                "realized_pnl": "0.00",
+                "asof": "2026-01-01",
+                "fetched_at": payload_day1["portfolio_snapshots"][0]["fetched_at"],
+                "unrealized_pnl": None,
+            },
+        ])
+        self.assertEqual(payload_day1["trade_summary"]["realized_pnl_by_currency"], {"USD": "0.00"})
+
+        import_to_db(
+            self.db_path,
+            day2_fills,
+            REVIEWS_FIXTURE,
+            replace=False,
+            asof=date(2026, 1, 2),
+        )
+
+        payload_day2 = build_payload(self.db_path, "2026-01-02")
+        self.assertEqual(payload_day2["metadata"]["quality"]["checks"]["positions"]["status"], "valid")
+        self.assertEqual(payload_day2["metadata"]["quality"]["checks"]["positions"]["position_count"], 0)
+        self.assertEqual(payload_day2["open_positions"], [])
+        self.assertEqual(payload_day2["portfolio_snapshots"], [])
+        self.assertEqual(payload_day2["trade_summary"]["realized_pnl_by_currency"], {"USD": "2.00"})
+
+    def test_performance_metrics_compute_closed_trade_metrics(self) -> None:
+        closed_fills_csv = Path(self.temp_dir.name) / "closed_pnl_fills.csv"
+        closed_reviews_csv = Path(self.temp_dir.name) / "closed_pnl_reviews.csv"
+        closed_fills_csv.write_text(
+            """asof,source_broker,source_account_id,source_fill_id,filled_at,asset_class,symbol,side,quantity,fill_price,commission,fees,currency,source_order_id
+2026-01-02,manual_csv,DEMO_ACCOUNT,FILL-C1,2026-01-02T10:00:00+00:00,stock,AAPL,BUY,1,10.00,0,0,USD,ORDER-C1
+2026-01-02,manual_csv,DEMO_ACCOUNT,FILL-C2,2026-01-02T11:00:00+00:00,stock,AAPL,SELL_TO_CLOSE,1,12.00,0,0,USD,ORDER-C2
+""",
+            encoding="utf-8",
+        )
+        closed_reviews_csv.write_text(
+            "episode_uid,review_status,setup_quality,entry_reason,notes\n"
+            "manual_csv:DEMO_ACCOUNT:stock:AAPL,reviewed,acceptable,,\n",
+            encoding="utf-8",
+        )
+
+        import_to_db(
+            self.db_path,
+            closed_fills_csv,
+            closed_reviews_csv,
+            replace=True,
+            asof=date(2026, 1, 2),
+        )
+
+        payload = build_payload(self.db_path, "2026-01-02")
+        self.assertEqual(payload["performance"]["trade_counts"]["closed_trades"], 1)
+        self.assertEqual(payload["performance"]["trade_counts"]["total_scope_groups"], 1)
+        self.assertEqual(payload["trade_summary"]["realized_pnl_by_currency"], {"USD": "2.00"})
+        self.assertEqual(payload["performance"]["currency"]["total_realized_pnl_by_currency"], {"USD": "2.00"})
+        self.assertEqual(payload["performance"]["currency"]["total_unrealized_pnl_by_currency"], {"USD": None})
+        self.assertEqual(payload["performance"]["win_rate"], "100.00")
+        self.assertEqual(payload["performance"]["profit_factor"], None)
+        self.assertEqual(payload["performance"]["average_win"], "2.00")
+        self.assertEqual(payload["performance"]["average_loss"], None)
+        self.assertIsNotNone(payload["performance"]["average_holding_days"])
+        self.assertEqual(payload["performance"]["max_drawdown"]["status"], "unavailable")
+        self.assertEqual(payload["performance"]["breakdowns"]["by_strategy"], [
+            {
+                "strategy_label": "Stock Long",
+                "currency": "USD",
+                "realized_pnl": "2.00",
+                "unrealized_pnl": None,
+            },
+        ])
 
     def test_import_rejects_asof_mismatch_before_writing_rows(self) -> None:
         with self.assertRaisesRegex(ValueError, "asof different"):

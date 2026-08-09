@@ -105,12 +105,32 @@ Minimum top-level sections:
 - metadata
 - metadata.quality
 - trade_summary
+- performance
 - open_positions
+- portfolio_snapshots
 - recent_trade_episodes
 - closed_trade_episodes
 - metrics_by_strategy
 - risk_events
 - journal_review_queue
+
+## Portfolio Snapshot V1
+
+- A `portfolio_snapshots` section appears in dashboard payloads that support
+  account-level aggregate reporting.
+- Each snapshot includes:
+  - `source_broker`, `source_account_id`, `currency`
+  - `position_count`
+  - `market_value`
+  - `cost_basis`
+  - `realized_pnl`
+  - `unrealized_pnl` (must be `null` when any included position has missing mark freshness)
+  - `asof` (latest included position as-of date)
+  - `fetched_at` (latest included position fetch timestamp)
+
+The section is reproducible by requested as-of date by selecting the latest
+normalized position snapshot per position identity where `position.asof_date <= requested_asof`.
+- Closed positions with zero quantity are intentionally omitted from this section.
 
 ## Metrics v1
 
@@ -130,6 +150,29 @@ Minimum top-level sections:
 Profit factor definition: gross_profit / absolute_gross_loss.
 
 If there are no losses, profit factor must be shown as null or not_applicable, not infinity.
+
+## Performance section v1
+
+- `performance` appears as a dedicated top-level section.
+- `performance.currency` includes:
+  - `total_realized_pnl_by_currency`
+  - `total_unrealized_pnl_by_currency` (can be `null` when mark freshness is missing)
+  - `total_pnl_by_currency` (computed only when both sides are available)
+  - `exposure_by_currency`
+- `performance.trade_counts` includes:
+  - `closed_trades`
+  - `total_scope_groups`
+- `performance.returns_by_currency` is present and explicit about denominator/benchmark
+  availability; when policy is blocked it is not silently numeric.
+- `performance.breakdowns` includes:
+  - `by_account`
+  - `by_broker`
+  - `by_symbol`
+  - `by_asset_class`
+  - `by_strategy`
+  - `by_period` (blocked until PNL-07 reporting scope is complete)
+
+When mark data is unavailable, unrealized and total-PnL fields must be `null`, not zero.
 
 ## Validation Principles
 

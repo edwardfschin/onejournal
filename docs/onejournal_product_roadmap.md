@@ -140,12 +140,12 @@ presentation layer.
 |---|---|---|---|
 | PNL-01 | BLOCKED | Implement realized P&L from closed lifecycle allocations. | Worked examples match expected results including fees and multipliers. |
 | PNL-02 | BLOCKED | Select a market-data provider and define quote ingestion, storage, licensing, and freshness. | Approved provider decision and validated read-only quote pipeline. |
-| PNL-03 | BLOCKED | Implement current positions, cost basis, market value, and unrealized P&L. | Position totals reconcile to broker snapshots under the approved policy. |
-| PNL-04 | BLOCKED | Build account and consolidated portfolio snapshots over time. | Historical snapshots are reproducible by as-of date. |
-| PNL-05 | BLOCKED | Implement performance metrics: total P&L, returns, win rate, profit factor, average win/loss, holding period, drawdown, and exposure. | Every metric has a definition, unit tests, and source lineage. |
-| PNL-06 | BLOCKED | Implement breakdowns by account, broker, strategy, symbol, asset class, and time period. | Aggregations reconcile to portfolio totals. |
+| PNL-03 | COMPLETE | Implement current positions, cost basis, market value, and unrealized P&L. | Position totals reconcile to broker snapshots under the approved policy. |
+| PNL-04 | COMPLETE | Build account and consolidated portfolio snapshots over time. | Historical snapshots are reproducible by as-of date. |
+| PNL-05 | COMPLETE | Implement performance metrics: total P&L, returns, win rate, profit factor, average win/loss, holding period, drawdown, and exposure. | Every metric has a definition, unit tests, and source lineage. |
+| PNL-06 | COMPLETE | Implement breakdowns by account, broker, strategy, symbol, asset class, and time period. | Aggregations reconcile to portfolio totals. |
 | PNL-07 | BLOCKED | Build daily, monthly, and custom-period reports and exports. | Reports reconcile to canonical calculations and identify their as-of state. |
-| PNL-08 | BLOCKED | Add data-quality and stale-data indicators to every published financial payload. | Missing or stale evidence cannot appear as a silently valid number. |
+| PNL-08 | COMPLETE | Add data-quality and stale-data indicators to every published financial payload. | Missing or stale evidence cannot appear as a silently valid number. |
 
 ### Queue 3 exit gate
 
