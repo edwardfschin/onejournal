@@ -30,7 +30,9 @@ No step may be executed if a hard blocker exists.
    `docs/live_trading_readiness_checklist.md`.
 3. Record each row as `OK` only when evidence artifact exists and has
    reviewer sign-off.
-4. If any row is `WARN` or `BLOCKED`, queue remains in `LIV-01`.
+4. Validate completion with:
+   `python scripts/liv/validate_readiness.py --checklist docs/live_trading_readiness_checklist.md --evidence-pack docs/live_trading_readiness_evidence_pack.md`.
+5. If any row is `WARN` or `BLOCKED`, queue remains in `LIV-01`.
 
 ## LIV-02 Execution Steps
 
