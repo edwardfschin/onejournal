@@ -5,6 +5,7 @@ This module implements a conservative calculator for closed and open lot P&L.
 Scope and caveats:
 - Uses confirmed fills only.
 - Uses FIFO allocation by open lot order.
+- Preserves each closed-lot allocation with source-fill and cost lineage.
 - Treats close actions only when there is a matching open lot; unsupported
   lifecycle events are intentionally rejected (fail-closed).
 - Works with simple net-closed positions and partial closes.
@@ -21,6 +22,9 @@ from decimal import Decimal
 from typing import Iterable
 
 from onejournal.brokers.normalized import NormalizedFill
+
+
+FIFO_CALCULATION_VERSION = "onejournal-fifo-v1"
 
 
 class LotAllocationError(ValueError):
@@ -40,10 +44,33 @@ class PnLGroupResult:
 
 
 @dataclass(frozen=True)
-class PnLCalculationResult:
-    """Result of FIFO P&L calculation across all groups."""
+class ClosedLotAllocation:
+    """One auditable FIFO match between an opening and closing fill."""
 
+    scope_key: tuple[str, str, str, str]
+    open_fill_uid: str
+    close_fill_uid: str
+    direction: str
+    quantity: Decimal
+    multiplier: Decimal
+    open_price: Decimal
+    close_price: Decimal
+    gross_realized_pnl: Decimal
+    allocated_open_commission: Decimal
+    allocated_open_fees: Decimal
+    allocated_close_commission: Decimal
+    allocated_close_fees: Decimal
+    realized_pnl: Decimal
+    closed_at: datetime
+
+
+@dataclass(frozen=True)
+class PnLCalculationResult:
+    """Versioned FIFO totals plus their auditable closed-lot allocations."""
+
+    calculation_version: str
     groups: dict[tuple[str, str, str, str], PnLGroupResult]
+    closed_allocations: tuple[ClosedLotAllocation, ...]
     total_realized_pnl_by_currency: dict[str, Decimal]
     total_unrealized_pnl_by_currency: dict[str, Decimal | None]
     unmatched_close_fill_uids: tuple[str, ...] = ()
@@ -66,6 +93,7 @@ class _OpenLot:
 class _MatchedLot:
     instrument_key: str
     open_lots: list[_OpenLot]
+    closed_allocations: list[ClosedLotAllocation]
     realized_pnl: Decimal = Decimal("0")
 
 
@@ -113,18 +141,24 @@ def calculate_fifo_pnl_from_fills(
 
     groups = _group_fills_by_scope(fills)
     results: dict[tuple[str, str, str, str], PnLGroupResult] = {}
+    closed_allocations: list[ClosedLotAllocation] = []
     unmatched_close_fill_uids: list[str] = []
 
     for scope_key, group_fills in groups.items():
         _source_broker, _source_account_id, instrument_key, currency = scope_key
         classified_fills = []
         for fill in group_fills:
+            _validate_fill_economics(fill)
             action, close_quantity, direction = _classify_fill(fill)
             sort_action = 0 if action == "OPEN" else 1
             classified_fills.append((fill.filled_at, sort_action, fill.fill_uid, fill, action, close_quantity, direction))
 
         ordered = sorted(classified_fills, key=lambda item: (item[0], item[1], item[2]))
-        state = _MatchedLot(instrument_key=instrument_key, open_lots=[])
+        state = _MatchedLot(
+            instrument_key=instrument_key,
+            open_lots=[],
+            closed_allocations=[],
+        )
 
         for _filled_at, _sort_action, _fill_uid, fill, action, close_quantity, direction in ordered:
             if action == "OPEN":
@@ -132,12 +166,15 @@ def calculate_fifo_pnl_from_fills(
                 continue
             _match_close_fill(
                 state,
+                scope_key=scope_key,
                 close_fill=fill,
                 close_quantity=close_quantity,
                 direction=direction,
                 allow_unmatched_close=allow_unmatched_close,
                 unmatched_close_fill_uids=unmatched_close_fill_uids,
             )
+
+        closed_allocations.extend(state.closed_allocations)
 
         realized = state.realized_pnl
         direction = _current_direction(state.open_lots)
@@ -180,7 +217,9 @@ def calculate_fifo_pnl_from_fills(
         )
 
     return PnLCalculationResult(
+        calculation_version=FIFO_CALCULATION_VERSION,
         groups=results,
+        closed_allocations=tuple(closed_allocations),
         total_realized_pnl_by_currency=totals_realized,
         total_unrealized_pnl_by_currency=totals_unrealized,
         unmatched_close_fill_uids=tuple(unmatched_close_fill_uids),
@@ -239,6 +278,31 @@ def _normalize_quantity(quantity: Decimal) -> Decimal:
     return quantity
 
 
+def _validate_fill_economics(fill: NormalizedFill) -> None:
+    if not fill.fill_uid.strip():
+        raise LotAllocationError("Fill UID is required for P&L allocation lineage")
+    if not fill.currency.strip():
+        raise LotAllocationError(f"Fill currency is required for P&L: {fill.fill_uid}")
+    if fill.fill_price < 0:
+        raise LotAllocationError(
+            f"Fill price must not be negative for P&L: {fill.fill_uid}={fill.fill_price}"
+        )
+    if fill.commission < 0 or fill.fees < 0:
+        raise LotAllocationError(
+            f"Commission and fees must not be negative for P&L: {fill.fill_uid}"
+        )
+
+    asset_class = fill.asset_class.strip().lower()
+    if asset_class == "option" and fill.multiplier is None:
+        raise LotAllocationError(
+            f"Option multiplier is required for P&L: {fill.fill_uid}"
+        )
+    if fill.multiplier is not None and fill.multiplier <= 0:
+        raise LotAllocationError(
+            f"Multiplier must be positive for P&L: {fill.fill_uid}={fill.multiplier}"
+        )
+
+
 def _create_open_lot(fill: NormalizedFill) -> _OpenLot:
     return _OpenLot(
         fill_uid=fill.fill_uid,
@@ -261,6 +325,7 @@ def _allocate_fill_fees(value: Decimal, quantity: Decimal) -> Decimal:
 
 def _match_close_fill(
     state: _MatchedLot,
+    scope_key: tuple[str, str, str, str],
     close_fill: NormalizedFill,
     close_quantity: Decimal,
     direction: str,
@@ -269,8 +334,6 @@ def _match_close_fill(
     unmatched_close_fill_uids: list[str],
 ) -> None:
     close_remain = close_quantity
-    close_costs = close_fill.commission + close_fill.fees
-    close_unit_cost = close_costs / close_quantity if close_quantity else Decimal("0")
 
     while close_remain > 0:
         open_lot = _find_next_matching_lot(state.open_lots, direction)
@@ -283,15 +346,42 @@ def _match_close_fill(
             )
         match_qty = min(close_remain, open_lot.remaining_quantity)
 
-        realized = _calc_matched_realized(open_lot, close_fill, match_qty)
-        realized -= _allocate_match_costs(
+        gross_realized = _calc_matched_realized(open_lot, close_fill, match_qty)
+        allocated_open_commission = _allocate_match_costs(
             open_lot.open_commission, open_lot.opened_quantity, match_qty
         )
-        realized -= _allocate_match_costs(
+        allocated_open_fees = _allocate_match_costs(
             open_lot.open_fees, open_lot.opened_quantity, match_qty
         )
-        realized -= close_unit_cost * match_qty
+        allocated_close_commission = (close_fill.commission / close_quantity) * match_qty
+        allocated_close_fees = (close_fill.fees / close_quantity) * match_qty
+        realized = (
+            gross_realized
+            - allocated_open_commission
+            - allocated_open_fees
+            - allocated_close_commission
+            - allocated_close_fees
+        )
         state.realized_pnl += realized
+        state.closed_allocations.append(
+            ClosedLotAllocation(
+                scope_key=scope_key,
+                open_fill_uid=open_lot.fill_uid,
+                close_fill_uid=close_fill.fill_uid,
+                direction=open_lot.direction,
+                quantity=match_qty,
+                multiplier=open_lot.multiplier,
+                open_price=open_lot.fill_price,
+                close_price=close_fill.fill_price,
+                gross_realized_pnl=gross_realized,
+                allocated_open_commission=allocated_open_commission,
+                allocated_open_fees=allocated_open_fees,
+                allocated_close_commission=allocated_close_commission,
+                allocated_close_fees=allocated_close_fees,
+                realized_pnl=realized,
+                closed_at=close_fill.filled_at,
+            )
+        )
 
         open_lot.remaining_quantity -= match_qty
         close_remain -= match_qty

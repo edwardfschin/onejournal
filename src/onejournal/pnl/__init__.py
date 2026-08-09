@@ -6,6 +6,8 @@ financial contracts before publication-grade use.
 """
 
 from .calculations import (
+    FIFO_CALCULATION_VERSION,
+    ClosedLotAllocation,
     PnLCalculationResult,
     PnLGroupResult,
     LotAllocationError,
@@ -14,6 +16,8 @@ from .calculations import (
 )
 
 __all__ = [
+    "FIFO_CALCULATION_VERSION",
+    "ClosedLotAllocation",
     "PnLCalculationResult",
     "PnLGroupResult",
     "LotAllocationError",

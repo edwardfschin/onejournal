@@ -14,6 +14,9 @@ foundation simple and dependency-free.
 - Unit: manual CSV parsing, episode grouping/classification, and dashboard
   payload construction.
 - Lifecycle contract: partial fill events and partial close behavior.
+- Financial contract: versioned FIFO closed-lot allocations, source-fill
+  lineage, quantities, multipliers, commission/fee allocation, realized P&L,
+  open cost basis, marks, and fail-closed incomplete evidence.
 - Adapter contract: deterministic Schwab orders JSON normalization.
 - Integration: schema initialization and migration, import, append-only journal
   history, review compatibility projection, replay preservation, DuckDB reads,

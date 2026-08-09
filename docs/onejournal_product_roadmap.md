@@ -140,21 +140,23 @@ presentation layer.
 
 | ID | Status | Action | Completion evidence |
 |---|---|---|---|
-| PNL-01 | BLOCKED | Implement realized P&L from closed lifecycle allocations. | Worked examples match expected results including fees and multipliers. |
+| PNL-01 | BLOCKED | Implement realized P&L from closed lifecycle allocations. | Fill-backed FIFO matches now preserve versioned open/close lineage, quantities, multipliers, allocated commissions/fees, gross P&L, and net realized P&L with worked-example tests. Completion remains blocked on economic allocation contracts for assignment, exercise, expiration, and other non-fill lifecycle events. |
 | PNL-02 | BLOCKED | Select a market-data provider and define quote ingestion, storage, licensing, and freshness. | Approved provider decision and validated read-only quote pipeline. |
-| PNL-03 | COMPLETE | Implement current positions, cost basis, market value, and unrealized P&L. | Position totals reconcile to broker snapshots under the approved policy. |
-| PNL-04 | COMPLETE | Build account and consolidated portfolio snapshots over time. | Historical snapshots are reproducible by as-of date. |
-| PNL-05 | COMPLETE | Implement performance metrics: total P&L, returns, win rate, profit factor, average win/loss, holding period, drawdown, and exposure. | Every metric has a definition, unit tests, and source lineage. |
-| PNL-06 | COMPLETE | Implement breakdowns by account, broker, strategy, symbol, and asset class. Time-period reporting belongs to PNL-07. | Aggregations reconcile to portfolio totals. |
+| PNL-03 | BLOCKED | Implement current positions, cost basis, market value, and unrealized P&L. | FIFO open quantity/cost groundwork exists, but current `normalized_positions` are derived independently from each import date's fills and use the last fill as `market_price`; they are not cumulative broker snapshots or approved valuations. Completion requires PNL-02 plus broker-position reconciliation. |
+| PNL-04 | BLOCKED | Build account and consolidated portfolio snapshots over time. | As-of payload selection exists, but its inputs are per-import derived position rows rather than canonical cumulative and broker-reconciled portfolio state. Historical snapshots cannot yet satisfy the acceptance criterion. |
+| PNL-05 | BLOCKED | Implement performance metrics: total P&L, returns, win rate, profit factor, average win/loss, holding period, drawdown, and exposure. | Win/loss, profit factor, average result, and holding-time groundwork exists; returns and max drawdown are explicitly unavailable and valuation-dependent exposure is not approved. |
+| PNL-06 | BLOCKED | Implement breakdowns by account, broker, strategy, symbol, and asset class. Time-period reporting belongs to PNL-07. | Initial groupings exist, but completion depends on canonical PNL-01/03 inputs and reconciliation tests proving every breakdown sums to the authoritative portfolio totals. |
 | PNL-07 | BLOCKED | Build daily, monthly, and custom-period reports and exports. | Reports reconcile to canonical calculations and identify their as-of state. |
-| PNL-08 | COMPLETE | Add data-quality and stale-data indicators to every published financial payload. | Missing or stale evidence cannot appear as a silently valid number. |
+| PNL-08 | BLOCKED | Add data-quality and stale-data indicators to every published financial payload. | Status scaffolding exists for imports, as-of data, unmatched closes, and missing unrealized values. It is not complete because derived position rows can still be labelled `valid` without broker-snapshot, quote-source, or approved freshness evidence. |
 
-### Queue 3 closure record
+### Queue 3 audit record
 
-**Status: closed with carried-forward blockers (2026-08-09).** All ready Queue
-3 work is implemented and validated. PNL-01, PNL-02, and PNL-07 remain in the
-roadmap as explicit blockers; they are not silently completed or discarded.
-They must be resolved before the financial exit gate below can be claimed.
+**Status: reopened after source-level audit (2026-08-09).** PNL-01, PNL-02,
+PNL-03, PNL-04, PNL-05, PNL-06, PNL-07, and PNL-08 remain open. Earlier
+completion labels for PNL-03 through PNL-06 and PNL-08 described useful
+prototype scaffolding, but their acceptance criteria are not yet satisfied.
+The source-level reasons are recorded in the queue rows above so no placeholder
+or unavailable value is mistaken for completed financial behavior.
 
 ### Queue 3 financial exit gate (not yet satisfied)
 
@@ -164,13 +166,26 @@ They must be resolved before the financial exit gate below can be claimed.
 
 The remaining closure conditions are:
 
-- PNL-01: lifecycle-event allocation must reconcile realized P&L to approved
-  examples and broker evidence across the remaining complex event scope.
+- PNL-01: fill-backed closed-lot allocations reconcile to the approved long,
+  partial-close, multi-lot fee-allocation, and short-option examples. Completion
+  remains blocked because the current lifecycle-event ledger preserves event
+  identity/classification but not the instrument, quantity, multiplier, price,
+  cash, fee, and predecessor/successor allocation fields required to calculate
+  assignment, exercise, expiration, and other non-fill event economics without
+  guessing.
 - PNL-02: the project owner must approve a market-data provider, quote policy,
   licensing treatment, and freshness threshold before valuation can be called
   current or valid.
+- PNL-03/04: canonical cumulative positions and portfolio snapshots must be
+  derived from lifecycle lots, then reconciled to actual broker position
+  snapshots; per-import fill aggregation is not a substitute.
+- PNL-05/06: complete metrics and breakdown reconciliation follow canonical
+  realized/unrealized P&L and position state. Returns and drawdown remain
+  unavailable until their denominator/equity-curve policies are approved.
 - PNL-07: period-reporting and export scope must be defined and reconciled to
   canonical calculations.
+- PNL-08: no metric may claim `valid` without the exact required source,
+  reconciliation, completeness, and approved freshness evidence.
 
 ## Queue 4 - Complete the journaling product
 
@@ -272,11 +287,17 @@ The current actionable sequence is:
 
 1. `PNL-01` - finalize realized P&L from closed lifecycle allocations with worked examples.
 2. `PNL-02` - approve market-data provider, quote ingestion/storage policy, licensing, and freshness contract.
-3. `PNL-07` - deliver daily/monthly/custom period report and export contracts with reconciliation behavior.
-4. `UXJ-05` - finalize attachment controls policy (storage, authorization, encryption, retention, backup, incident response).
-5. `UXJ-06` - enable non-financial journal process workflows after financial contracts are stable.
-6. `WEB-01` - decide and approve production architecture, security, and hosting stack.
-7. `WEB-02` to `WEB-09` - define IA/design system to production rollout in dependency order.
+3. `PNL-03` and `PNL-04` - replace per-import fill-derived position views
+   with canonical cumulative lot state, approved valuations, broker
+   reconciliation, and reproducible portfolio snapshots.
+4. `PNL-05` and `PNL-06` - complete metrics and prove every breakdown
+   reconciles to canonical P&L and position totals.
+5. `PNL-07` - deliver daily/monthly/custom period report and export contracts with reconciliation behavior.
+6. `PNL-08` - enforce per-metric source, reconciliation, completeness, and freshness states.
+7. `UXJ-05` - finalize attachment controls policy (storage, authorization, encryption, retention, backup, incident response).
+8. `UXJ-06` - enable non-financial journal process workflows after financial contracts are stable.
+9. `WEB-01` - decide and approve production architecture, security, and hosting stack.
+10. `WEB-02` to `WEB-09` - define IA/design system to production rollout in dependency order.
 
 No implementation should bypass unresolved blockers above, especially P&L
 financial correctness, quote governance, attachment controls, and production

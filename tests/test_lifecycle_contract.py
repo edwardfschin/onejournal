@@ -137,6 +137,34 @@ class LifecycleContractTests(unittest.TestCase):
         self.assertEqual(result.events[1].matched_open_quantity, Decimal("25"))
         self.assertEqual(result.scope_open_quantity[result.events[0].scope_key], (Decimal("0"), Decimal("50")))
 
+    def test_plain_sell_open_matches_plain_buy_close_as_short_inventory(self) -> None:
+        fills = [
+            self._fill(
+                "short-open",
+                "SELL",
+                "30",
+                "4",
+                source_order_id="ord-short-open",
+                open_close="OPEN",
+            ),
+            self._fill(
+                "short-close",
+                "BUY",
+                "30",
+                "3",
+                source_order_id="ord-short-close",
+                open_close="CLOSE",
+            ),
+        ]
+        result = build_lifecycle_fill_events(fills)
+        self.assertEqual(result.events[0].direction, "SHORT")
+        self.assertEqual(result.events[1].direction, "SHORT")
+        self.assertEqual(result.events[1].status, "close_full")
+        self.assertEqual(
+            result.scope_open_quantity[result.events[0].scope_key],
+            (Decimal("0"), Decimal("0")),
+        )
+
     def test_buy_to_close_short_is_supported(self) -> None:
         fills = [
             self._fill(

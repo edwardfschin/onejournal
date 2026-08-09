@@ -6,6 +6,7 @@ import unittest
 
 from onejournal.brokers.normalized import NormalizedFill
 from onejournal.pnl import (
+    FIFO_CALCULATION_VERSION,
     PnLCalculationResult,
     PnLGroupResult,
     LotAllocationError,
@@ -101,6 +102,17 @@ class PnLFifoContractTests(unittest.TestCase):
         self.assertEqual(group.realized_pnl, Decimal("198"))
         self.assertEqual(group.open_quantity, Decimal("0"))
         self.assertEqual(result.total_realized_pnl_by_currency["USD"], Decimal("198"))
+        self.assertEqual(result.calculation_version, FIFO_CALCULATION_VERSION)
+        self.assertEqual(len(result.closed_allocations), 1)
+        allocation = result.closed_allocations[0]
+        self.assertEqual(allocation.open_fill_uid, "buy-1")
+        self.assertEqual(allocation.close_fill_uid, "sell-1")
+        self.assertEqual(allocation.direction, "LONG")
+        self.assertEqual(allocation.quantity, Decimal("100"))
+        self.assertEqual(allocation.gross_realized_pnl, Decimal("200"))
+        self.assertEqual(allocation.allocated_open_commission, Decimal("1"))
+        self.assertEqual(allocation.allocated_close_commission, Decimal("1"))
+        self.assertEqual(allocation.realized_pnl, Decimal("198"))
 
     def test_partial_exit_leaves_open_cost_basis(self) -> None:
         fills = [
@@ -117,6 +129,7 @@ class PnLFifoContractTests(unittest.TestCase):
         self.assertEqual(group.realized_pnl, Decimal("80"))
         self.assertEqual(group.open_quantity, Decimal("60"))
         self.assertEqual(group.open_cost_basis, Decimal("600"))
+        self.assertEqual(result.closed_allocations[0].quantity, Decimal("40"))
 
     def test_short_option_with_multiplier_and_fees(self) -> None:
         fills = [
@@ -155,6 +168,61 @@ class PnLFifoContractTests(unittest.TestCase):
         group = self._group_for_instrument(result, fills[0])
         self.assertEqual(group.realized_pnl, Decimal("78"))
         self.assertEqual(group.open_quantity, Decimal("0"))
+        allocation = result.closed_allocations[0]
+        self.assertEqual(allocation.direction, "SHORT")
+        self.assertEqual(allocation.multiplier, Decimal("100"))
+        self.assertEqual(allocation.gross_realized_pnl, Decimal("80.00"))
+        self.assertEqual(allocation.allocated_close_fees, Decimal("2"))
+        self.assertEqual(allocation.realized_pnl, Decimal("78.00"))
+
+    def test_fifo_allocations_preserve_fee_lineage_across_lots(self) -> None:
+        fills = [
+            self._fill(
+                fill_uid="open-first",
+                side="BUY_TO_OPEN",
+                quantity="1",
+                fill_price="10",
+                commission="1",
+            ),
+            self._fill(
+                fill_uid="open-second",
+                side="BUY_TO_OPEN",
+                quantity="1",
+                fill_price="20",
+                commission="1",
+            ),
+            self._fill(
+                fill_uid="close",
+                side="SELL_TO_CLOSE",
+                quantity="1.5",
+                fill_price="30",
+                commission="3",
+            ),
+        ]
+
+        result = calculate_fifo_pnl_from_fills(fills)
+
+        self.assertEqual(len(result.closed_allocations), 2)
+        first, second = result.closed_allocations
+        self.assertEqual(
+            (first.open_fill_uid, first.quantity, first.realized_pnl),
+            ("open-first", Decimal("1"), Decimal("17")),
+        )
+        self.assertEqual(first.allocated_close_commission, Decimal("2"))
+        self.assertEqual(
+            (second.open_fill_uid, second.quantity, second.realized_pnl),
+            ("open-second", Decimal("0.5"), Decimal("3.5")),
+        )
+        self.assertEqual(second.allocated_open_commission, Decimal("0.5"))
+        self.assertEqual(second.allocated_close_commission, Decimal("1.0"))
+        group = self._group_for_instrument(result, fills[0])
+        self.assertEqual(group.realized_pnl, Decimal("20.5"))
+        self.assertEqual(
+            sum((row.realized_pnl for row in result.closed_allocations), Decimal("0")),
+            group.realized_pnl,
+        )
+        self.assertEqual(group.open_quantity, Decimal("0.5"))
+        self.assertEqual(group.open_cost_basis, Decimal("10.5"))
 
     def test_buy_side_with_explicit_close_open_close_closes_short(self) -> None:
         fills = [
@@ -263,6 +331,50 @@ class PnLFifoContractTests(unittest.TestCase):
         group = self._group_for_instrument(result, close_only[0])
         self.assertEqual(group.realized_pnl, Decimal("0"))
         self.assertEqual(group.open_quantity, Decimal("0"))
+
+    def test_partially_unmatched_close_retains_matched_allocation_lineage(self) -> None:
+        fills = [
+            self._fill(fill_uid="open", side="BUY_TO_OPEN", quantity="1", fill_price="10"),
+            self._fill(
+                fill_uid="over-close",
+                side="SELL_TO_CLOSE",
+                quantity="2",
+                fill_price="12",
+                fees="2",
+            ),
+        ]
+        result = calculate_fifo_pnl_from_fills(fills, allow_unmatched_close=True)
+        self.assertEqual(result.unmatched_close_fill_uids, ("over-close",))
+        self.assertEqual(len(result.closed_allocations), 1)
+        self.assertEqual(result.closed_allocations[0].quantity, Decimal("1"))
+        self.assertEqual(result.closed_allocations[0].allocated_close_fees, Decimal("1"))
+        self.assertEqual(result.closed_allocations[0].realized_pnl, Decimal("1"))
+
+    def test_option_without_multiplier_fails_closed(self) -> None:
+        fill = self._fill(
+            fill_uid="option-missing-multiplier",
+            side="BUY_TO_OPEN",
+            quantity="1",
+            fill_price="2",
+            asset_class="option",
+            symbol="XYZ240315C100",
+            option_symbol="XYZ240315C100",
+            underlying_symbol="XYZ",
+            option_type="CALL",
+        )
+        with self.assertRaisesRegex(LotAllocationError, "Option multiplier is required"):
+            calculate_fifo_pnl_from_fills([fill])
+
+    def test_negative_fee_fails_closed(self) -> None:
+        fill = self._fill(
+            fill_uid="negative-fee",
+            side="BUY_TO_OPEN",
+            quantity="1",
+            fill_price="10",
+            fees="-1",
+        )
+        with self.assertRaisesRegex(LotAllocationError, "must not be negative"):
+            calculate_fifo_pnl_from_fills([fill])
 
     def test_unsupported_fill_side_fails_closed(self) -> None:
         unsupported = self._fill(fill_uid="unsupported", side="UNKNOWN", quantity="1", fill_price="10")
