@@ -3,7 +3,7 @@
 ## Status
 
 - Queue item: LIV-02 (Minimal live pilot definition)
-- Prepared state: IN_REVIEW
+- Prepared state: OK
 - Author: Project owner
 - Date: 2026-08-09
 - Constraint: Proof-only; no production write-path is enabled in this branch.

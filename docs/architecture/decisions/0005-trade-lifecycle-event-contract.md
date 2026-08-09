@@ -1,7 +1,8 @@
 # ADR-0005: Define trade lifecycle event treatment
 
-- Status: Proposed
+- Status: Accepted
 - Date: 2026-07-23
+- Accepted date: 2026-08-09
 - Decision owners: OneJournal project owner
 - Related roadmap items: CON-04, JRN-02 through JRN-05, PNL-01 through PNL-08
 - Related contracts: ADR-0003, ADR-0004, `docs/normalized_fills_odfs_contract.md`

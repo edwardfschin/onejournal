@@ -3,10 +3,10 @@
 ## Status
 
 - Queue item: LIV-05 (Controlled expansion criteria)
-- Prepared state: IN_REVIEW
+- Prepared state: OK
 - Author: Project owner
 - Date: 2026-08-09
-- Constraint: Not approved for expansion yet; this is pre-approval evidence only.
+- Constraint: External approvals are still required before production expansion; this is owner sign-off only.
 
 ## Artifacts
 

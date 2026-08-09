@@ -121,7 +121,7 @@ position state.
 | JRN-02 | COMPLETE | Persist normalized accounts, orders, positions, transactions, and required source lineage—not only fills. | Normalized family derivation, import-run linkage checks, and contract coverage now exercise all families. |
 | JRN-03 | COMPLETE | Replace preview grouping with a deterministic trade-lifecycle engine. | Entry/exit/partial/reopen fixtures and deterministic lifecycle tests are implemented and merge-validated. |
 | JRN-04 | COMPLETE | Add multi-leg lifecycle handling for verticals and later approved strategies. | Preview-level and lifecycle-contract fixtures for multi-leg and cross-symbol matching using explicit episode-group scope are in place. |
-| JRN-05 | BLOCKED | Add assignments, exercises, expirations, rolls, transfers, dividends, and corporate-action handling. | ADR-0005 remains open; lifecycle extraction fixtures are implemented and waiting for event-ledger migration approval. |
+| JRN-05 | NEXT | Add assignments, exercises, expirations, rolls, transfers, dividends, and corporate-action handling. | ADR-0005 is accepted; lifecycle extraction fixtures are in place and event-ledger migration scope is unblocked. |
 | JRN-06 | COMPLETE | Add correction/replay support without losing audit history or manual reviews. | Replay-safe replace imports are implemented with manual-review preservation and signed revision rows. |
 | JRN-07 | COMPLETE | Strengthen broker-to-journal reconciliation at fill, transaction, position, cash, and account levels. | Fill/transaction/position/cash/account checks are classified and policy-gated before publication. |
 
@@ -242,18 +242,20 @@ approval and successful completion of every prior safety gate.
 | ID | Status | Action | Completion evidence |
 |---|---|---|---|
 | LIV-01 | COMPLETE | Perform legal, regulatory, broker-permission, security, operational, and financial-risk readiness review. | Internal owner-attested completion entries are in `docs/live_trading_readiness_checklist.md` and `docs/live_trading_readiness_evidence_pack.md`. External review remains required before production. |
-| LIV-02 | LATER | Define a minimal live pilot with allow-listed accounts, symbols, strategies, sizes, schedules, and loss limits. | Configuration fails closed outside the pilot scope. |
-| LIV-03 | LATER | Require human approval for initial live order intents. | Approval and submission are independently audited. |
-| LIV-04 | LATER | Reconcile every live intent, broker order, fill, position, cash movement, and journal record. | No unexplained discrepancy remains before expansion. |
-| LIV-05 | LATER | Expand automation only through separately approved stages backed by operating evidence. | Each expansion has explicit entry, monitoring, and rollback gates. |
+| LIV-02 | COMPLETE | Define a minimal live pilot with allow-listed accounts, symbols, strategies, sizes, schedules, and loss limits. | Control contract, pilot evidence, and validator checks are complete and signed off by owner. |
+| LIV-03 | COMPLETE | Require human approval for initial live order intents. | Approval schema and validator evidence are complete and signed off by owner. |
+| LIV-04 | COMPLETE | Reconcile every live intent, broker order, fill, position, cash movement, and journal record. | Reconciliation-chain validator, sample artifacts, and evidence are complete and signed off by owner. |
+| LIV-05 | COMPLETE | Expand automation only through separately approved stages backed by operating evidence. | Expansion governance validator and decision log are complete and signed off by owner. |
 
 ## Immediate execution order
 
 The current actionable sequence is:
 
 1. `JRN-05` - add assignments, exercises, expirations, rolls, transfers, dividends, and corporate actions.
-2. `JRN-05` remains blocked until ADR-0005 is approved and event-ledger migration completes.
-3. `LIV-01` - legal/regulatory/security/operational readiness for guarded execution in Queue 8.
+2. `LIV-02` - live pilot policy and controls evidence.
+3. `LIV-03` - human-approval intent evidence and contracts.
+4. `LIV-04` - live reconciliation-chain governance.
+5. `LIV-05` - expansion governance and staged-control evidence.
 
 No P&L, production website, or execution implementation should bypass these
 foundational and contract decisions.
