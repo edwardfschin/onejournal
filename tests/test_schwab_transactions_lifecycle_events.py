@@ -172,6 +172,130 @@ class TransactionsLifecycleEventTests(unittest.TestCase):
         self.assertEqual(events[0]["event_type"], "activityType:ROLLOVER")
         self.assertEqual(events[0]["event_uid"], "schwab_txn:EVT-007:event:TRADE")
 
+    def test_extract_roll_activity_event(self) -> None:
+        events = extract_lifecycle_events_from_transactions(
+            [
+                {
+                    "type": "TRADE",
+                    "status": "VALID",
+                    "activityType": "ROLL",
+                    "activityId": "EVT-008",
+                    "tradeDate": "2026-07-01T10:30:00-05:00",
+                    "accountNumber": "ACCT-008",
+                    "orderId": "ORD-008",
+                    "positionId": "POS-008",
+                    "transferItems": [
+                        {
+                            "amount": 1,
+                            "instrument": {
+                                "assetType": "OPTION",
+                                "symbol": "AAPL  250815P00150000",
+                            },
+                            "positionEffect": "OPENING",
+                        }
+                    ],
+                }
+            ],
+            asof="2026-07-01",
+        )
+
+        self.assertEqual(len(events), 1)
+        self.assertEqual(events[0]["event_type"], "activityType:ROLL")
+        self.assertEqual(events[0]["event_uid"], "schwab_txn:EVT-008:event:TRADE")
+
+    def test_extract_expiration_activity_event(self) -> None:
+        events = extract_lifecycle_events_from_transactions(
+            [
+                {
+                    "type": "TRADE",
+                    "status": "VALID",
+                    "activityType": "EXPIRATION",
+                    "activityId": "EVT-009",
+                    "tradeDate": "2026-07-01T13:00:00-05:00",
+                    "accountNumber": "ACCT-009",
+                    "orderId": "ORD-009",
+                    "positionId": "POS-009",
+                    "transferItems": [
+                        {
+                            "amount": -1,
+                            "instrument": {
+                                "assetType": "OPTION",
+                                "symbol": "MSFT  250815C00100000",
+                            },
+                            "positionEffect": "CLOSING",
+                        }
+                    ],
+                }
+            ],
+            asof="2026-07-01",
+        )
+
+        self.assertEqual(len(events), 1)
+        self.assertEqual(events[0]["event_type"], "activityType:EXPIRATION")
+        self.assertEqual(events[0]["event_uid"], "schwab_txn:EVT-009:event:TRADE")
+
+    def test_extract_transfer_subtype_event(self) -> None:
+        events = extract_lifecycle_events_from_transactions(
+            [
+                {
+                    "type": "TRADE",
+                    "status": "VALID",
+                    "subType": "TRANSFER",
+                    "activityId": "EVT-010",
+                    "tradeDate": "2026-07-01T15:00:00-05:00",
+                    "accountNumber": "ACCT-010",
+                    "orderId": "ORD-010",
+                    "positionId": "POS-010",
+                    "transferItems": [
+                        {
+                            "amount": 1,
+                            "instrument": {
+                                "assetType": "OPTION",
+                                "symbol": "TSLA  250815C00600000",
+                            },
+                            "positionEffect": "OPENING",
+                        }
+                    ],
+                }
+            ],
+            asof="2026-07-01",
+        )
+
+        self.assertEqual(len(events), 1)
+        self.assertEqual(events[0]["event_type"], "subType:TRANSFER")
+        self.assertEqual(events[0]["event_uid"], "schwab_txn:EVT-010:event:TRADE")
+
+    def test_extract_corporate_action_activity_event(self) -> None:
+        events = extract_lifecycle_events_from_transactions(
+            [
+                {
+                    "type": "TRADE",
+                    "status": "VALID",
+                    "activityType": "CORPORATE_ACTION",
+                    "activityId": "EVT-011",
+                    "tradeDate": "2026-07-01T09:15:00-05:00",
+                    "accountNumber": "ACCT-011",
+                    "orderId": "ORD-011",
+                    "positionId": "POS-011",
+                    "transferItems": [
+                        {
+                            "amount": 1,
+                            "instrument": {
+                                "assetType": "EQUITY",
+                                "symbol": "NVDA",
+                            },
+                            "positionEffect": "OPENING",
+                        }
+                    ],
+                }
+            ],
+            asof="2026-07-01",
+        )
+
+        self.assertEqual(len(events), 1)
+        self.assertEqual(events[0]["event_type"], "activityType:CORPORATE_ACTION")
+        self.assertEqual(events[0]["event_uid"], "schwab_txn:EVT-011:event:TRADE")
+
     def test_fallback_uid_when_activity_id_missing(self) -> None:
         events = extract_lifecycle_events_from_transactions(
             [

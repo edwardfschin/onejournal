@@ -121,7 +121,7 @@ position state.
 | JRN-02 | COMPLETE | Persist normalized accounts, orders, positions, transactions, and required source lineage—not only fills. | Normalized family derivation, import-run linkage checks, and contract coverage now exercise all families. |
 | JRN-03 | COMPLETE | Replace preview grouping with a deterministic trade-lifecycle engine. | Entry/exit/partial/reopen fixtures and deterministic lifecycle tests are implemented and merge-validated. |
 | JRN-04 | COMPLETE | Add multi-leg lifecycle handling for verticals and later approved strategies. | Preview-level and lifecycle-contract fixtures for multi-leg and cross-symbol matching using explicit episode-group scope are in place. |
-| JRN-05 | NEXT | Add assignments, exercises, expirations, rolls, transfers, dividends, and corporate-action handling. | ADR-0005 is accepted; lifecycle extraction fixtures are in place and event-ledger migration scope is unblocked. |
+| JRN-05 | COMPLETE | Add assignments, exercises, expirations, rolls, transfers, dividends, and corporate-action handling. | Lifecycle extraction is covered for all listed event types and ADR-0005 event-ledger persistence is wired end-to-end through Schwab conversion and DB import flow. |
 | JRN-06 | COMPLETE | Add correction/replay support without losing audit history or manual reviews. | Replay-safe replace imports are implemented with manual-review preservation and signed revision rows. |
 | JRN-07 | COMPLETE | Strengthen broker-to-journal reconciliation at fill, transaction, position, cash, and account levels. | Fill/transaction/position/cash/account checks are classified and policy-gated before publication. |
 

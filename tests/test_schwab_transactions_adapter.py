@@ -158,8 +158,11 @@ class TransactionsJsonAdapterTests(unittest.TestCase):
             ({"activityType": "CORPORATE_ACTION"}, "activityType:CORPORATE_ACTION"),
             ({"activityType": "DIVIDEND"}, "activityType:DIVIDEND"),
             ({"activityType": "EXPIRATION"}, "activityType:EXPIRATION"),
+            ({"activityType": "ROLL"}, "activityType:ROLL"),
+            ({"activityType": "ROLLOVER"}, "activityType:ROLLOVER"),
             ({"activityType": "ASSIGNMENT"}, "activityType:ASSIGNMENT"),
             ({"activityType": "INTEREST"}, "activityType:INTEREST"),
+            ({"activityType": "TRANSFER"}, "activityType:TRANSFER"),
             ({"subType": "TRANSFER"}, "subType:TRANSFER"),
             ({"subType": "DIVIDEND"}, "subType:DIVIDEND"),
         ]
