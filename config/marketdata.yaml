@@ -1,3 +1,40 @@
 marketdata:
-  provider: none
+  contract_version: 1
   mode: read_only
+  provider_selection: account_broker
+  provider_sequence:
+    - schwab
+    - ibkr
+    - moomoo
+  allow_cross_provider_fallback: false
+  providers:
+    schwab:
+      enabled: false
+      phase: active_first
+    ibkr:
+      enabled: false
+      phase: planned
+    moomoo:
+      enabled: false
+      phase: future
+  storage:
+    raw_root_pattern: data/raw/{provider}
+    normalized_store: data/journal/onejournal.duckdb
+    local_only: true
+    credentials_separate: true
+    redistribution_allowed: false
+    retention_policy: provider_terms_and_owner_policy_required
+  polling:
+    background_enabled: false
+    poll_only_when_authenticated_and_active: true
+    regular_session_stock_seconds: 15
+    regular_session_option_seconds: 30
+    extended_session_seconds: 60
+    inactive_pause_seconds: 300
+    closed_session_polling: false
+  freshness:
+    regular_session_seconds: 60
+    extended_session_seconds: 120
+    future_tolerance_seconds: 5
+    delayed_quotes_are_current: false
+    unknown_entitlement_is_valid: false

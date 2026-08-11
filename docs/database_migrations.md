@@ -72,6 +72,7 @@ Examples:
 0008_add_lifecycle_event_legs.sql
 0009_add_utc_financial_event_instants.sql
 0010_add_approved_lifecycle_pnl_allocations.sql
+0011_add_normalized_market_quotes.sql
 ```
 
 Migration 0009 adds explicit canonical UTC evidence fields without
@@ -79,6 +80,11 @@ reinterpreting older timezone-less values. Migration 0010 keeps reviewed
 lifecycle instructions separate from normalized broker evidence and adds
 append-only, fingerprinted P&L runs and allocation lineage. Neither migration
 has been applied to the live journal database by this implementation work.
+
+Migration 0011 adds provider/connection-scoped quote ingestion runs and
+normalized top-of-book quote evidence. Freshness remains a read-time
+calculation rather than a stored permanent label. Migration 0011 has also not
+been applied to the live journal database.
 
 Rules:
 

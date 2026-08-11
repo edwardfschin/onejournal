@@ -189,3 +189,42 @@ class NormalizedTransaction:
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
+
+
+@dataclass(frozen=True)
+class NormalizedQuote:
+    """Broker-independent top-of-book quote evidence.
+
+    A quote is market-data evidence, not an account position and not an
+    automatically valid valuation mark. ``onejournal.market_data`` validates
+    its timestamps, entitlement, session, delay mode, and prices at the time a
+    caller requests a mark.
+
+    ``connection_uid`` is an opaque local identifier for the user-owned broker
+    connection whose entitlement produced the quote. It must not contain an
+    account number, token, username, or other credential.
+    """
+
+    quote_uid: str
+    provider: str
+    connection_uid: str
+    instrument_key: str
+    provider_instrument_id: str
+    symbol: str
+    asset_class: str
+    currency: str
+    bid: Decimal | None
+    ask: Decimal | None
+    last: Decimal | None
+    provider_quote_at: datetime
+    received_at: datetime
+    market_session: str
+    data_mode: str
+    entitlement_status: str
+    asof: date
+    raw_path: str
+    raw_sha256: str
+    adapter_version: str
+
+    def to_dict(self) -> dict[str, Any]:
+        return asdict(self)

@@ -3,7 +3,7 @@
 This directory is reserved for ordered DuckDB migration artifacts governed by
 `docs/database_migrations.md`.
 
-There are currently ten migration files:
+There are currently eleven migration files:
 
 - `0001_establish_schema_version.sql`:
   create the migration ledger (`schema_migrations`) with run metadata and audit
@@ -40,6 +40,10 @@ There are currently ten migration files:
   add reviewed lifecycle instructions, predecessor/source-leg links, immutable
   calculation runs, input fingerprints, group results, closed-lot lineage, and
   assignment/exercise/expiration allocation lineage under accepted ADR-0004.
+- `0011_add_normalized_market_quotes.sql`:
+  add provider/connection-scoped quote ingestion audit runs and normalized,
+  broker-independent top-of-book evidence with UTC timestamps, entitlement,
+  delay/session state, immutable raw lineage, and adapter version.
 
 The existing DuckDB schema is a prototype bootstrap baseline created (and now
 versioned) by `scripts/journal/init_journal_db.py`.

@@ -22,6 +22,7 @@ from onejournal.brokers.normalized import (
     NormalizedFill,
     NormalizedOrder,
     NormalizedPosition,
+    NormalizedQuote,
     NormalizedTransaction,
 )
 
@@ -102,6 +103,21 @@ class BrokerAdapter(ABC):
         """Fetch/import position snapshots for the given market date."""
 
         return self._unsupported("fetch_positions", asof)
+
+    def fetch_quotes(
+        self,
+        asof: date,
+        instrument_keys: tuple[str, ...],
+    ) -> BrokerAdapterResult[NormalizedQuote]:
+        """Fetch read-only quotes for explicit broker-independent instruments.
+
+        The base adapter intentionally does not perform symbol discovery or
+        provider fallback. A provider adapter must resolve every requested
+        instrument explicitly and report unsupported or unentitled records.
+        """
+
+        del instrument_keys
+        return self._unsupported("fetch_quotes", asof)
 
     def fetch_transactions(
         self,
