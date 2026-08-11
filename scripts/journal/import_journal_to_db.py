@@ -11,7 +11,7 @@ from __future__ import annotations
 import argparse
 import json
 from csv import DictReader
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 from datetime import UTC, date, datetime
 from pathlib import Path
 
@@ -32,6 +32,7 @@ DEFAULT_DB = Path("data/journal/onejournal.duckdb")
 DEFAULT_FILLS = Path("docs/examples/manual_csv/fills_template.csv")
 DEFAULT_REVIEWS = Path("data/journal/reviews/manual_reviews.csv")
 DEFAULT_LIFECYCLE_EVENTS = None
+DEFAULT_LIFECYCLE_EVENT_LEGS = None
 
 
 def parse_args() -> argparse.Namespace:
@@ -47,6 +48,12 @@ def parse_args() -> argparse.Namespace:
         default=DEFAULT_LIFECYCLE_EVENTS,
         help="Optional lifecycle events CSV path emitted by the Schwab transactions converter.",
     )
+    parser.add_argument(
+        "--lifecycle-event-legs",
+        dest="lifecycle_event_legs",
+        default=DEFAULT_LIFECYCLE_EVENT_LEGS,
+        help="Optional lifecycle event-leg evidence CSV emitted by the Schwab transactions converter.",
+    )
     parser.add_argument("--replace", action="store_true", help="Replace existing imported journal rows.")
     args = parser.parse_args()
     if args.fills_alias:
@@ -54,7 +61,19 @@ def parse_args() -> argparse.Namespace:
     return args
 
 
-def _parse_event_at(value: str) -> datetime:
+def _parse_aware_utc(value: datetime, *, field_name: str) -> datetime:
+    if value.tzinfo is None or value.utcoffset() is None:
+        raise ValueError(f"{field_name} must include a timezone offset")
+    return value.astimezone(UTC)
+
+
+def _canonical_utc_text(value: datetime, *, field_name: str) -> str:
+    return _parse_aware_utc(value, field_name=field_name).isoformat().replace(
+        "+00:00", "Z"
+    )
+
+
+def _parse_event_at(value: str) -> tuple[datetime, str]:
     if not value:
         raise ValueError("lifecycle event row has empty event_at")
     normalized = value.strip()
@@ -64,9 +83,32 @@ def _parse_event_at(value: str) -> datetime:
         event_at = datetime.fromisoformat(normalized)
     except ValueError as exc:
         raise ValueError(f"invalid lifecycle event_at value: {value}") from exc
-    if event_at.tzinfo is None:
-        return event_at
-    return event_at.astimezone(UTC).replace(tzinfo=None)
+    event_at_utc = _parse_aware_utc(event_at, field_name="lifecycle event_at")
+    return event_at_utc.replace(tzinfo=None), event_at_utc.isoformat().replace(
+        "+00:00", "Z"
+    )
+
+
+def _row_text(row: dict[str, str | None], field_name: str) -> str:
+    value = row.get(field_name)
+    return "" if value is None else str(value).strip()
+
+
+def _parse_optional_decimal(value: str, *, field_name: str, row_index: int) -> Decimal | None:
+    normalized = value.strip()
+    if not normalized:
+        return None
+    try:
+        parsed = Decimal(normalized)
+    except InvalidOperation as exc:
+        raise ValueError(
+            f"invalid lifecycle-event-legs row {row_index}: {field_name} must be decimal"
+        ) from exc
+    if not parsed.is_finite():
+        raise ValueError(
+            f"invalid lifecycle-event-legs row {row_index}: {field_name} must be finite"
+        )
+    return parsed
 
 
 def _side_sign(side: str) -> Decimal:
@@ -161,18 +203,18 @@ def _load_lifecycle_events(
             )
 
         for row_index, row in enumerate(reader, start=2):
-            event_uid = str(row.get("event_uid", "")).strip()
-            source_broker = str(row.get("source_broker", "")).strip()
-            source_account_id = str(row.get("source_account_id", "")).strip()
-            asof_value = str(row.get("asof_date", "")).strip() or str(row.get("asof", "")).strip()
-            event_at_value = str(row.get("event_at", "")).strip()
-            event_class = str(row.get("event_class", "")).strip()
-            event_type = str(row.get("event_type", "")).strip()
-            event_name = str(row.get("event_name", "")).strip()
+            event_uid = _row_text(row, "event_uid")
+            source_broker = _row_text(row, "source_broker")
+            source_account_id = _row_text(row, "source_account_id")
+            asof_value = _row_text(row, "asof_date") or _row_text(row, "asof")
+            event_at_value = _row_text(row, "event_at")
+            event_class = _row_text(row, "event_class")
+            event_type = _row_text(row, "event_type")
+            event_name = _row_text(row, "event_name")
 
-            source_activity_id = str(row.get("source_activity_id", "")).strip()
-            source_order_id = str(row.get("source_order_id", "")).strip()
-            source_position_id = str(row.get("source_position_id", "")).strip()
+            source_activity_id = _row_text(row, "source_activity_id")
+            source_order_id = _row_text(row, "source_order_id")
+            source_position_id = _row_text(row, "source_position_id")
 
             if not event_uid or not source_broker or not event_class or not event_type:
                 raise ValueError(
@@ -190,6 +232,7 @@ def _load_lifecycle_events(
             except ValueError as exc:
                 raise ValueError(f"invalid lifecycle-events row {row_index}: asof must be YYYY-MM-DD") from exc
 
+            event_at_legacy, event_at_utc = _parse_event_at(event_at_value)
             events.append(
                 (
                     event_uid,
@@ -201,13 +244,155 @@ def _load_lifecycle_events(
                     event_class,
                     event_type,
                     asof_date,
-                    _parse_event_at(event_at_value),
+                    event_at_legacy,
+                    event_at_utc,
                     event_name,
                     str(lifecycle_events_path),
                     import_run_id,
                 )
             )
     return events
+
+
+def _load_lifecycle_event_legs(
+    lifecycle_event_legs_path: Path | None,
+    *,
+    import_run_id: str,
+) -> list[tuple]:
+    if lifecycle_event_legs_path is None:
+        return []
+    if not lifecycle_event_legs_path.exists():
+        raise ValueError(
+            f"lifecycle-event-legs file missing: {lifecycle_event_legs_path}"
+        )
+
+    required = {
+        "event_leg_uid",
+        "event_uid",
+        "leg_index",
+        "leg_kind",
+        "asset_class",
+        "symbol",
+        "option_symbol",
+        "underlying_symbol",
+        "option_type",
+        "expiry",
+        "strike",
+        "multiplier",
+        "signed_quantity",
+        "price",
+        "cash_amount",
+        "position_effect",
+        "fee_type",
+        "currency",
+        "deliverable_json",
+        "evidence_status",
+        "evidence_notes",
+    }
+    legs: list[tuple] = []
+    seen_leg_uids: set[str] = set()
+    seen_event_indexes: set[tuple[str, int]] = set()
+    with lifecycle_event_legs_path.open(newline="", encoding="utf-8") as fh:
+        reader = DictReader(fh)
+        if reader.fieldnames is None:
+            raise ValueError(
+                f"lifecycle-event-legs file has no header: {lifecycle_event_legs_path}"
+            )
+        missing = sorted(required - set(reader.fieldnames))
+        if missing:
+            raise ValueError(
+                f"lifecycle-event-legs file missing required columns {missing} in {lifecycle_event_legs_path}"
+            )
+
+        for row_index, row in enumerate(reader, start=2):
+            event_leg_uid = _row_text(row, "event_leg_uid")
+            event_uid = _row_text(row, "event_uid")
+            leg_kind = _row_text(row, "leg_kind").lower()
+            evidence_status = _row_text(row, "evidence_status").lower()
+            if not event_leg_uid or not event_uid:
+                raise ValueError(
+                    f"invalid lifecycle-event-legs row {row_index}: event_leg_uid and event_uid are required"
+                )
+            try:
+                leg_index = int(_row_text(row, "leg_index"))
+            except ValueError as exc:
+                raise ValueError(
+                    f"invalid lifecycle-event-legs row {row_index}: leg_index must be an integer"
+                ) from exc
+            if leg_index < 0:
+                raise ValueError(
+                    f"invalid lifecycle-event-legs row {row_index}: leg_index must be non-negative"
+                )
+            expected_leg_uid = f"{event_uid}:item:{leg_index}"
+            if event_leg_uid != expected_leg_uid:
+                raise ValueError(
+                    f"invalid lifecycle-event-legs row {row_index}: event_leg_uid must be {expected_leg_uid}"
+                )
+            if leg_kind not in {"security", "cash", "unsupported"}:
+                raise ValueError(
+                    f"invalid lifecycle-event-legs row {row_index}: unsupported leg_kind {leg_kind!r}"
+                )
+            if evidence_status not in {"observed", "review_required"}:
+                raise ValueError(
+                    f"invalid lifecycle-event-legs row {row_index}: unsupported evidence_status {evidence_status!r}"
+                )
+            if event_leg_uid in seen_leg_uids:
+                raise ValueError(
+                    f"duplicate lifecycle event_leg_uid at row {row_index}: {event_leg_uid}"
+                )
+            event_index = (event_uid, leg_index)
+            if event_index in seen_event_indexes:
+                raise ValueError(
+                    f"duplicate lifecycle event_uid/leg_index at row {row_index}: {event_uid}/{leg_index}"
+                )
+            seen_leg_uids.add(event_leg_uid)
+            seen_event_indexes.add(event_index)
+
+            expiry_value = _row_text(row, "expiry")
+            try:
+                expiry = date.fromisoformat(expiry_value) if expiry_value else None
+            except ValueError as exc:
+                raise ValueError(
+                    f"invalid lifecycle-event-legs row {row_index}: expiry must be YYYY-MM-DD"
+                ) from exc
+
+            deliverable_json = _row_text(row, "deliverable_json")
+            if deliverable_json:
+                try:
+                    json.loads(deliverable_json)
+                except json.JSONDecodeError as exc:
+                    raise ValueError(
+                        f"invalid lifecycle-event-legs row {row_index}: deliverable_json must be valid JSON"
+                    ) from exc
+
+            legs.append(
+                (
+                    event_leg_uid,
+                    event_uid,
+                    leg_index,
+                    leg_kind,
+                    _row_text(row, "asset_class").lower(),
+                    _row_text(row, "symbol"),
+                    _row_text(row, "option_symbol"),
+                    _row_text(row, "underlying_symbol"),
+                    _row_text(row, "option_type").upper(),
+                    expiry,
+                    _parse_optional_decimal(_row_text(row, "strike"), field_name="strike", row_index=row_index),
+                    _parse_optional_decimal(_row_text(row, "multiplier"), field_name="multiplier", row_index=row_index),
+                    _parse_optional_decimal(_row_text(row, "signed_quantity"), field_name="signed_quantity", row_index=row_index),
+                    _parse_optional_decimal(_row_text(row, "price"), field_name="price", row_index=row_index),
+                    _parse_optional_decimal(_row_text(row, "cash_amount"), field_name="cash_amount", row_index=row_index),
+                    _row_text(row, "position_effect").upper(),
+                    _row_text(row, "fee_type").upper(),
+                    _row_text(row, "currency").upper(),
+                    deliverable_json,
+                    evidence_status,
+                    _row_text(row, "evidence_notes"),
+                    str(lifecycle_event_legs_path),
+                    import_run_id,
+                )
+            )
+    return legs
 
 
 def _fill_record_signature(fill: NormalizedFill | dict[str, object]) -> tuple:
@@ -747,6 +932,8 @@ def _insert_derived_normalized_rows(
     import_run_id: str,
     imported_at: datetime,
 ) -> None:
+    if not fills:
+        return
     account_rows = _derive_normalized_accounts(fills, import_run_id, imported_at)
     order_rows = _derive_normalized_orders(fills, import_run_id, imported_at)
     position_rows = _derive_normalized_positions(fills, import_run_id, imported_at)
@@ -817,9 +1004,9 @@ def _insert_derived_lifecycle_events(
         INSERT OR REPLACE INTO normalized_lifecycle_events (
             event_uid, source_broker, source_account_id,
             source_activity_id, source_order_id, source_position_id,
-            event_class, event_type, asof_date, event_at,
+            event_class, event_type, asof_date, event_at, event_at_utc,
             event_name, raw_path, import_run_id
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """,
         [
             (
@@ -833,6 +1020,7 @@ def _insert_derived_lifecycle_events(
                 event_type,
                 asof_date,
                 event_at,
+                event_at_utc,
                 event_name,
                 raw_path,
                 import_run_id,
@@ -848,11 +1036,32 @@ def _insert_derived_lifecycle_events(
                 event_type,
                 asof_date,
                 event_at,
+                event_at_utc,
                 event_name,
                 raw_path,
                 _event_import_run_id,
             ) in lifecycle_events
         ],
+    )
+
+
+def _insert_lifecycle_event_legs(
+    con: duckdb.DuckDBPyConnection,
+    lifecycle_event_legs: list[tuple],
+) -> None:
+    if not lifecycle_event_legs:
+        return
+    con.executemany(
+        """
+        INSERT OR REPLACE INTO normalized_lifecycle_event_legs (
+            event_leg_uid, event_uid, leg_index, leg_kind, asset_class, symbol,
+            option_symbol, underlying_symbol, option_type, expiry, strike,
+            multiplier, signed_quantity, price, cash_amount, position_effect,
+            fee_type, currency, deliverable_json, evidence_status,
+            evidence_notes, raw_path, import_run_id
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """,
+        lifecycle_event_legs,
     )
 
 
@@ -862,6 +1071,7 @@ def import_to_db(
     reviews_path: Path,
     replace: bool,
     lifecycle_events: Path | None = None,
+    lifecycle_event_legs: Path | None = None,
     asof: date | None = None,
 ) -> dict[str, int]:
     import_run_id = "manual_csv:" + datetime.now().astimezone().strftime("%Y%m%d_%H%M%S")
@@ -877,7 +1087,34 @@ def import_to_db(
     fills_by_uid = _normalize_fills_by_uid(fills)
 
     con = duckdb.connect(str(db_path))
+    transaction_open = False
     try:
+        if replace:
+            protected_counts = {}
+            for table_name in (
+                "approved_option_lifecycle_events",
+                "pnl_calculation_runs",
+            ):
+                exists = con.execute(
+                    "SELECT 1 FROM information_schema.tables WHERE table_name = ?",
+                    (table_name,),
+                ).fetchone()
+                if exists is not None:
+                    protected_counts[table_name] = int(
+                        con.execute(f"SELECT COUNT(*) FROM {table_name}").fetchone()[0]
+                    )
+            if any(protected_counts.values()):
+                details = ", ".join(
+                    f"{name}={count}"
+                    for name, count in protected_counts.items()
+                    if count
+                )
+                raise ValueError(
+                    "--replace would invalidate approved lifecycle/P&L lineage "
+                    f"({details}); preserve the existing journal and import append-only, "
+                    "or perform a separately reviewed corrective migration"
+                )
+
         if not replace:
             existing_signatures = _load_existing_fill_signatures(con)
             for fill_uid, (incoming_signature, _fill) in fills_by_uid.items():
@@ -901,6 +1138,24 @@ def import_to_db(
             import_run_id=import_run_id,
             fills_asof=asof if asof is not None else (fills[0].asof if fills else None),
         )
+        lifecycle_leg_rows = _load_lifecycle_event_legs(
+            lifecycle_event_legs,
+            import_run_id=import_run_id,
+        )
+        lifecycle_event_uids = {row[0] for row in lifecycle_rows}
+        orphan_leg_event_uids = sorted(
+            {row[1] for row in lifecycle_leg_rows} - lifecycle_event_uids
+        )
+        if orphan_leg_event_uids:
+            raise ValueError(
+                "lifecycle-event-legs reference event_uid values absent from the supplied lifecycle-events file: "
+                + ", ".join(orphan_leg_event_uids)
+            )
+        imported_asof = asof if asof is not None else (fills[0].asof if fills else None)
+        imported_row_count = len(fills) + len(lifecycle_rows) + len(lifecycle_leg_rows)
+
+        con.execute("BEGIN TRANSACTION")
+        transaction_open = True
 
         if replace:
             con.execute(
@@ -913,9 +1168,9 @@ def import_to_db(
                     import_run_id,
                     "manual_csv",
                     str(fills_path),
-                    fills[0].asof if fills else None,
+                    imported_asof,
                     imported_at,
-                    len(fills),
+                    imported_row_count,
                     "ok",
                     "DB-1D correction-safe replace",
                 ),
@@ -927,6 +1182,7 @@ def import_to_db(
                 replacement_fills_by_uid=fills_by_uid,
             )
             for table_name in [
+                "normalized_lifecycle_event_legs",
                 "trade_episode_legs",
                 "trade_episodes",
                 "normalized_fills",
@@ -938,83 +1194,88 @@ def import_to_db(
             ]:
                 con.execute(f"DELETE FROM {table_name}")
 
-        con.executemany(
-            """
-            INSERT OR REPLACE INTO normalized_fills (
-                fill_uid, source_broker, source_account_id, source_fill_id, source_order_id,
-                episode_group_id, asof_date, filled_at, asset_class, symbol, side, quantity,
-                fill_price, commission, fees, currency, fetched_at, raw_path, option_symbol,
-                underlying_symbol, option_type, expiry, strike, multiplier, open_close,
-                execution_venue, liquidity_flag, import_run_id
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """,
-            [
-                (
-                    f.fill_uid,
-                    f.source_broker,
-                    f.source_account_id,
-                    f.source_fill_id,
-                    f.source_order_id,
-                    f.episode_group_id,
-                    f.asof,
-                    f.filled_at.replace(tzinfo=None),
-                    f.asset_class,
-                    f.symbol,
-                    f.side,
-                    f.quantity,
-                    f.fill_price,
-                    f.commission,
-                    f.fees,
-                    f.currency,
-                    f.fetched_at.replace(tzinfo=None),
-                    f.raw_path,
-                    f.option_symbol,
-                    f.underlying_symbol,
-                    f.option_type,
-                    f.expiry,
-                    f.strike,
-                    f.multiplier,
-                    f.open_close,
-                    f.execution_venue,
-                    f.liquidity_flag,
-                    import_run_id,
-                )
-                for f in fills
-            ],
-        )
+        if fills:
+            con.executemany(
+                """
+                INSERT OR REPLACE INTO normalized_fills (
+                    fill_uid, source_broker, source_account_id, source_fill_id, source_order_id,
+                    episode_group_id, asof_date, filled_at, asset_class, symbol, side, quantity,
+                    fill_price, commission, fees, currency, fetched_at, raw_path, option_symbol,
+                    underlying_symbol, option_type, expiry, strike, multiplier, open_close,
+                    execution_venue, liquidity_flag, import_run_id,
+                    filled_at_utc, fetched_at_utc
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                [
+                    (
+                        f.fill_uid,
+                        f.source_broker,
+                        f.source_account_id,
+                        f.source_fill_id,
+                        f.source_order_id,
+                        f.episode_group_id,
+                        f.asof,
+                        f.filled_at.replace(tzinfo=None),
+                        f.asset_class,
+                        f.symbol,
+                        f.side,
+                        f.quantity,
+                        f.fill_price,
+                        f.commission,
+                        f.fees,
+                        f.currency,
+                        f.fetched_at.replace(tzinfo=None),
+                        f.raw_path,
+                        f.option_symbol,
+                        f.underlying_symbol,
+                        f.option_type,
+                        f.expiry,
+                        f.strike,
+                        f.multiplier,
+                        f.open_close,
+                        f.execution_venue,
+                        f.liquidity_flag,
+                        import_run_id,
+                        _canonical_utc_text(f.filled_at, field_name=f"fill {f.fill_uid} filled_at"),
+                        _canonical_utc_text(f.fetched_at, field_name=f"fill {f.fill_uid} fetched_at"),
+                    )
+                    for f in fills
+                ],
+            )
 
-        con.executemany(
-            """
-            INSERT OR REPLACE INTO trade_episodes (
-                episode_uid, source_broker, source_account_id, primary_symbol, asset_class,
-                strategy_type, strategy_label, opened_at, status, fill_count, leg_count,
-                leg_summary, cashflow_label, net_quantity, gross_cashflow, commission, fees, updated_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """,
-            [
-                (
-                    e.episode_uid,
-                    e.source_broker,
-                    e.source_account_id,
-                    e.primary_symbol,
-                    e.asset_class,
-                    e.strategy_type,
-                    e.strategy_label,
-                    e.opened_at.replace(tzinfo=None),
-                    e.status,
-                    e.fill_count,
-                    e.leg_count,
-                    e.leg_summary,
-                    e.cashflow_label,
-                    e.net_quantity,
-                    e.gross_cashflow,
-                    e.total_commission,
-                    e.total_fees,
-                    imported_at,
-                )
-                for e in episodes
-            ],
-        )
+        if episodes:
+            con.executemany(
+                """
+                INSERT OR REPLACE INTO trade_episodes (
+                    episode_uid, source_broker, source_account_id, primary_symbol, asset_class,
+                    strategy_type, strategy_label, opened_at, status, fill_count, leg_count,
+                    leg_summary, cashflow_label, net_quantity, gross_cashflow, commission, fees, updated_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                [
+                    (
+                        e.episode_uid,
+                        e.source_broker,
+                        e.source_account_id,
+                        e.primary_symbol,
+                        e.asset_class,
+                        e.strategy_type,
+                        e.strategy_label,
+                        e.opened_at.replace(tzinfo=None),
+                        e.status,
+                        e.fill_count,
+                        e.leg_count,
+                        e.leg_summary,
+                        e.cashflow_label,
+                        e.net_quantity,
+                        e.gross_cashflow,
+                        e.total_commission,
+                        e.total_fees,
+                        imported_at,
+                    )
+                    for e in episodes
+                ],
+            )
 
         imported_episode_uids = {episode.episode_uid for episode in episodes}
         for review in reviews.values():
@@ -1030,6 +1291,7 @@ def import_to_db(
                 source="import",
                 created_at=imported_at,
                 skip_if_unchanged=True,
+                manage_transaction=False,
             )
 
         leg_rows = []
@@ -1048,14 +1310,15 @@ def import_to_db(
                     json.dumps(leg, sort_keys=True),
                 ))
 
-        con.executemany(
-            """
-            INSERT OR REPLACE INTO trade_episode_legs (
-                episode_uid, leg_index, asset_class, symbol, side, quantity, option_type, expiry, strike, raw_leg_json
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """,
-            leg_rows,
-        )
+        if leg_rows:
+            con.executemany(
+                """
+                INSERT OR REPLACE INTO trade_episode_legs (
+                    episode_uid, leg_index, asset_class, symbol, side, quantity, option_type, expiry, strike, raw_leg_json
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                leg_rows,
+            )
 
         if not replace:
             con.execute(
@@ -1068,9 +1331,9 @@ def import_to_db(
                     import_run_id,
                     "manual_csv",
                     str(fills_path),
-                    fills[0].asof if fills else None,
+                    imported_asof,
                     imported_at,
-                    len(fills),
+                    imported_row_count,
                     "ok",
                     "DB-1D initial CSV import",
                 ),
@@ -1078,8 +1341,9 @@ def import_to_db(
 
         _insert_derived_normalized_rows(con, fills, import_run_id=import_run_id, imported_at=imported_at)
         _insert_derived_lifecycle_events(con, lifecycle_rows, import_run_id=import_run_id)
+        _insert_lifecycle_event_legs(con, lifecycle_leg_rows)
 
-        return {
+        counts = {
             "import_runs": con.execute("SELECT COUNT(*) FROM import_runs").fetchone()[0],
             "normalized_fills": con.execute("SELECT COUNT(*) FROM normalized_fills").fetchone()[0],
             "normalized_accounts": con.execute("SELECT COUNT(*) FROM normalized_accounts").fetchone()[0],
@@ -1089,10 +1353,21 @@ def import_to_db(
             "normalized_lifecycle_events": con.execute(
                 "SELECT COUNT(*) FROM normalized_lifecycle_events"
             ).fetchone()[0],
+            "normalized_lifecycle_event_legs": con.execute(
+                "SELECT COUNT(*) FROM normalized_lifecycle_event_legs"
+            ).fetchone()[0],
             "trade_episodes": con.execute("SELECT COUNT(*) FROM trade_episodes").fetchone()[0],
             "trade_episode_legs": con.execute("SELECT COUNT(*) FROM trade_episode_legs").fetchone()[0],
             "manual_reviews": con.execute("SELECT COUNT(*) FROM manual_reviews").fetchone()[0],
         }
+        con.execute("COMMIT")
+        transaction_open = False
+        return counts
+    except Exception:
+        if transaction_open:
+            con.execute("ROLLBACK")
+            transaction_open = False
+        raise
     finally:
         con.close()
 
@@ -1106,6 +1381,9 @@ def main() -> int:
         Path(args.reviews),
         args.replace,
         lifecycle_events=(Path(args.lifecycle_events) if args.lifecycle_events else None),
+        lifecycle_event_legs=(
+            Path(args.lifecycle_event_legs) if args.lifecycle_event_legs else None
+        ),
         asof=asof,
     )
     print("===== OneJournal DB import =====")
@@ -1114,6 +1392,7 @@ def main() -> int:
     print(f"FILLS     : {args.fills}")
     print(f"REVIEWS   : {args.reviews}")
     print(f"LIFECYCLE : {args.lifecycle_events or 'not provided'}")
+    print(f"LIFECYCLE LEGS: {args.lifecycle_event_legs or 'not provided'}")
     for key, value in counts.items():
         print(f"{key}: {value}")
     print("STATUS    : OK")

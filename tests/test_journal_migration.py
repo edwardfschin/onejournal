@@ -41,6 +41,14 @@ class JournalMigrationTests(unittest.TestCase):
             self.assertIn("normalized_positions", tables)
             self.assertIn("normalized_transactions", tables)
             self.assertIn("normalized_lifecycle_events", tables)
+            self.assertIn("normalized_lifecycle_event_legs", tables)
+            self.assertIn("approved_option_lifecycle_events", tables)
+            self.assertIn("approved_option_lifecycle_predecessors", tables)
+            self.assertIn("approved_option_lifecycle_source_legs", tables)
+            self.assertIn("pnl_calculation_runs", tables)
+            self.assertIn("pnl_group_results", tables)
+            self.assertIn("pnl_closed_lot_allocations", tables)
+            self.assertIn("pnl_lifecycle_allocations", tables)
             self.assertIn("journal_entries", tables)
             self.assertIn("journal_entry_revisions", tables)
             self.assertIn("journal_reviews", tables)
@@ -70,6 +78,26 @@ class JournalMigrationTests(unittest.TestCase):
             self.assertEqual(rows[5][1], "applied")
             self.assertEqual(rows[6][0], "0007")
             self.assertEqual(rows[6][1], "applied")
+            self.assertEqual(rows[7][0], "0008")
+            self.assertEqual(rows[7][1], "applied")
+            self.assertEqual(rows[8][0], "0009")
+            self.assertEqual(rows[8][1], "applied")
+            self.assertEqual(rows[9][0], "0010")
+            self.assertEqual(rows[9][1], "applied")
+
+            fill_columns = {
+                row[1]: row[2]
+                for row in con.execute("PRAGMA table_info(normalized_fills)").fetchall()
+            }
+            self.assertEqual(fill_columns["filled_at_utc"], "VARCHAR")
+            self.assertEqual(fill_columns["fetched_at_utc"], "VARCHAR")
+            lifecycle_columns = {
+                row[1]: row[2]
+                for row in con.execute(
+                    "PRAGMA table_info(normalized_lifecycle_events)"
+                ).fetchall()
+            }
+            self.assertEqual(lifecycle_columns["event_at_utc"], "VARCHAR")
 
     def test_init_schema_is_idempotent(self) -> None:
         init_schema(self.db_path)
@@ -77,7 +105,7 @@ class JournalMigrationTests(unittest.TestCase):
 
         with duckdb.connect(str(self.db_path), read_only=True) as con:
             count = con.execute("SELECT COUNT(*) FROM schema_migrations").fetchone()[0]
-            self.assertEqual(count, 7)
+            self.assertEqual(count, 10)
 
     def test_migration_0005_backfills_existing_reviews_from_version_0002(self) -> None:
         apply_schema_migrations(
@@ -114,7 +142,7 @@ class JournalMigrationTests(unittest.TestCase):
             self.db_path,
             migrations_dir=MIGRATIONS_DIR,
         )
-        self.assertEqual(resulting_version, 7)
+        self.assertEqual(resulting_version, 10)
 
         with duckdb.connect(str(self.db_path), read_only=True) as con:
             rows = con.execute(

@@ -140,7 +140,7 @@ presentation layer.
 
 | ID | Status | Action | Completion evidence |
 |---|---|---|---|
-| PNL-01 | BLOCKED | Implement realized P&L from closed lifecycle allocations. | Fill-backed FIFO matches now preserve versioned open/close lineage, quantities, multipliers, allocated commissions/fees, gross P&L, and net realized P&L with worked-example tests. Completion remains blocked on economic allocation contracts for assignment, exercise, expiration, and other non-fill lifecycle events. |
+| PNL-01 | BLOCKED | Implement realized P&L from closed lifecycle allocations. | ADR-0004 economic/book rules are approved and implemented for assignment, exercise, and expiration with FIFO predecessor links, successor basis carry, UTC ordering, input fingerprints, append-only run/allocation persistence, dashboard/reconciliation consumption, and focused tests. Completion remains blocked only on manual confirmation of real Schwab review evidence and broker-result reconciliation; description-only rows remain excluded. |
 | PNL-02 | BLOCKED | Select a market-data provider and define quote ingestion, storage, licensing, and freshness. | Approved provider decision and validated read-only quote pipeline. |
 | PNL-03 | BLOCKED | Implement current positions, cost basis, market value, and unrealized P&L. | FIFO open quantity/cost groundwork exists, but current `normalized_positions` are derived independently from each import date's fills and use the last fill as `market_price`; they are not cumulative broker snapshots or approved valuations. Completion requires PNL-02 plus broker-position reconciliation. |
 | PNL-04 | BLOCKED | Build account and consolidated portfolio snapshots over time. | As-of payload selection exists, but its inputs are per-import derived position rows rather than canonical cumulative and broker-reconciled portfolio state. Historical snapshots cannot yet satisfy the acceptance criterion. |
@@ -168,11 +168,19 @@ The remaining closure conditions are:
 
 - PNL-01: fill-backed closed-lot allocations reconcile to the approved long,
   partial-close, multi-lot fee-allocation, and short-option examples. Completion
-  remains blocked because the current lifecycle-event ledger preserves event
-  identity/classification but not the instrument, quantity, multiplier, price,
-  cash, fee, and predecessor/successor allocation fields required to calculate
-  assignment, exercise, expiration, and other non-fill event economics without
-  guessing.
+  now has additive event-leg capture for instrument, signed quantity,
+  multiplier, observed price/cash, fee, currency, and deliverable evidence.
+  A privacy-preserving local raw-history audit found 2 unique assignment hints
+  on `TRADE` records and 15 unique expirations on `RECEIVE_AND_DELIVER` records,
+  all without structured lifecycle markers. They are now withheld from fills
+  and captured only as `description_hint` review evidence; all 19 observed legs
+  remain `review_required`. No exercise example is present locally. The owner
+  approved the economic/book assignment, exercise, and expiration rules on
+  2026-08-10, and the implementation now fails closed unless an operator links
+  exact normalized event legs and FIFO predecessor fills in an approved
+  instruction. PNL-01 remains blocked until representative real Schwab events
+  are manually confirmed and the resulting allocations reconcile to broker
+  evidence; `review_required` legs remain outside financial totals.
 - PNL-02: the project owner must approve a market-data provider, quote policy,
   licensing treatment, and freshness threshold before valuation can be called
   current or valid.

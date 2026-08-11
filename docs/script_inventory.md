@@ -9,7 +9,7 @@ does not make a script production-approved merely because it is retained.
 
 The inventory is based on the source code, current CI/baseline and Streamlit
 call sites, operator documentation, and the full
-[legacy-code audit](legacy_code_audit.md). Last reviewed: 2026-08-09.
+[legacy-code audit](legacy_code_audit.md). Last reviewed: 2026-08-10.
 
 Status meanings:
 
@@ -34,13 +34,14 @@ all active imports, UI actions, CI workflows, and operator commands.
 | `scripts/ci/check_repository.py` | ACTIVE | Read-only Git tracked-file and secret/artifact guard. | Run by `bin/onejournal_ci.sh`. |
 | `scripts/journal/init_journal_db.py` | ACTIVE | Runs migration-aligned bootstrap/schema init for DuckDB and prints a read-only schema summary. | Local bootstrap only; versioned migrations are authoritative. |
 | `scripts/journal/migrate_journal_db.py` | ACTIVE | Reads migration artifacts and applies ordered SQL migrations with ledger enforcement and checksum validation. | Supports explicit DB migration runs and failure-safe re-entry behavior. |
-| `scripts/journal/import_journal_to_db.py` | ACTIVE | Imports normalized/manual fills, optional lifecycle-event rows, and reviews; writes DuckDB rows. `--replace` deletes/rebuilds prototype journal tables. | Controlled local import; not a production migration. |
-| `scripts/journal/build_dashboard_payload_from_db.py` | ACTIVE | Reads DuckDB and writes a dashboard JSON only with `--write`. | Current DB-backed Streamlit payload producer. |
+| `scripts/journal/import_journal_to_db.py` | ACTIVE | Atomically imports normalized/manual fills, canonical UTC evidence, optional lifecycle-event headers/legs, and reviews. `--replace` rebuilds prototype tables only while no approved lifecycle or P&L history exists; otherwise it fails closed to preserve lineage. | Controlled local import; not a production migration. |
+| `scripts/journal/rebuild_pnl_allocations.py` | ACTIVE | Dry-runs by default; validates reviewed instructions against normalized events, legs, predecessor fills, UTC evidence, FIFO rules, and ADR-0004. `--apply` atomically appends approvals plus a fingerprinted/versioned P&L run. | PNL-01 local operator; no broker/order API and no normalized-evidence mutation. |
+| `scripts/journal/build_dashboard_payload_from_db.py` | ACTIVE | Reads DuckDB and writes a dashboard JSON only with `--write`; accepts persisted P&L only when current fill and approved-event fingerprints match the run. | Current DB-backed Streamlit payload producer. |
 | `scripts/journal/upsert_manual_review_to_db.py` | ACTIVE | Appends one validated `journal_reviews` event when migration 0005 exists and atomically updates the `manual_reviews` compatibility projection after checking the episode. | Current Streamlit Save Review target; retains projection-only compatibility before migration 0005. |
 | `scripts/journal/upsert_journal_entry_to_db.py` | ACTIVE | Creates or appends a durable private journal-entry revision; reads body text from a file/stdin and never prints it. | Local UXJ-03 operator workflow after migration 0005; no broker or execution writes. |
-| `scripts/journal/check_journal_db.py` | ACTIVE | Read-only DuckDB integrity and duplicate-key check. | Baseline/operator validation. |
-| `scripts/journal/check_journal_reconciliation.py` | ACTIVE | Read-only cross-family reconciliation check for fills, transactions, positions, cash, and account scope with policy modes. | Added JRN-07 publication blocker gate in the Schwab import flow. |
-| `scripts/journal/check_import_run_audit.py` | ACTIVE | Read-only import-run and fill-lineage check. | Baseline/operator validation. |
+| `scripts/journal/check_journal_db.py` | ACTIVE | Read-only DuckDB integrity, duplicate-key, lifecycle evidence, approved predecessor/source-leg, and P&L run/allocation linkage check. | Baseline/operator validation. |
+| `scripts/journal/check_journal_reconciliation.py` | ACTIVE | Read-only cross-family reconciliation check for fills, transactions, positions, cash, accounts, and lifecycle evidence. A lifecycle event clears the blocker only through a current fingerprint-matched P&L run. | JRN-07/PNL-01 publication blocker gate in the Schwab import flow. |
+| `scripts/journal/check_import_run_audit.py` | ACTIVE | Read-only import-run and normalized-record lineage check, including lifecycle event legs. | Baseline/operator validation. |
 | `scripts/journal/show_import_status.py` | ACTIVE | Read-only journal/import/payload status report. | Baseline/operator diagnostics. |
 | `scripts/journal/check_manual_fills.py` | ACTIVE | Read-only manual CSV parser and episode-preview check. | Clean CI validation. |
 | `scripts/journal/check_normalized_fills_contract.py` | ACTIVE | Read-only normalized-fill schema, as-of, identity, asset, and option-field validation. | Clean CI and import gate. |
@@ -53,10 +54,10 @@ all active imports, UI actions, CI workflows, and operator commands.
 | `scripts/journal/check_dashboard_payload.py` | ACTIVE | Builds a prototype CSV payload; writes JSON only with `--write`. | Legacy CSV/backfill payload validation. |
 | `scripts/journal/compare_dashboard_payloads.py` | ACTIVE | Read-only comparison of CSV and DB dashboard payloads. | Transition-validation diagnostic. |
 | `scripts/journal/convert_schwab_orders_json_to_normalized_fills.py` | ACTIVE | Converts raw Schwab orders evidence to a normalized CSV output. | Read-only broker evidence transformation; output is generated. |
-| `scripts/journal/convert_schwab_transactions_json_to_normalized_fills.py` | ACTIVE | Converts raw Schwab transaction evidence to a normalized fill CSV and optional lifecycle-event CSV output (`--lifecycle-events`). | Current canonical Schwab fill-source and lifecycle-event transformation after reconciliation. |
+| `scripts/journal/convert_schwab_transactions_json_to_normalized_fills.py` | ACTIVE | Converts raw Schwab transaction evidence to a normalized fill CSV plus optional lifecycle-event header and transfer-item evidence CSVs. | Current canonical Schwab fill-source and lifecycle-evidence transformation after reconciliation. |
 | `scripts/journal/reconcile_schwab_orders_transactions.py` | ACTIVE | Read-only daily comparison of normalized order and transaction fills. | Import gate; strict mode rejects unmatched evidence. |
 | `scripts/journal/run_schwab_daily_reconciliation.py` | ACTIVE | Orchestrates conversion, validation, reconciliation, and generated-CSV cleanup; never writes DuckDB. | Safe daily reconciliation workflow. |
-| `scripts/journal/run_schwab_daily_import.py` | ACTIVE | Orchestrates daily conversion/reconciliation; writes normalized fills, lifecycle events, DuckDB, and validation payload with `--import-db`. | Guarded Schwab import workflow. |
+| `scripts/journal/run_schwab_daily_import.py` | ACTIVE | Orchestrates daily conversion/reconciliation; writes normalized fills, lifecycle event headers/legs, DuckDB, and validation payload with `--import-db`. | Guarded Schwab import workflow. |
 | `scripts/liv/validate_pilot_config.py` | ACTIVE | Read-only LIV-02 pilot-config validator (allow-list, risk controls, schedule, and controls schema). | Prevents invalid pilot policy from being used in staged execution planning. |
 | `scripts/liv/validate_intent_event.py` | ACTIVE | Read-only LIV-03 intent validator (intent schema, approval/risk consistency, enum checks). | Blocks invalid approval payloads from entering intent handoff. |
 | `scripts/liv/validate_reconciliation_chain.py` | ACTIVE | Read-only LIV-04 reconciliation-chain validator for intents, orders, fills, and optional journal/cash/position traces. | Prevents orphan/floating fills and mismatch from passing stage-readiness checks. |
@@ -97,6 +98,7 @@ A script can be removed only after the reference matrix shows zero production, b
 - `schwab_adapter_readiness_audit.md`
 - `schwab_execution_boundary_contract.md`
 - `operator_import_runbook.md`
+- `approved_lifecycle_pnl_operator.md`
 
 ## Isolated legacy and execution material
 

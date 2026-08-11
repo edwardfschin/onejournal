@@ -82,6 +82,41 @@ class TransactionsJsonAdapterTests(unittest.TestCase):
         self.assertEqual(stats.unsupported_items, 1)
         self.assertEqual(stats.unsupported_activity_counts, {"activityType:ASSIGNMENT": 1})
 
+    def test_description_only_assignment_is_withheld_from_normalized_fills(self) -> None:
+        rows, stats = normalized_rows_from_transactions(
+            [
+                {
+                    "type": "TRADE",
+                    "status": "VALID",
+                    "description": "Option assignment generated equity activity",
+                    "activityId": "A-DESC-1",
+                    "tradeDate": "2026-07-01T12:00:00-05:00",
+                    "accountNumber": "ACCT1",
+                    "positionId": "POS-001",
+                    "transferItems": [
+                        {
+                            "amount": 100,
+                            "cost": 15000,
+                            "price": 150,
+                            "positionEffect": "OPENING",
+                            "instrument": {
+                                "assetType": "EQUITY",
+                                "symbol": "AAPL",
+                            },
+                        }
+                    ],
+                }
+            ]
+        )
+
+        self.assertEqual(rows, [])
+        self.assertEqual(stats.trade_valid, 0)
+        self.assertEqual(stats.unsupported_items, 1)
+        self.assertEqual(
+            stats.unsupported_activity_counts,
+            {"description_hint:ASSIGNMENT": 1},
+        )
+
     def test_option_exercise_activity_type_is_normalized_as_exercise_for_lifecycle(self) -> None:
         rows, stats = normalized_rows_from_transactions(
             [

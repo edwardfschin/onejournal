@@ -6,7 +6,10 @@ import argparse
 from pathlib import Path
 
 from onejournal.brokers.schwab.transactions_json import (
+    LIFECYCLE_EVENT_COLUMNS,
+    LIFECYCLE_EVENT_LEG_COLUMNS,
     convert_transactions_json_to_normalized_csv_from_rows,
+    extract_lifecycle_event_legs_from_transactions,
     extract_lifecycle_events_from_transactions,
     load_transactions_json,
     validate_asof,
@@ -23,6 +26,11 @@ def main() -> int:
         default=None,
         help="Optional output CSV path for lifecycle-only rows extracted from this transactions file.",
     )
+    parser.add_argument(
+        "--lifecycle-event-legs",
+        default=None,
+        help="Optional output CSV path for transfer-item evidence linked to lifecycle events.",
+    )
     args = parser.parse_args()
 
     asof = validate_asof(args.asof)
@@ -34,29 +42,24 @@ def main() -> int:
         asof=asof,
     )
     lifecycle_events = extract_lifecycle_events_from_transactions(transactions, asof=asof)
+    lifecycle_event_legs = extract_lifecycle_event_legs_from_transactions(
+        transactions, asof=asof
+    )
     if args.lifecycle_events:
         lifecycle_output = Path(args.lifecycle_events)
         lifecycle_output.parent.mkdir(parents=True, exist_ok=True)
         with lifecycle_output.open("w", newline="", encoding="utf-8") as fh:
-            writer = csv.DictWriter(
-                fh,
-                fieldnames=[
-                    "event_uid",
-                    "source_broker",
-                    "source_account_id",
-                    "source_activity_id",
-                    "source_order_id",
-                    "source_position_id",
-                    "event_class",
-                    "event_type",
-                    "asof",
-                    "event_at",
-                    "event_name",
-                ],
-            )
+            writer = csv.DictWriter(fh, fieldnames=LIFECYCLE_EVENT_COLUMNS)
             writer.writeheader()
             for row in lifecycle_events:
                 writer.writerow(row)
+    if args.lifecycle_event_legs:
+        lifecycle_legs_output = Path(args.lifecycle_event_legs)
+        lifecycle_legs_output.parent.mkdir(parents=True, exist_ok=True)
+        with lifecycle_legs_output.open("w", newline="", encoding="utf-8") as fh:
+            writer = csv.DictWriter(fh, fieldnames=LIFECYCLE_EVENT_LEG_COLUMNS)
+            writer.writeheader()
+            writer.writerows(lifecycle_event_legs)
 
     print("===== Schwab transactions JSON to normalized fills =====")
     print(f"INPUT     : {args.input}")
@@ -83,6 +86,8 @@ def main() -> int:
             print(f"  - {key:<24} : {count}")
     if lifecycle_events:
         print(f"LIFECYCLE_EVENTS    : {len(lifecycle_events)}")
+    if args.lifecycle_event_legs:
+        print(f"LIFECYCLE_EVENT_LEGS: {len(lifecycle_event_legs)}")
     if stats.unsupported_record_counts:
         print("UNSUPPORTED_RECORD_COUNTS:")
         for key, count in sorted(stats.unsupported_record_counts.items()):

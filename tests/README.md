@@ -16,13 +16,19 @@ foundation simple and dependency-free.
 - Lifecycle contract: partial fill events and partial close behavior.
 - Financial contract: versioned FIFO closed-lot allocations, source-fill
   lineage, quantities, multipliers, commission/fee allocation, realized P&L,
-  open cost basis, marks, and fail-closed incomplete evidence.
-- Adapter contract: deterministic Schwab orders JSON normalization.
+  open cost basis, marks, assignment/exercise/expiration transformations,
+  input fingerprints, durable allocation lineage, and fail-closed incomplete
+  evidence.
+- Adapter contract: deterministic Schwab orders/transactions normalization,
+  including lifecycle event headers, decimal-safe transfer-item evidence legs,
+  missing-evidence markers, and no inferred lifecycle P&L.
 - Integration: schema initialization and migration, import, append-only journal
   history, review compatibility projection, replay preservation, DuckDB reads,
   and DB dashboard payload construction using a temporary database.
 - Regression: invalid inputs, as-of mismatches, duplicate payload entries, and
-  unsupported fill sides must fail explicitly.
+  unsupported fill sides must fail explicitly; unallocated lifecycle events
+  and stale/mismatched calculation runs must block publication-grade P&L
+  status, while replace imports cannot orphan approved P&L history.
 - Journal product: deterministic review queues, private structured entry
   history, search/filter/saved-view behavior, attachment fail-closed policy,
   process goals, habits, and explicit-period recurring review transitions.

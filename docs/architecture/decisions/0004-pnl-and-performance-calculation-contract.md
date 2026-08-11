@@ -1,7 +1,8 @@
 # ADR-0004: Define P&L, cost-basis, and performance calculation semantics
 
-- Status: Proposed
+- Status: Accepted
 - Date: 2026-07-23
+- Accepted date: 2026-08-10
 - Decision owners: OneJournal project owner
 - Related roadmap items: CON-03, PNL-01 through PNL-08
 - Related contracts: ADR-0003, `docs/onejournal_data_contract_v1.md`,
@@ -11,22 +12,20 @@
 
 ## Context
 
-The current journal groups normalized fills into intentionally simple episode
-previews. It calculates `gross_cashflow`, commissions, fees, and net quantity,
-but it does not calculate cost basis, realized P&L, unrealized P&L, positions,
-marks, returns, or tax lots. A cash credit is therefore not a profit, and an
-open premium is not realized P&L.
+The journal began with intentionally simple episode previews. It now has a
+versioned FIFO calculator for confirmed fills, but durable assignment,
+exercise, and expiration allocations remain unavailable. A cash credit is
+still not a profit, and an open premium is not realized P&L.
 
-The initial product scope covers US stocks and listed equity options. ADR-0003
-is proposed to require USD reporting, decimal arithmetic, New York market
-dates, and explicit FX evidence. This P&L contract cannot be implemented or
-published until ADR-0003 is accepted and its required data corrections are
-complete.
+The initial product scope covers US stocks and listed equity options. Approved
+ADR-0003 requires decimal arithmetic, New York market dates, native-currency
+integrity, and explicit FX evidence. Approved ADR-0005 requires immutable,
+typed lifecycle evidence and forbids description text from becoming canonical
+event confirmation.
 
 ## Decision
 
-Subject to ADR-0003 and project-owner approval, OneJournal will calculate
-financial results as follows.
+OneJournal will calculate financial results as follows.
 
 - Confirmed fills and approved non-trade lifecycle events are the only basis
   for cost basis and realized P&L. Orders, signals, broker estimates, and raw
@@ -59,6 +58,53 @@ financial results as follows.
   implementation may show dollar P&L only; it must not label a cashflow-based
   percentage as a return.
 
+### Assignment, exercise, and expiration
+
+The canonical OneJournal result is an economic/book result, not a tax return or
+broker tax-lot election. Tax reporting, wash-sale treatment, and jurisdictional
+adjustments remain outside this contract.
+
+- A lifecycle event may affect P&L or lots only after its event type, account,
+  currency, effective instant, predecessor option contract, quantity,
+  multiplier, and relevant successor equity evidence are approved. A
+  `description_hint` or `review_required` leg never enters financial results.
+- The predecessor option quantity is matched FIFO against the exact broker,
+  account, option contract, currency, and direction. Assignment consumes short
+  option lots; exercise consumes long option lots. Expiration consumes the
+  explicitly confirmed long or short option direction. Missing or excess
+  quantity fails closed.
+- For an allocated option quantity, `net_option_basis` is positive for a long
+  option's remaining premium cost plus allocated opening costs, and negative
+  for a short option's remaining premium credit after allocated opening costs.
+- Assignment or exercise closes the predecessor option without separate
+  realized option P&L. Its `net_option_basis` is carried exactly once into the
+  resulting equity acquisition or disposition. The predecessor/successor link,
+  calculation version, allocated quantity, source fills, event, and evidence
+  legs must remain durable and auditable.
+- When the event acquires underlying units, total book cost is strike cash plus
+  carried `net_option_basis` plus event commissions and fees. This covers long
+  call exercise and short put assignment.
+- When the event disposes of underlying units, total book proceeds are strike
+  cash less carried `net_option_basis` less event commissions and fees. This
+  covers long put exercise and short call assignment.
+- Whether the underlying acquisition opens long inventory or closes short
+  inventory, and whether a disposition closes long inventory or opens short
+  inventory, follows approved successor evidence and current FIFO inventory;
+  it is never guessed solely from the option type.
+- The successor quantity must reconcile to broker deliverables. Standard
+  contracts normally use contracts times multiplier, but adjusted contracts,
+  cash-in-lieu, fractional units, and non-standard deliverables require their
+  exact recorded evidence. No multiplier or deliverable defaults are allowed
+  in lifecycle allocation.
+- On confirmed expiration, no successor security lot is created. A long option
+  realizes the negative of its remaining premium cost and allocated costs; a
+  short option realizes its remaining premium credit after allocated costs.
+  Event commissions and fees reduce the result. A short expiration remains
+  pending until evidence confirms there was no assignment or exercise.
+- Event costs are allocated deterministically across the affected contracts or
+  deliverables, with the allocation method and any residual recorded. They are
+  never charged both to the predecessor and successor.
+
 ### Worked examples
 
 | Event | Calculation | Result |
@@ -67,6 +113,12 @@ financial results as follows.
 | Buy 100 shares at $10; sell 40 at $12 | matched proceeds $480 - matched cost $400 | realized P&L $80; 60 shares retain $600 cost basis before allocated fees |
 | Sell one option at $2.00 with 100 multiplier; buy to close at $1.20; total fees $2 | $200 opening proceeds - $120 close cost - $2 fees | realized P&L $78 |
 | Open 100 shares at $10; approved fresh mark $11 | market value $1,100 - cost basis $1,000 | unrealized P&L $100 before allocated fees |
+| Exercise one long $100 call bought for $2 plus $1 opening cost; no event fee | strike cash $10,000 + carried option basis $201 | 100-share successor lot book cost $10,201; no separate option realized P&L |
+| Assignment of one short $100 put sold for $2 less $1 opening cost; $1 assignment fee | strike cash $10,000 + carried option basis -$199 + event fee $1 | 100-share successor lot book cost $9,802; no separate option realized P&L |
+| Exercise one long $100 put bought for $2 plus $1 opening cost against 100 long shares; $1 event fee | strike proceeds $10,000 - carried option basis $201 - event fee $1 | equity disposal proceeds $9,798 before the matched stock basis |
+| Assignment of one short $100 call sold for $2 less $1 opening cost; $1 event fee | strike proceeds $10,000 - carried option basis -$199 - event fee $1 | equity disposal proceeds $10,198 before the matched stock basis |
+| One long option bought for $2 with 100 multiplier and $1 opening cost expires worthless | zero proceeds - $200 premium - $1 opening cost | realized P&L -$201 |
+| One short option sold for $2 with 100 multiplier and $1 opening cost expires worthless with broker-confirmed no assignment | $200 premium - $1 opening cost | realized P&L $199 |
 
 All examples use USD and decimal arithmetic. A non-USD result without the
 approved FX evidence in ADR-0003 remains native-currency only.
@@ -74,9 +126,9 @@ approved FX evidence in ADR-0003 remains native-currency only.
 ## Boundaries
 
 This decision does not define tax reporting, tax jurisdiction, wash-sale
-treatment, dividends, assignments, exercises, expirations, corporate actions,
-FX rate timing, market-data provider, or performance-return denominator. Those
-need separate lifecycle, market-data, and return-policy decisions.
+treatment, dividends, corporate actions, FX rate timing, market-data provider,
+or performance-return denominator. Those need separate lifecycle, market-data,
+tax, and return-policy decisions.
 
 Broker-reported P&L is reconciliation evidence, not an override of the
 canonical calculation without an approved discrepancy workflow.
@@ -139,7 +191,7 @@ the cent at the approved boundary.
 
 ## Rollback or supersession
 
-This proposal changes no calculations. Accepted implementation must version
-results so a corrected algorithm can be recomputed beside—not silently over—an
-earlier version. A later approved lot or return policy supersedes this ADR with
-historical comparison and migration rules.
+Implementation changes must version results so a corrected algorithm can be
+recomputed beside—not silently over—an earlier version. A later approved lot,
+tax, or return policy supersedes this ADR with historical comparison and
+migration rules.

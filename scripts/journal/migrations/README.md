@@ -3,7 +3,7 @@
 This directory is reserved for ordered DuckDB migration artifacts governed by
 `docs/database_migrations.md`.
 
-There are currently seven migration files:
+There are currently ten migration files:
 
 - `0001_establish_schema_version.sql`:
   create the migration ledger (`schema_migrations`) with run metadata and audit
@@ -29,6 +29,17 @@ There are currently seven migration files:
   add process-only goals, append-only check-ins, habits, habit events, and
   explicit-period weekly/monthly review events; financial evaluation remains
   disabled pending PNL-02 and PNL-07.
+- `0008_add_lifecycle_event_legs.sql`:
+  add identity-stable, decimal-safe transfer-item evidence linked to lifecycle event
+  headers without inferring assignment, exercise, expiration, or corporate-
+  action P&L.
+- `0009_add_utc_financial_event_instants.sql`:
+  add canonical UTC ISO-8601 evidence fields for fill, fetch, and lifecycle
+  ordering without guessing how to reinterpret legacy timezone-less values.
+- `0010_add_approved_lifecycle_pnl_allocations.sql`:
+  add reviewed lifecycle instructions, predecessor/source-leg links, immutable
+  calculation runs, input fingerprints, group results, closed-lot lineage, and
+  assignment/exercise/expiration allocation lineage under accepted ADR-0004.
 
 The existing DuckDB schema is a prototype bootstrap baseline created (and now
 versioned) by `scripts/journal/init_journal_db.py`.

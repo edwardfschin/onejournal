@@ -47,6 +47,7 @@ class JournalPipelineIntegrationTests(unittest.TestCase):
                 "normalized_positions": 12,
                 "normalized_transactions": 12,
                 "normalized_lifecycle_events": 0,
+                "normalized_lifecycle_event_legs": 0,
                 "trade_episodes": 8,
                 "trade_episode_legs": 12,
                 "manual_reviews": 8,
@@ -388,6 +389,7 @@ class JournalPipelineIntegrationTests(unittest.TestCase):
         fills_csv = Path(self.temp_dir.name) / "lifecycle_fills.csv"
         reviews_csv = Path(self.temp_dir.name) / "lifecycle_reviews.csv"
         lifecycle_csv = Path(self.temp_dir.name) / "lifecycle_rows.csv"
+        lifecycle_legs_csv = Path(self.temp_dir.name) / "lifecycle_leg_rows.csv"
         fills_csv.write_text(
             """asof,source_broker,source_account_id,source_fill_id,filled_at,asset_class,symbol,side,quantity,fill_price,commission,fees,currency,source_order_id
 2026-06-02,manual_csv,DEMO_ACCOUNT,FILL-001,2026-06-02T10:00:00+00:00,stock,AAPL,BUY,1,150,0,0,USD,ORDER-001
@@ -405,6 +407,12 @@ swab:DEMO:evt:001,manual_csv,DEMO_ACCOUNT,ACT-001,ORDER-001,POS-001,TRANSACTION_
 """,
             encoding="utf-8",
         )
+        lifecycle_legs_csv.write_text(
+            """event_leg_uid,event_uid,leg_index,leg_kind,asset_class,symbol,option_symbol,underlying_symbol,option_type,expiry,strike,multiplier,signed_quantity,price,cash_amount,position_effect,fee_type,currency,deliverable_json,evidence_status,evidence_notes
+swab:DEMO:evt:001:item:0,swab:DEMO:evt:001,0,security,option,AAPL,AAPL  260619C00150000,AAPL,CALL,2026-06-19,150,100,-1,2.5,250,CLOSING,,USD,,observed,
+""",
+            encoding="utf-8",
+        )
 
         counts = import_to_db(
             self.db_path,
@@ -412,16 +420,167 @@ swab:DEMO:evt:001,manual_csv,DEMO_ACCOUNT,ACT-001,ORDER-001,POS-001,TRANSACTION_
             reviews_csv,
             replace=True,
             lifecycle_events=lifecycle_csv,
+            lifecycle_event_legs=lifecycle_legs_csv,
             asof=date(2026, 6, 2),
         )
 
         self.assertEqual(counts["normalized_lifecycle_events"], 1)
+        self.assertEqual(counts["normalized_lifecycle_event_legs"], 1)
         with duckdb.connect(str(self.db_path), read_only=True) as con:
             self.assertEqual(
                 con.execute(
                     "SELECT event_class FROM normalized_lifecycle_events WHERE event_uid='swab:DEMO:evt:001'"
                 ).fetchone()[0],
                 "TRANSACTION_LIFECYCLE",
+            )
+            self.assertEqual(
+                con.execute(
+                    "SELECT signed_quantity, multiplier, evidence_status FROM normalized_lifecycle_event_legs WHERE event_leg_uid='swab:DEMO:evt:001:item:0'"
+                ).fetchone(),
+                (Decimal("-1"), Decimal("100"), "observed"),
+            )
+
+        payload = build_payload(self.db_path, "2026-06-02")
+        self.assertEqual(payload["metadata"]["quality"]["overall_status"], "incomplete")
+        self.assertEqual(
+            payload["metadata"]["trade_summary_status"]["realized_pnl_by_currency"],
+            "incomplete",
+        )
+        lifecycle_quality = payload["metadata"]["quality"]["checks"]["lifecycle_evidence"]
+        self.assertEqual(lifecycle_quality["event_count"], 1)
+        self.assertEqual(lifecycle_quality["leg_count"], 1)
+        self.assertEqual(lifecycle_quality["status"], "incomplete")
+
+    def test_import_rejects_lifecycle_leg_without_supplied_event_header(self) -> None:
+        lifecycle_legs_csv = Path(self.temp_dir.name) / "orphan_lifecycle_leg_rows.csv"
+        lifecycle_legs_csv.write_text(
+            """event_leg_uid,event_uid,leg_index,leg_kind,asset_class,symbol,option_symbol,underlying_symbol,option_type,expiry,strike,multiplier,signed_quantity,price,cash_amount,position_effect,fee_type,currency,deliverable_json,evidence_status,evidence_notes
+missing:event:item:0,missing:event,0,security,stock,AAPL,,,,,,,,1,,,,USD,,observed,
+""",
+            encoding="utf-8",
+        )
+
+        with self.assertRaisesRegex(ValueError, "absent from the supplied lifecycle-events"):
+            import_to_db(
+                self.db_path,
+                FILLS_FIXTURE,
+                REVIEWS_FIXTURE,
+                replace=True,
+                lifecycle_event_legs=lifecycle_legs_csv,
+                asof=date(2026, 6, 2),
+            )
+
+    def test_import_rejects_lifecycle_leg_identity_not_derived_from_parent_and_index(self) -> None:
+        lifecycle_csv = Path(self.temp_dir.name) / "identity_lifecycle_rows.csv"
+        lifecycle_legs_csv = Path(self.temp_dir.name) / "identity_lifecycle_leg_rows.csv"
+        lifecycle_csv.write_text(
+            """event_uid,source_broker,source_account_id,source_activity_id,source_order_id,source_position_id,event_class,event_type,asof,event_at,event_name
+event:one,manual_csv,DEMO_ACCOUNT,ACT-001,ORDER-001,POS-001,TRANSACTION_LIFECYCLE,activityType:ASSIGNMENT,2026-06-02,2026-06-02T10:00:00+00:00,assignment
+""",
+            encoding="utf-8",
+        )
+        lifecycle_legs_csv.write_text(
+            """event_leg_uid,event_uid,leg_index,leg_kind,asset_class,symbol,option_symbol,underlying_symbol,option_type,expiry,strike,multiplier,signed_quantity,price,cash_amount,position_effect,fee_type,currency,deliverable_json,evidence_status,evidence_notes
+wrong:identity,event:one,0,security,stock,AAPL,,,,,,,,1,,,,USD,,observed,
+""",
+            encoding="utf-8",
+        )
+
+        with self.assertRaisesRegex(ValueError, "event_leg_uid must be event:one:item:0"):
+            import_to_db(
+                self.db_path,
+                FILLS_FIXTURE,
+                REVIEWS_FIXTURE,
+                replace=True,
+                lifecycle_events=lifecycle_csv,
+                lifecycle_event_legs=lifecycle_legs_csv,
+                asof=date(2026, 6, 2),
+            )
+
+    def test_lifecycle_only_import_records_nonzero_audit_count_and_asof(self) -> None:
+        empty_fills_csv = Path(self.temp_dir.name) / "empty_fills.csv"
+        lifecycle_csv = Path(self.temp_dir.name) / "only_lifecycle_rows.csv"
+        lifecycle_legs_csv = Path(self.temp_dir.name) / "only_lifecycle_leg_rows.csv"
+        empty_fills_csv.write_text(
+            "asof,source_broker,source_account_id,source_fill_id,filled_at,asset_class,symbol,side,quantity,fill_price,commission,fees,currency,source_order_id\n",
+            encoding="utf-8",
+        )
+        lifecycle_csv.write_text(
+            """event_uid,source_broker,source_account_id,source_activity_id,source_order_id,source_position_id,event_class,event_type,asof,event_at,event_name
+event:expiration,schwab,DEMO_ACCOUNT,ACT-EXP,,,TRANSACTION_LIFECYCLE,activityType:EXPIRATION,2026-06-02,2026-06-02T16:00:00+00:00,expiration
+""",
+            encoding="utf-8",
+        )
+        lifecycle_legs_csv.write_text(
+            """event_leg_uid,event_uid,leg_index,leg_kind,asset_class,symbol,option_symbol,underlying_symbol,option_type,expiry,strike,multiplier,signed_quantity,price,cash_amount,position_effect,fee_type,currency,deliverable_json,evidence_status,evidence_notes
+event:expiration:item:0,event:expiration,0,security,option,AAPL,AAPL  260619C00150000,AAPL,CALL,2026-06-19,150,100,-1,0,0,CLOSING,,USD,,observed,
+""",
+            encoding="utf-8",
+        )
+
+        counts = import_to_db(
+            self.db_path,
+            empty_fills_csv,
+            Path(self.temp_dir.name) / "missing_reviews_is_allowed.csv",
+            replace=False,
+            lifecycle_events=lifecycle_csv,
+            lifecycle_event_legs=lifecycle_legs_csv,
+            asof=date(2026, 6, 2),
+        )
+
+        self.assertEqual(counts["normalized_fills"], 0)
+        self.assertEqual(counts["normalized_lifecycle_events"], 1)
+        self.assertEqual(counts["normalized_lifecycle_event_legs"], 1)
+        with duckdb.connect(str(self.db_path), read_only=True) as con:
+            self.assertEqual(
+                con.execute("SELECT asof_date, row_count FROM import_runs").fetchone(),
+                (date(2026, 6, 2), 2),
+            )
+
+    def test_late_lifecycle_leg_failure_rolls_back_entire_import(self) -> None:
+        fills_csv = Path(self.temp_dir.name) / "rollback_fills.csv"
+        lifecycle_csv = Path(self.temp_dir.name) / "rollback_lifecycle_rows.csv"
+        lifecycle_legs_csv = Path(self.temp_dir.name) / "rollback_lifecycle_leg_rows.csv"
+        fills_csv.write_text(
+            """asof,source_broker,source_account_id,source_fill_id,filled_at,asset_class,symbol,side,quantity,fill_price,commission,fees,currency,source_order_id
+2026-06-02,manual_csv,DEMO_ACCOUNT,FILL-ROLLBACK,2026-06-02T10:00:00+00:00,stock,AAPL,BUY,1,150,0,0,USD,ORDER-ROLLBACK
+""",
+            encoding="utf-8",
+        )
+        lifecycle_csv.write_text(
+            """event_uid,source_broker,source_account_id,source_activity_id,source_order_id,source_position_id,event_class,event_type,asof,event_at,event_name
+event:rollback,manual_csv,DEMO_ACCOUNT,ACT-ROLLBACK,,,TRANSACTION_LIFECYCLE,activityType:ASSIGNMENT,2026-06-02,2026-06-02T10:00:00+00:00,assignment
+""",
+            encoding="utf-8",
+        )
+        lifecycle_legs_csv.write_text(
+            """event_leg_uid,event_uid,leg_index,leg_kind,asset_class,symbol,option_symbol,underlying_symbol,option_type,expiry,strike,multiplier,signed_quantity,price,cash_amount,position_effect,fee_type,currency,deliverable_json,evidence_status,evidence_notes
+event:rollback:item:0,event:rollback,0,security,stock,AAPL,,,,,,,,1e100,,,,USD,,observed,
+""",
+            encoding="utf-8",
+        )
+
+        with self.assertRaises(duckdb.Error):
+            import_to_db(
+                self.db_path,
+                fills_csv,
+                Path(self.temp_dir.name) / "missing_reviews_is_allowed.csv",
+                replace=False,
+                lifecycle_events=lifecycle_csv,
+                lifecycle_event_legs=lifecycle_legs_csv,
+                asof=date(2026, 6, 2),
+            )
+
+        with duckdb.connect(str(self.db_path), read_only=True) as con:
+            self.assertEqual(con.execute("SELECT COUNT(*) FROM import_runs").fetchone()[0], 0)
+            self.assertEqual(con.execute("SELECT COUNT(*) FROM normalized_fills").fetchone()[0], 0)
+            self.assertEqual(
+                con.execute("SELECT COUNT(*) FROM normalized_lifecycle_events").fetchone()[0],
+                0,
+            )
+            self.assertEqual(
+                con.execute("SELECT COUNT(*) FROM normalized_lifecycle_event_legs").fetchone()[0],
+                0,
             )
 
     def test_import_rejects_conflicting_fill_replays_without_replace(self) -> None:

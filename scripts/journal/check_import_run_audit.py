@@ -23,6 +23,7 @@ NORMALIZED_TABLES = (
     "normalized_positions",
     "normalized_transactions",
     "normalized_lifecycle_events",
+    "normalized_lifecycle_event_legs",
 )
 
 
@@ -82,6 +83,9 @@ def main() -> int:
         position_count = _query_scalar_int(con, "SELECT COUNT(*) FROM normalized_positions")
         transaction_count = _query_scalar_int(con, "SELECT COUNT(*) FROM normalized_transactions")
         lifecycle_count = _query_scalar_int(con, "SELECT COUNT(*) FROM normalized_lifecycle_events")
+        lifecycle_leg_count = _query_scalar_int(
+            con, "SELECT COUNT(*) FROM normalized_lifecycle_event_legs"
+        )
 
         blank_required = con.execute(
             """
@@ -209,6 +213,23 @@ def main() -> int:
             """
         ).fetchone()[0]
 
+        missing_lifecycle_leg_import_id = con.execute(
+            """
+            SELECT COUNT(*)
+            FROM normalized_lifecycle_event_legs
+            WHERE COALESCE(import_run_id, '') = ''
+            """
+        ).fetchone()[0]
+
+        orphan_lifecycle_leg_import_id = con.execute(
+            """
+            SELECT COUNT(*)
+            FROM normalized_lifecycle_event_legs l
+            LEFT JOIN import_runs r ON r.import_run_id = l.import_run_id
+            WHERE r.import_run_id IS NULL
+            """
+        ).fetchone()[0]
+
         if import_count <= 0:
             failures.append("import_runs has no rows")
         if fill_count <= 0:
@@ -249,6 +270,14 @@ def main() -> int:
             failures.append(f"normalized_lifecycle_events has {missing_lifecycle_import_id} row(s) without import_run_id")
         if orphan_lifecycle_import_id:
             failures.append(f"normalized_lifecycle_events has {orphan_lifecycle_import_id} row(s) with orphan import_run_id")
+        if missing_lifecycle_leg_import_id:
+            failures.append(
+                f"normalized_lifecycle_event_legs has {missing_lifecycle_leg_import_id} row(s) without import_run_id"
+            )
+        if orphan_lifecycle_leg_import_id:
+            failures.append(
+                f"normalized_lifecycle_event_legs has {orphan_lifecycle_leg_import_id} row(s) with orphan import_run_id"
+            )
 
         print()
         print("===== Counts =====")
@@ -259,6 +288,7 @@ def main() -> int:
         print(f"NORMALIZED_POSITIONS: {position_count}")
         print(f"NORMALIZED_TRANSACTIONS: {transaction_count}")
         print(f"NORMALIZED_LIFECYCLE_EVENTS: {lifecycle_count}")
+        print(f"NORMALIZED_LIFECYCLE_EVENT_LEGS: {lifecycle_leg_count}")
         print(f"BLANK_REQUIRED    : {blank_required}")
         print(f"NON_OK_STATUS     : {non_ok_status}")
         print(f"MISSING_IMPORT_ID : {missing_fill_import_id}")
@@ -273,6 +303,8 @@ def main() -> int:
         print(f"ORPHAN_TXN_ID  : {orphan_transaction_import_id}")
         print(f"MISSING_LIFECYCLE_ID : {missing_lifecycle_import_id}")
         print(f"ORPHAN_LIFECYCLE_ID  : {orphan_lifecycle_import_id}")
+        print(f"MISSING_LIFECYCLE_LEG_ID: {missing_lifecycle_leg_import_id}")
+        print(f"ORPHAN_LIFECYCLE_LEG_ID: {orphan_lifecycle_leg_import_id}")
 
     print()
     print("===== Result =====")

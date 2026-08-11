@@ -145,6 +145,7 @@ class ConvertSchwabTransactionsCliTests(TestCase):
             input_path = Path(root) / "input.json"
             output_path = Path(root) / "normalized.csv"
             lifecycle_path = Path(root) / "lifecycle.csv"
+            lifecycle_legs_path = Path(root) / "lifecycle_legs.csv"
             input_path.write_text(json.dumps(payload), encoding="utf-8")
 
             stdout = StringIO()
@@ -158,13 +159,20 @@ class ConvertSchwabTransactionsCliTests(TestCase):
                 str(output_path),
                 "--lifecycle-events",
                 str(lifecycle_path),
+                "--lifecycle-event-legs",
+                str(lifecycle_legs_path),
             ]
             with patch.object(sys, "argv", argv):
                 with redirect_stdout(stdout):
                     convert_main()
 
             self.assertIn("LIFECYCLE_EVENTS    : 2", stdout.getvalue())
+            self.assertIn("LIFECYCLE_EVENT_LEGS: 2", stdout.getvalue())
             lines = lifecycle_path.read_text(encoding="utf-8").strip().splitlines()
             self.assertEqual(len(lines), 3)
             self.assertEqual(lines[0], "event_uid,source_broker,source_account_id,source_activity_id,source_order_id,source_position_id,event_class,event_type,asof,event_at,event_name")
             self.assertIn("activityType:CORPORATE_ACTION", lines[2])
+            leg_lines = lifecycle_legs_path.read_text(encoding="utf-8").strip().splitlines()
+            self.assertEqual(len(leg_lines), 3)
+            self.assertTrue(leg_lines[0].startswith("event_leg_uid,event_uid,leg_index"))
+            self.assertIn("schwab_txn:A3:event:TRADE:item:0", leg_lines[1])

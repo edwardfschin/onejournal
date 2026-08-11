@@ -9,6 +9,12 @@ from pathlib import Path
 
 import duckdb
 
+from onejournal.journal.pnl_repository import (
+    load_approved_lifecycle_events,
+    load_current_persisted_pnl_result,
+    load_normalized_fills,
+)
+
 
 @dataclass(frozen=True)
 class ReconciliationIssue:
@@ -123,7 +129,22 @@ def main() -> int:
 
     con = duckdb.connect(str(db_path), read_only=True)
     try:
-        for required in ("import_runs", "normalized_fills", "normalized_accounts", "normalized_positions", "normalized_transactions"):
+        for required in (
+            "import_runs",
+            "normalized_fills",
+            "normalized_accounts",
+            "normalized_positions",
+            "normalized_transactions",
+            "normalized_lifecycle_events",
+            "normalized_lifecycle_event_legs",
+            "approved_option_lifecycle_events",
+            "approved_option_lifecycle_predecessors",
+            "approved_option_lifecycle_source_legs",
+            "pnl_calculation_runs",
+            "pnl_group_results",
+            "pnl_closed_lot_allocations",
+            "pnl_lifecycle_allocations",
+        ):
             if con.execute("SELECT 1 FROM information_schema.tables WHERE table_name = ?", [required]).fetchone() is None:
                 print(f"STATUS  : failed missing required table {required}")
                 return 1
@@ -217,6 +238,73 @@ def main() -> int:
         ).fetchall()
 
         issues: list[ReconciliationIssue] = []
+
+        lifecycle_event_count = _query_scalar(
+            con,
+            "SELECT COUNT(*) FROM normalized_lifecycle_events WHERE asof_date = ?",
+            asof,
+        )
+        lifecycle_leg_count = _query_scalar(
+            con,
+            """
+            SELECT COUNT(*)
+            FROM normalized_lifecycle_event_legs l
+            JOIN normalized_lifecycle_events e ON e.event_uid = l.event_uid
+            WHERE e.asof_date = ?
+            """,
+            asof,
+        )
+        review_required_lifecycle_leg_count = _query_scalar(
+            con,
+            """
+            SELECT COUNT(*)
+            FROM normalized_lifecycle_event_legs l
+            JOIN normalized_lifecycle_events e ON e.event_uid = l.event_uid
+            WHERE e.asof_date = ? AND l.evidence_status = 'review_required'
+            """,
+            asof,
+        )
+        persisted_pnl = None
+        try:
+            fingerprint_fills = load_normalized_fills(con, asof=asof)
+            approved_events = load_approved_lifecycle_events(con, asof=asof)
+            persisted_pnl = load_current_persisted_pnl_result(
+                con,
+                asof=asof,
+                fills=fingerprint_fills,
+                approved_events=approved_events,
+            )
+        except ValueError:
+            persisted_pnl = None
+        allocated_lifecycle_event_count = 0
+        if persisted_pnl is not None:
+            allocated_lifecycle_event_count = _query_scalar(
+                con,
+                """
+                SELECT COUNT(DISTINCT a.event_uid)
+                FROM pnl_lifecycle_allocations a
+                JOIN normalized_lifecycle_events e ON e.event_uid = a.event_uid
+                WHERE a.calculation_run_id = ? AND e.asof_date = ?
+                """,
+                persisted_pnl.calculation_run_id,
+                asof,
+            )
+        unallocated_lifecycle_event_count = max(
+            lifecycle_event_count - allocated_lifecycle_event_count,
+            0,
+        )
+        if unallocated_lifecycle_event_count:
+            issues.append(
+                ReconciliationIssue(
+                    "BLOCKER",
+                    "lifecycle",
+                    (
+                        f"{unallocated_lifecycle_event_count} of {lifecycle_event_count} lifecycle event(s) "
+                        f"with {lifecycle_leg_count} evidence leg(s) ({review_required_lifecycle_leg_count} review-required) "
+                        "lack approved economic allocations in a current fingerprint-matched P&L run"
+                    ),
+                )
+            )
 
         tx_by_fill: dict[tuple, int] = {}
         tx_by_scope: dict[tuple, Decimal] = {}
@@ -409,6 +497,10 @@ def main() -> int:
         print(f"NORMALIZED_TRANSACTIONS: {_query_scalar(con, 'SELECT COUNT(*) FROM normalized_transactions WHERE asof_date = ?', asof)}")
         print(f"NORMALIZED_POSITIONS   : {_query_scalar(con, 'SELECT COUNT(*) FROM normalized_positions WHERE asof_date = ?', asof)}")
         print(f"NORMALIZED_ACCOUNTS    : {_query_scalar(con, 'SELECT COUNT(*) FROM normalized_accounts WHERE asof_date = ?', asof)}")
+        print(f"LIFECYCLE_EVENTS       : {lifecycle_event_count}")
+        print(f"LIFECYCLE_EVENT_LEGS   : {lifecycle_leg_count}")
+        print(f"LIFECYCLE_ALLOCATED    : {allocated_lifecycle_event_count}")
+        print(f"CURRENT_PNL_RUN        : {persisted_pnl.calculation_run_id if persisted_pnl else 'none'}")
         print(f"ISSUES               : {len(issues)}")
 
         for issue in issues:

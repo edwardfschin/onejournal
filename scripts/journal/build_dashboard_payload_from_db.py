@@ -20,6 +20,10 @@ import duckdb
 
 from onejournal.brokers.normalized import NormalizedFill
 from onejournal.pnl import PnLCalculationResult, calculate_fifo_pnl_from_fills, build_instrument_key
+from onejournal.journal.pnl_repository import (
+    load_approved_lifecycle_events,
+    load_current_persisted_pnl_result,
+)
 from onejournal.journal.workflows import build_review_queues, flatten_review_queues
 
 DASHBOARD_PAYLOAD_VERSION = "0.1.0-db"
@@ -113,6 +117,15 @@ def _to_decimal(value: Any, field: str) -> Decimal:
 
 
 def _build_fills_for_pnl(fills_rows: list[dict[str, Any]]) -> list[NormalizedFill]:
+    def _timestamp(row: dict[str, Any], utc_field: str, legacy_field: str) -> datetime:
+        utc_value = row.get(utc_field)
+        if utc_value:
+            text = str(utc_value)
+            if text.endswith("Z"):
+                text = text[:-1] + "+00:00"
+            return datetime.fromisoformat(text)
+        return row[legacy_field]
+
     return [
         NormalizedFill(
             fill_uid=row["fill_uid"],
@@ -126,7 +139,7 @@ def _build_fills_for_pnl(fills_rows: list[dict[str, Any]]) -> list[NormalizedFil
                 if hasattr(row["asof_date"], "isoformat")
                 else datetime.fromisoformat(str(row["asof_date"])).date()
             ),
-            filled_at=row["filled_at"],
+            filled_at=_timestamp(row, "filled_at_utc", "filled_at"),
             asset_class=row["asset_class"],
             symbol=row["symbol"],
             side=row["side"],
@@ -135,7 +148,7 @@ def _build_fills_for_pnl(fills_rows: list[dict[str, Any]]) -> list[NormalizedFil
             commission=_to_decimal(row["commission"], "commission"),
             fees=_to_decimal(row["fees"], "fees"),
             currency=(row["currency"] or "USD").upper(),
-            fetched_at=row["fetched_at"],
+            fetched_at=_timestamp(row, "fetched_at_utc", "fetched_at"),
             raw_path=row.get("raw_path"),
             option_symbol=row.get("option_symbol"),
             underlying_symbol=row.get("underlying_symbol"),
@@ -555,6 +568,8 @@ def _build_dataset_quality(
     unmatched_close_count: int,
     position_count: int,
     unrealized_available: bool,
+    current_pnl_run_id: str | None,
+    allocated_lifecycle_event_count: int,
 ) -> dict[str, Any]:
     latest_import = con.execute(
         """
@@ -571,11 +586,59 @@ def _build_dataset_quality(
         _as_of_filter_params(asof),
     ).fetchone()[0]
     latest_fill_asof = con.execute("SELECT MAX(asof_date) FROM normalized_fills").fetchone()[0]
+    lifecycle_event_count = int(
+        con.execute(
+            "SELECT COUNT(*) FROM normalized_lifecycle_events WHERE asof_date <= ?",
+            _as_of_filter_params(asof),
+        ).fetchone()[0]
+    )
+    lifecycle_leg_count = int(
+        con.execute(
+            """
+            SELECT COUNT(*)
+            FROM normalized_lifecycle_event_legs l
+            JOIN normalized_lifecycle_events e ON e.event_uid = l.event_uid
+            WHERE e.asof_date <= ?
+            """,
+            _as_of_filter_params(asof),
+        ).fetchone()[0]
+    )
+    review_required_lifecycle_leg_count = int(
+        con.execute(
+            """
+            SELECT COUNT(*)
+            FROM normalized_lifecycle_event_legs l
+            JOIN normalized_lifecycle_events e ON e.event_uid = l.event_uid
+            WHERE e.asof_date <= ? AND l.evidence_status = 'review_required'
+            """,
+            _as_of_filter_params(asof),
+        ).fetchone()[0]
+    )
+    lifecycle_events_without_legs = int(
+        con.execute(
+            """
+            SELECT COUNT(*)
+            FROM normalized_lifecycle_events e
+            WHERE e.asof_date <= ?
+              AND NOT EXISTS (
+                  SELECT 1 FROM normalized_lifecycle_event_legs l
+                  WHERE l.event_uid = e.event_uid
+              )
+            """,
+            _as_of_filter_params(asof),
+        ).fetchone()[0]
+    )
+    unallocated_lifecycle_event_count = max(
+        lifecycle_event_count - allocated_lifecycle_event_count,
+        0,
+    )
 
     import_status = "unavailable"
     import_check: dict[str, Any] = {"status": "unavailable", "reason": "no import_runs rows"}
     pnl_status = "valid"
     if unmatched_close_count:
+        pnl_status = "incomplete"
+    if unallocated_lifecycle_event_count:
         pnl_status = "incomplete"
 
     if latest_import:
@@ -626,6 +689,14 @@ def _build_dataset_quality(
 
     overall_status = _max_status(import_status, asof_check["status"], pnl_status)
 
+    pnl_reasons: list[str] = []
+    if unmatched_close_count:
+        pnl_reasons.append("unmatched close fills were skipped")
+    if unallocated_lifecycle_event_count:
+        pnl_reasons.append(
+            f"{unallocated_lifecycle_event_count} lifecycle event(s) are captured but not economically allocated by a current calculation run"
+        )
+
     return {
         "overall_status": overall_status,
         "checks": {
@@ -634,7 +705,23 @@ def _build_dataset_quality(
             "pnl": {
                 "status": pnl_status,
                 "unmatched_close_fill_count": unmatched_close_count,
-                "reason": "incomplete: unmatched close fills were skipped" if unmatched_close_count else None,
+                "calculation_run_id": current_pnl_run_id,
+                "unallocated_lifecycle_event_count": unallocated_lifecycle_event_count,
+                "reason": "incomplete: " + "; ".join(pnl_reasons) if pnl_reasons else None,
+            },
+            "lifecycle_evidence": {
+                "status": "incomplete" if unallocated_lifecycle_event_count else "valid",
+                "event_count": lifecycle_event_count,
+                "allocated_event_count": allocated_lifecycle_event_count,
+                "unallocated_event_count": unallocated_lifecycle_event_count,
+                "leg_count": lifecycle_leg_count,
+                "review_required_leg_count": review_required_lifecycle_leg_count,
+                "events_without_legs": lifecycle_events_without_legs,
+                "reason": (
+                    "Lifecycle events remain outside P&L until approved event-specific allocations are present in a current fingerprint-matched calculation run."
+                    if unallocated_lifecycle_event_count
+                    else None
+                ),
             },
             "positions": {
                 "status": _max_status(
@@ -731,14 +818,29 @@ def build_payload(db_path: Path, asof: str) -> dict[str, Any]:
             _as_of_filter_params(asof_date),
         )
         pnl_fills = _build_fills_for_pnl(normalized_fill_rows)
-        pnl_result = calculate_fifo_pnl_from_fills(
+        preview_pnl_result = calculate_fifo_pnl_from_fills(
             pnl_fills, allow_unmatched_close=True
         )
-        unmatched_close_fill_count = len(set(pnl_result.unmatched_close_fill_uids))
-        if pnl_result.unmatched_close_fill_uids:
+        approved_events = load_approved_lifecycle_events(con, asof=asof_date)
+        persisted_pnl = None
+        if all(
+            row.get("filled_at_utc") and row.get("fetched_at_utc")
+            for row in normalized_fill_rows
+        ):
+            persisted_pnl = load_current_persisted_pnl_result(
+                con,
+                asof=asof_date,
+                fills=pnl_fills,
+                approved_events=approved_events,
+            )
+        pnl_result = persisted_pnl.result if persisted_pnl else preview_pnl_result
+        unmatched_close_fill_count = len(
+            set(preview_pnl_result.unmatched_close_fill_uids)
+        ) if persisted_pnl is None else 0
+        if persisted_pnl is None and preview_pnl_result.unmatched_close_fill_uids:
             print(
                 "WARN: unmatched close fills skipped: "
-                + ", ".join(sorted(set(pnl_result.unmatched_close_fill_uids)))
+                + ", ".join(sorted(set(preview_pnl_result.unmatched_close_fill_uids)))
             )
 
         open_episodes = [e for e in payload_episodes if e.get("status") == "open"]
@@ -763,6 +865,12 @@ def build_payload(db_path: Path, asof: str) -> dict[str, Any]:
             position_count=len(open_positions),
             unrealized_available=all(
                 value is not None for value in pnl_result.total_unrealized_pnl_by_currency.values()
+            ),
+            current_pnl_run_id=(
+                persisted_pnl.calculation_run_id if persisted_pnl else None
+            ),
+            allocated_lifecycle_event_count=(
+                persisted_pnl.allocated_event_count if persisted_pnl else 0
             ),
         )
         review_queues = build_review_queues(con, asof=asof_date)

@@ -68,6 +68,7 @@ class ImportRunAuditContractTests(unittest.TestCase):
         fills_csv = Path(self.temp_dir.name) / "lifecycle_fills.csv"
         reviews_csv = Path(self.temp_dir.name) / "lifecycle_reviews.csv"
         lifecycle_csv = Path(self.temp_dir.name) / "lifecycle_rows.csv"
+        lifecycle_legs_csv = Path(self.temp_dir.name) / "lifecycle_leg_rows.csv"
         fills_csv.write_text(
             """asof,source_broker,source_account_id,source_fill_id,filled_at,asset_class,symbol,side,quantity,fill_price,commission,fees,currency,source_order_id
 2026-06-02,manual_csv,DEMO_ACCOUNT,FILL-001,2026-06-02T10:00:00+00:00,stock,AAPL,BUY,1,150,0,0,USD,ORDER-001
@@ -85,6 +86,12 @@ swab:DEMO:evt:001,manual_csv,DEMO_ACCOUNT,ACT-001,ORDER-001,POS-001,TRANSACTION_
 """,
             encoding="utf-8",
         )
+        lifecycle_legs_csv.write_text(
+            """event_leg_uid,event_uid,leg_index,leg_kind,asset_class,symbol,option_symbol,underlying_symbol,option_type,expiry,strike,multiplier,signed_quantity,price,cash_amount,position_effect,fee_type,currency,deliverable_json,evidence_status,evidence_notes
+swab:DEMO:evt:001:item:0,swab:DEMO:evt:001,0,security,stock,AAPL,,,,,,,,1,,,,USD,,observed,
+""",
+            encoding="utf-8",
+        )
 
         import_to_db(
             self.db_path,
@@ -92,6 +99,7 @@ swab:DEMO:evt:001,manual_csv,DEMO_ACCOUNT,ACT-001,ORDER-001,POS-001,TRANSACTION_
             reviews_csv,
             replace=True,
             lifecycle_events=lifecycle_csv,
+            lifecycle_event_legs=lifecycle_legs_csv,
             asof=date(2026, 6, 2),
         )
 
@@ -100,10 +108,14 @@ swab:DEMO:evt:001,manual_csv,DEMO_ACCOUNT,ACT-001,ORDER-001,POS-001,TRANSACTION_
             con.execute(
                 "UPDATE normalized_lifecycle_events SET import_run_id = NULL WHERE event_uid='swab:DEMO:evt:001'"
             )
+            con.execute(
+                "UPDATE normalized_lifecycle_event_legs SET import_run_id = NULL WHERE event_leg_uid='swab:DEMO:evt:001:item:0'"
+            )
 
         rc, output = self._run_checker(["--db", str(self.db_path)])
         self.assertEqual(rc, 1)
         self.assertIn("normalized_lifecycle_events has", output)
+        self.assertIn("normalized_lifecycle_event_legs has", output)
         self.assertIn("without import_run_id", output)
 
     def test_audit_fails_when_import_status_not_ok(self) -> None:

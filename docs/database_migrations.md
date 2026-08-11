@@ -15,6 +15,14 @@ through the journal migration runner and the migration artifact set:
 - `normalized_positions`
 - `normalized_transactions`
 - `normalized_lifecycle_events`
+- `normalized_lifecycle_event_legs`
+- `approved_option_lifecycle_events`
+- `approved_option_lifecycle_predecessors`
+- `approved_option_lifecycle_source_legs`
+- `pnl_calculation_runs`
+- `pnl_group_results`
+- `pnl_closed_lot_allocations`
+- `pnl_lifecycle_allocations`
 - `normalized_fill_revisions`
 - `journal_entries`
 - `journal_entry_revisions`
@@ -61,7 +69,16 @@ Examples:
 0005_add_durable_journal_domain.sql
 0006_add_journal_saved_views.sql
 0007_add_journal_goals_habits_reviews.sql
+0008_add_lifecycle_event_legs.sql
+0009_add_utc_financial_event_instants.sql
+0010_add_approved_lifecycle_pnl_allocations.sql
 ```
+
+Migration 0009 adds explicit canonical UTC evidence fields without
+reinterpreting older timezone-less values. Migration 0010 keeps reviewed
+lifecycle instructions separate from normalized broker evidence and adds
+append-only, fingerprinted P&L runs and allocation lineage. Neither migration
+has been applied to the live journal database by this implementation work.
 
 Rules:
 

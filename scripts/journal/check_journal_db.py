@@ -22,6 +22,14 @@ REQUIRED_TABLES = [
     "normalized_positions",
     "normalized_transactions",
     "normalized_lifecycle_events",
+    "normalized_lifecycle_event_legs",
+    "approved_option_lifecycle_events",
+    "approved_option_lifecycle_predecessors",
+    "approved_option_lifecycle_source_legs",
+    "pnl_calculation_runs",
+    "pnl_group_results",
+    "pnl_closed_lot_allocations",
+    "pnl_lifecycle_allocations",
     "trade_episodes",
     "trade_episode_legs",
     "manual_reviews",
@@ -110,6 +118,88 @@ def main() -> int:
         duplicate_lifecycle_events = con.execute(
             "SELECT COUNT(*) FROM (SELECT event_uid FROM normalized_lifecycle_events GROUP BY event_uid HAVING COUNT(*) > 1)"
         ).fetchone()[0]
+        duplicate_lifecycle_event_legs = con.execute(
+            "SELECT COUNT(*) FROM (SELECT event_leg_uid FROM normalized_lifecycle_event_legs GROUP BY event_leg_uid HAVING COUNT(*) > 1)"
+        ).fetchone()[0]
+        duplicate_lifecycle_event_indexes = con.execute(
+            "SELECT COUNT(*) FROM (SELECT event_uid, leg_index FROM normalized_lifecycle_event_legs GROUP BY event_uid, leg_index HAVING COUNT(*) > 1)"
+        ).fetchone()[0]
+        orphaned_lifecycle_event_legs = con.execute(
+            """
+            SELECT COUNT(*)
+            FROM normalized_lifecycle_event_legs l
+            LEFT JOIN normalized_lifecycle_events e ON e.event_uid = l.event_uid
+            WHERE e.event_uid IS NULL
+            """
+        ).fetchone()[0]
+        orphaned_approved_events = con.execute(
+            """
+            SELECT COUNT(*)
+            FROM approved_option_lifecycle_events a
+            LEFT JOIN normalized_lifecycle_events e ON e.event_uid = a.event_uid
+            WHERE e.event_uid IS NULL
+            """
+        ).fetchone()[0]
+        orphaned_approved_predecessors = con.execute(
+            """
+            SELECT COUNT(*)
+            FROM approved_option_lifecycle_predecessors p
+            LEFT JOIN approved_option_lifecycle_events a ON a.event_uid = p.event_uid
+            LEFT JOIN normalized_fills f ON f.fill_uid = p.open_fill_uid
+            WHERE a.event_uid IS NULL OR f.fill_uid IS NULL
+            """
+        ).fetchone()[0]
+        orphaned_approved_source_legs = con.execute(
+            """
+            SELECT COUNT(*)
+            FROM approved_option_lifecycle_source_legs s
+            LEFT JOIN approved_option_lifecycle_events a ON a.event_uid = s.event_uid
+            LEFT JOIN normalized_lifecycle_event_legs l
+              ON l.event_leg_uid = s.event_leg_uid AND l.event_uid = s.event_uid
+            WHERE a.event_uid IS NULL OR l.event_leg_uid IS NULL
+            """
+        ).fetchone()[0]
+        orphaned_pnl_children = con.execute(
+            """
+            SELECT
+                (SELECT COUNT(*) FROM pnl_group_results g
+                 LEFT JOIN pnl_calculation_runs r USING (calculation_run_id)
+                 WHERE r.calculation_run_id IS NULL)
+              + (SELECT COUNT(*) FROM pnl_closed_lot_allocations c
+                 LEFT JOIN pnl_calculation_runs r USING (calculation_run_id)
+                 WHERE r.calculation_run_id IS NULL)
+              + (SELECT COUNT(*) FROM pnl_lifecycle_allocations l
+                 LEFT JOIN pnl_calculation_runs r USING (calculation_run_id)
+                 WHERE r.calculation_run_id IS NULL)
+            """
+        ).fetchone()[0]
+        pnl_run_count_mismatches = con.execute(
+            """
+            SELECT COUNT(*)
+            FROM pnl_calculation_runs r
+            WHERE r.group_count <> (
+                    SELECT COUNT(*) FROM pnl_group_results g
+                    WHERE g.calculation_run_id = r.calculation_run_id
+                  )
+               OR r.closed_allocation_count <> (
+                    SELECT COUNT(*) FROM pnl_closed_lot_allocations c
+                    WHERE c.calculation_run_id = r.calculation_run_id
+                  )
+               OR r.lifecycle_allocation_count <> (
+                    SELECT COUNT(*) FROM pnl_lifecycle_allocations l
+                    WHERE l.calculation_run_id = r.calculation_run_id
+                  )
+            """
+        ).fetchone()[0]
+        invalid_pnl_lifecycle_links = con.execute(
+            """
+            SELECT COUNT(*)
+            FROM pnl_lifecycle_allocations l
+            LEFT JOIN approved_option_lifecycle_events a ON a.event_uid = l.event_uid
+            LEFT JOIN normalized_fills f ON f.fill_uid = l.predecessor_open_fill_uid
+            WHERE a.event_uid IS NULL OR f.fill_uid IS NULL
+            """
+        ).fetchone()[0]
         duplicate_episodes = con.execute(
             "SELECT COUNT(*) FROM (SELECT episode_uid FROM trade_episodes GROUP BY episode_uid HAVING COUNT(*) > 1)"
         ).fetchone()[0]
@@ -192,6 +282,15 @@ def main() -> int:
         print(f"duplicate_position_uid: {duplicate_positions}")
         print(f"duplicate_transaction_uid: {duplicate_transactions}")
         print(f"duplicate_lifecycle_event_uid: {duplicate_lifecycle_events}")
+        print(f"duplicate_lifecycle_event_leg_uid: {duplicate_lifecycle_event_legs}")
+        print(f"duplicate_lifecycle_event_leg_index: {duplicate_lifecycle_event_indexes}")
+        print(f"orphaned_lifecycle_event_legs: {orphaned_lifecycle_event_legs}")
+        print(f"orphaned_approved_lifecycle_events: {orphaned_approved_events}")
+        print(f"orphaned_approved_predecessors: {orphaned_approved_predecessors}")
+        print(f"orphaned_approved_source_legs: {orphaned_approved_source_legs}")
+        print(f"orphaned_pnl_children: {orphaned_pnl_children}")
+        print(f"pnl_run_count_mismatches: {pnl_run_count_mismatches}")
+        print(f"invalid_pnl_lifecycle_links: {invalid_pnl_lifecycle_links}")
         print(f"duplicate_episode_uid: {duplicate_episodes}")
         print(f"duplicate_review_episode_uid: {duplicate_reviews}")
         print(f"duplicate_journal_entry_revision: {duplicate_entry_revisions}")
@@ -213,6 +312,24 @@ def main() -> int:
             fail("duplicate transaction_uid found")
         if duplicate_lifecycle_events:
             fail("duplicate lifecycle event_uid found")
+        if duplicate_lifecycle_event_legs:
+            fail("duplicate lifecycle event_leg_uid found")
+        if duplicate_lifecycle_event_indexes:
+            fail("duplicate lifecycle event_uid/leg_index found")
+        if orphaned_lifecycle_event_legs:
+            fail("orphaned lifecycle event legs found")
+        if orphaned_approved_events:
+            fail("approved lifecycle events without normalized evidence found")
+        if orphaned_approved_predecessors:
+            fail("approved lifecycle predecessors without event/fill evidence found")
+        if orphaned_approved_source_legs:
+            fail("approved lifecycle source legs without matching evidence found")
+        if orphaned_pnl_children:
+            fail("P&L result rows without calculation runs found")
+        if pnl_run_count_mismatches:
+            fail("P&L calculation run counts do not match persisted result rows")
+        if invalid_pnl_lifecycle_links:
+            fail("P&L lifecycle allocations have invalid approved-event/fill links")
         if duplicate_episodes:
             fail("duplicate episode_uid found")
         if duplicate_reviews:

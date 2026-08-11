@@ -145,6 +145,40 @@ class JournalReconciliationContractTests(unittest.TestCase):
         self.assertEqual(strict_code, 1)
         self.assertIn("STATUS    : failed", strict_output)
 
+    def test_unallocated_lifecycle_event_blocks_publish(self) -> None:
+        fills_csv = self._write_csv(
+            "lifecycle_fills.csv",
+            """asof,source_broker,source_account_id,source_fill_id,filled_at,asset_class,symbol,side,quantity,fill_price,commission,fees,currency,source_order_id
+2026-06-02,manual_csv,DEMO_ACCOUNT,FILL-001,2026-06-02T10:00:00+00:00,stock,AAPL,BUY,1,150.00,0.10,0.20,USD,ORDER-001
+""",
+        )
+        lifecycle_csv = self._write_csv(
+            "lifecycle_events.csv",
+            """event_uid,source_broker,source_account_id,source_activity_id,source_order_id,source_position_id,event_class,event_type,asof,event_at,event_name
+event:assignment,manual_csv,DEMO_ACCOUNT,ACT-001,ORDER-001,POS-001,TRANSACTION_LIFECYCLE,activityType:ASSIGNMENT,2026-06-02,2026-06-02T10:00:00+00:00,assignment
+""",
+        )
+        lifecycle_legs_csv = self._write_csv(
+            "lifecycle_event_legs.csv",
+            """event_leg_uid,event_uid,leg_index,leg_kind,asset_class,symbol,option_symbol,underlying_symbol,option_type,expiry,strike,multiplier,signed_quantity,price,cash_amount,position_effect,fee_type,currency,deliverable_json,evidence_status,evidence_notes
+event:assignment:item:0,event:assignment,0,security,stock,AAPL,,,,,,,,1,,,,USD,,observed,
+""",
+        )
+        import_to_db(
+            self.db_path,
+            fills_csv,
+            self._write_review_file(),
+            replace=True,
+            lifecycle_events=lifecycle_csv,
+            lifecycle_event_legs=lifecycle_legs_csv,
+            asof=date(2026, 6, 2),
+        )
+
+        code, output = self._run_reconciliation(asof="2026-06-02", policy="publish")
+        self.assertEqual(code, 1)
+        self.assertIn("BLOCKER", output)
+        self.assertIn("lack approved economic allocations", output)
+
 
 if __name__ == "__main__":
     unittest.main()

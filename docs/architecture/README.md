@@ -88,9 +88,9 @@ policy.
 |---|---|---|
 | [ADR-0001](decisions/0001-separate-journal-and-execution-planes.md) | Accepted | Keep journal and presentation paths isolated from broker order execution |
 | [ADR-0002](decisions/0002-initial-product-scope.md) | Accepted | Start with one user, multiple owned accounts, Schwab then IBKR, and read-only US stock/equity-option workflows |
-| [ADR-0003](decisions/0003-financial-units-and-time-contract.md) | Proposed | Use USD reporting, preserved native currencies, decimal arithmetic, UTC instants, and New York market dates |
-| [ADR-0004](decisions/0004-pnl-and-performance-calculation-contract.md) | Proposed | Calculate FIFO lot-based P&L from confirmed evidence and fresh marks |
-| [ADR-0005](decisions/0005-trade-lifecycle-event-contract.md) | Proposed | Model fills and exceptional trade activity as immutable typed lifecycle events |
+| [ADR-0003](decisions/0003-financial-units-and-time-contract.md) | Approved | Use USD reporting, preserved native currencies, decimal arithmetic, UTC instants, and New York market dates |
+| [ADR-0004](decisions/0004-pnl-and-performance-calculation-contract.md) | Accepted | Calculate FIFO lot-based P&L from confirmed evidence and fresh marks |
+| [ADR-0005](decisions/0005-trade-lifecycle-event-contract.md) | Accepted | Model fills and exceptional trade activity as immutable typed lifecycle events |
 | [ADR-0006](decisions/0006-record-identity-lineage-and-correction-contract.md) | Proposed | Preserve source identity, lineage, idempotency, corrections, and calculation versions |
 | [ADR-0007](decisions/0007-data-freshness-and-fail-closed-presentation-contract.md) | Proposed | Publish explicit freshness, completeness, reconciliation, and failure states |
 | [ADR-0008](decisions/0008-durable-journal-domain-and-history.md) | Accepted | Preserve journal/review history and define private strategy, tag, lesson, mistake, and attachment boundaries |

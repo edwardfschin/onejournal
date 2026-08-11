@@ -2,10 +2,191 @@ from __future__ import annotations
 
 import unittest
 
-from onejournal.brokers.schwab.transactions_json import extract_lifecycle_events_from_transactions
+from onejournal.brokers.schwab.transactions_json import (
+    extract_lifecycle_event_legs_from_transactions,
+    extract_lifecycle_events_from_transactions,
+)
 
 
 class TransactionsLifecycleEventTests(unittest.TestCase):
+    def test_extract_assignment_leg_evidence_without_financial_inference(self) -> None:
+        legs = extract_lifecycle_event_legs_from_transactions(
+            [
+                {
+                    "type": "TRADE",
+                    "status": "VALID",
+                    "activityType": "ASSIGNMENT",
+                    "activityId": "EVT-LEGS-001",
+                    "tradeDate": "2026-07-01T12:00:00-05:00",
+                    "transferItems": [
+                        {
+                            "amount": -1,
+                            "cost": 250,
+                            "price": 2.5,
+                            "positionEffect": "CLOSING",
+                            "instrument": {
+                                "assetType": "OPTION",
+                                "symbol": "AAPL  260717C00150000",
+                                "underlyingSymbol": "AAPL",
+                                "putCall": "CALL",
+                                "expirationDate": "2026-07-17T00:00:00",
+                                "strikePrice": 150,
+                                "optionPremiumMultiplier": 100,
+                                "optionDeliverables": [
+                                    {"deliverableUnits": 100, "symbol": "AAPL"}
+                                ],
+                            },
+                        },
+                        {
+                            "amount": -0.65,
+                            "cost": -0.65,
+                            "feeType": "COMMISSION",
+                            "instrument": {"assetType": "CURRENCY", "symbol": "USD"},
+                        },
+                    ],
+                }
+            ],
+            asof="2026-07-01",
+        )
+
+        self.assertEqual(len(legs), 2)
+        option_leg, cash_leg = legs
+        self.assertEqual(option_leg["event_leg_uid"], "schwab_txn:EVT-LEGS-001:event:TRADE:item:0")
+        self.assertEqual(option_leg["signed_quantity"], "-1")
+        self.assertEqual(option_leg["cash_amount"], "250")
+        self.assertEqual(option_leg["multiplier"], "100")
+        self.assertEqual(option_leg["evidence_status"], "observed")
+        self.assertIn('"deliverableUnits":100', option_leg["deliverable_json"])
+        self.assertEqual(cash_leg["leg_kind"], "cash")
+        self.assertEqual(cash_leg["currency"], "USD")
+        self.assertEqual(cash_leg["fee_type"], "COMMISSION")
+
+    def test_option_lifecycle_leg_does_not_default_missing_multiplier(self) -> None:
+        legs = extract_lifecycle_event_legs_from_transactions(
+            [
+                {
+                    "type": "TRADE",
+                    "status": "VALID",
+                    "activityType": "EXPIRATION",
+                    "activityId": "EVT-LEGS-002",
+                    "tradeDate": "2026-07-01T12:00:00-05:00",
+                    "transferItems": [
+                        {
+                            "amount": -1,
+                            "positionEffect": "CLOSING",
+                            "instrument": {
+                                "assetType": "OPTION",
+                                "symbol": "MSFT  260717P00100000",
+                            },
+                        }
+                    ],
+                }
+            ]
+        )
+
+        self.assertEqual(legs[0]["multiplier"], "")
+        self.assertEqual(legs[0]["evidence_status"], "review_required")
+        self.assertIn("missing_option_multiplier", legs[0]["evidence_notes"])
+
+    def test_empty_transfer_items_create_review_required_evidence_marker(self) -> None:
+        legs = extract_lifecycle_event_legs_from_transactions(
+            [
+                {
+                    "type": "TRADE",
+                    "status": "VALID",
+                    "activityType": "ASSIGNMENT",
+                    "activityId": "EVT-LEGS-003",
+                    "tradeDate": "2026-07-01T12:00:00-05:00",
+                    "transferItems": [],
+                }
+            ]
+        )
+
+        self.assertEqual(len(legs), 1)
+        self.assertEqual(legs[0]["leg_kind"], "unsupported")
+        self.assertEqual(legs[0]["evidence_status"], "review_required")
+        self.assertEqual(legs[0]["evidence_notes"], "transfer_items_empty")
+
+    def test_description_only_assignment_is_unconfirmed_review_evidence(self) -> None:
+        transaction = {
+            "type": "TRADE",
+            "status": "VALID",
+            "description": "Option assignment generated equity activity",
+            "activityId": "EVT-DESC-ASSIGNMENT",
+            "tradeDate": "2026-07-01T12:00:00-05:00",
+            "accountNumber": "ACCT-001",
+            "positionId": "POS-001",
+            "transferItems": [
+                {
+                    "amount": 100,
+                    "cost": 15000,
+                    "price": 150,
+                    "positionEffect": "OPENING",
+                    "instrument": {"assetType": "EQUITY", "symbol": "AAPL"},
+                }
+            ],
+        }
+
+        events = extract_lifecycle_events_from_transactions([transaction])
+        legs = extract_lifecycle_event_legs_from_transactions([transaction])
+
+        self.assertEqual(len(events), 1)
+        self.assertEqual(events[0]["event_type"], "description_hint:ASSIGNMENT")
+        self.assertEqual(len(legs), 1)
+        self.assertEqual(legs[0]["leg_kind"], "security")
+        self.assertEqual(legs[0]["evidence_status"], "review_required")
+        self.assertEqual(legs[0]["evidence_notes"], "unconfirmed_description_hint")
+
+    def test_receive_and_deliver_expiration_is_unconfirmed_review_evidence(self) -> None:
+        transaction = {
+            "type": "RECEIVE_AND_DELIVER",
+            "status": "VALID",
+            "description": "Option expiration",
+            "activityId": "EVT-DESC-EXPIRATION",
+            "tradeDate": "2026-07-01T12:00:00-05:00",
+            "accountNumber": "ACCT-001",
+            "positionId": "POS-001",
+            "transferItems": [
+                {
+                    "amount": -1,
+                    "cost": 0,
+                    "price": 0,
+                    "positionEffect": "CLOSING",
+                    "instrument": {
+                        "assetType": "OPTION",
+                        "symbol": "AAPL  260717C00150000",
+                        "optionPremiumMultiplier": 100,
+                    },
+                }
+            ],
+        }
+
+        events = extract_lifecycle_events_from_transactions([transaction])
+        legs = extract_lifecycle_event_legs_from_transactions([transaction])
+
+        self.assertEqual(len(events), 1)
+        self.assertEqual(events[0]["event_type"], "description_hint:EXPIRATION")
+        self.assertEqual(events[0]["event_uid"], "schwab_txn:EVT-DESC-EXPIRATION:event:RECEIVE_AND_DELIVER")
+        self.assertEqual(len(legs), 1)
+        self.assertEqual(legs[0]["multiplier"], "100")
+        self.assertEqual(legs[0]["evidence_status"], "review_required")
+        self.assertEqual(legs[0]["evidence_notes"], "unconfirmed_description_hint")
+
+    def test_unrelated_description_is_not_promoted_to_lifecycle_event(self) -> None:
+        transaction = {
+            "type": "TRADE",
+            "status": "VALID",
+            "description": "Ordinary equity trade",
+            "activityId": "EVT-NOT-LIFECYCLE",
+            "tradeDate": "2026-07-01T12:00:00-05:00",
+            "transferItems": [],
+        }
+
+        self.assertEqual(extract_lifecycle_events_from_transactions([transaction]), [])
+        self.assertEqual(
+            extract_lifecycle_event_legs_from_transactions([transaction]), []
+        )
+
     def test_extract_assignment_activity_event(self) -> None:
         events = extract_lifecycle_events_from_transactions(
             [

@@ -156,6 +156,21 @@ Do not write directly to dashboard JSON.
 
 Do not call Streamlit.
 
+Lifecycle-only transactions must remain outside normalized fills. Their event
+headers and transfer-item legs may be emitted as separate normalized evidence.
+Leg evidence preserves source signs and missing-value meaning without semantic
+reinterpretation; it must not
+default an absent option multiplier or silently derive lifecycle P&L. Structural
+gaps are labelled `review_required` and remain unavailable to financial totals
+until an approved lifecycle allocation rule and reconciliation evidence exist.
+
+Some observed Schwab assignment and expiration records omit structured
+`activityType` and `subType` fields. An exact lifecycle word in `description`
+may therefore create a review suggestion only when its record-type shape is
+recognized. Such rows use `description_hint:<EVENT>`, all child legs are
+`review_required`, and no fill or P&L is produced from the hint. Description
+text is never canonical lifecycle confirmation.
+
 ## Reconciliation rule
 
 Orders JSON and transactions JSON should be reconciled after both have normalized outputs.

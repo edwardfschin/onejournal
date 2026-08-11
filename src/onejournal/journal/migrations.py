@@ -287,10 +287,12 @@ def _ensure_baseline_tables(con: duckdb.DuckDBPyConnection) -> None:
     for table_name, expected_columns in BASELINE_COLUMNS.items():
         existing_columns = _existing_column_specs(con, table_name)
         expected_names = [col.name for col in expected_columns]
-        if set(existing_columns.keys()) != set(expected_names):
+        missing_columns = set(expected_names) - set(existing_columns.keys())
+        if missing_columns:
             raise RuntimeError(
                 f"baseline schema mismatch for {table_name}: "
-                f"expected {expected_names}, found {sorted(existing_columns.keys())}"
+                f"missing baseline columns {sorted(missing_columns)}; "
+                f"found {sorted(existing_columns.keys())}"
             )
         for expected in expected_columns:
             existing_type, existing_not_null = existing_columns[expected.name]

@@ -175,6 +175,38 @@ class PnLFifoContractTests(unittest.TestCase):
         self.assertEqual(allocation.allocated_close_fees, Decimal("2"))
         self.assertEqual(allocation.realized_pnl, Decimal("78.00"))
 
+    def test_option_instrument_key_is_independent_of_decimal_storage_scale(self) -> None:
+        compact = self._fill(
+            fill_uid="compact-key",
+            side="BUY_TO_OPEN",
+            quantity="1",
+            fill_price="2",
+            asset_class="option",
+            symbol="XYZ240315C100",
+            option_symbol="XYZ240315C100",
+            underlying_symbol="XYZ",
+            option_type="CALL",
+            expiry=datetime(2024, 3, 15, tzinfo=timezone.utc).date(),
+            strike="100",
+            multiplier="100",
+        )
+        database_scaled = self._fill(
+            fill_uid="database-key",
+            side="BUY_TO_OPEN",
+            quantity="1",
+            fill_price="2",
+            asset_class="option",
+            symbol="XYZ240315C100",
+            option_symbol="XYZ240315C100",
+            underlying_symbol="XYZ",
+            option_type="CALL",
+            expiry=datetime(2024, 3, 15, tzinfo=timezone.utc).date(),
+            strike="100.0000000000",
+            multiplier="100.0000000000",
+        )
+
+        self.assertEqual(build_instrument_key(compact), build_instrument_key(database_scaled))
+
     def test_fifo_allocations_preserve_fee_lineage_across_lots(self) -> None:
         fills = [
             self._fill(
