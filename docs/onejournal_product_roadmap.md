@@ -141,7 +141,7 @@ presentation layer.
 | ID | Status | Action | Completion evidence |
 |---|---|---|---|
 | PNL-01 | BLOCKED | Implement realized P&L from closed lifecycle allocations. | ADR-0004 economic/book rules are approved and implemented for assignment, exercise, and expiration with FIFO predecessor links, successor basis carry, UTC ordering, input fingerprints, append-only run/allocation persistence, dashboard/reconciliation consumption, and focused tests. Completion remains blocked only on manual confirmation of real Schwab review evidence and broker-result reconciliation; description-only rows remain excluded. |
-| PNL-02 | IN PROGRESS | Select a market-data provider and define quote ingestion, storage, licensing, and freshness. | ADR-0009 accepts Schwab first, IBKR next, and Moomoo later through a provider-independent, local-only quote contract. Configurable polling/freshness defaults, migration 0011, atomic normalized storage, lineage, and synthetic contract tests are implemented. Completion still requires an approved read-only Schwab call and sanitized official response fixture to validate the provider adapter end to end. |
+| PNL-02 | IN PROGRESS | Select a market-data provider and define quote ingestion, storage, licensing, and freshness. | ADR-0009 accepts Schwab first, IBKR next, and Moomoo later through a provider-independent, local-only quote contract. Configurable polling/freshness defaults, migration 0011, atomic normalized storage, lineage, synthetic contract tests, and a fail-closed user/provider/connection acknowledgement contract are implemented. The acknowledgement does not replace runtime entitlement verification. Completion still requires an approved read-only Schwab call and sanitized official response fixture to validate the provider adapter end to end. |
 | PNL-03 | BLOCKED | Implement current positions, cost basis, market value, and unrealized P&L. | FIFO open quantity/cost groundwork exists, but current `normalized_positions` are derived independently from each import date's fills and use the last fill as `market_price`; they are not cumulative broker snapshots or approved valuations. Completion requires PNL-02 plus broker-position reconciliation. |
 | PNL-04 | BLOCKED | Build account and consolidated portfolio snapshots over time. | As-of payload selection exists, but its inputs are per-import derived position rows rather than canonical cumulative and broker-reconciled portfolio state. Historical snapshots cannot yet satisfy the acceptance criterion. |
 | PNL-05 | BLOCKED | Implement performance metrics: total P&L, returns, win rate, profit factor, average win/loss, holding period, drawdown, and exposure. | Win/loss, profit factor, average result, and holding-time groundwork exists; returns and max drawdown are explicitly unavailable and valuation-dependent exposure is not approved. |
@@ -184,9 +184,12 @@ The remaining closure conditions are:
 - PNL-02: the project owner approved Schwab first, IBKR next, and Moomoo later,
   local-only personal-account evidence, no silent provider fallback, and the
   ADR-0009 polling/freshness policy. The provider-neutral contract and storage
-  pipeline are implemented offline. Completion remains gated on a separately
-  approved read-only Schwab call, sanitized official payload fixture, and
-  end-to-end adapter validation; no live call has occurred.
+  pipeline are implemented offline. A versioned, connection-scoped user
+  acknowledgement is required before future activation and retrieval, but it
+  cannot replace provider-reported entitlement. Its persistence and UI remain
+  gated on the authentication and tenancy decisions. Completion remains gated
+  on a separately approved read-only Schwab call, sanitized official payload
+  fixture, and end-to-end adapter validation; no live call has occurred.
 - PNL-03/04: canonical cumulative positions and portfolio snapshots must be
   derived from lifecycle lots, then reconciled to actual broker position
   snapshots; per-import fill aggregation is not a substitute.

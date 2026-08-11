@@ -24,6 +24,14 @@ marketdata:
     credentials_separate: true
     redistribution_allowed: false
     retention_policy: provider_terms_and_owner_policy_required
+  terms_acknowledgement:
+    required_before_connection_activation: true
+    required_before_quote_retrieval: true
+    fail_closed_when_missing_or_outdated: true
+    acceptance_scope: user_provider_connection
+    onejournal_grants_market_data_rights: false
+    runtime_entitlement_verification_required: true
+    enforcement_status: contract_only_until_auth_and_tenancy_are_approved
   polling:
     background_enabled: false
     poll_only_when_authenticated_and_active: true

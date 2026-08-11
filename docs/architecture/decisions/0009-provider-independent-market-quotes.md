@@ -74,38 +74,81 @@ the connected user's jurisdiction and product remain authoritative at runtime.
     policy. Until then, automatic deletion is disabled; this is not permission
     for indefinite redistribution or public storage.
 
+### User responsibility and terms acknowledgement
+
+11. OneJournal does not grant a user any right to receive, retain, display, or
+    redistribute market data. The user must connect an account they are
+    authorized to use and remain responsible for the provider agreement,
+    subscription, jurisdiction, exchange terms, and permitted use that apply to
+    that account.
+12. Before a provider connection can be activated or used to retrieve quotes,
+    the production product must obtain an explicit, versioned acknowledgement
+    from that user for that provider connection. The acknowledgement must state
+    that the user:
+
+    - is authorized to use the connected account and credentials;
+    - has reviewed and accepts the applicable provider and market-data terms;
+    - is responsible for maintaining any required subscriptions or
+      entitlements;
+    - will use the retrieved data only for purposes allowed by those terms,
+      including their own portfolio where applicable;
+    - will not use OneJournal to redistribute or publicly expose licensed data;
+      and
+    - understands that OneJournal does not supply or certify a market-data
+      licence.
+
+13. The acceptance record must be append-only and auditable. At minimum it must
+    identify the future authenticated user, provider, opaque connection UID,
+    acknowledgement-text version, provider-terms reference, acceptance time in
+    UTC, and the product version that presented it. It must not store broker
+    credentials, tokens, account numbers, or copied private payloads.
+14. Missing, expired, superseded, or connection-mismatched acknowledgement
+    fails closed. Re-acknowledgement is required when the displayed notice
+    changes materially, the provider connection owner changes, or current
+    provider terms require it.
+15. A user acknowledgement is evidence of the user's declaration, not proof of
+    a live market-data entitlement. The provider adapter must still verify and
+    preserve the provider-reported entitlement and delay state for every quote
+    flow. Unknown or denied entitlement remains unusable even when an
+    acknowledgement exists.
+16. The current prototype has no approved authentication or tenancy model, so
+    this change defines the contract only. It does not add a placeholder user
+    identity, acceptance table, or UI checkbox. Those are implemented together
+    after authentication and tenancy are approved, before any live quote
+    connection is enabled.
+
 ### Freshness and polling
 
-11. Freshness is computed at the evaluation instant; it is not persisted as a
+17. Freshness is computed at the evaluation instant; it is not persisted as a
     permanent property of a quote.
-12. A real-time regular-session quote is `live_fresh` for at most 60 seconds.
+18. A real-time regular-session quote is `live_fresh` for at most 60 seconds.
     A pre-market or after-hours quote is `live_fresh` for at most 120 seconds.
     These are versioned, configurable safety thresholds.
-13. Provider-reported delayed data is labelled `delayed` and is not current
+19. Provider-reported delayed data is labelled `delayed` and is not current
     valuation evidence. Unknown or denied entitlement, unknown data mode,
     future-dated timestamps beyond five seconds, crossed bid/ask, and stale
     quotes fail closed.
-14. An official close, frozen quote, or last real-time quote retained after
+20. An official close, frozen quote, or last real-time quote retained after
     provider-declared market close is labelled `market_closed_last`, never
     `live_fresh`. An approved exchange-calendar service must supply market-open
     expectations before OneJournal relies on calendar inference.
-15. Recommended active-session polling defaults are 15 seconds for stocks,
+21. Recommended active-session polling defaults are 15 seconds for stocks,
     30 seconds for options, and 60 seconds in extended sessions. Polling pauses
     after five minutes of user inactivity and stops while the market is closed.
-16. Background polling is disabled. Polling may begin only while an
+22. Background polling is disabled. Polling may begin only while an
     authenticated journal session is active, the provider connection is valid,
     and a separately approved read-only operator or service is running.
-17. Rate limits, subscription limits, retry/backoff, and unsubscribe behavior
+23. Rate limits, subscription limits, retry/backoff, and unsubscribe behavior
     are provider-adapter responsibilities. A rate-limit or entitlement failure
     cannot be hidden by continuing to publish the last quote as live.
 
 ### Financial boundary
 
-18. Normalized quote evidence is not automatically a P&L mark. PNL-03 must
+24. Normalized quote evidence is not automatically a P&L mark. PNL-03 must
     explicitly approve the mark-selection method (for example midpoint, last,
     official close, or provider mark), spread-quality handling, and instrument
     exceptions before wiring quotes into unrealized P&L.
-19. The current unqualified `marks` dictionary and fill-derived position
+25. The current unqualified `marks` dictionary and fill-derived position
     `market_price` remain prototype-only. They cannot establish publication-
     grade unrealized P&L.
 
@@ -114,6 +157,13 @@ the connected user's jurisdiction and product remain authoritative at runtime.
 This decision does not authorize live broker access, background scheduling,
 streaming, a runtime database migration, a mark-selection methodology, quote
 redistribution, multi-user tenancy, a production API, or any order endpoint.
+
+For the current owner-operated local deployment, permitted quote evidence may
+be stored on the user's own computer under the private raw and DuckDB paths
+defined above. A future hosted or multi-user deployment is a different storage
+and distribution context; it requires separate provider-specific licensing,
+retention, privacy, authentication, and tenancy approval before server-side
+quote storage is enabled.
 
 The repository implements the normalized contract, configuration defaults,
 additive migration, transactional persistence, and synthetic validation only.
@@ -199,6 +249,8 @@ The accepted contract requires tests for:
 - migration creation, ordering, checksums, and replay
 - no secret, raw payload, runtime DB, or generated-output tracking
 - no network or order calls in unit and migration tests
+- fail-closed acknowledgement configuration that cannot substitute for
+  provider-reported entitlement
 
 PNL-02 is not complete until a sanitized official Schwab response validates the
 adapter mapping and a separately approved read-only call proves end-to-end raw

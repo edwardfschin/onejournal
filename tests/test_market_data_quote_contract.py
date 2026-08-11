@@ -157,6 +157,22 @@ class MarketDataQuoteContractTests(unittest.TestCase):
         self.assertFalse(config["polling"]["background_enabled"])
         self.assertFalse(policy.delayed_quotes_are_current)
 
+        acknowledgement = config["terms_acknowledgement"]
+        self.assertTrue(acknowledgement["required_before_connection_activation"])
+        self.assertTrue(acknowledgement["required_before_quote_retrieval"])
+        self.assertTrue(acknowledgement["fail_closed_when_missing_or_outdated"])
+        self.assertEqual(
+            acknowledgement["acceptance_scope"], "user_provider_connection"
+        )
+        self.assertFalse(acknowledgement["onejournal_grants_market_data_rights"])
+        self.assertTrue(
+            acknowledgement["runtime_entitlement_verification_required"]
+        )
+        self.assertEqual(
+            acknowledgement["enforcement_status"],
+            "contract_only_until_auth_and_tenancy_are_approved",
+        )
+
     def test_persistence_is_atomic_idempotent_and_lineage_preserving(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             db_path = Path(tmp) / "onejournal.duckdb"
