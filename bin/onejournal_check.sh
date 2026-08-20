@@ -348,17 +348,17 @@ check_file_contains "episode primary symbol helper" "$PROJECT_DIR/src/onejournal
 check_file_contains "episode primary symbol quality check" "$PROJECT_DIR/scripts/journal/check_trade_episodes.py" "failed primary_symbol quality check"
 check_file_contains "operator quickstart strategy list" "$PROJECT_DIR/docs/operator_quickstart.md" "Put Credit Vertical"
 check_file_contains "operator quickstart stock strategy" "$PROJECT_DIR/docs/operator_quickstart.md" "Stock Long"
-check_file_contains "operator quickstart phase b db source" "$PROJECT_DIR/docs/operator_quickstart.md" "Phase B review source of truth: DuckDB manual_reviews"
-check_file_contains "operator quickstart db save" "$PROJECT_DIR/docs/operator_quickstart.md" "Streamlit DB payload Save Review writes DuckDB manual_reviews"
+check_file_contains "operator quickstart durable review history" "$PROJECT_DIR/docs/operator_quickstart.md" 'OneJournal uses DuckDB `journal_reviews` as durable history after migration'
+check_file_contains "operator quickstart db save" "$PROJECT_DIR/docs/operator_quickstart.md" "Streamlit DB payload Save Review appends durable history and updates the compatibility projection."
 
 echo
 
 echo "===== Manual review workflow doc ====="
 check_path "docs/manual_review_workflow.md" "$PROJECT_DIR/docs/manual_review_workflow.md"
 check_file_contains "manual review title" "$PROJECT_DIR/docs/manual_review_workflow.md" "OneJournal Manual Review Workflow"
-check_file_contains "manual review phase b db source" "$PROJECT_DIR/docs/manual_review_workflow.md" "Phase B review source of truth: DuckDB manual_reviews"
+check_file_contains "manual review durable history" "$PROJECT_DIR/docs/manual_review_workflow.md" 'Current durable review history is DuckDB `journal_reviews` after migration'
 check_file_contains "manual review no auto-trade" "$PROJECT_DIR/docs/manual_review_workflow.md" "auto-trade"
-check_file_contains "manual review db save" "$PROJECT_DIR/docs/manual_review_workflow.md" "Streamlit DB payload Save Review writes DuckDB manual_reviews"
+check_file_contains "manual review db save" "$PROJECT_DIR/docs/manual_review_workflow.md" 'Streamlit DB payload Save Review appends `journal_reviews` and updates'
 check_file_contains "manual review csv legacy" "$PROJECT_DIR/docs/manual_review_workflow.md" "CSV manual_reviews.csv is legacy/backfill/export only"
 check_file_contains "operator quickstart db default" "$PROJECT_DIR/docs/operator_quickstart.md" "DB payload is the default Streamlit payload in Phase B."
 check_file_contains "manual review db default" "$PROJECT_DIR/docs/manual_review_workflow.md" "DB payload is the default Streamlit payload in Phase B."
@@ -366,9 +366,9 @@ check_file_contains "operator quickstart csv readonly" "$PROJECT_DIR/docs/operat
 check_file_contains "manual review csv readonly" "$PROJECT_DIR/docs/manual_review_workflow.md" "CSV and Custom payloads are read-only in Phase B."
 check_file_contains "db upsert order safety" "$PROJECT_DIR/scripts/journal/upsert_manual_review_to_db.py" "does not place, cancel, or modify orders"
 check_file_contains "db upsert broker safety" "$PROJECT_DIR/scripts/journal/upsert_manual_review_to_db.py" "does not call broker APIs"
-check_file_contains "db upsert episode guard table" "$PROJECT_DIR/scripts/journal/upsert_manual_review_to_db.py" "trade_episodes"
-check_file_contains "db upsert episode guard predicate" "$PROJECT_DIR/scripts/journal/upsert_manual_review_to_db.py" "episode_uid = ?"
-check_file_contains "db upsert manual_reviews" "$PROJECT_DIR/scripts/journal/upsert_manual_review_to_db.py" "INSERT OR REPLACE INTO manual_reviews"
+check_file_contains "db upsert delegates to review domain" "$PROJECT_DIR/scripts/journal/upsert_manual_review_to_db.py" "return save_review("
+check_file_contains "review domain episode guard" "$PROJECT_DIR/src/onejournal/journal/domain.py" "FROM trade_episodes WHERE episode_uid = ?"
+check_file_contains "review domain compatibility projection" "$PROJECT_DIR/src/onejournal/journal/domain.py" "INSERT OR REPLACE INTO manual_reviews ("
 check_file_contains "streamlit rebuilds db payload" "$PROJECT_DIR/src/onejournal/apps/streamlit_app.py" "build_dashboard_payload_from_db.py"
 check_file_contains "streamlit calls db upsert" "$PROJECT_DIR/src/onejournal/apps/streamlit_app.py" "upsert_manual_review_to_db.py"
 check_file_not_contains "streamlit does not call refresh_dashboard" "$PROJECT_DIR/src/onejournal/apps/streamlit_app.py" "refresh_dashboard.py"
@@ -380,7 +380,7 @@ check_file_not_contains "streamlit no save_review_row" "$PROJECT_DIR/src/onejour
 check_file_not_contains "streamlit no csv save wording" "$PROJECT_DIR/src/onejournal/apps/streamlit_app.py" "Saves to manual_reviews.csv"
 check_file_contains "streamlit csv custom readonly" "$PROJECT_DIR/src/onejournal/apps/streamlit_app.py" "CSV and Custom payloads are read-only in Phase B"
 check_file_contains "streamlit phase b db default order" "$PROJECT_DIR/src/onejournal/apps/streamlit_app.py" "[\"DB payload\", \"CSV payload\", \"Custom path\"]"
-check_file_contains "streamlit phase b db default text" "$PROJECT_DIR/src/onejournal/apps/streamlit_app.py" "DB payload is the Phase B default"
+check_file_contains "streamlit db default text" "$PROJECT_DIR/src/onejournal/apps/streamlit_app.py" "DB payload is the default."
 check_file_contains "streamlit phase e db writable" "$PROJECT_DIR/src/onejournal/apps/streamlit_app.py" "Writable mode: DB payload only"
 check_file_contains "streamlit phase e save button" "$PROJECT_DIR/src/onejournal/apps/streamlit_app.py" "Save Review to DuckDB"
 check_file_contains "streamlit phase e no order modification" "$PROJECT_DIR/src/onejournal/apps/streamlit_app.py" "no order modification"
@@ -591,7 +591,7 @@ echo
 echo "===== Script inventory doc ====="
 check_path "docs/script_inventory.md" "$PROJECT_DIR/docs/script_inventory.md"
 check_file_contains "script inventory title" "$PROJECT_DIR/docs/script_inventory.md" "OneJournal Script Inventory"
-check_file_contains "script inventory phase b source" "$PROJECT_DIR/docs/script_inventory.md" "Phase B source of truth: DuckDB manual_reviews"
+check_file_contains "script inventory phase b source" "$PROJECT_DIR/docs/script_inventory.md" "Phase B review compatibility projection: DuckDB manual_reviews; durable history after migration 0005: journal_reviews"
 check_file_contains "script inventory removal rule" "$PROJECT_DIR/docs/script_inventory.md" "A script can be removed only after the reference matrix shows zero production, baseline, documentation, and migration-safety references"
 check_file_contains "script inventory build_dashboard_payload_from_db" "$PROJECT_DIR/docs/script_inventory.md" "build_dashboard_payload_from_db.py"
 check_file_contains "script inventory check_dashboard_payload" "$PROJECT_DIR/docs/script_inventory.md" "check_dashboard_payload.py"
@@ -622,7 +622,7 @@ echo
 
 check_path "scripts/journal/check_db_dashboard_contract.py" "$PROJECT_DIR/scripts/journal/check_db_dashboard_contract.py"
 check_path "docs/dashboard_db_contract.md" "$PROJECT_DIR/docs/dashboard_db_contract.md"
-check_file_contains "dashboard db contract source" "$PROJECT_DIR/docs/dashboard_db_contract.md" "DuckDB table:"
+check_file_contains "dashboard db contract source" "$PROJECT_DIR/docs/dashboard_db_contract.md" "data/journal/onejournal.duckdb :: journal_reviews (durable history)"
 check_file_contains "dashboard db contract payload" "$PROJECT_DIR/docs/dashboard_db_contract.md" "dashboard_payload_from_db.json"
 check_file_contains "dashboard db contract save flow" "$PROJECT_DIR/docs/dashboard_db_contract.md" "Streamlit Save Review"
 

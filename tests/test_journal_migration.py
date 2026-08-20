@@ -4,6 +4,7 @@ import shutil
 import tempfile
 import unittest
 from datetime import datetime
+from hashlib import sha256
 from pathlib import Path
 
 import duckdb
@@ -17,6 +18,9 @@ from scripts.journal.init_journal_db import init_schema
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 MIGRATIONS_DIR = PROJECT_ROOT / "scripts" / "journal" / "migrations"
+MIGRATION_0002_RELEASED_CHECKSUM = (
+    "523b5614334f32e2fd41783b58b0eac974456348613bb612ac0c2befc7524ba4"
+)
 
 
 class JournalMigrationTests(unittest.TestCase):
@@ -102,6 +106,16 @@ class JournalMigrationTests(unittest.TestCase):
                 ).fetchall()
             }
             self.assertEqual(lifecycle_columns["event_at_utc"], "VARCHAR")
+
+    def test_released_migration_0002_checksum_is_immutable(self) -> None:
+        migration_path = (
+            MIGRATIONS_DIR
+            / "0002_add_normalized_accounts_orders_positions_transactions.sql"
+        )
+        self.assertEqual(
+            sha256(migration_path.read_bytes()).hexdigest(),
+            MIGRATION_0002_RELEASED_CHECKSUM,
+        )
 
     def test_init_schema_is_idempotent(self) -> None:
         init_schema(self.db_path)
