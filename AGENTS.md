@@ -5,12 +5,19 @@
 These instructions apply to the entire OneJournal repository.
 
 Follow explicit user instructions first. Then follow this file, the product
-roadmap, focused data contracts, architecture decisions, and operator runbooks.
-When two project documents conflict, do not guess: inspect the implementation,
-identify the conflict, and obtain direction before encoding a durable policy.
+vision, strategic traceability documents, product roadmap, focused data
+contracts, architecture decisions, and operator runbooks. When two project
+documents conflict, do not guess: inspect the implementation, identify the
+conflict, and obtain direction before encoding a durable policy.
 
 The dependency-ordered delivery plan is maintained in
 `docs/onejournal_product_roadmap.md`.
+
+The strategic anchors are maintained in:
+
+- `docs/vision/onejournal_product_vision.md`
+- `docs/strategy_tracking/spreadsheet_to_onejournal_mapping.md`
+- `docs/strategy_tracking/capability_maturity_map.md`
 
 ## Product identity and vision
 
@@ -33,6 +40,29 @@ The eventual website must be sleek, beautiful, responsive, intuitive, fast,
 accessible, secure, and trustworthy. Visual quality matters, but financial
 correctness, traceability, security, reliability, and maintainability come
 first.
+
+## Strategy and technical traceability
+
+Track OneJournal product strategy alongside technical delivery. Preserve the
+product vision and maintain an explicit trace from useful TGPS spreadsheet
+thinking to broker-independent OneJournal capabilities. Preserve the intent,
+control, calculation, review, and learning value of the spreadsheet workflow;
+do not copy spreadsheet mechanics, hidden formulas, or workbook state into the
+OneJournal architecture as unexamined requirements.
+
+Use the strategic anchors when proposing or reviewing architecture decisions,
+roadmap changes, product scope, and capability priorities. A decision that
+changes a strategic principle, mapping, or maturity claim must update the
+affected strategic document in the same focused change or explain why no update
+is required.
+
+Never equate documentation, a design, a roadmap status, code presence, passing
+tests, or a prototype demonstration with operational acceptance. Track these as
+distinct states. A capability is operationally accepted only when its stated
+acceptance evidence exists, remaining limitations are explicit, and the project
+owner has approved the capability for the stated operating scope. Do not infer
+production readiness, broker authorization, deployment approval, or live-trading
+approval from implementation progress.
 
 ## Model and credit routing
 
