@@ -1,0 +1,46 @@
+{
+  "attestation_id": "ONJ-TRUST-01B-owner-acceptance-v1",
+  "proof_id": "ONJ-TRUST-01B",
+  "attests_to_assessment_id": "ONJ-TRUST-01B-v2-decimal",
+  "decision": {
+    "decision_date": "2026-08-21",
+    "owner_role": "PROJECT_OWNER",
+    "owner_sign_off": true,
+    "trusted_ledger_exit_gate": "PASS"
+  },
+  "basis": {
+    "public_reassessment": "reassessment-v2-attestation.json",
+    "public_reassessment_sha256": "21702ead67ea28dd955c3bd38bf34f933e8a0dfc38c47d274f18d01da7f9f160",
+    "private_bundle_manifest_sha256": "b3891964b5af456b3981d95a546559a255056c277f3bc6a53af69234b3770ae6",
+    "calculation_input_fingerprint": "57ec52c606a05cb8f932cb9d31cb2a11d8196d799498c2aff8afd1eb8c32480b",
+    "calculation_version": "onejournal-fifo-v1",
+    "repository_commit": "80c936355ce8f39d33dba1abff0921389ce67900",
+    "technical_evidence_path": "PASS"
+  },
+  "accepted_scope": {
+    "scope_type": "ONE_BOUNDED_CLOSED_REAL_BROKER_LIFECYCLE",
+    "lifecycle_identity": "PRIVATE_BUNDLE_REFERENCE_ONLY",
+    "lifecycle_classification": "REVIEWED_AND_ACCEPTED",
+    "broker_reconciliation": "ACCEPTED",
+    "financial_result": "ACCEPTED_FOR_THIS_BOUNDED_LIFECYCLE_ONLY"
+  },
+  "remaining_limitation_codes": [
+    "INCREMENTAL_IMPORT_REPAIR_DEFERRED",
+    "MIXED_DATE_SNAPSHOT_RECONCILIATION_OUT_OF_SCOPE",
+    "FULL_ADR_0010_PROVENANCE_DEFERRED"
+  ],
+  "explicit_exclusions": [
+    "PARTIAL_CLOSURE_LIFECYCLE_PROOF",
+    "GENERAL_OR_PORTFOLIO_WIDE_FINANCIAL_ACCEPTANCE",
+    "UNREALIZED_PNL_OR_MARKET_DATA_VALUATION",
+    "PRODUCTION_OR_OPERATIONAL_READINESS",
+    "BROKER_OR_PROVIDER_ACCESS_AUTHORIZATION",
+    "DATABASE_OR_MIGRATION_CHANGE_AUTHORIZATION",
+    "DEPLOYMENT_COMMIT_PUSH_OR_TRADING_AUTHORIZATION"
+  ],
+  "history_preservation": {
+    "prior_attestations_unchanged": true,
+    "prior_owner_sign_off_false_preserved": true,
+    "acceptance_is_append_only": true
+  }
+}
