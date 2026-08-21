@@ -61,13 +61,19 @@ The repository does not yet have:
 - Generated artifacts are fixed through their producers, not patched directly.
 - Paper and live execution remain blocked until their entry gates are satisfied.
 
-Queue status values:
+Queue status values are delivery-workflow states:
 
 - `NEXT` - the next approved item to execute.
 - `QUEUED` - ready after its dependencies are complete.
+- `IN PROGRESS` - approved implementation work is actively underway.
 - `BLOCKED` - depends on a decision or unfinished prerequisite.
+- `COMPLETE` - the stated implementation work and its defined evidence are
+  complete.
 - `LATER` - intentionally outside the near-term delivery path.
-- `COMPLETE` - implemented and validated.
+
+`COMPLETE` does not by itself mean the capability is available in an intended
+runtime, production ready, operationally accepted, or financially accepted.
+Those states require their own explicit evidence and acceptance.
 
 ## Queue 0 - Make the foundation truthful and reproducible
 
@@ -100,17 +106,22 @@ Objective: decide the semantics required for correct portfolio and P&L work.
 | ID | Status | Action | Completion evidence |
 |---|---|---|---|
 | CON-01 | COMPLETE | Decide initial product scope: single user or multi-user, supported brokers, accounts, asset classes, and first production use case. | Approved product-scope decision record. |
-| CON-02 | COMPLETE | Define base currency, multi-currency policy, decimal precision, timezone, market-date, and trading-session rules. | Approved financial-units and time contract with examples. |
+| CON-02 | BLOCKED | Define base currency, multi-currency policy, decimal precision, timezone, market-date, and trading-session rules. | ADR-0003 is correctly `Proposed`. Completion requires explicit project-owner confirmation of all seven reporting currency, native-currency/FX, decimal/rounding, UTC-instant, New York market-date, Singapore-display, and calendar/session decisions. Existing implementation evidence is preserved, but dependent financial acceptance cannot rely on unresolved semantics. |
 | CON-03 | COMPLETE | Define realized P&L, unrealized P&L, cost basis, tax-lot policy, fees, commissions, and return calculations. | ADR-0004 plus FIFO lot engine and fail-closed contract tests in `src/onejournal/pnl/` plus mark-sourcing behavior tests. DB-backed payload now includes realized/unrealized P&L by currency. |
 | CON-04 | COMPLETE | Define lifecycle treatment for partial fills, partial exits, and multi-leg trade matching by episode scope. | Lifecycle and preview contract tests are in place; complex lifecycle event types remain blocked under ADR-0005. |
-| CON-05 | COMPLETE | Define stable identifiers, deduplication, idempotency, lineage, corrections, and data-version rules. | Stable fill identity, idempotent replay, and identity-conflict rejection are enforced and tested. |
-| CON-06 | COMPLETE | Define data freshness, stale-price, missing-data, reconciliation, and fail-closed presentation policies. | DB payload now carries quality status for import/audit/completeness and fail-closed policy status checks. |
+| CON-05 | COMPLETE | Define the bounded normalized-fill identity, equivalent replay/conflict, and calculation-input fingerprint foundation. | Accepted ADR-0006 matches implemented stable fill identity, normalized-economic replay deduplication/conflict rejection, and exact fill/approved-lifecycle P&L fingerprints. It does not claim complete correction or provenance. |
+| CON-06 | COMPLETE | Accept data freshness, missing-data, reconciliation, and fail-closed presentation policy. | Accepted ADR-0007 establishes that independently valid partial information may remain visible while hidden uncertainty, false zero, and affected consolidated totals fail closed. Runtime conformance remains incomplete under PNL-08. |
+| CON-07 | BLOCKED | Decide complete raw-evidence provenance, normalized-record versioning, supersession, correction governance, invalidation, recalculation, retention, and recovery rules. | Proposed ADR-0010 requires project-owner approval and a separately approved implementation/migration plan. Current import and revision mechanisms are partial evidence only. |
 
-### Queue 1 exit gate
+### Queue 1 exit gate (not yet satisfied)
 
 - No core financial metric depends on an unresolved accounting assumption.
 - Time, currency, identity, and lifecycle semantics have approved examples.
 - Incomplete or conflicting broker evidence has an explicit failure policy.
+
+CON-02 remains an approval blocker for dependent financial acceptance. CON-07
+blocks claims of complete correction/provenance capability but does not undo or
+prevent continued validation of the accepted ADR-0006 identity foundation.
 
 ## Queue 2 - Build the canonical journal and trade-lifecycle engine
 
@@ -124,14 +135,19 @@ position state.
 | JRN-03 | COMPLETE | Replace preview grouping with a deterministic trade-lifecycle engine. | Entry/exit/partial/reopen fixtures and deterministic lifecycle tests are implemented and merge-validated. |
 | JRN-04 | COMPLETE | Add multi-leg lifecycle handling for verticals and later approved strategies. | Preview-level and lifecycle-contract fixtures for multi-leg and cross-symbol matching using explicit episode-group scope are in place. |
 | JRN-05 | COMPLETE | Add assignments, exercises, expirations, rolls, transfers, dividends, and corporate-action handling. | Lifecycle extraction is covered for all listed event types and ADR-0005 event-ledger persistence is wired end-to-end through Schwab conversion and DB import flow. |
-| JRN-06 | COMPLETE | Add correction/replay support without losing audit history or manual reviews. | Replay-safe replace imports are implemented with manual-review preservation and signed revision rows. |
+| JRN-06 | COMPLETE | Preserve current normalized-fill replay and replace-import revision evidence without losing manual reviews. | Equivalent replay is deduplicated, conflicting normal replay is rejected, and explicit replace imports preserve manual reviews plus prior/next signed normalized payloads. This is not complete source supersession or correction governance. |
 | JRN-07 | COMPLETE | Strengthen broker-to-journal reconciliation at fill, transaction, position, cash, and account levels. | Fill/transaction/position/cash/account checks are classified and policy-gated before publication. |
+| JRN-08 | BLOCKED | Implement durable source supersession, governed corrections, event-set versions, downstream invalidation, and recalculation lineage. | Depends on accepted ADR-0010, approved privacy/retention/recovery policy, an additive migration plan, and raw-to-output validation evidence. |
 
-### Queue 2 exit gate
+### Queue 2 exit gate (not yet satisfied)
 
 - Trade episodes represent complete lifecycles rather than previews.
 - Broker evidence can be replayed without duplicates or lost reviews.
 - Positions and cash reconcile within the approved policy.
+
+JRN-08 remains blocked. The completed JRN-06 replace-import path must not be
+reported as complete source supersession, governed correction, or raw-to-output
+recalculation lineage.
 
 ## Queue 3 - Implement P&L, portfolio, and reporting
 
@@ -147,7 +163,7 @@ presentation layer.
 | PNL-05 | BLOCKED | Implement performance metrics: total P&L, returns, win rate, profit factor, average win/loss, holding period, drawdown, and exposure. | Win/loss, profit factor, average result, and holding-time groundwork exists; returns and max drawdown are explicitly unavailable and valuation-dependent exposure is not approved. |
 | PNL-06 | BLOCKED | Implement breakdowns by account, broker, strategy, symbol, and asset class. Time-period reporting belongs to PNL-07. | Initial groupings exist, but completion depends on canonical PNL-01/03 inputs and reconciliation tests proving every breakdown sums to the authoritative portfolio totals. |
 | PNL-07 | BLOCKED | Build daily, monthly, and custom-period reports and exports. | Reports reconcile to canonical calculations and identify their as-of state. |
-| PNL-08 | BLOCKED | Add data-quality and stale-data indicators to every published financial payload. | Status scaffolding exists for imports, as-of data, unmatched closes, and missing unrealized values. It is not complete because derived position rows can still be labelled `valid` without broker-snapshot, quote-source, or approved freshness evidence. |
+| PNL-08 | BLOCKED | Conform every published financial payload and presentation path to accepted ADR-0007. | Status scaffolding exists for imports, as-of data, unmatched closes, and missing unrealized values. Completion remains blocked by false-valid derived positions, implicit USD and false-zero paths, incomplete processed/unavailable counts, missing per-item omission reasons, absent broker/quote/reconciliation evidence, and absent responsive/accessibility validation. |
 
 ### Queue 3 audit record
 
@@ -199,7 +215,10 @@ The remaining closure conditions are:
 - PNL-07: period-reporting and export scope must be defined and reconciled to
   canonical calculations.
 - PNL-08: no metric may claim `valid` without the exact required source,
-  reconciliation, completeness, and approved freshness evidence.
+  reconciliation, completeness, and approved freshness evidence. Every affected
+  scope must report processed/unavailable counts and omission reasons; missing
+  values must not become zero, and responsive/accessibility evidence remains
+  required separately.
 
 ## Queue 4 - Complete the journaling product
 
@@ -296,6 +315,11 @@ approval and successful completion of every prior safety gate.
 | LIV-05 | COMPLETE | Expand automation only through separately approved stages backed by operating evidence. | Expansion governance validator and decision log are complete and signed off by owner. |
 
 ## Immediate execution order
+
+Before dependent financial acceptance, resolve CON-02's seven owner decisions.
+CON-07 and JRN-08 remain separate future provenance/correction work. They do not
+change the current `PNL-02` in-progress status or authorize any live provider
+call, migration, or runtime change.
 
 The current actionable sequence is:
 

@@ -9,25 +9,30 @@ eventually controlled automation.
 It prevents code presence, a passing test, a roadmap label, or a prototype from
 being reported as an operationally accepted capability.
 
-## Evidence dimensions
+## Capability dimensions
 
-Track each capability across separate dimensions:
+Track each capability across six independent dimensions. Strategic intent and
+acceptance criteria remain required supporting context, but they do not replace
+evidence in any dimension:
 
 | Dimension | Required evidence |
 |---|---|
-| Strategic intent | The user need and its relationship to the product vision are explicit. |
-| Contract or design | Scope, semantics, boundaries, failures, security, compatibility, and acceptance criteria are approved where required. |
+| Policy | The required business and architecture decisions, scope, semantics, boundaries, failure rules, security, and compatibility are explicitly approved. |
 | Implementation | The complete in-scope producer, state, calculation, service, and consumer path exists. |
 | Validation | Focused and downstream tests or reconciliations prove expected and failure behaviour against representative evidence. |
-| Operational acceptance | The project owner has explicitly accepted the capability for a stated environment and scope, with remaining limitations recorded. |
+| Migration/runtime | Required migrations are applied and the capability is available in the stated runtime environment. |
+| Operational acceptance | The project owner has explicitly accepted the capability for a stated operating environment and scope, with remaining limitations recorded. |
+| Financial acceptance | The project owner has explicitly accepted the capability as trustworthy for stated financial decisions, based on approved policy and reconciled financial evidence. |
 
 These dimensions are not interchangeable. In particular:
 
 - `COMPLETE` in the roadmap means the roadmap item's stated implementation and
-  validation criteria are complete; it does not automatically mean production
-  or operational acceptance.
+  validation criteria are complete; it does not automatically mean migration,
+  runtime availability, production readiness, operational acceptance, or
+  financial acceptance.
 - A prototype demonstration proves only the demonstrated path and environment.
-- An accepted ADR approves a decision, not its implementation or operation.
+- An accepted ADR establishes policy, not implementation, migration/runtime,
+  validation, operational acceptance, or financial acceptance.
 - Readiness documents and controls do not enable broker access, deployment, or
   live execution.
 
@@ -55,10 +60,11 @@ roadmap and repository documents. It is not a new acceptance decision.
 | Capability area | Evidence-backed maturity | Operational acceptance | Main gap or boundary | Roadmap anchor |
 |---|---|---|---|---|
 | Reproducible development foundation | M3 - Validated | No separate operational acceptance recorded; development baseline only | Continue to keep checks, dependencies, CI, and documentation truthful | FND-01 through FND-08 |
-| Canonical records, journal ledger, lifecycle, identity, and reconciliation | M3 - Validated for documented repository paths | Not established for a production operating environment | Maintain real-evidence reconciliation, migration discipline, and broker-independent contracts | CON and JRN queues |
-| Realized P&L | M2 - Implemented with focused contract evidence | Not accepted | Manual review of real Schwab evidence and broker-result reconciliation remain open | PNL-01 |
+| Canonical records, journal ledger, lifecycle, bounded fill identity/replay, and reconciliation | M3 - Validated for documented repository paths | Not established for a production operating environment | ADR-0006 accepts only normalized-fill identity/replay and P&L input fingerprints; maintain real-evidence reconciliation and migration discipline | CON-01 through CON-06 and JRN-01 through JRN-07 |
+| Complete evidence provenance and governed correction/recalculation lineage | M0 - Identified, with partial prototype mechanisms | Not accepted | Import-run batch audit and replace-import revision rows do not establish immutable raw hashes, normalized versions, supersession, correction approval, complete invalidation, or raw-to-output lineage | Proposed ADR-0010, CON-07, and JRN-08 |
+| Realized P&L | M2 - Implemented with focused contract evidence | Not accepted | ADR-0003 policy confirmations, manual review of real Schwab evidence, and broker-result reconciliation remain open | CON-02 and PNL-01 |
 | Market quotes and freshness | M2 - Implemented provider-independent groundwork | Not accepted | Approved read-only provider evidence, entitlement verification, and end-to-end adapter validation remain open | PNL-02 |
-| Positions, portfolio valuation, performance, and reports | M1 - Defined, with partial groundwork | Not accepted | Depends on approved quotes, broker-reconciled cumulative positions, canonical P&L, and reporting reconciliation | PNL-03 through PNL-08 |
+| Positions, portfolio valuation, performance, and reports | M1 - Defined, with partial groundwork | Not accepted | ADR-0007 policy is accepted, but conformance depends on approved quotes, broker-reconciled cumulative positions, canonical P&L, complete count/reason states, and responsive/accessibility evidence | PNL-03 through PNL-08 |
 | Structured journal and review experience | M3 - Validated in the internal prototype for completed roadmap scope | Not accepted as a production product | Runtime migration, attachment controls, financial evaluation dependencies, and production experience remain bounded or blocked | UXJ-01 through UXJ-06 |
 | Production website | M0 - Identified | Not accepted | Architecture, security, design, API, authentication, implementation, and production validation remain blocked | WEB-01 through WEB-09 |
 | Production operations and resilience | M0 - Identified | Not accepted | Environment boundaries, deployment, recovery, observability, security, privacy, and incident policies remain blocked | OPS-01 through OPS-07 |
