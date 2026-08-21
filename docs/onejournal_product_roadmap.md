@@ -106,7 +106,7 @@ Objective: decide the semantics required for correct portfolio and P&L work.
 | ID | Status | Action | Completion evidence |
 |---|---|---|---|
 | CON-01 | COMPLETE | Decide initial product scope: single user or multi-user, supported brokers, accounts, asset classes, and first production use case. | Approved product-scope decision record. |
-| CON-02 | BLOCKED | Define base currency, multi-currency policy, decimal precision, timezone, market-date, and trading-session rules. | ADR-0003 is correctly `Proposed`. Completion requires explicit project-owner confirmation of all seven reporting currency, native-currency/FX, decimal/rounding, UTC-instant, New York market-date, Singapore-display, and calendar/session decisions. Existing implementation evidence is preserved, but dependent financial acceptance cannot rely on unresolved semantics. |
+| CON-02 | COMPLETE | Define base currency, multi-currency policy, decimal precision, timezone, market-date, and trading-session rules. | Accepted ADR-0003 records project-owner confirmation of all seven reporting currency, native-currency/FX, decimal/rounding, UTC-instant, New York market-date, Singapore-display, and calendar/session decisions. Runtime conformance remains separately validated. |
 | CON-03 | COMPLETE | Define realized P&L, unrealized P&L, cost basis, tax-lot policy, fees, commissions, and return calculations. | ADR-0004 plus FIFO lot engine and fail-closed contract tests in `src/onejournal/pnl/` plus mark-sourcing behavior tests. DB-backed payload now includes realized/unrealized P&L by currency. |
 | CON-04 | COMPLETE | Define lifecycle treatment for partial fills, partial exits, and multi-leg trade matching by episode scope. | Lifecycle and preview contract tests are in place; complex lifecycle event types remain blocked under ADR-0005. |
 | CON-05 | COMPLETE | Define the bounded normalized-fill identity, equivalent replay/conflict, and calculation-input fingerprint foundation. | Accepted ADR-0006 matches implemented stable fill identity, normalized-economic replay deduplication/conflict rejection, and exact fill/approved-lifecycle P&L fingerprints. It does not claim complete correction or provenance. |
@@ -119,9 +119,10 @@ Objective: decide the semantics required for correct portfolio and P&L work.
 - Time, currency, identity, and lifecycle semantics have approved examples.
 - Incomplete or conflicting broker evidence has an explicit failure policy.
 
-CON-02 remains an approval blocker for dependent financial acceptance. CON-07
-blocks claims of complete correction/provenance capability but does not undo or
-prevent continued validation of the accepted ADR-0006 identity foundation.
+CON-02 policy is complete. Dependent financial acceptance still requires
+case-specific implementation and reconciliation evidence. CON-07 blocks claims
+of complete correction/provenance capability but does not undo or prevent
+continued validation of the accepted ADR-0006 identity foundation.
 
 ## Queue 2 - Build the canonical journal and trade-lifecycle engine
 
@@ -316,8 +317,8 @@ approval and successful completion of every prior safety gate.
 
 ## Immediate execution order
 
-Before dependent financial acceptance, resolve CON-02's seven owner decisions.
-CON-07 and JRN-08 remain separate future provenance/correction work. They do not
+CON-02's seven owner decisions are resolved in accepted ADR-0003. CON-07 and
+JRN-08 remain separate future provenance/correction work. They do not
 change the current `PNL-02` in-progress status or authorize any live provider
 call, migration, or runtime change.
 

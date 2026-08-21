@@ -5,7 +5,7 @@ import json
 import re
 from dataclasses import dataclass, field
 from datetime import datetime
-from decimal import Decimal, InvalidOperation
+from decimal import ROUND_DOWN, Decimal, InvalidOperation
 from pathlib import Path
 from typing import Any
 
@@ -92,6 +92,7 @@ _LIFECYCLE_ACTIVITY_ALIASES = {
 }
 
 _OPTION_SYMBOL_RE = re.compile(r"^(?P<root>.+?)(?P<yymmdd>\d{6})(?P<cp>[CP])(?P<strike>\d{8})$")
+_CURRENCY_SYMBOL_RE = re.compile(r"^(?:CURRENCY_)?(?P<code>[A-Z]{3})$")
 
 _LIFECYCLE_DESCRIPTION_HINTS = {
     "ASSIGNMENT": re.compile(r"\bassignment\b", re.IGNORECASE),
@@ -121,7 +122,13 @@ def validate_asof(value: str | None) -> str | None:
 
 
 def load_transactions_json(path: Path) -> list[dict[str, Any]]:
-    payload = json.loads(path.read_text(encoding="utf-8"))
+    payload = json.loads(
+        path.read_text(encoding="utf-8"),
+        parse_float=Decimal,
+        parse_constant=lambda value: (_ for _ in ()).throw(
+            ValueError(f"Invalid non-finite JSON number: {value}")
+        ),
+    )
     if not isinstance(payload, list):
         raise ValueError("Schwab transactions JSON must be a top-level list")
     out = []
@@ -142,12 +149,15 @@ def _parse_occ_like_symbol(symbol: str) -> dict[str, str]:
     if not m:
         return {}
     yymmdd = m.group("yymmdd")
-    strike = int(m.group("strike")) / 1000
+    strike = Decimal(m.group("strike")) / Decimal("1000")
+    strike_text = format(strike, "f")
+    if "." in strike_text:
+        strike_text = strike_text.rstrip("0").rstrip(".")
     return {
         "root": m.group("root").strip().upper(),
         "expiry": f"20{yymmdd[:2]}-{yymmdd[2:4]}-{yymmdd[4:6]}",
         "option_type": "CALL" if m.group("cp") == "C" else "PUT",
-        "strike": f"{strike:.3f}".rstrip("0").rstrip("."),
+        "strike": strike_text,
     }
 
 
@@ -160,9 +170,39 @@ def _asset_class(asset_type: str) -> str:
     return value.lower()
 
 
-def _side_from_amount(amount: float) -> str:
+def _side_from_amount(amount: Decimal) -> str:
     # Schwab transaction transferItems sample: positive amount = buy/debit leg, negative amount = sell/credit leg.
     return "buy" if amount > 0 else "sell"
+
+
+def _decimal_value(
+    value: Any,
+    *,
+    field_name: str,
+    allow_zero: bool = True,
+) -> Decimal:
+    if value in (None, ""):
+        raise ValueError(f"Missing Schwab financial field: {field_name}")
+    if isinstance(value, (bool, float)):
+        raise ValueError(
+            f"Schwab financial field {field_name} must be an exact decimal value, not {type(value).__name__}"
+        )
+    try:
+        parsed = Decimal(str(value))
+    except (InvalidOperation, ValueError) as exc:
+        raise ValueError(f"Invalid Schwab financial field {field_name}: {value!r}") from exc
+    if not parsed.is_finite():
+        raise ValueError(f"Invalid non-finite Schwab financial field {field_name}: {value!r}")
+    if not allow_zero and parsed == 0:
+        raise ValueError(f"Schwab financial field {field_name} must not be zero")
+    return parsed
+
+
+def _decimal_text(value: Decimal) -> str:
+    text = format(value, "f")
+    if "." in text:
+        text = text.rstrip("0").rstrip(".")
+    return "0" if text in {"-0", ""} else text
 
 
 def _open_close(position_effect: str) -> str:
@@ -475,21 +515,60 @@ def extract_lifecycle_event_legs_from_transactions(
 def _multiplier(instrument: dict[str, Any]) -> str:
     raw = instrument.get("optionPremiumMultiplier")
     if raw not in (None, ""):
-        return str(int(float(raw))) if float(raw).is_integer() else str(raw)
+        value = _decimal_value(raw, field_name="option multiplier", allow_zero=False)
+        if value < 0:
+            raise ValueError("Schwab option multiplier must be positive")
+        return _decimal_text(value)
     deliverables = instrument.get("optionDeliverables")
     if isinstance(deliverables, list) and deliverables:
         first = deliverables[0]
         if isinstance(first, dict):
             units = first.get("deliverableUnits")
             if units not in (None, ""):
-                return str(int(float(units))) if float(units).is_integer() else str(units)
-    return "100"
+                value = _decimal_value(
+                    units, field_name="option deliverable units", allow_zero=False
+                )
+                if value < 0:
+                    raise ValueError("Schwab option deliverable units must be positive")
+                return _decimal_text(value)
+    raise ValueError("Missing broker-confirmed Schwab option multiplier")
 
 
-def _fee_totals(items: list[dict[str, Any]]) -> tuple[float, float, int]:
-    commission = 0.0
-    fees = 0.0
+def _currency_code(instrument: dict[str, Any]) -> str:
+    symbol = str(instrument.get("symbol", "")).strip().upper()
+    match = _CURRENCY_SYMBOL_RE.fullmatch(symbol)
+    if match is None:
+        raise ValueError(f"Invalid Schwab currency evidence: {symbol!r}")
+    return match.group("code")
+
+
+def _fee_value(item: dict[str, Any], *, fee_type: str) -> Decimal:
+    candidates: list[Decimal] = []
+    for field_name in ("cost", "amount"):
+        raw_value = item.get(field_name)
+        if raw_value in (None, ""):
+            continue
+        value = abs(
+            _decimal_value(raw_value, field_name=f"{fee_type} {field_name}")
+        )
+        if value != 0:
+            candidates.append(value)
+    if not candidates:
+        return Decimal("0")
+    if len(set(candidates)) != 1:
+        raise ValueError(
+            f"Ambiguous Schwab {fee_type} evidence: cost and amount disagree"
+        )
+    return candidates[0]
+
+
+def _fee_totals(
+    items: list[dict[str, Any]],
+) -> tuple[Decimal, Decimal, int, str]:
+    commission = Decimal("0")
+    fees = Decimal("0")
     currency_count = 0
+    currencies: set[str] = set()
     for item in items:
         instrument = item.get("instrument") or {}
         if not isinstance(instrument, dict):
@@ -497,15 +576,40 @@ def _fee_totals(items: list[dict[str, Any]]) -> tuple[float, float, int]:
         if str(instrument.get("assetType", "")).upper() != "CURRENCY":
             continue
         currency_count += 1
-        fee_type = str(item.get("feeType", "")).upper()
-        cost = abs(float(item.get("cost") or 0))
-        amount = abs(float(item.get("amount") or 0))
-        value = max(cost, amount)
+        currencies.add(_currency_code(instrument))
+        fee_type = str(item.get("feeType", "")).strip().upper()
+        if not fee_type:
+            continue
+        value = _fee_value(item, fee_type=fee_type)
         if fee_type == "COMMISSION":
             commission += value
         else:
             fees += value
-    return commission, fees, currency_count
+    if not currencies:
+        raise ValueError("Missing Schwab transaction currency evidence")
+    if len(currencies) != 1:
+        raise ValueError(
+            f"Mixed Schwab transaction currencies are not supported: {sorted(currencies)}"
+        )
+    return commission, fees, currency_count, next(iter(currencies))
+
+
+def _allocate_total(total: Decimal, count: int) -> list[Decimal]:
+    if count <= 0:
+        raise ValueError("Financial allocation requires at least one security leg")
+    if total < 0:
+        raise ValueError("Financial allocation total must not be negative")
+    quantum = Decimal(1).scaleb(min(total.as_tuple().exponent, -2))
+    base = (total / count).quantize(quantum, rounding=ROUND_DOWN)
+    residual = total - (base * count)
+    residual_units = int((residual / quantum).to_integral_exact())
+    allocations = [
+        base + (quantum if index < residual_units else Decimal("0"))
+        for index in range(count)
+    ]
+    if sum(allocations, Decimal("0")) != total:
+        raise ValueError("Financial allocation residual did not reconcile")
+    return allocations
 
 
 def normalized_rows_from_transactions(transactions: list[dict[str, Any]], *, asof: str | None = None) -> tuple[list[dict[str, str]], SchwabTransactionsJsonStats]:
@@ -553,8 +657,6 @@ def normalized_rows_from_transactions(transactions: list[dict[str, Any]], *, aso
             unsupported += 1
             unsupported_record_counts["record_items:empty"] = unsupported_record_counts.get("record_items:empty", 0) + 1
             continue
-        commission_total, fees_total, currency_count = _fee_totals([i for i in items if isinstance(i, dict)])
-        currency_items += currency_count
         security = []
         for idx, item in enumerate(items):
             if not isinstance(item, dict):
@@ -587,17 +689,29 @@ def normalized_rows_from_transactions(transactions: list[dict[str, Any]], *, aso
             unsupported_record_counts["record_security:unsupported_or_missing"] = unsupported_record_counts.get("record_security:unsupported_or_missing", 0) + 1
             continue
 
-        per_leg_commission = commission_total / len(security) if security else 0.0
-        per_leg_fees = fees_total / len(security) if security else 0.0
+        commission_total, fees_total, currency_count, currency = _fee_totals(
+            [item for item in items if isinstance(item, dict)]
+        )
+        currency_items += currency_count
+        commission_allocations = _allocate_total(commission_total, len(security))
+        fee_allocations = _allocate_total(fees_total, len(security))
 
-        for idx, item, instrument in security:
+        for allocation_index, (idx, item, instrument) in enumerate(security):
             security_items += 1
             asset_class = _asset_class(str(instrument.get("assetType", "")))
             raw_symbol = str(instrument.get("symbol", "")).strip()
             parsed = _parse_occ_like_symbol(raw_symbol)
-            amount = float(item.get("amount") or 0)
+            amount = _decimal_value(
+                item.get("amount"), field_name="security quantity", allow_zero=False
+            )
             qty = abs(amount)
-            price = item.get("price")
+            price_raw = item.get("price")
+            cost_raw = item.get("cost")
+            cost = (
+                _decimal_value(cost_raw, field_name="security cash amount")
+                if cost_raw not in (None, "")
+                else None
+            )
             multiplier = ""
             option_symbol = ""
             underlying = ""
@@ -611,16 +725,35 @@ def normalized_rows_from_transactions(transactions: list[dict[str, Any]], *, aso
                 option_type = str(instrument.get("putCall") or parsed.get("option_type", "")).strip().upper()
                 expiry = _date_part(str(instrument.get("expirationDate") or "")) or parsed.get("expiry", "")
                 strike_raw = instrument.get("strikePrice")
-                strike = str(strike_raw) if strike_raw not in (None, "") else parsed.get("strike", "")
+                if strike_raw not in (None, ""):
+                    strike_value = _decimal_value(
+                        strike_raw, field_name="option strike"
+                    )
+                    if strike_value < 0:
+                        raise ValueError("Schwab option strike must not be negative")
+                    strike = _decimal_text(strike_value)
+                else:
+                    strike = parsed.get("strike", "")
+                if not strike:
+                    raise ValueError("Missing Schwab option strike evidence")
                 multiplier = _multiplier(instrument)
                 symbol = underlying
             else:
                 symbol = raw_symbol.upper()
 
-            if price in (None, ""):
-                mult = float(multiplier or 1)
-                cost = abs(float(item.get("cost") or 0))
-                price = cost / (qty * mult) if qty and mult else ""
+            if price_raw in (None, ""):
+                if cost is None:
+                    raise ValueError(
+                        "Missing Schwab fill price and cash amount; price cannot be derived"
+                    )
+                mult = _decimal_value(
+                    multiplier or "1", field_name="price derivation multiplier", allow_zero=False
+                )
+                price = abs(cost) / (qty * mult)
+            else:
+                price = _decimal_value(price_raw, field_name="fill price")
+            if price < 0:
+                raise ValueError("Schwab fill price must not be negative")
 
             activity_id = str(txn.get("activityId", "")).strip()
             order_id = str(txn.get("orderId", "")).strip()
@@ -637,11 +770,13 @@ def normalized_rows_from_transactions(transactions: list[dict[str, Any]], *, aso
                 "asset_class": asset_class,
                 "symbol": symbol,
                 "side": _side_from_amount(amount),
-                "quantity": str(qty),
-                "fill_price": str(price),
-                "commission": f"{per_leg_commission:.2f}",
-                "fees": f"{per_leg_fees:.2f}",
-                "currency": "USD",
+                "quantity": _decimal_text(qty),
+                "fill_price": _decimal_text(price),
+                "commission": _decimal_text(
+                    commission_allocations[allocation_index]
+                ),
+                "fees": _decimal_text(fee_allocations[allocation_index]),
+                "currency": currency,
                 "option_symbol": option_symbol,
                 "underlying_symbol": underlying,
                 "option_type": option_type,

@@ -81,6 +81,12 @@ lifecycle instructions separate from normalized broker evidence and adds
 append-only, fingerprinted P&L runs and allocation lineage. Neither migration
 has been applied to the live journal database by this implementation work.
 
+Migration 0009's header historically called ADR-0003 accepted before the seven
+owner confirmations were recorded, and migration 0010 repeats that dependency
+wording. Released migrations are checksum-locked and were not edited. The
+current ADR and architecture register are authoritative and record the later
+explicit acceptance date.
+
 Migration 0011 adds provider/connection-scoped quote ingestion runs and
 normalized top-of-book quote evidence. Freshness remains a read-time
 calculation rather than a stored permanent label. Migration 0011 has also not

@@ -1,0 +1,38 @@
+{
+  "proof_id": "ONJ-TRUST-01B-PARTIAL-CLOSURE-PREPARATION",
+  "prepared_at": "2026-08-21",
+  "status": "SELECTED_NOT_PROVED",
+  "scope": {
+    "broker_access": false,
+    "database_write": false,
+    "private_transaction_files_scanned": 78,
+    "private_order_files_scanned": 78,
+    "strict_candidate_count": 16
+  },
+  "selected_candidate": {
+    "candidate_id": "b59a09327126b8f3f0854664e6927cefec9a550766927edda024b33045810962",
+    "currency": "USD",
+    "lifecycle_shape": [
+      "OPEN 2",
+      "PARTIAL CLOSE 1; REMAIN 1",
+      "FINAL CLOSE 1; REMAIN 0"
+    ],
+    "orders_transactions_reconciled": true,
+    "selected_identity_conflict": false,
+    "isolated_database_rehearsal_performed": false
+  },
+  "next_proof_requirements": [
+    "Rehearse the selected three-fill lifecycle in a new isolated database.",
+    "Prove proportional opening-cost allocation after the first close.",
+    "Prove the remaining open quantity and cost basis after the first close.",
+    "Prove final quantity and remaining cost basis are both zero after the second close.",
+    "Reconcile gross and net realized P&L, commission, and fees to the preserved broker evidence.",
+    "Obtain explicit project-owner lifecycle classification and financial sign-off."
+  ],
+  "scan_limitations": [
+    "Thirty retained transaction files lack explicit currency evidence and were rejected by the hardened boundary.",
+    "Three transaction fill identities and three order fill identities conflict across overlapping retained files; none belongs to the selected candidate.",
+    "Incremental close import repair remains deferred and is not part of this preparation."
+  ],
+  "privacy": "Instrument, account, fill, order, and raw-file identities remain in the ignored private bundle."
+}

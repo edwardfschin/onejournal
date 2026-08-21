@@ -1,118 +1,172 @@
-# ADR-0006: Define record identity, lineage, and correction semantics
+# ADR-0006: Define normalized-fill identity, replay, and calculation fingerprints
 
-- Status: Proposed
-- Date: 2026-07-23
+- Status: Accepted
+- Date: 2026-08-20
 - Decision owners: OneJournal project owner
-- Related roadmap items: CON-05, JRN-01 through JRN-05, PNL-01 through PNL-08
-- Related contracts: ADR-0003 through ADR-0005,
-  `docs/import_run_audit_contract.md`, `docs/normalized_fills_odfs_contract.md`
+- Related roadmap items: CON-05, JRN-06, PNL-01 through PNL-08
+- Related contracts: ADR-0003 through ADR-0005, ADR-0010,
+  `docs/normalized_fills_odfs_contract.md`,
+  `docs/import_run_audit_contract.md`
 - Supersedes: None
 - Superseded by: None
 
 ## Context
 
-Current normalized fills use a derived `fill_uid` based on broker, account,
-and source fill ID. DuckDB uses it as a primary key and import scripts use
-`INSERT OR REPLACE`. Import runs link rows to an import run, and the existing
-checks detect duplicate fill IDs and repeat-import count growth. This provides
-a useful prototype guard but does not preserve revisions, source hashes,
-supersession, or a complete correction history.
+OneJournal needs a bounded identity foundation that can distinguish an
+equivalent normalized-fill replay from a conflicting economic payload and can
+reject stale persisted P&L results. The repository implements and tests this
+foundation today.
 
-Future P&L and lifecycle calculations require a stable answer to what source
-record was used, which normalization version produced it, whether it was later
-corrected, and which calculation output consumed it.
+The broader provenance and correction model previously proposed in this ADR is
+not implemented. Current import runs provide batch lineage, and replace imports
+can preserve prior/next normalized-fill payloads and manual reviews. They do not
+establish immutable raw content addressing, versioned normalized records,
+explicit source supersession, correction actor/reason/approval, complete
+downstream invalidation, or raw-to-output lineage. Those decisions are
+separated into proposed ADR-0010.
 
 ## Decision
 
-Subject to project-owner approval, OneJournal will use these identity rules.
+OneJournal accepts the following bounded identity, replay, and calculation-
+fingerprint contract.
 
-- Raw evidence is immutable and addressed by provider, account-safe source
-  scope, retrieval/import run, original path or object key, content hash, and
-  retention metadata. A new broker delivery is a new evidence version.
-- Every normalized record has a stable internal ID and a natural-source key.
-  For a confirmed fill, the natural key is broker + source account + source fill
-  ID; when a provider lacks a fill ID, the adapter must define a documented
-  deterministic key and collision strategy before publication.
-- Identity is not presentation identity: an order ID, symbol, episode ID,
-  account label, and dashboard row are never substitutes for a fill ID.
-- Normalization writes a new version with adapter/contract version, normalized
-  timestamp, raw-evidence reference, and validation result. It does not mutate
-  an accepted financial record in place.
-- Re-delivery of byte-identical evidence is idempotent: it records a delivery
-  audit outcome but creates no duplicate active economic record.
-- A corrected or restated broker record creates a new version that explicitly
-  supersedes the affected prior record. Downstream lots, P&L, reports, and
-  payloads are invalidated and recomputed from a declared event-set version.
-- Operator/manual changes are separate review or correction records with actor,
-  timestamp, reason, before/after values, approval status, and source link.
-  They cannot overwrite broker evidence.
-- Every generated financial result identifies its input event-set version,
-  calculation version, as-of instant, and completeness/reconciliation status.
+### Normalized-fill identity
+
+- A confirmed normalized fill's natural key is `source_broker` +
+  `source_account_id` + `source_fill_id`.
+- A provider that lacks a stable source fill ID must define a documented,
+  deterministic key and collision strategy before its fills can use this
+  contract.
+- Identity is not presentation identity. An order ID, symbol, episode ID,
+  account label, dashboard row, or generated `fill_uid` is not a substitute for
+  the natural key.
+
+### Equivalent replay and conflict handling
+
+- OneJournal builds a deterministic signature from normalized economic fields.
+  It deliberately excludes the derived `fill_uid`, `raw_path`, and `fetched_at`
+  so transport/delivery differences do not create false economic conflicts.
+- Repeated records with the same natural key and the same normalized-economic
+  signature are equivalent replays. They deduplicate to one active normalized
+  fill.
+- Records with the same natural key and different normalized-economic
+  signatures are conflicts. The normal replay path rejects them rather than
+  silently overwriting the active fill.
+- This contract does not claim byte-identical raw-evidence replay. Raw content
+  identity and evidence-delivery versions belong to ADR-0010.
+
+### Calculation input fingerprints
+
+- Fill-based P&L inputs are canonicalized and fingerprinted independently of
+  record order.
+- Approved lifecycle-instruction inputs are canonicalized and fingerprinted
+  independently of record order.
+- A persisted P&L run is current only when both stored fingerprints match the
+  complete current as-of fill and approved-lifecycle inputs. A non-matching run
+  is not published as current financial evidence.
+- Calculation fingerprints prove exact calculation-input identity for their
+  stated scope. They do not by themselves prove raw provenance, correction
+  approval, completeness, reconciliation, or operational acceptance.
 
 ## Boundaries
 
-This decision does not choose a hosted event store, user authorization model,
-or data retention period. It does not allow an operator to “fix” source data
-by editing raw files, CSV exports, generated payloads, or prior calculations.
+This decision accepts only the repository's normalized-fill identity/replay and
+P&L input-fingerprint foundation. It does not accept a complete lineage or
+correction-governance model.
+
+In particular, it does not define immutable raw evidence hashes, evidence-
+delivery versions, versioned normalized records, source supersession,
+correction actor/reason/approval, event-set versions, downstream invalidation,
+governed recalculation, raw-to-output lineage, retention, deletion, or recovery.
+Those remain proposed in ADR-0010.
+
+The existing replace-import revision ledger is a bounded prototype mechanism.
+Its ability to retain prior/next payloads and preserve manual reviews does not
+authorize operators to edit raw evidence or establish a canonical broker-
+correction process.
 
 ## Alternatives considered
 
-### Continue `INSERT OR REPLACE` as the permanent correction model
+### Keep the full lineage and correction promise in ADR-0006
 
-It prevents duplicate primary keys but loses prior values, correction reason,
-and reproducibility. Rejected for canonical financial state.
+This would describe capabilities the repository does not yet provide and would
+make acceptance misleading. Rejected; the broader proposal is now ADR-0010.
 
 ### Deduplicate by date, symbol, quantity, and price
 
 Independent fills can share these fields, especially for partial fills. This
 risks data loss and is rejected.
 
-### Make dashboard episode IDs financial identity
+### Treat `fill_uid` or episode IDs as financial identity
 
-Episode grouping is a user-facing and evolving interpretation. It is not
-source-level evidence. Rejected.
+These identifiers are derived or presentation-oriented. They cannot replace
+the broker/account/source-fill natural key. Rejected.
+
+### Include delivery metadata in the economic signature
+
+Including `raw_path`, `fetched_at`, or derived `fill_uid` would turn equivalent
+redelivery into false economic conflict. Rejected for this signature; delivery
+identity belongs to ADR-0010.
 
 ## Consequences
 
 ### Positive
 
-- Replays, corrections, and recalculations become auditable and deterministic.
-- Duplicate detection distinguishes an identical redelivery from a real broker
-  correction.
-- Financial outputs can identify exactly what they were calculated from.
+- Equivalent normalized replays are deterministic and duplicate-safe.
+- Conflicting normalized economics cannot silently replace an active fill in
+  the normal replay path.
+- Persisted P&L cannot be treated as current after its declared inputs change.
+- Governance can accurately claim a strong bounded identity foundation without
+  claiming complete correction or provenance capability.
 
 ### Negative and trade-offs
 
-- The current replacement-based schema and importer require a versioned,
-  tested migration.
-- More lineage data increases schema and storage complexity, but is required
-  for financial traceability.
+- Equivalent normalized signatures do not prove the raw deliveries were byte-
+  identical.
+- The current replace-import revision path remains operationally useful but is
+  not a complete correction-governance model.
+- Full raw-to-output traceability and governed recalculation remain blocked on
+  ADR-0010 and later implementation.
 
 ## Compatibility and migration
 
-No existing identifiers may be silently discarded. A migration must map each
-current `fill_uid`, source fields, import run, and raw path into the new lineage
-model on a temporary database copy. Where content hash or raw evidence is
-missing, the record is marked legacy/unverified rather than given invented
-provenance. Existing dashboard or episode IDs remain references only.
+This acceptance changes no runtime behavior, schema, or stored data. Current
+natural keys, normalized-economic signatures, revision rows, and calculation
+fingerprints remain unchanged.
+
+Any future implementation of ADR-0010 must preserve the accepted identity and
+fingerprint semantics or supersede this ADR explicitly. Released migrations
+remain immutable; future schema work must be additive, versioned, rehearsed on
+a temporary database copy, and separately approved.
 
 ## Security, privacy, and financial impact
 
-Identifiers and raw paths can expose broker/account information. Frontend
-payloads must use only the minimum safe opaque IDs required for the owner’s
-workflow. Financial corrections must be attributable and tamper-evident.
+Broker/account identifiers and raw paths are private. UI payloads must expose
+only the minimum safe opaque identities needed for the owner's workflow.
+
+Identity conflict or fingerprint mismatch is financial-integrity evidence. It
+must fail closed and remain visible to operators; it must not be coerced into a
+duplicate, correction, or current financial result.
 
 ## Validation
 
-Implementation must prove idempotent identical redelivery, retained history for
-a changed source record, collision rejection, correction linkage, downstream
-invalidation, deterministic replay, no duplicated active fills/lots/P&L, and
-complete raw-to-output lineage. Migration validation must include row counts,
-hash checks where evidence exists, rollback, and privacy checks.
+The accepted scope must continue to prove:
+
+- natural-key construction from broker, account, and source fill ID;
+- equivalent normalized-economic replay deduplication;
+- conflicting normalized-economic replay rejection;
+- exclusion of `fill_uid`, `raw_path`, and `fetched_at` from the replay
+  signature;
+- deterministic fill and approved-lifecycle input fingerprints; and
+- rejection of persisted P&L runs whose fingerprints do not match current
+  as-of inputs.
+
+These checks validate only this ADR's bounded scope. They do not validate the
+proposed ADR-0010 capabilities.
 
 ## Rollback or supersession
 
-This proposal changes no stored data. The durable implementation must be
-additive until migration verification is complete and retain a rollback path to
-the prior database copy. A later retention or multi-user decision may extend
-the provenance model without removing historical links.
+This documentation acceptance changes no runtime state. A material change to
+the accepted identity, replay, or fingerprint semantics requires a new ADR that
+supersedes ADR-0006. ADR-0010 can be revised or rejected independently while it
+remains proposed.

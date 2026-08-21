@@ -87,7 +87,15 @@ class ConvertSchwabTransactionsCliTests(TestCase):
                         "positionEffect": "OPENING",
                         "price": 10,
                         "cost": 20,
-                    }
+                    },
+                    {
+                        "amount": 0,
+                        "cost": 0,
+                        "instrument": {
+                            "assetType": "CURRENCY",
+                            "symbol": "CURRENCY_USD",
+                        },
+                    },
                 ],
             }
         ]

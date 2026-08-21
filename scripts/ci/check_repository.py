@@ -60,7 +60,11 @@ def tracked_path_violation(path: str) -> str | None:
         and (filename.endswith(".duckdb") or filename.endswith(".duckdb.wal"))
     ):
         return "runtime journal databases must not be tracked"
-    if filename == ".env" or filename.endswith(".env"):
+    if (
+        filename == ".env"
+        or filename.startswith(".env.")
+        or filename.endswith(".env")
+    ):
         return "private environment files must not be tracked"
     if "tokens" in (part.lower() for part in parts):
         return "token directories must not be tracked"

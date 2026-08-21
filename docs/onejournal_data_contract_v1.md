@@ -114,6 +114,21 @@ Minimum top-level sections:
 - risk_events
 - journal_review_queue
 
+### Governance and conformance boundary
+
+- ADR-0003 is accepted for currency, precision/rounding, instant, market-date,
+  display-timezone, and session policy. Financial acceptance still requires
+  evidence that the applicable implementation path conforms.
+- ADR-0007 is accepted policy, not proof that this v1 contract or current
+  payload implementation conforms.
+- Current payload paths do not yet provide processed/unavailable counts and an
+  omission reason for every affected scope, separate every partial subtotal
+  from its unavailable consolidated total, or remove every implicit USD/zero
+  fallback.
+- PNL-08 therefore remains blocked. A later versioned payload change must update
+  producers, validators, consumers, tests, and presentation atomically; absent
+  future fields must not be interpreted as `valid`.
+
 ## Portfolio Snapshot V1
 
 - A `portfolio_snapshots` section appears in dashboard payloads that support

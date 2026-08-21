@@ -349,7 +349,7 @@ class TransactionsJsonAdapterTests(unittest.TestCase):
         )
         self.assertEqual(rows[0]["symbol"], "AAPL")
         self.assertEqual(rows[0]["side"], "buy")
-        self.assertEqual(rows[0]["quantity"], "2.0")
+        self.assertEqual(rows[0]["quantity"], "2")
         self.assertEqual(rows[0]["fill_price"], "150")
         self.assertEqual(rows[0]["open_close"], "open")
         self.assertEqual(stats.security_items, 1)
@@ -387,6 +387,14 @@ class TransactionsJsonAdapterTests(unittest.TestCase):
                                 "symbol": "AAPL",
                             },
                             "positionEffect": "OPENING",
+                        },
+                        {
+                            "amount": 0,
+                            "cost": 0,
+                            "instrument": {
+                                "assetType": "CURRENCY",
+                                "symbol": "CURRENCY_USD",
+                            },
                         },
                     ],
                 }
@@ -487,6 +495,14 @@ class TransactionsJsonAdapterTests(unittest.TestCase):
                                 "symbol": "MSFT",
                             },
                             "positionEffect": "OPENING",
+                        },
+                        {
+                            "amount": 0,
+                            "cost": 0,
+                            "instrument": {
+                                "assetType": "CURRENCY",
+                                "symbol": "CURRENCY_USD",
+                            },
                         },
                     ],
                 }

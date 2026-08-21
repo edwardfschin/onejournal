@@ -30,6 +30,17 @@ The adapter writes commission and fees as zero for this source.
 
 Fee enrichment should come later from Schwab transactions transferItems JSON.
 
+## Decimal and evidence rule
+
+The adapter parses JSON decimal tokens directly as decimal values and emits
+canonical decimal strings. Binary floats, malformed or non-finite financial
+values, zero quantities, and missing option multiplier evidence fail closed.
+
+The observed orders source does not carry currency evidence, so this adapter's
+existing USD output remains an explicit source limitation. Transactions JSON
+is the accounting and currency-evidence source, and reconciliation must agree
+before an orders row supports financial acceptance.
+
 ## Output rule
 
 The adapter writes canonical normalized fills CSV only.
@@ -43,4 +54,3 @@ The normalized fills validator is daily and requires --asof.
 When converting a date-range Schwab orders JSON file, use --asof and write one daily normalized fills CSV at a time.
 
 Date-range output may be useful for inspection, but it should not be used as the validated import artifact.
-

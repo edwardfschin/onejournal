@@ -58,6 +58,12 @@ Required columns:
 - liquidity_flag
 - episode_group_id
 
+Financial values use canonical decimal strings. Broker adapters must parse
+source decimal tokens without a binary-float intermediate and fail closed on
+missing, malformed, non-finite, or ambiguous required financial evidence.
+Currency must be explicit in accounting evidence; a presentation or account
+default is not currency evidence.
+
 ### Stable identity and replay rules
 
 Stable identity is defined by:
@@ -68,10 +74,22 @@ Stable identity is defined by:
 
 Replay rules:
 
-- Byte-identical replay of the same stable identity is idempotent and accepted.
-- The same stable identity with changed normalized fields is treated as a
-  correction/revision conflict and must be rejected until a full correction
-  workflow is introduced.
+- Replay equivalence is based on the deterministic normalized-economic
+  signature accepted by ADR-0006, not on byte-identical raw evidence.
+- The signature deliberately excludes derived `fill_uid`, delivery-time
+  `fetched_at`, and `raw_path`; changes to those fields alone do not create a
+  different normalized economic fill.
+- The same stable identity and equivalent normalized-economic signature is
+  idempotent and deduplicates to one active normalized fill.
+- The same stable identity with a changed normalized-economic signature is a
+  conflict and is rejected by the normal replay path.
+
+An explicitly requested replace import can preserve prior/next normalized
+payloads and manual reviews in the current revision ledger. That bounded
+mechanism is not complete source supersession or correction governance. Raw
+content hashes, evidence-delivery versions, normalized-record versions,
+correction actor/reason/approval, downstream invalidation, recalculation, and
+raw-to-output lineage remain proposed in ADR-0010.
 
 ## Source-of-truth rule
 
@@ -111,10 +129,14 @@ No order cancellation.
 No order modification.
 No auto-trade.
 
-## Current Phase I1 decision
+## Phase I1 historical decision
 
-OneJournal will continue using CSV as the input and transport layer.
+Phase I1 established CSV as the input and transport layer and DuckDB as the
+journal source of truth. Schwab adapters now exist behind the normalized-fill
+boundary; the earlier implementation hold on adding adapters is no longer a
+current roadmap restriction.
 
 OneJournal will not treat CSV as the live journal source of truth.
 
-OneJournal will not add Schwab or IBKR broker adapters until the normalized fills contract is guarded by baseline.
+Any new or changed broker adapter must continue to satisfy this normalized-fill
+contract and its validation baseline before publication.

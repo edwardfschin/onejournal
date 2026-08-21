@@ -68,7 +68,9 @@ approval from implementation progress.
 
 At the start of every new substantive work item, before repository inspection,
 tool use, planning, implementation, or other credit-consuming work, advise the
-user which currently available GPT model and reasoning level should be used.
+user which currently available GPT model and reasoning level should be used,
+unless automatic model switching for the current session has been explicitly
+confirmed as available. Do not assume that automatic switching is available.
 
 The advice must state:
 
@@ -103,6 +105,10 @@ If a less expensive model is sufficient and the current model consumes more
 credits, recommend the switch and pause before substantive work so the user can
 change models. If the current model is appropriate, state that and continue
 unless another approval boundary requires a pause.
+
+For credit-sensitive or high-risk work, do not begin substantive work before
+communicating the recommendation, including whether the current model is
+suitable or the user should switch.
 
 Reassess the recommendation when the scope, risk, ambiguity, or required
 judgment changes materially during a task. Tell the user before moving to a
@@ -220,6 +226,17 @@ consumer in the same controlled change.
 ## Local source of truth
 
 The user's Mac/MacBook project copy is the development source of truth.
+
+The canonical OneJournal development repository is:
+
+```text
+/Users/edward/Projects/OneJournal
+```
+
+The former iCloud checkout is retained only as a backup/reference copy. It is
+not authoritative and must not be used for new development changes. Private
+financial evidence is stored separately under
+`/Users/edward/Projects/Private/OneJournal` and must never be copied into Git.
 
 Make and validate changes locally first. Deployment, VPS synchronization,
 hosting changes, or production operations happen only after local validation
@@ -577,6 +594,11 @@ For proposed work, state current behaviour, desired behaviour, root cause or
 missing capability, affected artifacts, impact map, smallest safe implementation,
 validation method, rollback method, and risks or decisions requiring approval.
 
+Whenever a work item reaches a point requiring project-owner approval, explain
+each decision in human language before requesting approval. For each decision,
+state what is being decided, why it matters, the risks of each option, the
+implications, the benefits, the expected outcome, and the recommended option.
+
 Do not hide uncertainty. Inspect and validate instead of guessing.
 
 ## Approval boundaries
@@ -586,6 +608,13 @@ database migrations, major framework changes, major dependency installations,
 public contract changes, external deployment, VPS/production synchronization,
 broker-account access, security-policy changes, order submission, pushing
 commits, or creating pull requests.
+
+When the user explicitly says `Proceed` after an action has already been
+presented and approved, treat that instruction as authorization to execute the
+approved action within its defined scope. Do not repeat the action or ask for
+the same approval again. Pause only if a new risk, scope change, conflict, or
+new approval boundary appears. This execution rule does not waive, combine, or
+expand any approval boundary in this file.
 
 ## Unresolved decisions must not become assumptions
 

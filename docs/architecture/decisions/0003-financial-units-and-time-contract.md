@@ -1,7 +1,9 @@
 # ADR-0003: Define financial units, currency, and time semantics
 
-- Status: Approved
+- Status: Accepted
 - Date: 2026-08-08
+- Last reviewed: 2026-08-21
+- Accepted date: 2026-08-21
 - Decision owners: OneJournal project owner
 - Related roadmap items: CON-02, CON-03 through CON-06, JRN-01 through JRN-05,
   PNL-01 through PNL-08
@@ -20,19 +22,23 @@ already carry a per-record `currency` and future broker/account data may be in
 another currency. A trustworthy consolidated result must not silently treat
 native-currency values as USD.
 
-The current implementation uses `Decimal` for the reusable normalized domain
-records and DuckDB `DECIMAL(38,10)` for persisted fills and episode amounts.
-However, the current Schwab transaction adapter uses binary `float` while
-deriving amounts, prices, commissions, and fees. The Streamlit prototype also
-converts values to `float` for presentation. These are implementation gaps,
-not an approved precision policy.
+The implementation uses `Decimal` for reusable normalized domain records, P&L
+calculations, DuckDB `DECIMAL(38,10)` financial columns, and the hardened Schwab
+orders and transactions adapter boundary. That remains partial conformance:
+presentation paths still contain numeric fallbacks and the time-boundary gaps
+below remain open.
 
-The prototype stores the current `filled_at`, `fetched_at`, `opened_at`, and
-audit timestamps as DuckDB `TIMESTAMP` values. Its import scripts currently
-discard timezone offsets before persistence. The Schwab orders and transactions
-adapters derive `asof` by taking the first ten characters of the broker
-timestamp instead of converting the instant into an explicit trading timezone.
-This can assign an event to the wrong market date near midnight or during DST.
+Migration 0009 added canonical UTC evidence columns as timezone-aware strings
+without reinterpreting legacy values. The legacy timezone-less `TIMESTAMP`
+columns remain for compatibility, and unresolved legacy rows can still lack UTC
+evidence. Both Schwab adapters also continue to derive `asof` by slicing the
+date text from a broker timestamp instead of first converting the instant to
+the approved market timezone. This can assign an event to the wrong market date
+near midnight or during DST.
+
+Current consolidated-output paths can still default a missing currency to USD
+or use zero as a calculation fallback. Those behaviors are implementation gaps;
+they do not approve an implicit currency, conversion, or missing-value policy.
 
 `config/app.yaml` names `Asia/Singapore` as the prototype application timezone,
 while the accepted product scope is initially US instruments. The project needs
@@ -41,7 +47,23 @@ P&L, portfolio totals, reconciliation, or a production website.
 
 ## Decision
 
-Subject to approval, OneJournal will use the following contract.
+The project owner accepted all seven policy areas below on 2026-08-21.
+OneJournal will use the following contract.
+
+### Project-owner confirmations
+
+| Policy area | Decision | Confirmation |
+|---|---|---|
+| Reporting currency | USD is the initial reporting and consolidated currency. | Confirmed 2026-08-21 |
+| Native currency and FX | Preserve native currency and prohibit implicit FX or currency relabelling. | Confirmed 2026-08-21 |
+| Decimal precision | Use decimal arithmetic and strings through financial calculation, persistence, and serialization; round only at documented boundaries. | Confirmed 2026-08-21 |
+| Instant storage | Store and exchange event instants as timezone-aware UTC while retaining raw timestamp evidence. | Confirmed 2026-08-21 |
+| Market-date derivation | Derive the initial US market date in `America/New_York`, not from UTC, Singapore, import, posting, or settlement date. | Confirmed 2026-08-21 |
+| Display timezone | Use `Asia/Singapore` only to present an instant; it does not change market date or source evidence. | Confirmed 2026-08-21 |
+| Session classification | Use an approved calendar and venue/instrument evidence; record `unknown` when evidence is insufficient. | Confirmed 2026-08-21 |
+
+This acceptance establishes policy. It does not claim that every existing
+adapter, timestamp, database row, or presentation path conforms.
 
 ### Currency and aggregation
 
@@ -145,6 +167,12 @@ display preference only after the implementation adopts this contract; it is
 not evidence that existing persisted `asof_date` values were correctly
 derived.
 
+Migration 0009's historical header describes ADR-0003 as accepted, and
+migration 0010 repeats that historical dependency wording. Released migrations
+are checksum-locked and must not be rewritten to repair governance text. Those
+comments are not current acceptance evidence; this ADR and the architecture
+register are authoritative for the present status.
+
 ## Alternatives considered
 
 ### Treat every initial record as USD and defer currency fields
@@ -196,10 +224,12 @@ precision before financial calculations complete. Rejected.
 - FX conversion and exchange-session support remain unavailable until their
   own providers and contracts are approved.
 - Decimal strings add frontend formatting work but avoid silent numeric loss.
+- Existing P&L implementation evidence is preserved. Dependent acceptance must
+  still prove conformance to this decision rather than relying on status alone.
 
 ## Compatibility and migration
 
-After acceptance, implementation must first map every reader and writer of
+Implementation must first map every reader and writer of
 `asof_date`, timestamp, currency, decimal, and payload fields. In particular,
 it must replace date slicing in the Schwab adapters; remove float-based
 financial derivation; preserve offsets rather than stripping them during DB

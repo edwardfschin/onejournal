@@ -1,0 +1,36 @@
+{
+  "assessment_id": "ONJ-TRUST-01B-v1-original-preserved",
+  "owner_sign_off": false,
+  "preservation": {
+    "private_bundle_manifest_sha256": "a181c1cb4b1182eadacfa62d016a8fa01b579888a60b01a7fbaad9b832ba8b1e",
+    "private_preservation_index_sha256": "b5f5b998484759f4096cf6476928a63e1b7707fcc7232dad618d7e71e7773f30",
+    "private_storage_required": true
+  },
+  "proof_id": "ONJ-TRUST-01B",
+  "provenance": {
+    "calculation_input_fingerprint": "420b71dc0f2ff9d470751328d52d9bbbc01b0dcc819cfbf5c80219ca2bb07dfd",
+    "harness_sha256": "6e0d21e8c2b8071880c14a27e0f6dfdee908495248f71cae120989a9f85a7166",
+    "normalized_selected_sha256": "bd3cb3efb2d9b88908044e957fd2e7229b3de19adede9d39f792026cd2c74ba0",
+    "orders_adapter_sha256": "1c236eae38020316559412d9486bca84200dd09d4e5500a7a34120e003bb4b9c",
+    "orders_raw_sha256": "9b66168b0330b7ea3857b5ef09d3b3406e7eccd240a0911db30df5a17ac991af",
+    "original_manifest_sha256": "7d0ceaf4c7314e5b333b67e1d58a47e3718d403aeef07e6db42f2bf10feb010b",
+    "original_validation_sha256": "1b14cf6e1ca7dcc5b6e5797ba1e48e8b26e197c5a90a1820e0e8f970778e02ad",
+    "rehearsal_database_sha256": "6dba451e85848a8b4579d23f97de83ffce2dbcfb8bfe81efa2415e4e7ed79df1",
+    "repository_commit": "f045fee427847a8724df8f56c7cb248623720ba7",
+    "transactions_adapter_sha256": "28b45c6afcfc8ab2701254872029cf2fd1b50756ed8d873d553c62d4786d3941",
+    "transactions_raw_sha256": "8543862de77db9c20c0d511ae4c6833ee602d42f812247cacbf9b9b14e96f93c"
+  },
+  "status": {
+    "technical_evidence_path": "PASS",
+    "trusted_ledger_exit_gate": "PRESERVED_NOT_SIGNED_OFF"
+  },
+  "limitation_codes": [
+    "ADR_0003_PENDING_AT_ORIGINAL_ASSESSMENT",
+    "BINARY_FLOAT_BOUNDARY_AT_ORIGINAL_ASSESSMENT",
+    "RAW_LINEAGE_EXTERNAL_TO_JOURNAL_ROWS",
+    "INCREMENTAL_IMPORT_REPAIR_DEFERRED",
+    "MIXED_DATE_SNAPSHOT_RECONCILIATION_OUT_OF_SCOPE",
+    "LIFECYCLE_REVIEW_PENDING",
+    "OWNER_SIGN_OFF_PENDING"
+  ]
+}

@@ -5,6 +5,7 @@ import json
 import re
 from dataclasses import dataclass
 from datetime import datetime
+from decimal import Decimal, InvalidOperation
 from pathlib import Path
 from typing import Any, Iterable
 
@@ -53,7 +54,13 @@ _OPTION_SYMBOL_RE = re.compile(
 
 
 def load_orders_json(path: Path) -> list[dict[str, Any]]:
-    payload = json.loads(path.read_text(encoding="utf-8"))
+    payload = json.loads(
+        path.read_text(encoding="utf-8"),
+        parse_float=Decimal,
+        parse_constant=lambda value: (_ for _ in ()).throw(
+            ValueError(f"Invalid non-finite JSON number: {value}")
+        ),
+    )
     if not isinstance(payload, list):
         raise ValueError("Schwab orders JSON must be a top-level list")
     orders: list[dict[str, Any]] = []
@@ -104,9 +111,11 @@ def _parse_occ_like_symbol(symbol: str) -> dict[str, str]:
     year = int("20" + yymmdd[:2])
     month = int(yymmdd[2:4])
     day = int(yymmdd[4:6])
-    strike_raw = int(m.group("strike"))
-    strike = strike_raw / 1000
-    strike_text = f"{strike:.3f}".rstrip("0").rstrip(".")
+    strike_raw = Decimal(m.group("strike"))
+    strike = strike_raw / Decimal("1000")
+    strike_text = format(strike, "f")
+    if "." in strike_text:
+        strike_text = strike_text.rstrip("0").rstrip(".")
     return {
         "root": m.group("root").strip().upper(),
         "expiry": f"{year:04d}-{month:02d}-{day:02d}",
@@ -147,6 +156,36 @@ def _asset_class(asset_type: str) -> str:
     return value.lower()
 
 
+def _decimal_value(
+    value: Any,
+    *,
+    field_name: str,
+    allow_zero: bool = True,
+) -> Decimal:
+    if value in (None, ""):
+        raise ValueError(f"Missing Schwab financial field: {field_name}")
+    if isinstance(value, (bool, float)):
+        raise ValueError(
+            f"Schwab financial field {field_name} must be an exact decimal value, not {type(value).__name__}"
+        )
+    try:
+        parsed = Decimal(str(value))
+    except (InvalidOperation, ValueError) as exc:
+        raise ValueError(f"Invalid Schwab financial field {field_name}: {value!r}") from exc
+    if not parsed.is_finite():
+        raise ValueError(f"Invalid non-finite Schwab financial field {field_name}: {value!r}")
+    if not allow_zero and parsed == 0:
+        raise ValueError(f"Schwab financial field {field_name} must not be zero")
+    return parsed
+
+
+def _decimal_text(value: Decimal) -> str:
+    text = format(value, "f")
+    if "." in text:
+        text = text.rstrip("0").rstrip(".")
+    return "0" if text in {"-0", ""} else text
+
+
 def _multiplier_from_instrument(instrument: dict[str, Any]) -> str:
     deliverables = instrument.get("optionDeliverables")
     if isinstance(deliverables, list) and deliverables:
@@ -154,8 +193,13 @@ def _multiplier_from_instrument(instrument: dict[str, Any]) -> str:
         if isinstance(first, dict):
             units = first.get("deliverableUnits")
             if units not in (None, ""):
-                return str(int(float(units))) if float(units).is_integer() else str(units)
-    return "100"
+                value = _decimal_value(
+                    units, field_name="option deliverable units", allow_zero=False
+                )
+                if value < 0:
+                    raise ValueError("Schwab option deliverable units must be positive")
+                return _decimal_text(value)
+    raise ValueError("Missing broker-confirmed Schwab option multiplier")
 
 
 def _leg_map(order: dict[str, Any]) -> dict[int, dict[str, Any]]:
@@ -259,11 +303,34 @@ def normalized_rows_from_orders(
                     expiry_raw = str(instrument.get("expirationDate") or "").strip()
                     expiry = _date_part(expiry_raw) or parsed.get("expiry", "")
                     strike_raw = instrument.get("strikePrice")
-                    strike = str(strike_raw) if strike_raw not in (None, "") else parsed.get("strike", "")
+                    if strike_raw not in (None, ""):
+                        strike_value = _decimal_value(
+                            strike_raw, field_name="option strike"
+                        )
+                        if strike_value < 0:
+                            raise ValueError("Schwab option strike must not be negative")
+                        strike = _decimal_text(strike_value)
+                    else:
+                        strike = parsed.get("strike", "")
+                    if not strike:
+                        raise ValueError("Missing Schwab option strike evidence")
                     multiplier = _multiplier_from_instrument(instrument)
                     symbol = underlying_symbol
                 else:
                     symbol = raw_symbol.strip().upper()
+
+                quantity = _decimal_value(
+                    execution_leg.get("quantity"),
+                    field_name="execution quantity",
+                    allow_zero=False,
+                )
+                if quantity < 0:
+                    raise ValueError("Schwab execution quantity must be positive")
+                fill_price = _decimal_value(
+                    execution_leg.get("price"), field_name="execution price"
+                )
+                if fill_price < 0:
+                    raise ValueError("Schwab execution price must not be negative")
 
                 order_id = str(order.get("orderId", "")).strip()
                 source_fill_id = f"schwab_order:{order_id}:activity:{activity_id}:leg:{leg_id}"
@@ -278,8 +345,8 @@ def normalized_rows_from_orders(
                     "asset_class": asset_class,
                     "symbol": symbol,
                     "side": side,
-                    "quantity": str(execution_leg.get("quantity", "")).strip(),
-                    "fill_price": str(execution_leg.get("price", "")).strip(),
+                    "quantity": _decimal_text(quantity),
+                    "fill_price": _decimal_text(fill_price),
                     "commission": "0",
                     "fees": "0",
                     "currency": "USD",
@@ -288,7 +355,7 @@ def normalized_rows_from_orders(
                     "option_type": option_type,
                     "expiry": expiry,
                     "strike": strike,
-                    "multiplier": multiplier or ("100" if asset_class == "option" else ""),
+                    "multiplier": multiplier if asset_class == "option" else "",
                     "open_close": open_close,
                     "execution_venue": str(order.get("destinationLinkName", "")).strip(),
                     "liquidity_flag": "",
@@ -323,4 +390,3 @@ def validate_asof(value: str | None) -> str | None:
         return None
     datetime.strptime(value, "%Y-%m-%d")
     return value
-

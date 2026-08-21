@@ -58,6 +58,30 @@ Valid status values are:
 
 `trade_summary_status` maps per metric status using the same value vocabulary.
 
+## ADR-0007 Conformance Status
+
+ADR-0007 is accepted policy, but this payload contract and its current
+producer/consumer path are not yet fully conformant. Existing quality fields are
+useful scaffolding only.
+
+Known gaps include:
+
+- position status can become `valid` from import/as-of evidence without the
+  required broker-position, quote-source, entitlement, reconciliation, and
+  approved freshness evidence;
+- not every affected metric/scope reports processed and unavailable counts;
+- not every omitted item has a privacy-safe reason;
+- current producer/presentation paths include implicit USD and zero fallbacks;
+- partial subtotals and unavailable consolidated totals are not represented as
+  separate versioned contract fields throughout the payload; and
+- responsive and accessible presentation of every quality state has not been
+  validated.
+
+PNL-08 remains blocked. A later separately approved change must version and
+update the producer, validator, consumer, tests, and presentation behavior
+together. This documentation change does not add unimplemented required fields
+to the current payload schema or change runtime behavior.
+
 Each dashboard entry must contain:
 
 ```text

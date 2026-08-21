@@ -68,6 +68,11 @@ Transaction-level fee totals should be calculated from CURRENCY transferItems.
 
 Fees may be allocated across security legs when producing normalized fill rows.
 
+The adapter allocates a transaction total equally at the greater of source
+precision or two decimal places, then assigns any remaining smallest-unit
+residual to security legs in source order. Allocated rows must sum exactly to
+the transaction total.
+
 Allocated fees must remain auditable.
 
 Do not lose transaction-level fee evidence when allocating fees to legs.
@@ -118,9 +123,22 @@ Use instrument.expirationDate as expiry.
 
 Use instrument.strikePrice as strike.
 
-Use instrument.optionPremiumMultiplier as multiplier, defaulting to 100 only when missing.
+Use instrument.optionPremiumMultiplier as multiplier, or explicit
+optionDeliverables units when present. Missing or non-positive multiplier
+evidence fails closed; the adapter must not invent a default.
 
 Use instrument.optionDeliverables as supporting deliverable evidence.
+
+## Decimal and currency boundary
+
+JSON financial numbers are parsed directly as decimal values. Binary floats,
+malformed values, non-finite values, zero quantities, ambiguous fee amounts,
+and missing required financial evidence fail closed.
+
+Transaction currency comes from CURRENCY transfer-item instrument symbols such
+as `CURRENCY_USD`. All currency items in one transaction must identify the same
+valid ISO 4217 code. Missing or mixed currency evidence fails closed; the
+adapter does not relabel a transaction as USD.
 
 ## Source identity rule
 

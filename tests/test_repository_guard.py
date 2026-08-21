@@ -1,8 +1,9 @@
 from __future__ import annotations
 
-import unittest
+import shutil
 import subprocess
 import tempfile
+import unittest
 from pathlib import Path
 
 from scripts.ci.check_repository import (
@@ -10,6 +11,10 @@ from scripts.ci.check_repository import (
     secret_violations,
     tracked_path_violation,
 )
+
+
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+GIT_IDENTITY_GUARD = PROJECT_ROOT / "bin/onejournal_git_status.sh"
 
 
 class RepositoryGuardTests(unittest.TestCase):
@@ -35,6 +40,9 @@ class RepositoryGuardTests(unittest.TestCase):
             "data/journal/backups/onejournal.duckdb",
             "output/dashboard/latest.json",
             ".env",
+            ".env.local",
+            ".env.production",
+            "config/.env.staging",
             "config/private.env",
             "tokens/schwab.json",
             "runtime/access_token.json",
@@ -97,3 +105,62 @@ class RepositoryGuardTests(unittest.TestCase):
             any("AWS access key" in failure for failure in failures),
             failures,
         )
+
+    def test_gitignore_covers_dot_env_variants(self) -> None:
+        for path in (".env", ".env.local", ".env.production", ".env.staging"):
+            with self.subTest(path=path):
+                result = subprocess.run(
+                    ["git", "check-ignore", "--quiet", "--no-index", path],
+                    cwd=PROJECT_ROOT,
+                    check=False,
+                )
+                self.assertEqual(result.returncode, 0, path)
+
+
+class GitIdentityGuardTests(unittest.TestCase):
+    def run_guard(self, repository: Path) -> subprocess.CompletedProcess[str]:
+        return subprocess.run(
+            [str(repository / "bin/onejournal_git_status.sh")],
+            cwd=repository,
+            check=False,
+            capture_output=True,
+            text=True,
+        )
+
+    def create_guarded_repository(self, repository: Path) -> None:
+        (repository / "bin").mkdir(parents=True)
+        shutil.copy2(GIT_IDENTITY_GUARD, repository / "bin/onejournal_git_status.sh")
+        subprocess.run(["git", "init", "--quiet"], cwd=repository, check=True)
+
+    def test_canonical_repository_passes(self) -> None:
+        result = self.run_guard(PROJECT_ROOT)
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn(f"PROJECT_DIR={PROJECT_ROOT}", result.stdout)
+        self.assertIn("ONEJOURNAL_GIT_GUARD=PASS", result.stdout)
+
+    def test_checkout_folder_name_does_not_define_identity(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            repository = Path(temporary_directory) / "RenamedCheckout"
+            self.create_guarded_repository(repository)
+
+            result = self.run_guard(repository)
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn("ONEJOURNAL_GIT_GUARD=PASS", result.stdout)
+
+    def test_rejects_script_below_a_different_git_root(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            git_root = Path(temporary_directory)
+            subprocess.run(["git", "init", "--quiet"], cwd=git_root, check=True)
+            repository = git_root / "nested" / "OneJournal"
+            (repository / "bin").mkdir(parents=True)
+            shutil.copy2(
+                GIT_IDENTITY_GUARD,
+                repository / "bin/onejournal_git_status.sh",
+            )
+
+            result = self.run_guard(repository)
+
+        self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+        self.assertIn("FAIL git top-level mismatch", result.stdout)

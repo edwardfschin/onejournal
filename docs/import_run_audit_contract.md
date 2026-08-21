@@ -12,6 +12,16 @@ DuckDB import_runs is the import audit source of truth.
 
 DuckDB normalized_fills must link back to import_runs through import_run_id.
 
+This is batch lineage: it identifies which import run produced a current
+normalized-fill row and records the source path, date, count, status, and notes
+for that batch. It is not complete evidence provenance.
+
+In particular, `import_runs` does not by itself prove immutable raw content
+hashes, separate evidence-delivery versions, versioned normalized records,
+explicit supersession, correction actor/reason/approval, downstream
+invalidation, governed recalculation, or raw-to-output lineage. Those broader
+decisions remain proposed in ADR-0010.
+
 ## Required import_runs fields
 
 - import_run_id

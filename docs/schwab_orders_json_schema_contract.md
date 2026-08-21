@@ -129,7 +129,9 @@ expiry should be parsed from Schwab option symbol or instrument description when
 
 strike should be parsed from Schwab option symbol or instrument description when strikePrice is absent.
 
-multiplier should come from optionDeliverables deliverableUnits when available, otherwise default to 100 for US options.
+multiplier must come from explicit optionDeliverables deliverableUnits.
+Missing or non-positive multiplier evidence fails closed rather than defaulting
+to 100.
 
 open_close comes from positionEffect.
 
@@ -154,6 +156,10 @@ BUY maps to side buy.
 SELL maps to side sell.
 
 Unknown instruction values must fail validation or be logged as unsupported.
+
+Execution quantity, price, strike, and multiplier are parsed and serialized as
+decimal values without a binary-float intermediate. Missing, malformed,
+non-finite, or invalid values fail closed.
 
 ## Option symbol parsing rule
 

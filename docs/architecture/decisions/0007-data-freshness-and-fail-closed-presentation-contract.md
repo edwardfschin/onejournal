@@ -1,7 +1,7 @@
 # ADR-0007: Define data freshness, reconciliation, and fail-closed presentation
 
-- Status: Proposed
-- Date: 2026-07-23
+- Status: Accepted
+- Date: 2026-08-20
 - Decision owners: OneJournal project owner
 - Related roadmap items: CON-06, PNL-02 through PNL-08, WEB-01 through WEB-09
 - Related contracts: ADR-0003 through ADR-0006,
@@ -12,20 +12,20 @@
 
 ## Context
 
-The current prototype records import runs and reconciles same-date Schwab
-orders-normalized fills against transactions-normalized fills. It has no
-position/mark/market-data pipeline, freshness SLA, stale-price state, or
-portfolio-level reconciliation. The dashboard payload contains generated time
-and simple episode previews but does not publish data quality or completeness
-for financial totals.
+The current prototype records import runs, reconciles broker evidence, and
+publishes partial quality-state scaffolding. It also has provider-independent
+quote storage groundwork. It still lacks complete broker-position and
+portfolio reconciliation, approved end-to-end provider evidence, and a payload
+contract that reports processed/unavailable counts and an omission reason for
+every affected scope.
 
 Displaying a stale mark, incomplete import, or unreconciled broker state as a
 normal portfolio/P&L number would be misleading.
 
 ## Decision
 
-Subject to project-owner approval, every published financial value and report
-will carry machine-readable freshness and completeness metadata.
+Every published financial value and report will carry machine-readable
+freshness and completeness metadata.
 
 - Each source dataset records provider, retrieval/import run, source evidence,
   as-of instant, received time, validation time, status, counts, warnings, and
@@ -49,9 +49,17 @@ will carry machine-readable freshness and completeness metadata.
   It may show a separately labelled partial/native-currency subtotal only when
   the omitted scope and reason are explicit; it must not present that subtotal
   as a consolidated total.
+- Independently valid information remains visible. Every affected scope reports
+  processed and unavailable counts, and every omission carries a reason.
+- A partial subtotal is separately labelled as partial. Any affected
+  consolidated total remains `incomplete` or `unavailable`; the partial
+  subtotal is never relabelled as the consolidated result.
 - The UI deliberately designs loading, empty, stale, partial, pending, failed,
   and no-activity states. Zero is displayed only when the system has valid
   evidence that the mathematical value is zero.
+- Missing or unavailable values never become zero. `valid` remains specific to
+  the exact metric and scope; one valid panel or subtotal cannot make a wider
+  aggregate valid.
 - Reconciliation compares the appropriate authority for the metric: fills to
   transaction/accounting evidence, positions/lots to broker position snapshots,
   cash to broker cash evidence, and calculated P&L to explainable broker
@@ -64,6 +72,28 @@ This decision does not select a market-data provider, quote type, exchange
 calendar, exact freshness duration, alert channel, availability target, or
 incident-response policy. It does not make the Streamlit prototype a production
 website or authorize background broker polling.
+
+## Acceptance scope and non-claims
+
+Acceptance makes the fail-closed Option A policy durable:
+
+```text
+available + explainable partial information = allowed
+hidden uncertainty = not allowed
+```
+
+Acceptance does not:
+
+- change runtime behavior or the current payload schema;
+- prove producer, validator, Streamlit, API, or UI conformance;
+- prove that tests pass;
+- establish operational or financial acceptance;
+- advance PNL-02, PNL-03, PNL-04, or PNL-08;
+- prove complete source, reconciliation, freshness, count, or omission-reason
+  coverage; or
+- establish responsive or accessible presentation.
+
+Those implementation and validation gates remain separate roadmap work.
 
 ## Alternatives considered
 
@@ -121,7 +151,7 @@ mobile accessibility of each state.
 
 ## Rollback or supersession
 
-This proposal changes no runtime output. An accepted implementation must be
-versioned and deployed behind validated producers/consumers. A later market-data
-or service-level ADR supplies thresholds and may supersede the relevant parts
-without weakening existing fail-closed behavior.
+This policy acceptance changes no runtime output. Its implementation must be
+versioned and deployed behind validated producers/consumers. A later market-
+data or service-level ADR may supply thresholds or supersede the relevant parts
+without weakening accepted fail-closed behavior.
