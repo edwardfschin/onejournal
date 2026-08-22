@@ -1,0 +1,46 @@
+{
+  "assessment_date": "2026-08-22",
+  "assessment_version": "v1-expiration",
+  "candidate_id": "b359120d3191483205862467cf08ca7f30946ab4212387a1d67e213129d0bb77",
+  "limitation_codes": [
+    "DESCRIPTION_HINT_MANUALLY_REVIEWED",
+    "FILL_EPISODE_PROJECTION_NOT_EVENT_AWARE",
+    "FULL_ADR_0010_PROVENANCE_DEFERRED",
+    "OWNER_SIGN_OFF_PENDING",
+    "PRIVATE_IDENTITIES_AND_ECONOMICS_OMITTED_FROM_PUBLIC_ARTIFACT"
+  ],
+  "owner_sign_off": false,
+  "proof_id": "ONJ-TRUST-03",
+  "provenance": {
+    "approved_event_fingerprint": "107c0787d3472b3b7926eb90ed021fdabb84e25b8690a79231a3e2af2aef2335",
+    "expiration_orders_raw_sha256": "541be773e85c78128c6326a83d499a5f793910bf3e4c529e6371352dc20b25fa",
+    "expiration_transactions_raw_sha256": "7c21c7e14f68c9ce136d06754d38b785ffd8267b3349597c3d3e83918417f43a",
+    "fill_input_fingerprint": "c7edc2004c31f6e732faa7476d0bfd05f413ee2a67a09f57ac71db0db1f902d9",
+    "harness_sha256": "90197e000b3cdc6394f69f66958bbc5c065ef32aa32fbb90da38ed3b09358e5a",
+    "opening_orders_raw_sha256": "b63a0f0e83b5f9a59fa625f326b3db17b6aae6010ffc46b388d84b82d9c26877",
+    "opening_transactions_raw_sha256": "b279665b202b3628c6e4f6874f787dd09c9c4baedac309181e0e728f8fd6491a",
+    "private_manifest_sha256": "1d71f0ada5ac21c409f02c4cc6a97e4252818f2012ada501d95c83aebf25dd85",
+    "rehearsal_database_sha256": "ab55b3e694c997a338f5060470a235fc483cf219bb8e8b1887e49ec0c97d2082",
+    "repository_commit": "b82a138b3090e8c9b21b9e5ed64f1d20d4cadd13",
+    "selection_snapshot_fingerprint": "554ad7bebc003b2d3e3c092821b2616be98753378678760154bf98c7fe91fe00",
+    "source_patch_sha256": "48484a4efc26122a6f1fecd9c0095f2d34db80d501750848904b23bc075c5f00"
+  },
+  "scope": {
+    "broker_or_provider_access": false,
+    "currency": "USD",
+    "expiration_quantity": "1",
+    "isolated_rehearsal_only": true,
+    "lifecycle": "SHORT OPTION EXPIRATION",
+    "opening_quantity": "1",
+    "real_journal_database_touched": false
+  },
+  "status": {
+    "acceptance": "PENDING_OWNER_REVIEW_AND_SIGN_OFF",
+    "broker_reconciliation": "PASS",
+    "fingerprint_reproduction": "PASS",
+    "lifecycle_classification": "PASS",
+    "premium_and_fees_realization": "PASS",
+    "quantity_and_cost_basis_closure": "PASS",
+    "technical_evidence_path": "PASS"
+  }
+}

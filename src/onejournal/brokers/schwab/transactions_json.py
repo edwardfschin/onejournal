@@ -301,6 +301,31 @@ def _decimal_evidence(value: Any, *, field_name: str) -> tuple[str, str | None]:
     return format(parsed, "f"), None
 
 
+def _json_evidence(value: Any) -> str:
+    """Serialize retained evidence without losing exact Decimal tokens."""
+
+    if value is None or isinstance(value, (bool, int, str)):
+        return json.dumps(value, ensure_ascii=True, separators=(",", ":"))
+    if isinstance(value, Decimal):
+        if not value.is_finite():
+            raise ValueError("deliverable evidence contains a non-finite decimal")
+        return format(value, "f")
+    if isinstance(value, float):
+        return json.dumps(value, allow_nan=False, separators=(",", ":"))
+    if isinstance(value, list):
+        return "[" + ",".join(_json_evidence(item) for item in value) + "]"
+    if isinstance(value, dict):
+        return "{" + ",".join(
+            json.dumps(str(key), ensure_ascii=True)
+            + ":"
+            + _json_evidence(item)
+            for key, item in sorted(value.items(), key=lambda pair: str(pair[0]))
+        ) + "}"
+    raise ValueError(
+        f"deliverable evidence contains unsupported value type: {type(value).__name__}"
+    )
+
+
 def _lifecycle_leg_from_item(
     *,
     event_uid: str,
@@ -378,9 +403,7 @@ def _lifecycle_leg_from_item(
                 notes.append("missing_option_multiplier")
             deliverables = instrument.get("optionDeliverables")
             if deliverables not in (None, ""):
-                row["deliverable_json"] = json.dumps(
-                    deliverables, sort_keys=True, separators=(",", ":")
-                )
+                row["deliverable_json"] = _json_evidence(deliverables)
         else:
             row["symbol"] = raw_symbol.upper()
         if not row["symbol"]:

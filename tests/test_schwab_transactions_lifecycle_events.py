@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import unittest
+from decimal import Decimal
 
 from onejournal.brokers.schwab.transactions_json import (
     extract_lifecycle_event_legs_from_transactions,
@@ -9,6 +10,44 @@ from onejournal.brokers.schwab.transactions_json import (
 
 
 class TransactionsLifecycleEventTests(unittest.TestCase):
+    def test_decimal_deliverable_evidence_serializes_without_precision_loss(self) -> None:
+        legs = extract_lifecycle_event_legs_from_transactions(
+            [
+                {
+                    "type": "RECEIVE_AND_DELIVER",
+                    "status": "VALID",
+                    "description": "Option expiration",
+                    "activityId": "EVT-DECIMAL-DELIVERABLE",
+                    "tradeDate": "2026-07-01T12:00:00-05:00",
+                    "transferItems": [
+                        {
+                            "amount": Decimal("1.0"),
+                            "cost": Decimal("0.0"),
+                            "price": Decimal("0.0"),
+                            "positionEffect": "CLOSING",
+                            "instrument": {
+                                "assetType": "OPTION",
+                                "symbol": "AAPL  260717C00150000",
+                                "optionPremiumMultiplier": Decimal("100.0"),
+                                "optionDeliverables": [
+                                    {
+                                        "deliverableUnits": Decimal("100.0"),
+                                        "strikePercent": Decimal("12.500000000000000001"),
+                                    }
+                                ],
+                            },
+                        }
+                    ],
+                }
+            ]
+        )
+
+        self.assertIn('"deliverableUnits":100.0', legs[0]["deliverable_json"])
+        self.assertIn(
+            '"strikePercent":12.500000000000000001',
+            legs[0]["deliverable_json"],
+        )
+
     def test_extract_assignment_leg_evidence_without_financial_inference(self) -> None:
         legs = extract_lifecycle_event_legs_from_transactions(
             [
