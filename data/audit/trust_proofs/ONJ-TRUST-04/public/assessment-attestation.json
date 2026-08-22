@@ -1,0 +1,49 @@
+{
+  "assessment_date": "2026-08-22",
+  "assessment_version": "v1-assignment",
+  "candidate_id": "20a6354c1c1ed01c6291978819d512729f50beda1c779b3d76aac902724a16c7",
+  "limitation_codes": [
+    "ASSIGNMENT_EVENT_NOT_STRUCTURED_IN_RETAINED_API",
+    "BROKER_STATEMENT_DESCRIPTION_MANUALLY_REVIEWED",
+    "BROKER_API_SUCCESSOR_TRANSACTION_USED_FOR_UTC_EFFECTIVE_TIME",
+    "FULL_ADR_0010_PROVENANCE_DEFERRED",
+    "ONE_LIFECYCLE_ONLY",
+    "OWNER_SIGN_OFF_PENDING",
+    "PRIVATE_IDENTITIES_AND_ECONOMICS_OMITTED_FROM_PUBLIC_ARTIFACT",
+    "STATEMENT_WINDOW_NOT_COMPLETE_ACCOUNT_HISTORY",
+    "UNREALIZED_PNL_UNAVAILABLE_WITHOUT_APPROVED_MARK"
+  ],
+  "owner_sign_off": false,
+  "proof_id": "ONJ-TRUST-04",
+  "provenance": {
+    "approved_event_fingerprint": "5933ee64aae40b66f9f12071c07e85cc45947d2febf584bd563c2b313008237e",
+    "assignment_fill_input_fingerprint": "ce2d35195903daff0c7db9b2e7890150a9756e3da87837a376b02fc338316bc9",
+    "assignment_result_fingerprint": "afea9fc4ff15cfd695d3b9b89c5653fffab61388b4ba1fbaa3151fbb0197551e",
+    "harness_sha256": "8745f928203aa6f91c515c83c1b533fcb32794960dca9cc9e5209747210ac0c0",
+    "orders_raw_sha256": "1a40042c1f9c8d91ce25f33f0d18a46e7a2a4eb28feef2f0380594e276259a32",
+    "private_bundle_checksums_sha256": "358b317b7271e3e3bbc685216dac2a9117246a4630aa7cdbb5eeb4eaf54b1007",
+    "private_manifest_sha256": "30dd75d70c5586d05367840857e3aca7a35487da2f9fea1db6a9ab1096a43233",
+    "repository_commit": "b82a138b3090e8c9b21b9e5ed64f1d20d4cadd13",
+    "statement_raw_sha256": "451394c64fbf90315cd4fca013ecc3b59cd74694664f192f737cbf0d716951eb",
+    "terminal_fill_input_fingerprint": "a766ba80621780884dcd762a8abff9adae7484bbca1acbe3014d81f26397be0a",
+    "terminal_result_fingerprint": "c877e34412aa0726c2f8a70c68e0e2d209747623fdfd69bdb80f39a9cb341c35",
+    "transactions_raw_sha256": "1ef61b477314c82ce38dc62b2b88544e43736e2ea48db407f76f5f21b2aecb3b"
+  },
+  "scope": {
+    "broker_or_provider_access": false,
+    "isolated_rehearsal_only": true,
+    "lifecycle": "SHORT PUT ASSIGNMENT",
+    "real_journal_database_touched": false
+  },
+  "status": {
+    "acceptance": "PENDING_OWNER_REVIEW_AND_SIGN_OFF",
+    "assignment_classification": "PASS",
+    "broker_reconciliation": "PASS",
+    "cost_basis_transfer": "PASS",
+    "fingerprint_reproduction": "PASS",
+    "realized_unrealized_boundary": "PASS",
+    "short_option_open": "PASS",
+    "successor_position_creation": "PASS",
+    "technical_evidence_path": "PASS"
+  }
+}

@@ -1,0 +1,72 @@
+{
+  "attestation_id": "ONJ-TRUST-04-owner-acceptance-v1",
+  "proof_id": "ONJ-TRUST-04",
+  "attests_to_assessment_version": "v1-assignment",
+  "decision": {
+    "decision_date": "2026-08-22",
+    "owner_acceptance_statement_sha256": "c8f6888a48c6e64c806d30607898f3fce4b4417174e44e189c54f4ebef67807a",
+    "owner_acceptance_statement_encoding": "UTF-8",
+    "owner_acceptance_statement_length_bytes": 314,
+    "owner_acceptance_statement_representation": "SHA256_OF_EXACT_USER_SUPPLIED_TEXT; PLAINTEXT_OMITTED_FROM_PUBLIC_ARTIFACT_TO_PROTECT_INSTRUMENT_IDENTITY",
+    "owner_role": "PROJECT_OWNER",
+    "owner_sign_off": true
+  },
+  "validation_status": {
+    "owner_decision_recorded": true,
+    "evidence_use_gate": "BLOCKED",
+    "privacy_contract": "FAIL_PRIVATE_VAULT_PROOF_DIRECTORY_PERMISSION",
+    "required_directory_mode": "0700"
+  },
+  "basis": {
+    "public_assessment": "assessment-attestation.json",
+    "public_assessment_sha256": "e90faf6b535a1700a15a9485656f50198ad7b6ca433c0d3c5f12bd37c5aa8092",
+    "candidate_id": "20a6354c1c1ed01c6291978819d512729f50beda1c779b3d76aac902724a16c7",
+    "approved_event_fingerprint": "5933ee64aae40b66f9f12071c07e85cc45947d2febf584bd563c2b313008237e",
+    "assignment_fill_input_fingerprint": "ce2d35195903daff0c7db9b2e7890150a9756e3da87837a376b02fc338316bc9",
+    "assignment_result_fingerprint": "afea9fc4ff15cfd695d3b9b89c5653fffab61388b4ba1fbaa3151fbb0197551e",
+    "terminal_fill_input_fingerprint": "a766ba80621780884dcd762a8abff9adae7484bbca1acbe3014d81f26397be0a",
+    "terminal_result_fingerprint": "c877e34412aa0726c2f8a70c68e0e2d209747623fdfd69bdb80f39a9cb341c35",
+    "private_bundle_checksums_sha256": "358b317b7271e3e3bbc685216dac2a9117246a4630aa7cdbb5eeb4eaf54b1007",
+    "private_manifest_sha256": "30dd75d70c5586d05367840857e3aca7a35487da2f9fea1db6a9ab1096a43233",
+    "repository_commit": "b82a138b3090e8c9b21b9e5ed64f1d20d4cadd13",
+    "technical_evidence_path": "PASS"
+  },
+  "accepted_scope": {
+    "scope_type": "ONE_BOUNDED_SHORT_PUT_ASSIGNMENT_REAL_BROKER_LIFECYCLE",
+    "lifecycle_identity": "PRIVATE_BUNDLE_REFERENCE_ONLY",
+    "option_assignment": "ACCEPTED",
+    "successor_stock_acquisition": "ACCEPTED",
+    "transferred_cost_basis": "ACCEPTED",
+    "schwab_statement_reconciliation": "ACCEPTED",
+    "financial_result": "ACCEPTED_FOR_THIS_BOUNDED_ASSIGNMENT_LIFECYCLE_ONLY"
+  },
+  "remaining_limitation_codes": [
+    "ASSIGNMENT_EVENT_NOT_STRUCTURED_IN_RETAINED_API",
+    "BROKER_STATEMENT_DESCRIPTION_MANUALLY_REVIEWED",
+    "BROKER_API_SUCCESSOR_TRANSACTION_USED_FOR_UTC_EFFECTIVE_TIME",
+    "FULL_ADR_0010_PROVENANCE_DEFERRED",
+    "ONE_LIFECYCLE_ONLY",
+    "OWNER_STATEMENT_PLAINTEXT_OMITTED_FROM_PUBLIC_ARTIFACT",
+    "PRIVATE_IDENTITIES_AND_ECONOMICS_OMITTED_FROM_PUBLIC_ARTIFACT",
+    "PRIVATE_VAULT_PROOF_DIRECTORY_PERMISSION_NONCONFORMING",
+    "STATEMENT_WINDOW_NOT_COMPLETE_ACCOUNT_HISTORY",
+    "UNREALIZED_PNL_UNAVAILABLE_WITHOUT_APPROVED_MARK"
+  ],
+  "explicit_exclusions": [
+    "COMPLETE_SCHWAB_HISTORY_COVERAGE",
+    "OTHER_ASSIGNMENT_SCENARIOS",
+    "EXERCISE_ROLL_OR_OTHER_LIFECYCLE_TRANSFORMATION_PROOF",
+    "GENERAL_OR_PORTFOLIO_WIDE_FINANCIAL_ACCEPTANCE",
+    "UNREALIZED_PNL_OR_MARKET_DATA_VALUATION",
+    "PNL_01_OR_DOWNSTREAM_ROADMAP_STATUS_CHANGE",
+    "PRODUCTION_OR_OPERATIONAL_READINESS",
+    "BROKER_OR_PROVIDER_ACCESS_AUTHORIZATION",
+    "REAL_DATABASE_OR_MIGRATION_CHANGE_AUTHORIZATION",
+    "DEPLOYMENT_COMMIT_PUSH_OR_TRADING_AUTHORIZATION"
+  ],
+  "history_preservation": {
+    "technical_attestation_unchanged": true,
+    "prior_owner_sign_off_false_preserved": true,
+    "acceptance_is_append_only": true
+  }
+}
