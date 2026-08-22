@@ -1,0 +1,45 @@
+{
+  "assessment_date": "2026-08-21",
+  "assessment_version": "v1-partial-closure",
+  "limitation_codes": [
+    "INCREMENTAL_IMPORT_REPAIR_DEFERRED",
+    "MIXED_DATE_SNAPSHOT_RECONCILIATION_OUT_OF_SCOPE",
+    "FULL_WINDOW_NON_SELECTED_ORDER_GAPS_RECORDED",
+    "FULL_ADR_0010_PROVENANCE_DEFERRED",
+    "LIFECYCLE_REVIEW_PENDING",
+    "OWNER_SIGN_OFF_PENDING"
+  ],
+  "owner_sign_off": false,
+  "proof_id": "ONJ-TRUST-02",
+  "provenance": {
+    "final_input_fingerprint": "794c3f5294d39e3f3389268a82e56cc74f4835296075fe661ff8c3da70525d21",
+    "final_rehearsal_database_sha256": "b717254d31d21f2ce87705ad75c839adc7bd260911b353672230ec4b9b71fd5f",
+    "harness_sha256": "d26f0f8c784b451aa057199cb394fe22331794d4f0a8db3869a4593db2c465ba",
+    "orders_raw_sha256": "addba461cb0ca01d204d9a7dffb5d1cb0a43408a8dad2f05510260069d5f69b8",
+    "partial_input_fingerprint": "15b109d9c99948d4491038c5ff3ae3d4f2cc11364ff943365183dca8281f8aef",
+    "partial_rehearsal_database_sha256": "8a27fd3ea0debe8721650a768b41cc374955d01f5946e99108e6161100aef4c2",
+    "private_bundle_manifest_sha256": "78cec63f98b827c8c649b704e0ce3122904d15fa8ecfc7e02e4c0e651ee548fb",
+    "private_manifest_sha256": "76bf3921d8c0bdf15fdc2c463a108d36c007a766e7d5b9d5aa58f8812d68731a",
+    "repository_commit": "eae765bce91b43dc51ffe01cfb013559c5adc23e",
+    "transactions_raw_sha256": "fcdb0494767016df5cf9ae2fd0b143db249e73b4f28669c1aaef197e05f6113d"
+  },
+  "scope": {
+    "broker_or_provider_access": false,
+    "candidate_id": "b59a09327126b8f3f0854664e6927cefec9a550766927edda024b33045810962",
+    "currency": "USD",
+    "isolated_rehearsal_only": true,
+    "lifecycle_shape": [
+      "OPEN 2",
+      "PARTIAL CLOSE 1; REMAIN 1",
+      "FINAL CLOSE 1; REMAIN 0"
+    ],
+    "real_journal_database_touched": false
+  },
+  "status": {
+    "acceptance": "PENDING_OWNER_REVIEW_AND_SIGN_OFF",
+    "broker_reconciliation": "PASS",
+    "fee_allocation": "PASS",
+    "quantity_and_cost_basis": "PASS",
+    "technical_evidence_path": "PASS"
+  }
+}
