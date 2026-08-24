@@ -1,0 +1,46 @@
+{
+  "assessment_date": "2026-08-24",
+  "assessment_version": "v1-roll",
+  "candidate_id": "f37797b259314ed03c40f996cacc7e44c80e411bfd229731479c53eca174c5e6",
+  "limitation_codes": [
+    "ONE_LIFECYCLE_ONLY",
+    "REPLACEMENT_LIFECYCLE_NOT_FOLLOWED_TO_CLOSE",
+    "UNREALIZED_PNL_UNAVAILABLE_WITHOUT_APPROVED_MARK",
+    "FULL_ADR_0010_PROVENANCE_DEFERRED",
+    "OWNER_SIGN_OFF_PENDING",
+    "PRIVATE_IDENTITIES_AND_ECONOMICS_OMITTED_FROM_PUBLIC_ARTIFACT"
+  ],
+  "owner_sign_off": false,
+  "proof_id": "ONJ-TRUST-06",
+  "provenance": {
+    "harness_sha256": "6085b9da20312c16beac00e042ae19f811b075419f781ae60fadf5639ec812ee",
+    "orders_raw_sha256": "9b66168b0330b7ea3857b5ef09d3b3406e7eccd240a0911db30df5a17ac991af",
+    "private_bundle_checksums_sha256": "63c5a2325c62f0039abc809bc03e3eef9373135f880facd4b39e7789a14a9937",
+    "private_manifest_sha256": "070e5fae8c98f6a0bbdf974de8c760b3e6e7286392b077a89bbd992370b4710f",
+    "rehearsal_database_sha256": "ce1c06a344fe2f984d5bc27a1044706a66d13439e80030b29732567252efc939",
+    "repository_commit": "f5b38f2fb4799eea2c61d4d525e2a1556062669c",
+    "roll_fill_input_fingerprint": "4512155ddcb8667f0f577da1898d56575ef8be23a053dec62e56d408f583433c",
+    "roll_result_fingerprint": "e812cb529fc60b03b746b4539cd744c9c90707a8259b7e7d5fd758a54326f598",
+    "transactions_raw_sha256": "8543862de77db9c20c0d511ae4c6833ee602d42f812247cacbf9b9b14e96f93c"
+  },
+  "scope": {
+    "broker_or_provider_access": false,
+    "isolated_rehearsal_only": true,
+    "lifecycle": "ONE_BOUNDED_OPTION_ROLL",
+    "private_identities_and_economics_omitted": true,
+    "real_journal_database_touched": false
+  },
+  "status": {
+    "acceptance": "PENDING_OWNER_REVIEW_AND_SIGN_OFF",
+    "broker_reconciliation": "PASS",
+    "fingerprint_reproduction": "PASS",
+    "original_option_close": "PASS",
+    "original_option_open": "PASS",
+    "premiums_costs_and_fees": "PASS",
+    "quantities_and_position_identity": "PASS",
+    "realized_pnl_boundary": "PASS",
+    "replacement_option_open": "PASS",
+    "roll_relationship": "PASS",
+    "technical_evidence_path": "PASS"
+  }
+}
