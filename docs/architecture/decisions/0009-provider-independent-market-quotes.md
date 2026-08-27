@@ -194,7 +194,7 @@ retention, privacy, authentication, and tenancy approval before server-side
 quote storage is enabled.
 
 The repository implements the normalized contract, fail-closed policy loader,
-additive migrations, transactional persistence, and synthetic validation.
+additive migrations, transactional persistence, and contract validation.
 Migration `0012` adds a provider-neutral capture envelope that binds exact
 instrument requests, quote/receive/evaluation times, New York market date,
 checksum-backed local evidence location, and the complete ingestion fingerprint
@@ -203,10 +203,12 @@ credential-free evidence importer are implemented offline under
 `docs/schwab_quotes_json_schema_contract.md`; the current OneBot capture producer
 is only a temporary evidence bridge. The target provider plane is an isolated
 OneJournal integration service with one connector per provider. Neither the
-bridge nor the target plane is accepted for live use. Provider compatibility
-still requires an official authenticated payload captured through a separately
-approved read-only call and a sanitized contract fixture derived without
-private data.
+bridge nor the target plane is accepted for live use. A separately approved
+2026-08-27 equity capture and sanitized fixture confirmed the core observed
+Schwab mapping and real-time entitlement, but the response supplied no
+market-session field. The fail-closed result was therefore `unavailable` and
+valuation was disallowed. Authoritative session context and broader
+provider/asset validation remain required.
 
 ## Alternatives considered
 
@@ -305,12 +307,12 @@ The accepted contract requires tests for:
 - fail-closed acknowledgement configuration that cannot substitute for
   provider-reported entitlement
 
-PNL-02A's synthetic adapter and interim offline producer/consumer boundary do
-not establish provider compatibility or the target provider-integration plane.
-PNL-02 is not complete until a sanitized official Schwab response validates the
-adapter mapping and separately approved capture, normalization, durable
-storage, freshness assessment, security controls, and single-owner cutover
-prove the end-to-end OneJournal connector boundary.
+The bounded official equity evidence validates only the observed Schwab response
+shape and the producer/consumer handoff. It does not establish options or
+multi-provider compatibility or the target provider-integration plane. PNL-02
+is not complete until authoritative session context, durable storage,
+freshness eligibility, security controls, broader provider/asset evidence, and
+single-owner cutover prove the end-to-end OneJournal connector boundary.
 
 ## Rollback or supersession
 

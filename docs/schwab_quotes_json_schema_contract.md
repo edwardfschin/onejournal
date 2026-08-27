@@ -2,8 +2,9 @@
 
 ## Status
 
-PNL-02A and the interim one-app quote evidence bridge are implemented and
-validated offline. During this bounded step, OneBot/VPS is the temporary single
+PNL-02A and the interim one-app quote evidence bridge are implemented. A bounded
+one-symbol official Schwab response was captured, transferred privately, and
+validated on 2026-08-27. During this bounded step, OneBot/VPS is the temporary single
 owner of the Schwab application and refreshable token for quote capture. The
 current OneJournal quote path is credential-free and cannot call Schwab.
 
@@ -15,8 +16,8 @@ implemented or approved.
 
 This status means:
 
-- the Schwab adapter remains covered by a deliberately minimal synthetic JSON
-  example;
+- the Schwab adapter is covered by a deliberately minimal synthetic example and
+  a sanitized official-shape fixture with all symbol and price values replaced;
 - OneJournal verifies and normalizes only a transferred, versioned private
   evidence bundle produced by OneBot;
 - the verified bundle is adapted into OneJournal's provider-neutral capture
@@ -26,14 +27,20 @@ This status means:
   contract without credentials, network, provider calls, or private live
   evidence; the Schwab evidence operator itself still performs no database
   write; and
-- no official Schwab payload, live entitlement result, provider capture, or
-  end-to-end PNL-02 acceptance evidence exists yet.
+- the bounded response reported real-time entitlement and supplied bid, ask,
+  last, quote time, and normal security status, but supplied no market-session
+  field; OneJournal therefore preserved session as `unknown` and disallowed
+  valuation; and
+- this bounded evidence does not establish licensing, durable ingestion,
+  production readiness, or end-to-end PNL-02 acceptance.
 
 Schwab's authenticated Trader API specification remains the authoritative
 provider contract:
 <https://developer.schwab.com/products/trader-api--individual/details/specifications/Market%20Data%20Production>.
-The synthetic example under `docs/examples/schwab_quotes_json/` is not an
-official response fixture and cannot establish provider compatibility.
+`quotes_official_sanitized_no_session.json` is structurally derived from the
+bounded official response. It contains fictional symbol and price values,
+omits unused provider fields, and deliberately preserves the observed absence
+of `marketSession`. The private raw response remains outside Git.
 
 ## Explicit identity input
 
@@ -58,9 +65,11 @@ unexpected symbols reject the whole batch.
 | `quote.marketSession` or top-level `marketSession` | explicit market session | Missing becomes `unknown`; unsupported values reject |
 | `quote.securityStatus` | safety status | A present value other than `Normal` rejects |
 
-These mappings remain provisional until checked against a sanitized official
-Schwab response. PNL-02B may correct or extend the adapter if the official
-payload differs; it must not weaken the fail-closed contract.
+The bounded official response confirmed the listed identity, asset, price,
+quote-time, real-time, and security-status mappings. It did not supply
+`marketSession`; an authoritative exchange-calendar/session source remains
+required before freshness can become valuation-eligible. PNL-02B must not infer
+session from retrieval time or weaken the fail-closed contract.
 
 ## Interim one-app evidence bridge
 
@@ -118,15 +127,17 @@ operator does not become the target provider connector.
 
 ## Validation boundary
 
-Offline tests establish exact-decimal mapping, identity and symbol scope,
+Tests establish exact-decimal mapping, identity and symbol scope,
 manifest/schema/hash/mode/provenance enforcement, explicit freshness
 evaluation, provider-neutral capture validation, temporary-DuckDB atomic replay,
 zero evidence writes by the Schwab importer, and absence of credential, network,
 refresh, account, and order capabilities in OneJournal.
 
-They do not establish current Schwab schema compatibility, entitlement,
-licensing, live freshness, transfer integrity in an actual private vault,
-production readiness, durable quote storage, or PNL-02 completion.
+The bounded capture establishes compatibility for the observed equity response,
+provider-reported real-time entitlement, and actual private-vault transfer
+integrity. It does not establish options compatibility, market-session
+authority, licensing, valuation eligibility, production readiness, durable
+quote storage, or PNL-02 completion.
 
 The current active OneJournal runtime is credential-free: the former ad hoc
 Schwab raw-history credential operators have been retired. That retirement does

@@ -28,14 +28,16 @@ foundation simple and dependency-free.
   boundary also proves exact request/response identity, quote/receive/evaluation
   ordering, New York market date, repository-policy loading, safe source
   location, and full-envelope replay conflicts with Schwab and second-provider
-  synthetic cases. PNL-02A adds synthetic Schwab quote mapping. The interim
+  synthetic cases. PNL-02A adds Schwab quote mapping, including a sanitized
+  official equity response shape whose absent market-session field must remain
+  `unknown` and valuation-ineligible. The interim
   one-app evidence bridge makes OneBot the temporary single credential-owning
   capture producer and tests the current OneJournal runtime as a credential-free,
   read-only verifier/normalizer of a transferred two-file private bundle. This
   does not test or define the target OneJournal-owned multi-provider connector
   plane.
-  Official provider-payload validation remains open. Mark selection is
-  explicitly deferred to PNL-03 policy.
+  Broader provider/asset validation and authoritative session context remain
+  open. Mark selection is explicitly deferred to PNL-03 policy.
 - Integration: schema initialization and migration, import, append-only journal
   history, review compatibility projection, replay preservation, DuckDB reads,
   and DB dashboard payload construction using a temporary database.

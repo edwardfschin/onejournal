@@ -1,0 +1,15 @@
+{
+  "TEST": {
+    "assetMainType": "EQUITY",
+    "quote": {
+      "askPrice": 100.10,
+      "bidPrice": 99.90,
+      "lastPrice": 100.00,
+      "quoteTime": 1787841000000,
+      "securityStatus": "Normal"
+    },
+    "realtime": true,
+    "reference": {},
+    "symbol": "TEST"
+  }
+}

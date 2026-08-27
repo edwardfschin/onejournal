@@ -16,6 +16,10 @@ from onejournal.market_data import assess_quote_freshness
 
 PROJECT_DIR = Path(__file__).resolve().parents[1]
 FIXTURE = PROJECT_DIR / "docs/examples/schwab_quotes_json/quotes_sample.json"
+OFFICIAL_SANITIZED_FIXTURE = (
+    PROJECT_DIR
+    / "docs/examples/schwab_quotes_json/quotes_official_sanitized_no_session.json"
+)
 
 
 class SchwabQuotesAdapterTests(unittest.TestCase):
@@ -142,6 +146,38 @@ class SchwabQuotesAdapterTests(unittest.TestCase):
 
         self.assertEqual(quote.market_session, "unknown")
         self.assertEqual(assessment.status, "unavailable")
+        self.assertFalse(assessment.valuation_allowed)
+
+    def test_sanitized_official_shape_fails_closed_without_session(self) -> None:
+        payload = load_quotes_json(OFFICIAL_SANITIZED_FIXTURE)
+        request = SchwabQuoteRequest(
+            provider_symbol="TEST",
+            instrument_key="stock|TEST",
+            asset_class="stock",
+            currency="USD",
+        )
+        (quote,) = normalized_quotes_from_payload(
+            payload,
+            requests=(request,),
+            connection_uid="local-schwab-primary",
+            asof=date(2026, 8, 27),
+            received_at=datetime(2026, 8, 27, 14, 30, 1, tzinfo=UTC),
+            raw_path="data/raw/schwab/2026-08-27/quotes/official-sanitized.json",
+            raw_sha256="b" * 64,
+        )
+        assessment = assess_quote_freshness(
+            quote,
+            evaluated_at=quote.provider_quote_at + timedelta(seconds=1),
+        )
+
+        self.assertEqual(quote.bid, Decimal("99.90"))
+        self.assertEqual(quote.ask, Decimal("100.10"))
+        self.assertEqual(quote.last, Decimal("100.00"))
+        self.assertEqual(quote.data_mode, "real_time")
+        self.assertEqual(quote.entitlement_status, "entitled")
+        self.assertEqual(quote.market_session, "unknown")
+        self.assertEqual(assessment.status, "unavailable")
+        self.assertEqual(assessment.reason, "provider market session is unknown")
         self.assertFalse(assessment.valuation_allowed)
 
     def test_non_normal_security_status_is_rejected(self) -> None:
