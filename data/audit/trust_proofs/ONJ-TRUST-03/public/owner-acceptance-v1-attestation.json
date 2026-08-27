@@ -1,0 +1,65 @@
+{
+  "attestation_id": "ONJ-TRUST-03-owner-acceptance-v1",
+  "proof_id": "ONJ-TRUST-03",
+  "attests_to_assessment_version": "v1-expiration",
+  "decision": {
+    "decision_date": "2026-08-24",
+    "owner_acceptance_statement": "I accept.",
+    "accepted_decision_context": "The owner accepts the ONJ-TRUST-03 expiration lifecycle proof as valid for this bounded case, with the documented limitation that the fill-derived episode projection is not yet lifecycle-event-aware.",
+    "owner_role": "PROJECT_OWNER",
+    "owner_sign_off": true
+  },
+  "validation_status": {
+    "owner_decision_recorded": true,
+    "technical_assessment_unchanged": true,
+    "evidence_use_gate": "CLOSED_FOR_BOUNDED_PROOF",
+    "privacy_contract": "PASS_PRIVATE_IDENTITIES_AND_ECONOMICS_OMITTED"
+  },
+  "basis": {
+    "public_assessment": "assessment-attestation.json",
+    "public_assessment_sha256": "b00fef9d3a6e34d8950094b8d9d0eb9dfe853efa6bfebbae961c1c8b27406eba",
+    "private_bundle_manifest_sha256": "1d71f0ada5ac21c409f02c4cc6a97e4252818f2012ada501d95c83aebf25dd85",
+    "private_bundle_checksums_sha256": "f6baffa719211503fd6ea47ee8e0b3648963d971f2fc88e09d5ba4c7786b986b",
+    "candidate_id": "b359120d3191483205862467cf08ca7f30946ab4212387a1d67e213129d0bb77",
+    "approved_event_fingerprint": "107c0787d3472b3b7926eb90ed021fdabb84e25b8690a79231a3e2af2aef2335",
+    "fill_input_fingerprint": "c7edc2004c31f6e732faa7476d0bfd05f413ee2a67a09f57ac71db0db1f902d9",
+    "rehearsal_database_sha256": "ab55b3e694c997a338f5060470a235fc483cf219bb8e8b1887e49ec0c97d2082",
+    "selection_snapshot_fingerprint": "554ad7bebc003b2d3e3c092821b2616be98753378678760154bf98c7fe91fe00",
+    "repository_commit": "b82a138b3090e8c9b21b9e5ed64f1d20d4cadd13",
+    "technical_evidence_path": "PASS"
+  },
+  "accepted_scope": {
+    "scope_type": "ONE_BOUNDED_SHORT_OPTION_EXPIRATION_REAL_BROKER_LIFECYCLE",
+    "lifecycle_identity": "PRIVATE_BUNDLE_REFERENCE_ONLY",
+    "lifecycle_shape": [
+      "SHORT OPTION OPENED",
+      "SHORT OPTION EXPIRED",
+      "QUANTITY AND COST BASIS CLOSED TO ZERO"
+    ],
+    "expiration_lifecycle": "ACCEPTED",
+    "broker_reconciliation": "ACCEPTED",
+    "quantity_and_cost_basis_closure": "ACCEPTED",
+    "financial_result": "ACCEPTED_FOR_THIS_BOUNDED_EXPIRATION_LIFECYCLE_ONLY"
+  },
+  "remaining_limitation_codes": [
+    "DESCRIPTION_HINT_MANUALLY_REVIEWED",
+    "FILL_EPISODE_PROJECTION_NOT_EVENT_AWARE",
+    "FULL_ADR_0010_PROVENANCE_DEFERRED",
+    "PRIVATE_IDENTITIES_AND_ECONOMICS_OMITTED_FROM_PUBLIC_ARTIFACT"
+  ],
+  "explicit_exclusions": [
+    "GENERAL_OR_PORTFOLIO_WIDE_FINANCIAL_ACCEPTANCE",
+    "OTHER_LIFECYCLE_CLASSIFICATIONS",
+    "EXERCISE_ASSIGNMENT_ROLL_OR_VALUATION_PROOF",
+    "PNL_01_OR_DOWNSTREAM_ROADMAP_STATUS_CHANGE",
+    "PRODUCTION_OR_OPERATIONAL_READINESS",
+    "BROKER_OR_PROVIDER_ACCESS_AUTHORIZATION",
+    "REAL_DATABASE_OR_MIGRATION_CHANGE_AUTHORIZATION",
+    "DEPLOYMENT_COMMIT_PUSH_OR_TRADING_AUTHORIZATION"
+  ],
+  "history_preservation": {
+    "technical_attestation_unchanged": true,
+    "prior_owner_sign_off_false_preserved": true,
+    "acceptance_is_append_only": true
+  }
+}

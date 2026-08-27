@@ -19,10 +19,17 @@ broker-history coverage, other lifecycle transformations, portfolio-wide
 financial correctness, production readiness, or authority for database,
 migration, provider, commit, push, or trading actions.
 
-Use or promotion of the proof currently fails closed because the private-vault
-proof parent directory is `0755`; the required directory mode is `0700`.
-The owner decision is recorded, but the evidence-use gate remains blocked
-until that permission discrepancy is corrected and independently verified.
+`public/evidence-use-validation-closure-v1.json` is an append-only validation
+record. It records that the permission, checksum, and symlink checks now pass,
+so the evidence-use gate is closed for this bounded proof. It does not rewrite
+the historical assessment or owner-acceptance attestation and does not change
+PNL-01 status.
+
+The historical owner-acceptance attestation records that use or promotion was
+blocked because the private-vault proof parent directory was `0755`; the
+required directory mode is `0700` at that time. The permission discrepancy has
+since been corrected and independently verified; the separate append-only
+validation closure below records the current evidence-use state.
 
 The technical assessment's historical owner-review status remains pending; the
 separate append-only acceptance records the owner's bounded decision. This

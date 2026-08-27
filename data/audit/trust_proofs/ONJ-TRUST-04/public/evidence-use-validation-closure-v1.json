@@ -1,0 +1,35 @@
+{
+  "record_id": "ONJ-TRUST-04-evidence-use-validation-closure-v1",
+  "proof_id": "ONJ-TRUST-04",
+  "record_date": "2026-08-24",
+  "attests_to_owner_acceptance_attestation": "owner-acceptance-v1-attestation.json",
+  "validation_status": {
+    "owner_decision_recorded": true,
+    "technical_assessment_unchanged": true,
+    "public_checksums": "PASS",
+    "private_bundle_checksums": "PASS",
+    "private_vault_permissions": "PASS",
+    "private_vault_symlinks": "PASS_NONE_FOUND",
+    "evidence_use_gate": "CLOSED_FOR_BOUNDED_PROOF"
+  },
+  "basis": {
+    "public_assessment": "assessment-attestation.json",
+    "public_assessment_sha256": "e90faf6b535a1700a15a9485656f50198ad7b6ca433c0d3c5f12bd37c5aa8092",
+    "owner_acceptance_attestation_sha256": "2f7db8cad9a32d7c749550afb570124d650ab46dc47555ff7a61594d0baf9bcc",
+    "private_manifest_sha256": "30dd75d70c5586d05367840857e3aca7a35487da2f9fea1db6a9ab1096a43233",
+    "private_bundle_checksums_sha256": "358b317b7271e3e3bbc685216dac2a9117246a4630aa7cdbb5eeb4eaf54b1007"
+  },
+  "accepted_scope": "The one bounded short-put assignment lifecycle already recorded by the owner acceptance attestation.",
+  "scope_limits_preserved": [
+    "ONE_LIFECYCLE_ONLY",
+    "COMPLETE_SCHWAB_HISTORY_COVERAGE",
+    "EXERCISE_ROLL_OR_OTHER_LIFECYCLE_TRANSFORMATION_PROOF",
+    "GENERAL_OR_PORTFOLIO_WIDE_FINANCIAL_ACCEPTANCE",
+    "PNL_01_OR_DOWNSTREAM_ROADMAP_STATUS_CHANGE"
+  ],
+  "history_preservation": {
+    "historical_assessment_unchanged": true,
+    "historical_owner_acceptance_unchanged": true,
+    "closure_is_append_only": true
+  }
+}

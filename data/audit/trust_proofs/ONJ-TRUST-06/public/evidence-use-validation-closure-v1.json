@@ -1,0 +1,35 @@
+{
+  "record_id": "ONJ-TRUST-06-evidence-use-validation-closure-v1",
+  "proof_id": "ONJ-TRUST-06",
+  "record_date": "2026-08-24",
+  "attests_to_owner_acceptance_attestation": "owner-acceptance-v1-attestation.json",
+  "validation_status": {
+    "owner_decision_recorded": true,
+    "technical_assessment_unchanged": true,
+    "public_checksums": "PASS",
+    "private_bundle_checksums": "PASS",
+    "private_vault_permissions": "PASS",
+    "private_vault_symlinks": "PASS_NONE_FOUND",
+    "evidence_use_gate": "CLOSED_FOR_BOUNDED_PROOF"
+  },
+  "basis": {
+    "public_assessment": "assessment-attestation.json",
+    "public_assessment_sha256": "67ffbec2f308226e99f14a0047f7a988a2c71f5c6174c9f29d5a4ac3bea1421b",
+    "owner_acceptance_attestation_sha256": "809f3d02e0e7598f3af4146bf9d909ebaf334547572fb4252b4aac84c84a0120",
+    "private_manifest_sha256": "070e5fae8c98f6a0bbdf974de8c760b3e6e7286392b077a89bbd992370b4710f",
+    "private_bundle_checksums_sha256": "63c5a2325c62f0039abc809bc03e3eef9373135f880facd4b39e7789a14a9937"
+  },
+  "accepted_scope": "The one bounded diagonal option-roll boundary already recorded by the owner acceptance attestation.",
+  "scope_limits_preserved": [
+    "ONE_LIFECYCLE_ONLY",
+    "REPLACEMENT_CONTRACT_CLOSURE",
+    "EXERCISE_OR_OTHER_LIFECYCLE_TRANSFORMATIONS",
+    "GENERAL_OR_PORTFOLIO_WIDE_FINANCIAL_ACCEPTANCE",
+    "PNL_01_OR_DOWNSTREAM_ROADMAP_STATUS_CHANGE"
+  ],
+  "history_preservation": {
+    "historical_assessment_unchanged": true,
+    "historical_owner_acceptance_unchanged": true,
+    "closure_is_append_only": true
+  }
+}

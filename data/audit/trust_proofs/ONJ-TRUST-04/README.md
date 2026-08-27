@@ -20,10 +20,11 @@ the repository privacy contract, the public acceptance records the SHA-256 of
 the exact owner statement instead of publishing the statement's instrument
 identifier.
 
-Use or promotion of the proof as accepted evidence currently fails closed. The
-private-vault proof directory does not meet the required `0700` directory mode.
-The owner decision remains recorded, but a separate append-only validation
-closure is required after the permission discrepancy is corrected and verified.
+The historical owner-acceptance attestation records that use or promotion was
+blocked because the private-vault proof directory did not meet the required
+`0700` directory mode at that time. The permission discrepancy has since been
+corrected and independently verified; the separate append-only validation
+closure below records the current evidence-use state.
 
 The owner acceptance does not establish complete Schwab history coverage, all
 assignment scenarios, general or portfolio-wide financial correctness, market
@@ -31,3 +32,9 @@ valuation, portfolio snapshots, exercise or roll handling, PNL-01 or downstream
 roadmap status, production readiness, or authority for any database, migration,
 provider, production, commit, push, or trading action. All recorded technical
 limitations remain in force.
+
+`public/evidence-use-validation-closure-v1.json` is an append-only validation
+record. It records that the permission, checksum, and symlink checks now pass,
+so the evidence-use gate is closed for this bounded proof. It does not rewrite
+the historical assessment or owner-acceptance attestation and does not change
+PNL-01 status.

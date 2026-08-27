@@ -1,0 +1,39 @@
+{
+  "record_id": "ONJ-TRUST-03-owner-acceptance-readiness-v1",
+  "proof_id": "ONJ-TRUST-03",
+  "record_date": "2026-08-24",
+  "assesses": "v1-expiration",
+  "validation_status": {
+    "public_checksums": "PASS",
+    "private_bundle_checksums": "PASS",
+    "private_vault_permissions": "PASS",
+    "private_vault_symlinks": "PASS_NONE_FOUND",
+    "permission_gate": "CLOSED",
+    "owner_acceptance_readiness": "READY_FOR_OWNER_REVIEW_AND_SIGN_OFF",
+    "owner_sign_off": false,
+    "evidence_use_gate": "BLOCKED_PENDING_OWNER_SIGN_OFF"
+  },
+  "basis": {
+    "public_assessment": "assessment-attestation.json",
+    "public_assessment_sha256": "b00fef9d3a6e34d8950094b8d9d0eb9dfe853efa6bfebbae961c1c8b27406eba",
+    "private_manifest_sha256": "1d71f0ada5ac21c409f02c4cc6a97e4252818f2012ada501d95c83aebf25dd85",
+    "private_bundle_checksums_sha256": "f6baffa719211503fd6ea47ee8e0b3648963d971f2fc88e09d5ba4c7786b986b"
+  },
+  "pnl_01_scope_note": {
+    "exercise": "DEFERRED_NOT_REPRESENTED_IN_RETAINED_HISTORICAL_EVIDENCE",
+    "basis": "The existing roadmap records no real exercise example; synthetic exercise tests are implementation coverage, not historical evidence."
+  },
+  "scope": {
+    "technical_evidence_path": "PASS",
+    "isolated_rehearsal_only": true,
+    "real_journal_database_touched": false,
+    "broker_or_provider_access": false,
+    "financial_acceptance_claimed": false,
+    "pnl_01_status_changed": false
+  },
+  "history_preservation": {
+    "historical_assessment_unchanged": true,
+    "prior_owner_sign_off_false_preserved": true,
+    "readiness_record_is_append_only": true
+  }
+}
