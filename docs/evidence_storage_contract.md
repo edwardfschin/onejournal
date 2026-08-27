@@ -31,6 +31,21 @@ It contains raw broker evidence, private manifests, rehearsal databases,
 sensitive validation logs, account-related artifacts, and other personal
 financial information. The vault is outside Git and outside iCloud.
 
+For the current interim one-app Schwab evidence bridge, this vault may receive
+only an exact, separately approved two-file quote-evidence bundle produced by
+the temporary single token owner, OneBot/VPS. The bundle contains raw response
+bytes and a secret-free versioned manifest. It must not contain or receive a
+Schwab token, refresh token, client secret, account identifier, or provider
+configuration. Capture and transfer are separate approvals; repository
+implementation does not authorize either operation.
+
+The target architecture moves approved provider connection ownership into an
+isolated OneJournal integration service and retires OneBot's Schwab access at
+cutover. This vault contract remains provider-independent: immutable raw
+evidence and secret-free manifests may be stored here, but provider credentials
+and connection configuration must remain in the separately approved secret
+boundary.
+
 The former iCloud checkout is a preserved backup/reference copy only. It is not
 an authoritative development repository and must not receive new development
 changes.

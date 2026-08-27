@@ -22,13 +22,16 @@ foundation simple and dependency-free.
 - Adapter contract: deterministic Schwab orders/transactions normalization,
   including lifecycle event headers, decimal-safe transfer-item evidence legs,
   missing-evidence markers, and no inferred lifecycle P&L.
-- Market-data contract: provider-independent quote identity, local raw lineage,
+- Market-data contract: provider-independent quote identity, private raw lineage,
   entitlement/delay/session state, deterministic freshness eligibility, and
   atomic/idempotent temporary-DuckDB persistence. PNL-02A adds synthetic
-  Schwab quote mapping plus a plan-only-by-default, exact-byte, single-symbol
-  capture operator with no account, order, or DuckDB capability. Official
-  provider-payload validation remains open. Mark selection is explicitly
-  deferred to PNL-03 policy.
+  Schwab quote mapping. The interim one-app evidence bridge makes OneBot the
+  temporary single credential-owning capture producer and tests the current
+  OneJournal runtime as a credential-free, read-only verifier/normalizer of a
+  transferred two-file private bundle. This does not test or define the target
+  OneJournal-owned multi-provider connector plane.
+  Official provider-payload validation remains open. Mark selection is
+  explicitly deferred to PNL-03 policy.
 - Integration: schema initialization and migration, import, append-only journal
   history, review compatibility projection, replay preservation, DuckDB reads,
   and DB dashboard payload construction using a temporary database.

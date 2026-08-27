@@ -1,19 +1,28 @@
-# Schwab quote JSON adapter and capture contract
+# Schwab quote JSON adapter and evidence-import contract
 
 ## Status
 
-PNL-02A is implemented and validated offline.
+PNL-02A and the interim one-app quote evidence bridge are implemented and
+validated offline. During this bounded step, OneBot/VPS is the temporary single
+owner of the Schwab application and refreshable token for quote capture. The
+current OneJournal quote path is credential-free and cannot call Schwab.
+
+This is not the target provider architecture. The target makes OneJournal the
+only project that owns approved provider connections and uses isolated Schwab,
+IBKR, Moomoo, or later provider connectors behind the same broker-independent
+quote contract. That integration plane and its Schwab cutover are not yet
+implemented or approved.
 
 This status means:
 
-- the Schwab quote adapter is covered by a deliberately minimal synthetic JSON
+- the Schwab adapter remains covered by a deliberately minimal synthetic JSON
   example;
-- the capture operator defaults to plan-only and has no account, order,
-  database, migration, or background-polling capability;
-- tests prove the local fail-closed boundaries without reading credentials or
-  calling Schwab; and
-- no official Schwab quote payload, live entitlement result, raw provider
-  capture, or end-to-end PNL-02 acceptance evidence exists yet.
+- OneJournal verifies and normalizes only a transferred, versioned private
+  evidence bundle produced by OneBot;
+- tests prove the local fail-closed boundary without credentials, network,
+  provider calls, private live evidence, or database writes; and
+- no official Schwab payload, live entitlement result, provider capture, or
+  end-to-end PNL-02 acceptance evidence exists yet.
 
 Schwab's authenticated Trader API specification remains the authoritative
 provider contract:
@@ -23,26 +32,20 @@ official response fixture and cannot establish provider compatibility.
 
 ## Explicit identity input
 
-The adapter requires the caller to supply all of the following for each quote:
+The adapter requires the caller to supply the exact Schwab symbol, OneJournal
+`instrument_key`, asset class (`stock` or `option`), three-letter currency,
+opaque connection UID, market date, and freshness-evaluation time. It does not
+infer currency, option identity, account identity, provider fallback, market
+session, or an instrument mapping.
 
-- exact Schwab provider symbol;
-- exact OneJournal `instrument_key`;
-- OneJournal asset class (`stock` or `option`);
-- three-letter currency; and
-- opaque local `connection_uid`.
-
-It does not infer currency, option identity, account identity, provider
-fallback, or an instrument mapping from the response. The response must contain
-exactly the requested symbol set. Missing or unexpected symbols reject the
-whole batch.
+The response must contain exactly the requested symbol set. Missing or
+unexpected symbols reject the whole batch.
 
 ## Provider-field mapping
 
-The offline adapter currently recognizes this minimal field boundary:
-
 | Schwab field | OneJournal meaning | Failure behavior |
 |---|---|---|
-| top-level symbol key and `symbol` | `provider_instrument_id` and symbol identity | Both must match the explicit request |
+| top-level symbol key and `symbol` | provider and normalized symbol identity | Both must match the explicit request |
 | `assetMainType` | `stock` or `option` | Unsupported or request-mismatched classes reject |
 | `quote.bidPrice`, `askPrice`, `lastPrice` | exact-decimal top-of-book values | Floats, negatives, non-finite values, empty prices, and crossed bid/ask reject |
 | `quote.quoteTime` | provider quote time in integer epoch milliseconds | Missing, fractional, negative, or invalid values reject |
@@ -50,79 +53,74 @@ The offline adapter currently recognizes this minimal field boundary:
 | `quote.marketSession` or top-level `marketSession` | explicit market session | Missing becomes `unknown`; unsupported values reject |
 | `quote.securityStatus` | safety status | A present value other than `Normal` rejects |
 
-An absent provider-declared market session is not inferred from local time.
-The normalized quote is retained as `unknown`, and the existing freshness gate
-makes it unavailable for valuation.
-
 These mappings remain provisional until checked against a sanitized official
 Schwab response. PNL-02B may correct or extend the adapter if the official
 payload differs; it must not weaken the fail-closed contract.
 
-## Guarded capture operator
+## Interim one-app evidence bridge
 
-`scripts/journal/fetch_schwab_quote.py` is intentionally limited to one symbol
-and the exact production endpoint:
+For the current bounded evidence step, OneBot's guarded exporter is the only
+component permitted to own or read the Schwab token for quote retrieval. It can
+produce one private bundle containing exactly:
 
 ```text
-GET https://api.schwabapi.com/marketdata/v1/quotes
+<capture-id>/
+  quote-response.json
+  capture-v1.json
 ```
 
-The request includes only `symbols=<one symbol>` and
-`fields=quote,reference`. Redirects are disabled. Response bodies larger than
-5 MiB, non-JSON responses, non-object responses, and HTTP failures reject.
-HTTP error bodies are not printed.
+The OneBot manifest schema is
+`onebot.schwab.quote-evidence-capture.v1`. It binds exact response bytes to the
+approved request, terms acknowledgement, one-symbol GET, market date, clean
+OneBot commit, timestamps, hash, and zero refresh/account/order/database counts.
+The exporter contract disables redirects, retries, and OAuth refresh.
 
-Without `--execute-read-only`, the operator is plan-only. Plan-only mode does
-not read a token, create a lock, make a network request, or write a file.
+Transfer into `/Users/edward/Projects/Private/OneJournal` requires a later,
+separate approval. Tokens, secrets, account identifiers, and provider
+configuration are never transferred.
 
-A future execution requires all of these gates:
+At the approved target cutover, OneBot's Schwab access is retired before the
+isolated OneJournal Schwab connector becomes token owner. The two projects must
+not refresh the same token lifecycle. Equivalent IBKR, Moomoo, and later
+connectors must preserve this contract's provider-independent identity,
+entitlement, raw-lineage, and freshness boundaries.
 
-- separate owner approval for the exact call;
-- `--execute-read-only`;
-- a non-empty approval identifier;
-- a non-empty provider-terms acknowledgement identifier;
-- the exact full repository commit approved for the call and a clean working
-  tree at that commit;
-- an explicit symbol, instrument key, asset class, currency, market date, and
-  connection UID;
-- OneJournal-scoped Schwab configuration; and
-- an existing, non-symlinked, owner-readable token file with no group or other
-  permissions; and
-- the exact Schwab production API base.
+## Credential-free import
 
-The operator exposes no account hash argument and no account or order method.
-Its provider-access lock serializes quote capture with the guarded raw-history
-backfill operator so both cannot refresh the same token concurrently.
-It captures the exact successful response bytes atomically under
-`data/raw/schwab/<market-date>/quotes/`, with a `0700` leaf directory and `0600`
-file. It refuses overwrite, records SHA-256, normalizes in memory, assesses
-freshness in memory, and writes a private `capture-v1` sidecar binding the raw
-hash to the approval, terms-acknowledgement, request identity, adapter version,
-quote identity, repository commit, pre-call clean-tree state, and freshness
-result. It never opens DuckDB. The sidecar binds an acknowledgement identifier;
-it is not itself a production user-acceptance record.
+`scripts/journal/import_schwab_quote_evidence.py` performs no plan, capture, or
+provider operation. It reads an explicitly selected bundle below an explicit
+private vault root and fails closed unless:
 
-OAuth token refresh can occur during a separately approved execution when the
-existing OneJournal-scoped token requires it. That credential access and token
-write are not part of PNL-02A and require the later provider-call approval.
+- the vault and bundle are non-symlink `0700` directories;
+- the bundle contains exactly the two contract files, both non-symlink `0600`;
+- the schema, approval, terms acknowledgement, connection UID, symbol, market
+  date, OneBot commit, endpoint, query, request count, and no-refresh controls
+  exactly match explicit arguments;
+- the raw byte count and SHA-256 match the manifest;
+- the response is a finite JSON object containing exactly the approved symbol;
+  and
+- the existing Schwab adapter and freshness contract accept the evidence.
+
+The operator emits only a secret-free summary. It does not write private
+evidence, normalized files, DuckDB, migrations, caches, or generated output.
+The normalized quote's current repository-shaped `raw_path` is an in-memory
+logical locator under `data/raw/schwab/external/<capture-id>/`; no normalized
+quote is persisted by this operator. A durable external-vault locator contract
+must be approved before database ingestion.
 
 ## Validation boundary
 
-PNL-02A tests establish:
+Offline tests establish exact-decimal mapping, identity and symbol scope,
+manifest/schema/hash/mode/provenance enforcement, explicit freshness
+evaluation, zero evidence or database writes, and absence of credential,
+network, refresh, account, order, and database capabilities in OneJournal.
 
-- exact explicit identity mapping;
-- exact-decimal parsing from captured response bytes;
-- full-batch rejection on missing or unexpected symbols;
-- fail-closed asset class, status, delay, session, price, timestamp, and raw
-  lineage behavior;
-- plan-only operation before credential or file access;
-- exact one-endpoint GET construction with redirects disabled;
-- suppression of HTTP response bodies in errors;
-- exact-byte private raw capture in a temporary test directory; and
-- private capture-manifest lineage with safe machine identifiers; and
-- exact approved repository-commit and clean-worktree provenance; and
-- zero DuckDB writes.
+They do not establish current Schwab schema compatibility, entitlement,
+licensing, live freshness, transfer integrity in an actual private vault,
+production readiness, durable quote storage, or PNL-02 completion.
 
-They do not establish current Schwab schema compatibility, market-data
-entitlement, live freshness, provider terms compliance, production readiness,
-or PNL-02 completion.
+The current active OneJournal runtime is credential-free: the former ad hoc
+Schwab raw-history credential operators have been retired. That retirement does
+not prohibit the future isolated provider-integration service. Credentialed
+code retained under legacy directories remains non-runtime historical source
+and is not approved for reuse in that service.

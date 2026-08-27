@@ -29,7 +29,7 @@ source .venv/bin/activate
 python -m pip install -r requirements.lock
 python -m pip install --no-deps --no-build-isolation -e .
 python -m pip check
-python -c "import duckdb, requests, streamlit, yaml; import onejournal; print(onejournal.__version__)"
+python -c "import duckdb, streamlit, yaml; import onejournal; print(onejournal.__version__)"
 ```
 
 Why the editable install uses `--no-deps --no-build-isolation`:
@@ -54,31 +54,26 @@ The full baseline also expects the user's private local OneJournal environment
 and operational data paths:
 
 - `~/.onejournal/env/`
-- `~/.onejournal/tokens/` when broker authentication is explicitly used
 - `data/journal/onejournal.duckdb`
 - generated dashboard validation inputs under `output/`
 
 Private environment files, tokens, raw broker evidence, runtime databases, and
 generated output must not be committed.
 
-### Schwab raw-history configuration boundary
+### Broker credential boundary
 
-When the optional read-only Schwab raw-history fetcher is used, its private
-configuration is OneJournal-specific:
+The current OneJournal runtime has no active broker credential, token, OAuth
+refresh, or provider-call operator. During the bounded PNL-02 evidence step,
+OneBot/VPS is only a temporary single-owner Schwab capture bridge. OneJournal
+may currently consume only separately approved private evidence bundles through
+credential-free validators, adapters, reconciliation, and import operators.
 
-```text
-ONEJOURNAL_SCHWAB_TOKEN_PATH=~/.onejournal/tokens/schwab_tokens.json
-ONEJOURNAL_SCHWAB_CLIENT_ID=...
-ONEJOURNAL_SCHWAB_CLIENT_SECRET=...
-ONEJOURNAL_SCHWAB_REDIRECT_URI=https://127.0.0.1:8182/callback
-```
-
-The fetcher defaults to `~/.onejournal/tokens/schwab_tokens.json`. It rejects
-the old generic credential variables and any `~/.onebot/` token path, so a
-TradersGPS/OneBot credential cannot be selected accidentally. It only reads
-broker account/order/transaction endpoints, but an expired token can require an
-OAuth refresh POST and a local private-token write. Its `--dry-run` mode makes
-no network or file writes.
+Do not configure `ONEJOURNAL_SCHWAB_*` variables or a OneJournal Schwab token
+path in the current runtime. The target architecture places approved Schwab,
+IBKR, Moomoo, and later provider connections in an isolated OneJournal
+integration service. Its credential storage, authentication, tenancy,
+deployment, and cutover contracts require separate approval before
+implementation; the current evidence bridge does not define those contracts.
 
 The installation and import smoke check can run without broker access. The full
 baseline uses the local runtime prerequisites but does not place, cancel,
@@ -115,10 +110,13 @@ Direct runtime dependencies:
 
 - `duckdb` - DuckDB journal reads, writes, contracts, and validation
 - `pyyaml` - safe YAML configuration support
-- `requests` - read-only Schwab history HTTP client
 - `streamlit` - current internal prototype UI
 
 The standard library covers the remaining current journal and adapter code.
+`requests` remains pinned in `requirements.lock` only because Streamlit depends
+on it transitively; it is not a direct OneJournal dependency or provider-call
+capability. A future provider connector may add an approved HTTP client or
+provider SDK as its own reviewed dependency.
 
 The automated test suite uses Python's standard-library `unittest` runner, so it
 adds no development-only dependency. Add formatting, analysis, or alternative

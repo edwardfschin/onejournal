@@ -98,13 +98,24 @@ Current source boundaries:
 | Source | Current capability |
 |---|---|
 | Manual CSV | Normalized-fill parsing, validation, import, and tests |
-| Schwab | Read-only raw history fetch, orders/transactions JSON adapters, reconciliation, and guarded import |
+| Schwab | Credential-free orders/transactions JSON adapters, reconciliation, and guarded import of externally acquired raw evidence |
 | IBKR | Reserved raw directory, configuration, and package boundary; adapter not implemented |
 | Market data | Provider not selected |
 
 All normalized activity preserves `source_broker` and `source_account_id` so
 future journal and portfolio logic can distinguish brokers and accounts without
 embedding broker formats in the domain or UI.
+
+During the current PNL-02 evidence-validation step, OneBot/VPS is the temporary
+single owner of the available Schwab application and refreshable token. The
+current OneJournal runtime has no active Schwab credential or provider-call
+operator and consumes only separately approved private evidence bundles.
+
+The target architecture removes that OneBot dependency: OneJournal becomes the
+only project that owns approved provider connections and calls Schwab, IBKR,
+Moomoo, or later providers through isolated provider-specific connectors. All
+connectors produce the same broker-independent evidence and normalized
+contracts, so journal, P&L, portfolio, and UI code remain provider-independent.
 
 ## ODFS repository layout
 

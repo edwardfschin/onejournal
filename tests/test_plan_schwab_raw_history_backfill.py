@@ -72,6 +72,12 @@ class SchwabRawHistoryBackfillPlannerTests(unittest.TestCase):
         )
 
         self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("TOKEN_OWNER                  : not assigned by this plan", result.stdout)
+        self.assertIn(
+            "EXECUTION_OWNER              : separate provider acquisition approval",
+            result.stdout,
+        )
+        self.assertIn("BROKER_REQUEST_AUTHORITY     : none", result.stdout)
         self.assertIn("NETWORK_ACCESS               : disabled", result.stdout)
         self.assertIn("TOKEN_ACCESS                 : disabled", result.stdout)
         self.assertIn("FILESYSTEM_WRITE              : disabled", result.stdout)

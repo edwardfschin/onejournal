@@ -14,6 +14,8 @@ call sites, operator documentation, and the full
 Status meanings:
 
 - **ACTIVE** — part of the present OneJournal validation or operator workflow.
+- **RETIRED** — removed from active OneJournal use; retained here only as an
+  audit record with no executable command.
 - **LEGACY_BACKFILL** — retained only for prototype CSV/DB transition or
   historical recovery; not a future production-service design.
 - **MAINTENANCE_EXPLICIT** — can change local journal data only with an
@@ -66,9 +68,7 @@ all active imports, UI actions, CI workflows, and operator commands.
 | `scripts/journal/find_and_run_schwab_daily_import.py` | ACTIVE | Locates raw files and invokes guarded daily import; fails on duplicate raw snapshots unless explicitly overridden. | Operator convenience command. |
 | `scripts/journal/check_schwab_daily_import_idempotency.py` | ACTIVE | Copies DB and runs the guarded import twice against the copy. | Proves repeat import does not duplicate active rows. |
 | `scripts/journal/backfill_schwab_history.py` | LEGACY_BACKFILL | Discovers historical raw orders/transactions, writes a backfill report, and imports only with `--import-db`. | Controlled recovery/backfill; duplicate snapshots fail unless explicitly selected. |
-| `scripts/journal/fetch_schwab_raw_history.py` | ACTIVE | Uses Schwab read endpoints, persists raw JSON evidence, and refreshes only a OneJournal-scoped token when needed. `--dry-run` prevents network/file writes. | Credentialed read-only ingestion; generic and OneBot credential configuration are rejected. |
-| `scripts/journal/plan_schwab_raw_history_backfill.py` | ACTIVE | Offline-only planner for bounded historical fetch windows and future GET estimates; no network, token, file-write, or DuckDB dependency. | Review/planning tool; it does not authorize a broker fetch. |
-| `scripts/journal/fetch_schwab_raw_history_backfill.py` | ACTIVE | Sequential, resumable OneJournal-scoped raw JSON fetcher with protected-time control, token lock, and CSV audit report. | Guarded raw-evidence ingestion; a live run requires separate approval and never normalizes or writes DuckDB. |
+| `scripts/journal/plan_schwab_raw_history_backfill.py` | ACTIVE | Offline-only planner for bounded historical evidence-acquisition request windows and indicative GET estimates; no network, token, file-write, or DuckDB dependency. | Provider-independent review/planning tool for a separately approved connector or temporary producer; it grants no broker authority or token ownership. |
 | `scripts/journal/purge_demo_manual_data_from_db.py` | MAINTENANCE_EXPLICIT | Dry-runs by default; `--apply` backs up then deletes only identified demo manual rows. | Never run against a real journal without explicit approval. |
 | `scripts/journal/refresh_dashboard.py` | LEGACY_BACKFILL | Rebuilds legacy CSV payload and manual-review CSV artifacts. | Prototype/backfill only; Streamlit does not write through this path. |
 | `scripts/journal/update_review_template.py` | LEGACY_BACKFILL | Writes/updates the legacy manual-review CSV from a dashboard payload. | Prototype/backfill only; not read-only despite its old docstring. |
@@ -77,6 +77,13 @@ all active imports, UI actions, CI workflows, and operator commands.
 `scripts/journal/migrations/README.md` is migration documentation, not an
 executable script. `scripts/.DS_Store` is ignored operating-system metadata and
 is not a project artifact.
+
+## Retired OneJournal scripts
+
+| Former path | Status | Retirement reason |
+|---|---|---|
+| `scripts/journal/fetch_schwab_raw_history.py` | RETIRED | Removed because its ad hoc local token ownership created unsafe split refresh authority. OneBot/VPS is only the current temporary single owner; the target is an isolated OneJournal provider connector after controlled cutover. |
+| `scripts/journal/fetch_schwab_raw_history_backfill.py` | RETIRED | Removed with its credentialed transport. Future history requires a separately approved, case-specific provider connector and OneJournal evidence validation/import outside the credential boundary. |
 
 ## Phase-mapped script inventory references
 

@@ -95,11 +95,11 @@ future website.
 |---|---|---|
 | `audit_trades.py` | MIGRATE | Read-oriented checks for coverage, duplicates, nulls, and option fields in legacy `journal.trades`. Recreate integrity concepts against versioned OneJournal tables. |
 | `db_inspect.py` | MIGRATE | Schema, count, time-range, and uniqueness diagnostics for legacy transaction views. Generic diagnostic behavior is useful; relation names are obsolete. |
-| `export_trx.py` | ARCHIVE | Calls Schwab transaction endpoints, refreshes tokens, writes raw files, and mutates legacy raw/item/run-log tables. Current raw fetch and normalized adapters supersede this path. |
-| `fetch_orders_live.py` | ARCHIVE | Calls Schwab order/account endpoints and replaces legacy live-order/account tables while appending raw and snapshot data. Current ODFS raw-history and adapter flow supersede it. |
+| `export_trx.py` | ARCHIVE | Calls Schwab transaction endpoints, refreshes tokens, writes raw files, and mutates legacy raw/item/run-log tables. The target isolated OneJournal provider connector and separate evidence-adapter boundary supersede this path. |
+| `fetch_orders_live.py` | ARCHIVE | Calls Schwab order/account endpoints and replaces legacy live-order/account tables while appending raw and snapshot data. The target isolated OneJournal provider connector and separate evidence-adapter boundary supersede this path. |
 | `fetch_positions_live.py` | MIGRATE | Calls the Schwab positions endpoint and replaces legacy account/position tables. Position ingestion remains a roadmap requirement, but this implementation bypasses OneJournal normalized contracts. |
 | `ideas_runner.py` | RETAIN_ISOLATED | Reads and rewrites Excel, generates OMS commands, and can execute Schwab submissions indirectly with `--execute`. |
-| `incremental_export.py` | ARCHIVE | Resumes/chunks legacy Schwab transaction export through subprocesses and old schemas. Current history fetch/backfill boundaries supersede it. |
+| `incremental_export.py` | ARCHIVE | Resumes/chunks legacy Schwab transaction export through subprocesses and old schemas. A future exact-scope provider connector and OneJournal evidence validation/import boundary supersede it. |
 | `ingest_acct_activity.py` | ARCHIVE | Auto-migrates and inserts streamer NDJSON into a legacy raw table. Streaming is not journal truth and no active producer exists here. |
 | `init_journal.sql` | ARCHIVE | Bootstraps the superseded TradersGPS `journal.*` schema and installs DuckDB JSON support. It is incompatible with OneJournal migrations and tables. |
 | `introspect_journal.py` | MIGRATE | Read-oriented DuckDB schema, constraint, relationship, and index inspection. Reimplement as a version-aware OneJournal diagnostic. |

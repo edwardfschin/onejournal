@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-"""Plan an offline, sequential Schwab raw-history backfill.
+"""Plan an offline Schwab raw-history evidence-acquisition request.
 
 This command deliberately has no broker, token, file, or DuckDB dependency.
 It only converts an inclusive date range into bounded calendar-day windows for
-the future live raw-fetch operator.
+a separately approved provider connector or temporary evidence producer.
 """
 
 from __future__ import annotations
@@ -30,7 +30,7 @@ def parse_date(value: str) -> date:
 
 @dataclass(frozen=True)
 class FetchWindow:
-    """One inclusive calendar-date range for a future raw GET pair."""
+    """One inclusive calendar-date range for a requested raw evidence pair."""
 
     start: date
     end: date
@@ -58,12 +58,12 @@ def plan_windows(start: date, end: date, chunk_days: int) -> list[FetchWindow]:
 
 
 def estimated_api_calls(window_count: int) -> dict[str, int]:
-    """Estimate the future sequential operator's GET requests.
+    """Estimate a separately approved provider producer's GET requests.
 
     One account lookup discovers the account hash once. Every window then
-    requires one orders GET and one transactions GET. A future operator that
-    accepts an already-known account hash can omit the lookup; the planner
-    exposes both totals so that distinction is not hidden.
+    requires one orders GET and one transactions GET. An approved external
+    producer that accepts an already-known account hash can omit the lookup;
+    the planner exposes both totals so that distinction is not hidden.
     """
 
     if window_count < 0:
@@ -82,7 +82,10 @@ def estimated_api_calls(window_count: int) -> dict[str, int]:
 
 def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Plan offline Schwab raw-history fetch windows; makes no external calls."
+        description=(
+            "Plan an offline Schwab raw-history evidence-acquisition request; "
+            "makes no external calls."
+        )
     )
     parser.add_argument("--start", required=True, type=parse_date, help="Inclusive YYYY-MM-DD.")
     parser.add_argument("--end", required=True, type=parse_date, help="Inclusive YYYY-MM-DD.")
@@ -104,8 +107,11 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     calls = estimated_api_calls(len(windows))
 
-    print("===== Schwab Raw History Backfill Plan =====")
-    print("MODE                         : offline planning only")
+    print("===== Schwab Raw History Acquisition Request Plan =====")
+    print("MODE                         : offline acquisition-request planning")
+    print("TOKEN_OWNER                  : not assigned by this plan")
+    print("EXECUTION_OWNER              : separate provider acquisition approval")
+    print("BROKER_REQUEST_AUTHORITY     : none")
     print("NETWORK_ACCESS               : disabled")
     print("TOKEN_ACCESS                 : disabled")
     print("FILESYSTEM_WRITE              : disabled")

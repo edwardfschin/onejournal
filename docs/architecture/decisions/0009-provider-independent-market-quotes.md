@@ -57,15 +57,23 @@ the connected user's jurisdiction and product remain authoritative at runtime.
 
 ### Evidence and storage
 
-6. The raw provider response is immutable local evidence under
-   `data/raw/<provider>/<market-date>/...`. It is private, ignored by Git, and
-   never served directly to the UI.
+6. The raw provider response is immutable private evidence. During the current
+   bounded Schwab evidence step, OneBot/VPS is the temporary single token owner
+   and capture producer; OneJournal may consume only a checksum-validated,
+   secret-free evidence bundle transferred into its private vault. This bridge
+   is not the target provider architecture. Raw evidence is never served
+   directly to the UI or copied into Git.
 7. DuckDB stores normalized top-of-book evidence: provider, connection,
    instrument identity, symbol, asset class, currency, bid, ask, last,
    provider-quote time, receive time, market session, data mode, entitlement
    status, market date, raw path/hash, and adapter version.
-8. Credentials and OAuth tokens remain outside the repository, raw evidence,
-   normalized quote rows, generated output, and DuckDB quote tables.
+8. Credentials and OAuth tokens remain outside OneJournal's current runtime,
+   as well as outside the repository, raw evidence, normalized quote rows,
+   generated output, and DuckDB quote tables. The target isolated OneJournal
+   provider-integration service may own approved provider connections, but must
+   keep secrets outside all of those evidence, storage, presentation, and Git
+   boundaries. Credentialed code retained only in isolated legacy directories
+   is not an active or approved runtime path.
 9. Quote data is local-only for the connected owner's own portfolio. It is not
    redistributed, shared between users, committed to Git, or exposed through a
    public endpoint.
@@ -117,38 +125,58 @@ the connected user's jurisdiction and product remain authoritative at runtime.
     after authentication and tenancy are approved, before any live quote
     connection is enabled.
 
+### Transition and target provider boundary
+
+17. For the current bounded PNL-02 evidence step only, OneBot/VPS is the
+    temporary single owner of the available Schwab application and refreshable
+    token. OneJournal's current runtime has no Schwab client ID, secret, token
+    file, refresh path, or provider-call operator.
+18. This temporary bridge may export only a separately approved, versioned,
+    private quote evidence bundle. The bundle contains exact response bytes and
+    a secret-free manifest binding request scope, approval, terms
+    acknowledgement, source commit, timestamps, checksum, and zero
+    refresh/account/order/database counts.
+19. The target architecture makes OneJournal the only project that owns
+    approved provider connections and calls Schwab, IBKR, Moomoo, or later
+    providers through isolated provider-specific connectors behind the common
+    quote contract. Moving Schwab ownership requires separately approved
+    credential storage, connection identity, security, deployment, and cutover;
+    OneBot access must be retired before OneJournal becomes token owner. The two
+    projects must never refresh the same token lifecycle. Private transfer,
+    durable storage, acceptance, and deployment remain separate gates.
+
 ### Freshness and polling
 
-17. Freshness is computed at the evaluation instant; it is not persisted as a
+20. Freshness is computed at the evaluation instant; it is not persisted as a
     permanent property of a quote.
-18. A real-time regular-session quote is `live_fresh` for at most 60 seconds.
+21. A real-time regular-session quote is `live_fresh` for at most 60 seconds.
     A pre-market or after-hours quote is `live_fresh` for at most 120 seconds.
     These are versioned, configurable safety thresholds.
-19. Provider-reported delayed data is labelled `delayed` and is not current
+22. Provider-reported delayed data is labelled `delayed` and is not current
     valuation evidence. Unknown or denied entitlement, unknown data mode,
     future-dated timestamps beyond five seconds, crossed bid/ask, and stale
     quotes fail closed.
-20. An official close, frozen quote, or last real-time quote retained after
+23. An official close, frozen quote, or last real-time quote retained after
     provider-declared market close is labelled `market_closed_last`, never
     `live_fresh`. An approved exchange-calendar service must supply market-open
     expectations before OneJournal relies on calendar inference.
-21. Recommended active-session polling defaults are 15 seconds for stocks,
+24. Recommended active-session polling defaults are 15 seconds for stocks,
     30 seconds for options, and 60 seconds in extended sessions. Polling pauses
     after five minutes of user inactivity and stops while the market is closed.
-22. Background polling is disabled. Polling may begin only while an
+25. Background polling is disabled. Polling may begin only while an
     authenticated journal session is active, the provider connection is valid,
     and a separately approved read-only operator or service is running.
-23. Rate limits, subscription limits, retry/backoff, and unsubscribe behavior
+26. Rate limits, subscription limits, retry/backoff, and unsubscribe behavior
     are provider-adapter responsibilities. A rate-limit or entitlement failure
     cannot be hidden by continuing to publish the last quote as live.
 
 ### Financial boundary
 
-24. Normalized quote evidence is not automatically a P&L mark. PNL-03 must
+27. Normalized quote evidence is not automatically a P&L mark. PNL-03 must
     explicitly approve the mark-selection method (for example midpoint, last,
     official close, or provider mark), spread-quality handling, and instrument
     exceptions before wiring quotes into unrealized P&L.
-25. The current unqualified `marks` dictionary and fill-derived position
+28. The current unqualified `marks` dictionary and fill-derived position
     `market_price` remain prototype-only. They cannot establish publication-
     grade unrealized P&L.
 
@@ -166,12 +194,15 @@ retention, privacy, authentication, and tenancy approval before server-side
 quote storage is enabled.
 
 The repository implements the normalized contract, configuration defaults,
-additive migration, transactional persistence, and synthetic validation. A
-Schwab-specific quote adapter and guarded single-symbol capture operator are
-also implemented offline under `docs/schwab_quotes_json_schema_contract.md`.
-They remain synthetic-contract evidence only until an official authenticated
-payload is captured through a separately approved read-only call and a
-sanitized contract fixture is derived without private data.
+additive migration, transactional persistence, and synthetic validation. The
+Schwab-specific adapter and credential-free evidence importer are implemented
+offline under `docs/schwab_quotes_json_schema_contract.md`; the current OneBot
+capture producer is only a temporary evidence bridge. The target provider plane
+is an isolated OneJournal integration service with one connector per provider.
+Neither the bridge nor the target plane is accepted for live use. Provider
+compatibility still requires an official authenticated payload captured through
+a separately approved read-only call and a sanitized contract fixture derived
+without private data.
 
 ## Alternatives considered
 
@@ -254,11 +285,12 @@ The accepted contract requires tests for:
 - fail-closed acknowledgement configuration that cannot substitute for
   provider-reported entitlement
 
-PNL-02A's synthetic adapter and guarded capture-operator tests do not establish
-provider compatibility. PNL-02 is not complete until a sanitized official
-Schwab response validates the adapter mapping and a separately approved
-read-only call proves end-to-end raw capture, normalization, storage, and
-freshness assessment.
+PNL-02A's synthetic adapter and interim offline producer/consumer boundary do
+not establish provider compatibility or the target provider-integration plane.
+PNL-02 is not complete until a sanitized official Schwab response validates the
+adapter mapping and separately approved capture, normalization, durable
+storage, freshness assessment, security controls, and single-owner cutover
+prove the end-to-end OneJournal connector boundary.
 
 ## Rollback or supersession
 

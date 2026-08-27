@@ -37,7 +37,7 @@ echo "PRIVATE   : not required"
 echo "BROKER API: disabled"
 
 "$PYTHON_BIN" -m pip check
-"$PYTHON_BIN" -c "import duckdb, requests, streamlit, yaml; import onejournal; print('IMPORTS   : OK')"
+"$PYTHON_BIN" -c "import duckdb, streamlit, yaml; import onejournal; print('IMPORTS   : OK')"
 PYTHONPYCACHEPREFIX="${TMPDIR:-/tmp}/onejournal_ci_pycache" \
     "$PYTHON_BIN" -m compileall -q src scripts/journal scripts/ci tests
 "$PYTHON_BIN" scripts/ci/check_repository.py

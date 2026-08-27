@@ -43,11 +43,17 @@ Broker/API/CSV raw data -> Broker adapter -> Normalized OneJournal records -> Tr
 - Human review reports: output/reports/
 - Project-safe config: config/*.yaml
 - Private local config: ~/.onejournal/env/*.env
-- Rotating broker session files: ~/.onejournal/tokens/
 
-Broker credentials and environment keys are application-scoped. The Schwab
-raw-history fetcher uses only `ONEJOURNAL_SCHWAB_*` configuration and its
-OneJournal token path; it must reject generic/OneBot credential configuration.
+The current OneJournal runtime has no active broker credential or provider-call
+path. OneBot/VPS is a temporary single-owner bridge only for the bounded PNL-02
+Schwab evidence step. OneJournal currently accepts only separately approved
+private evidence bundles through credential-free validation, adapter,
+reconciliation, and import boundaries.
+
+The target architecture makes OneJournal the only project that owns approved
+provider connections and calls Schwab, IBKR, Moomoo, or later providers. That
+future integration boundary must keep credentials outside Git, raw evidence,
+normalized records, DuckDB, logs, and UI state.
 
 The dashboard is not the source of truth. It is a view.
 
@@ -69,17 +75,45 @@ Supported adapter families:
 
 The dashboard, journal metrics, and trade episode logic must not know whether a record came from Schwab, IBKR, or manual CSV.
 
-## Minimum Adapter Interface
+## Minimum Evidence Adapter Interface
 
-Each broker/import adapter should eventually support read-only methods:
+Each broker/import adapter should eventually support credential-free ingestion
+capabilities over already captured evidence:
 
-- fetch_accounts(asof)
-- fetch_orders(asof)
-- fetch_fills(asof)
-- fetch_positions(asof)
-- fetch_transactions(asof)
+- normalize_accounts(evidence, asof)
+- normalize_orders(evidence, asof)
+- normalize_fills(evidence, asof)
+- normalize_positions(evidence, asof)
+- normalize_transactions(evidence, asof)
 
-Unsupported methods must fail clearly or return an explicit empty result with a reason.
+Provider access and token ownership remain outside evidence adapters and the
+current runtime. Unsupported ingestion capabilities must fail clearly or
+return an explicit empty result with a reason.
+
+## Provider Connector Boundary
+
+In the target architecture, isolated OneJournal provider connectors acquire
+evidence from Schwab, IBKR, Moomoo, and later providers. These are capability
+categories, not approved implementation signatures:
+
+- accounts
+- orders and fills
+- positions
+- transactions
+- market quotes
+
+Provider connectors own provider-specific authentication, request construction,
+rate-limit handling, and immutable raw capture. Evidence adapters own
+normalization. Journal, lifecycle, financial, portfolio, and UI code must use
+only broker-independent contracts and must not receive provider credentials or
+parse provider payloads.
+
+The current runtime does not implement this provider-connection plane. Its
+credential storage, user/connection identity, tenancy, scheduling, deployment,
+and single-owner cutover require separate decisions and approvals. When the
+Schwab connector is activated, OneBot's temporary Schwab access must be retired
+before OneJournal becomes the token owner; both projects must not refresh the
+same token lifecycle.
 
 ## Minimum Normalized Records
 
