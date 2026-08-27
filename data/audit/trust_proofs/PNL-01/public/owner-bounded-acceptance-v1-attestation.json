@@ -1,0 +1,94 @@
+{
+  "attestation_id": "PNL-01-owner-bounded-acceptance-v1",
+  "roadmap_item": "PNL-01",
+  "decision": {
+    "decision_date": "2026-08-27",
+    "owner_acceptance_statement": "I accept PNL‑01 as valid only for the accepted ONJ‑TRUST‑01B, ONJ‑TRUST‑02, ONJ‑TRUST‑03, ONJ‑TRUST‑04, and ONJ‑TRUST‑06 lifecycle scopes. This excludes real-exercise acceptance, replacement-contract closure after the ONJ‑TRUST‑06 roll, unresolved review-required or unapproved description-only events, complete account-history coverage, portfolio-wide financial correctness, unrealized P&L or valuation, complete ADR‑0010 provenance, production readiness, and authority for provider, database, migration, deployment, push, or trading actions.",
+    "owner_role": "PROJECT_OWNER",
+    "owner_sign_off": true
+  },
+  "validation_status": {
+    "bounded_financial_acceptance": "ACCEPTED",
+    "roadmap_delivery_status_supported": "COMPLETE",
+    "operational_acceptance": "NOT_GRANTED",
+    "portfolio_wide_financial_acceptance": "NOT_GRANTED",
+    "production_readiness": "NOT_GRANTED"
+  },
+  "accepted_proof_set": [
+    {
+      "proof_id": "ONJ-TRUST-01B",
+      "record": "../../ONJ-TRUST-01B/public/owner-acceptance-v1-attestation.json",
+      "sha256": "a11a3f21ba10508ec31b99e0c339e6004150862c04450663d787d2c728348a5d"
+    },
+    {
+      "proof_id": "ONJ-TRUST-02",
+      "record": "../../ONJ-TRUST-02/public/owner-acceptance-v1-attestation.json",
+      "sha256": "fda55cb4f0274c2ce5d686d297740109eeab31eb4f91381a72ad849936a399b8"
+    },
+    {
+      "proof_id": "ONJ-TRUST-03",
+      "record": "../../ONJ-TRUST-03/public/owner-acceptance-v1-attestation.json",
+      "sha256": "9461af5c80850a462d4a4d883db8d4d1120e76713c6ddb0ec747c02330083500",
+      "evidence_use_record": "../../ONJ-TRUST-03/public/owner-acceptance-readiness-v1.json",
+      "evidence_use_record_sha256": "4c0fccb2f5657227c10e50bbbe0851d81e45e04764daf9e6a00ae876908583ae"
+    },
+    {
+      "proof_id": "ONJ-TRUST-04",
+      "record": "../../ONJ-TRUST-04/public/owner-acceptance-v1-attestation.json",
+      "sha256": "2f7db8cad9a32d7c749550afb570124d650ab46dc47555ff7a61594d0baf9bcc",
+      "evidence_use_record": "../../ONJ-TRUST-04/public/evidence-use-validation-closure-v1.json",
+      "evidence_use_record_sha256": "32b3ac19efaed76dfcd595bdbb20a7aa5d73c530419e2532972df8532fdf2035"
+    },
+    {
+      "proof_id": "ONJ-TRUST-06",
+      "record": "../../ONJ-TRUST-06/public/owner-acceptance-v1-attestation.json",
+      "sha256": "809f3d02e0e7598f3af4146bf9d909ebaf334547572fb4252b4aac84c84a0120",
+      "evidence_use_record": "../../ONJ-TRUST-06/public/evidence-use-validation-closure-v1.json",
+      "evidence_use_record_sha256": "7743a43cfe191efecc775d9e8f186132980e1a924d17e3c0a0fbd142d5e5e810"
+    }
+  ],
+  "basis": {
+    "repository_commit": "060e2d7b8f2f554e3387595fe2f10b8ff335d913",
+    "trusted_ledger_exit_gate": "docs/trusted_ledger_exit_gate.md",
+    "focused_validation_status": "PASS",
+    "focused_tests_passed": 89,
+    "accepted_scopes_are_real_broker_evidence": true,
+    "public_and_private_checksum_gates": "PASS",
+    "private_vault_permission_and_symlink_gates": "PASS"
+  },
+  "accepted_scope": {
+    "scope_type": "EXACT_BOUNDED_REALIZED_PNL_PROOF_SET",
+    "proof_ids": [
+      "ONJ-TRUST-01B",
+      "ONJ-TRUST-02",
+      "ONJ-TRUST-03",
+      "ONJ-TRUST-04",
+      "ONJ-TRUST-06"
+    ],
+    "ordinary_closed_lifecycle": "ACCEPTED_AS_BOUNDED_BY_ONJ_TRUST_01B",
+    "partial_close": "ACCEPTED_AS_BOUNDED_BY_ONJ_TRUST_02",
+    "expiration": "ACCEPTED_AS_BOUNDED_BY_ONJ_TRUST_03",
+    "assignment_through_successor_closure": "ACCEPTED_AS_BOUNDED_BY_ONJ_TRUST_04",
+    "original_contract_roll_boundary": "ACCEPTED_AS_BOUNDED_BY_ONJ_TRUST_06"
+  },
+  "explicit_exclusions": [
+    "REAL_EXERCISE_ACCEPTANCE",
+    "ONJ_TRUST_06_REPLACEMENT_CONTRACT_CLOSURE",
+    "UNRESOLVED_REVIEW_REQUIRED_EVENTS",
+    "UNAPPROVED_DESCRIPTION_ONLY_EVENTS",
+    "COMPLETE_ACCOUNT_HISTORY_COVERAGE",
+    "GENERAL_OR_PORTFOLIO_WIDE_FINANCIAL_CORRECTNESS",
+    "UNREALIZED_PNL_OR_VALUATION",
+    "COMPLETE_ADR_0010_PROVENANCE",
+    "PRODUCTION_READINESS",
+    "PROVIDER_OR_BROKER_ACCESS_AUTHORIZATION",
+    "DATABASE_OR_MIGRATION_CHANGE_AUTHORIZATION",
+    "DEPLOYMENT_COMMIT_PUSH_OR_TRADING_AUTHORIZATION"
+  ],
+  "history_preservation": {
+    "underlying_assessments_unchanged": true,
+    "underlying_owner_acceptances_unchanged": true,
+    "underlying_evidence_use_records_unchanged": true,
+    "aggregate_acceptance_is_append_only": true
+  }
+}

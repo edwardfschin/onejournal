@@ -157,7 +157,7 @@ presentation layer.
 
 | ID | Status | Action | Completion evidence |
 |---|---|---|---|
-| PNL-01 | BLOCKED | Implement realized P&L from closed lifecycle allocations. | ADR-0004 economic/book rules are approved and implemented for assignment, exercise, and expiration with FIFO predecessor links, successor basis carry, UTC ordering, input fingerprints, append-only run/allocation persistence, dashboard/reconciliation consumption, and focused tests. Completion remains blocked only on manual confirmation of real Schwab review evidence and broker-result reconciliation; description-only rows remain excluded. |
+| PNL-01 | COMPLETE | Implement realized P&L from closed lifecycle allocations. | ADR-0004 rules and the Decimal FIFO/lifecycle implementation are validated by focused tests and five owner-accepted, broker-reconciled real-evidence scopes: ordinary close, partial close, expiration, assignment through successor closure, and the original-contract roll boundary. The bounded acceptance is recorded under `data/audit/trust_proofs/PNL-01/`. It excludes real exercise, the roll replacement contract's closure, unresolved `review_required` or unapproved description-only events, complete account history, portfolio-wide correctness, unrealized P&L/valuation, production readiness, and complete ADR-0010 provenance. |
 | PNL-02 | IN PROGRESS | Select a market-data provider and define quote ingestion, storage, licensing, and freshness. | ADR-0009 accepts Schwab first, IBKR next, and Moomoo later through a provider-independent, local-only quote contract. Configurable polling/freshness defaults, migration 0011, atomic normalized storage, lineage, synthetic contract tests, and a fail-closed user/provider/connection acknowledgement contract are implemented. The acknowledgement does not replace runtime entitlement verification. Completion still requires an approved read-only Schwab call and sanitized official response fixture to validate the provider adapter end to end. |
 | PNL-03 | BLOCKED | Implement current positions, cost basis, market value, and unrealized P&L. | FIFO open quantity/cost groundwork exists, but current `normalized_positions` are derived independently from each import date's fills and use the last fill as `market_price`; they are not cumulative broker snapshots or approved valuations. Completion requires PNL-02 plus broker-position reconciliation. |
 | PNL-04 | BLOCKED | Build account and consolidated portfolio snapshots over time. | As-of payload selection exists, but its inputs are per-import derived position rows rather than canonical cumulative and broker-reconciled portfolio state. Historical snapshots cannot yet satisfy the acceptance criterion. |
@@ -168,8 +168,10 @@ presentation layer.
 
 ### Queue 3 audit record
 
-**Status: reopened after source-level audit (2026-08-09).** PNL-01, PNL-02,
-PNL-03, PNL-04, PNL-05, PNL-06, PNL-07, and PNL-08 remain open. Earlier
+**Status: reopened after source-level audit (2026-08-09).** PNL-01 returned to
+`COMPLETE` on 2026-08-27 after bounded owner acceptance of five real-broker,
+broker-reconciled lifecycle scopes. PNL-02, PNL-03, PNL-04, PNL-05, PNL-06,
+PNL-07, and PNL-08 remain open. Earlier
 completion labels for PNL-03 through PNL-06 and PNL-08 described useful
 prototype scaffolding, but their acceptance criteria are not yet satisfied.
 The source-level reasons are recorded in the queue rows above so no placeholder
@@ -183,21 +185,15 @@ or unavailable value is mistaken for completed financial behavior.
 
 The remaining closure conditions are:
 
-- PNL-01: fill-backed closed-lot allocations reconcile to the approved long,
-  partial-close, multi-lot fee-allocation, and short-option examples. Completion
-  now has additive event-leg capture for instrument, signed quantity,
-  multiplier, observed price/cash, fee, currency, and deliverable evidence.
-  A privacy-preserving local raw-history audit found 2 unique assignment hints
-  on `TRADE` records and 15 unique expirations on `RECEIVE_AND_DELIVER` records,
-  all without structured lifecycle markers. They are now withheld from fills
-  and captured only as `description_hint` review evidence; all 19 observed legs
-  remain `review_required`. No exercise example is present locally. The owner
-  approved the economic/book assignment, exercise, and expiration rules on
-  2026-08-10, and the implementation now fails closed unless an operator links
-  exact normalized event legs and FIFO predecessor fills in an approved
-  instruction. PNL-01 remains blocked until representative real Schwab events
-  are manually confirmed and the resulting allocations reconcile to broker
-  evidence; `review_required` legs remain outside financial totals.
+- PNL-01: bounded delivery and financial acceptance were recorded on
+  2026-08-27 for ONJ-TRUST-01B, ONJ-TRUST-02, ONJ-TRUST-03, ONJ-TRUST-04,
+  and ONJ-TRUST-06. Those scopes cover an ordinary close, partial close,
+  expiration, assignment through successor closure, and the original-contract
+  roll boundary. No real exercise example is accepted, the replacement roll
+  contract is not followed to closure, and unresolved `review_required` or
+  unapproved description-only records remain outside financial totals. This
+  bounded closure does not establish complete account history, portfolio-wide
+  correctness, unrealized P&L/valuation, or complete ADR-0010 provenance.
 - PNL-02: the project owner approved Schwab first, IBKR next, and Moomoo later,
   local-only personal-account evidence, no silent provider fallback, and the
   ADR-0009 polling/freshness policy. The provider-neutral contract and storage
@@ -324,19 +320,18 @@ call, migration, or runtime change.
 
 The current actionable sequence is:
 
-1. `PNL-01` - finalize realized P&L from closed lifecycle allocations with worked examples.
-2. `PNL-02` - approve market-data provider, quote ingestion/storage policy, licensing, and freshness contract.
-3. `PNL-03` and `PNL-04` - replace per-import fill-derived position views
+1. `PNL-02` - approve market-data provider, quote ingestion/storage policy, licensing, and freshness contract.
+2. `PNL-03` and `PNL-04` - replace per-import fill-derived position views
    with canonical cumulative lot state, approved valuations, broker
    reconciliation, and reproducible portfolio snapshots.
-4. `PNL-05` and `PNL-06` - complete metrics and prove every breakdown
+3. `PNL-05` and `PNL-06` - complete metrics and prove every breakdown
    reconciles to canonical P&L and position totals.
-5. `PNL-07` - deliver daily/monthly/custom period report and export contracts with reconciliation behavior.
-6. `PNL-08` - enforce per-metric source, reconciliation, completeness, and freshness states.
-7. `UXJ-05` - finalize attachment controls policy (storage, authorization, encryption, retention, backup, incident response).
-8. `UXJ-06` - enable non-financial journal process workflows after financial contracts are stable.
-9. `WEB-01` - decide and approve production architecture, security, and hosting stack.
-10. `WEB-02` to `WEB-09` - define IA/design system to production rollout in dependency order.
+4. `PNL-07` - deliver daily/monthly/custom period report and export contracts with reconciliation behavior.
+5. `PNL-08` - enforce per-metric source, reconciliation, completeness, and freshness states.
+6. `UXJ-05` - finalize attachment controls policy (storage, authorization, encryption, retention, backup, incident response).
+7. `UXJ-06` - enable non-financial journal process workflows after financial contracts are stable.
+8. `WEB-01` - decide and approve production architecture, security, and hosting stack.
+9. `WEB-02` to `WEB-09` - define IA/design system to production rollout in dependency order.
 
 No implementation should bypass unresolved blockers above, especially P&L
 financial correctness, quote governance, attachment controls, and production
