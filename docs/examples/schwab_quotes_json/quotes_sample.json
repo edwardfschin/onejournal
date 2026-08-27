@@ -1,0 +1,15 @@
+{
+  "AAPL": {
+    "assetMainType": "EQUITY",
+    "quote": {
+      "askPrice": 200.10,
+      "bidPrice": 199.90,
+      "lastPrice": 200.00,
+      "marketSession": "REGULAR",
+      "quoteTime": 1786458600000,
+      "securityStatus": "Normal"
+    },
+    "realtime": true,
+    "symbol": "AAPL"
+  }
+}

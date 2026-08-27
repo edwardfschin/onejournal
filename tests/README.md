@@ -24,7 +24,10 @@ foundation simple and dependency-free.
   missing-evidence markers, and no inferred lifecycle P&L.
 - Market-data contract: provider-independent quote identity, local raw lineage,
   entitlement/delay/session state, deterministic freshness eligibility, and
-  atomic/idempotent temporary-DuckDB persistence. Mark selection is explicitly
+  atomic/idempotent temporary-DuckDB persistence. PNL-02A adds synthetic
+  Schwab quote mapping plus a plan-only-by-default, exact-byte, single-symbol
+  capture operator with no account, order, or DuckDB capability. Official
+  provider-payload validation remains open. Mark selection is explicitly
   deferred to PNL-03 policy.
 - Integration: schema initialization and migration, import, append-only journal
   history, review compatibility projection, replay preservation, DuckDB reads,

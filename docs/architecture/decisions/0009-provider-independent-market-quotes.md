@@ -166,10 +166,12 @@ retention, privacy, authentication, and tenancy approval before server-side
 quote storage is enabled.
 
 The repository implements the normalized contract, configuration defaults,
-additive migration, transactional persistence, and synthetic validation only.
-A Schwab-specific adapter remains blocked until an official authenticated
-payload is captured through a separately approved read-only call and sanitized
-contract fixtures are derived without private data.
+additive migration, transactional persistence, and synthetic validation. A
+Schwab-specific quote adapter and guarded single-symbol capture operator are
+also implemented offline under `docs/schwab_quotes_json_schema_contract.md`.
+They remain synthetic-contract evidence only until an official authenticated
+payload is captured through a separately approved read-only call and a
+sanitized contract fixture is derived without private data.
 
 ## Alternatives considered
 
@@ -252,9 +254,11 @@ The accepted contract requires tests for:
 - fail-closed acknowledgement configuration that cannot substitute for
   provider-reported entitlement
 
-PNL-02 is not complete until a sanitized official Schwab response validates the
-adapter mapping and a separately approved read-only call proves end-to-end raw
-capture, normalization, storage, and freshness assessment.
+PNL-02A's synthetic adapter and guarded capture-operator tests do not establish
+provider compatibility. PNL-02 is not complete until a sanitized official
+Schwab response validates the adapter mapping and a separately approved
+read-only call proves end-to-end raw capture, normalization, storage, and
+freshness assessment.
 
 ## Rollback or supersession
 
