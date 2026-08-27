@@ -12,7 +12,17 @@ from pathlib import Path
 import duckdb
 
 from onejournal.brokers.normalized import NormalizedQuote
-from onejournal.market_data.quotes import build_quote_uid, validate_normalized_quote
+from onejournal.market_data.ingestion import (
+    QuoteCaptureEnvelope,
+    build_quote_capture_fingerprint,
+    request_scope_json,
+    validate_quote_capture,
+)
+from onejournal.market_data.quotes import (
+    QuoteFreshnessPolicy,
+    build_quote_uid,
+    validate_normalized_quote,
+)
 
 
 @dataclass(frozen=True)
@@ -88,6 +98,60 @@ def _validate_run(run: QuoteIngestionRun, quotes: tuple[NormalizedQuote, ...]) -
             raise ValueError(f"quote adapter version differs from run: {quote.quote_uid}")
 
 
+def _quote_insert_rows(
+    quote_run_uid: str,
+    quotes: tuple[NormalizedQuote, ...],
+) -> list[list[object]]:
+    return [
+        [
+            quote.quote_uid,
+            quote_run_uid,
+            quote.provider,
+            quote.connection_uid,
+            quote.instrument_key,
+            quote.provider_instrument_id,
+            quote.symbol,
+            quote.asset_class,
+            quote.currency,
+            quote.bid,
+            quote.ask,
+            quote.last,
+            _utc_text(quote.provider_quote_at, "provider_quote_at"),
+            _utc_text(quote.received_at, "received_at"),
+            quote.market_session,
+            quote.data_mode,
+            quote.entitlement_status,
+            quote.asof,
+            quote.raw_path,
+            quote.raw_sha256,
+            quote.adapter_version,
+        ]
+        for quote in quotes
+    ]
+
+
+def _insert_quotes(
+    con: duckdb.DuckDBPyConnection,
+    quote_run_uid: str,
+    quotes: tuple[NormalizedQuote, ...],
+) -> None:
+    if not quotes:
+        return
+    con.executemany(
+        """
+        INSERT INTO normalized_market_quotes (
+            quote_uid, quote_run_uid, provider, connection_uid,
+            instrument_key, provider_instrument_id, symbol, asset_class,
+            currency, bid, ask, last_price, provider_quote_at_utc,
+            received_at_utc, market_session, data_mode,
+            entitlement_status, asof_date, raw_path, raw_sha256,
+            adapter_version
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """,
+        _quote_insert_rows(quote_run_uid, quotes),
+    )
+
+
 def persist_quote_batch(
     db_path: Path,
     run: QuoteIngestionRun,
@@ -150,45 +214,113 @@ def persist_quote_batch(
                 run.notes,
             ],
         )
-        if quotes:
-            con.executemany(
-                """
-                INSERT INTO normalized_market_quotes (
-                    quote_uid, quote_run_uid, provider, connection_uid,
-                    instrument_key, provider_instrument_id, symbol, asset_class,
-                    currency, bid, ask, last_price, provider_quote_at_utc,
-                    received_at_utc, market_session, data_mode,
-                    entitlement_status, asof_date, raw_path, raw_sha256,
-                    adapter_version
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                """,
-                [
-                    [
-                        quote.quote_uid,
-                        run.quote_run_uid,
-                        quote.provider,
-                        quote.connection_uid,
-                        quote.instrument_key,
-                        quote.provider_instrument_id,
-                        quote.symbol,
-                        quote.asset_class,
-                        quote.currency,
-                        quote.bid,
-                        quote.ask,
-                        quote.last,
-                        _utc_text(quote.provider_quote_at, "provider_quote_at"),
-                        _utc_text(quote.received_at, "received_at"),
-                        quote.market_session,
-                        quote.data_mode,
-                        quote.entitlement_status,
-                        quote.asof,
-                        quote.raw_path,
-                        quote.raw_sha256,
-                        quote.adapter_version,
-                    ]
-                    for quote in quotes
-                ],
+        _insert_quotes(con, run.quote_run_uid, quotes)
+        con.execute("COMMIT")
+        return len(quotes)
+    except Exception:
+        con.execute("ROLLBACK")
+        raise
+    finally:
+        con.close()
+
+
+def persist_quote_capture(
+    db_path: Path,
+    capture: QuoteCaptureEnvelope,
+    *,
+    policy: QuoteFreshnessPolicy,
+) -> int:
+    """Persist one complete provider-neutral capture atomically and idempotently.
+
+    Migration 0012 must be applied first. Failed or partial connector results do
+    not cross this boundary; callers retain them as audit failures outside the
+    accepted normalized-quote tables.
+    """
+
+    validate_quote_capture(capture, policy=policy)
+    fingerprint = build_quote_capture_fingerprint(capture)
+    scope_json = request_scope_json(capture)
+    quotes = capture.quotes
+    con = duckdb.connect(str(db_path))
+    try:
+        con.execute("BEGIN TRANSACTION")
+        existing = con.execute(
+            """
+            SELECT input_fingerprint, ingestion_contract_version
+            FROM market_quote_ingestion_runs
+            WHERE quote_run_uid = ?
+            """,
+            [capture.quote_run_uid],
+        ).fetchone()
+        if existing is not None:
+            if existing != (fingerprint, capture.contract_version):
+                raise ValueError(
+                    f"quote capture identity conflict for {capture.quote_run_uid}: envelope changed"
+                )
+            stored_quote_uids = {
+                row[0]
+                for row in con.execute(
+                    "SELECT quote_uid FROM normalized_market_quotes WHERE quote_run_uid = ?",
+                    [capture.quote_run_uid],
+                ).fetchall()
+            }
+            expected_quote_uids = {quote.quote_uid for quote in quotes}
+            if stored_quote_uids != expected_quote_uids:
+                raise ValueError(
+                    f"quote capture {capture.quote_run_uid} has incomplete normalized rows"
+                )
+            con.execute("COMMIT")
+            return len(stored_quote_uids)
+
+        duplicate = con.execute(
+            """
+            SELECT quote_uid, quote_run_uid
+            FROM normalized_market_quotes
+            WHERE quote_uid IN (SELECT UNNEST(?))
+            """,
+            [[quote.quote_uid for quote in quotes]],
+        ).fetchall()
+        if duplicate:
+            quote_uid, existing_run_uid = duplicate[0]
+            raise ValueError(
+                f"quote identity {quote_uid} already belongs to run {existing_run_uid}"
             )
+
+        con.execute(
+            """
+            INSERT INTO market_quote_ingestion_runs (
+                quote_run_uid, provider, connection_uid, asof_date,
+                started_at_utc, completed_at_utc, requested_instrument_count,
+                received_quote_count, accepted_quote_count, rejected_quote_count,
+                input_fingerprint, adapter_version, status, notes,
+                ingestion_contract_version, received_at_utc, request_scope_json,
+                source_storage_kind, source_locator, source_raw_sha256
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            [
+                capture.quote_run_uid,
+                capture.provider,
+                capture.connection_uid,
+                capture.asof,
+                _utc_text(capture.started_at, "started_at"),
+                _utc_text(capture.evaluated_at, "evaluated_at"),
+                len(capture.requests),
+                len(quotes),
+                len(quotes),
+                0,
+                fingerprint,
+                capture.adapter_version,
+                "ok",
+                None,
+                capture.contract_version,
+                _utc_text(capture.received_at, "received_at"),
+                scope_json,
+                capture.source.storage_kind,
+                capture.source.locator,
+                capture.source.raw_sha256,
+            ],
+        )
+        _insert_quotes(con, capture.quote_run_uid, quotes)
         con.execute("COMMIT")
         return len(quotes)
     except Exception:

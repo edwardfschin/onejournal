@@ -100,7 +100,7 @@ Current source boundaries:
 | Manual CSV | Normalized-fill parsing, validation, import, and tests |
 | Schwab | Credential-free orders/transactions JSON adapters, reconciliation, and guarded import of externally acquired raw evidence |
 | IBKR | Reserved raw directory, configuration, and package boundary; adapter not implemented |
-| Market data | Provider not selected |
+| Market data | Schwab first, IBKR next, and Moomoo later are approved through a provider-neutral local quote contract; all live connections remain disabled and unaccepted |
 
 All normalized activity preserves `source_broker` and `source_account_id` so
 future journal and portfolio logic can distinguish brokers and accounts without

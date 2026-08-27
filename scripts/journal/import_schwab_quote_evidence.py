@@ -29,7 +29,14 @@ from onejournal.brokers.schwab.quotes_json import (  # noqa: E402
     SchwabQuoteRequest,
     normalized_quotes_from_payload,
 )
-from onejournal.market_data import assess_quote_freshness  # noqa: E402
+from onejournal.market_data import (  # noqa: E402
+    QuoteCaptureEnvelope,
+    QuoteEvidenceSource,
+    QuoteInstrumentRequest,
+    assess_quote_freshness,
+    load_market_data_policy,
+    validate_quote_capture,
+)
 
 
 CAPTURE_SCHEMA = "onebot.schwab.quote-evidence-capture.v1"
@@ -38,6 +45,7 @@ REQUEST_FIELDS = "quote,reference"
 RAW_FILENAME = "quote-response.json"
 MANIFEST_FILENAME = "capture-v1.json"
 MAX_RESPONSE_BYTES = 5 * 1024 * 1024
+MARKETDATA_CONFIG_PATH = PROJECT_DIR / "config" / "marketdata.yaml"
 
 _MACHINE_ID_RE = re.compile(r"[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}")
 _SYMBOL_RE = re.compile(r"[A-Za-z0-9][A-Za-z0-9 ./$:-]{0,63}")
@@ -54,6 +62,7 @@ class VerifiedBundle:
     capture_id: str
     symbol: str
     market_date: date
+    started_at: datetime
     received_at: datetime
     raw_path: Path
     raw_sha256: str
@@ -311,6 +320,7 @@ def verify_bundle(
         capture_id=capture_id,
         symbol=symbol,
         market_date=expected_asof,
+        started_at=started_at,
         received_at=received_at,
         raw_path=raw_path,
         raw_sha256=digest,
@@ -376,7 +386,38 @@ def main(argv: Sequence[str] | None = None) -> int:
         raw_path=logical_raw_path,
         raw_sha256=bundle.raw_sha256,
     )
-    freshness = assess_quote_freshness(quote, evaluated_at=args.evaluated_at)
+    policy = load_market_data_policy(MARKETDATA_CONFIG_PATH)
+    source_locator = bundle.raw_path.relative_to(args.private_vault_root).as_posix()
+    capture = QuoteCaptureEnvelope(
+        quote_run_uid=bundle.capture_id,
+        provider="schwab",
+        connection_uid=args.connection_uid,
+        asof=args.asof,
+        started_at=bundle.started_at,
+        received_at=bundle.received_at,
+        evaluated_at=args.evaluated_at,
+        requests=(
+            QuoteInstrumentRequest(
+                instrument_key=args.instrument_key,
+                provider_instrument_id=bundle.symbol,
+                asset_class=args.asset_class,
+                currency=args.currency.strip().upper(),
+            ),
+        ),
+        source=QuoteEvidenceSource(
+            storage_kind="external_private_vault",
+            locator=source_locator,
+            raw_sha256=bundle.raw_sha256,
+        ),
+        adapter_version=quote.adapter_version,
+        quotes=(quote,),
+    )
+    validate_quote_capture(capture, policy=policy.freshness)
+    freshness = assess_quote_freshness(
+        quote,
+        evaluated_at=args.evaluated_at,
+        policy=policy.freshness,
+    )
     summary = {
         "schema": "onejournal.schwab.quote-evidence-import-summary.v1",
         "capture_id": bundle.capture_id,
@@ -384,6 +425,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         "adapter_version": quote.adapter_version,
         "source_onebot_commit": bundle.source_repository_commit,
         "raw_sha256": bundle.raw_sha256,
+        "capture_contract_version": capture.contract_version,
+        "marketdata_policy_version": policy.contract_version,
         "freshness_status": freshness.status,
         "valuation_allowed": freshness.valuation_allowed,
         "database_writes": 0,

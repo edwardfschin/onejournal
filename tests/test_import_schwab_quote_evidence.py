@@ -10,6 +10,8 @@ from contextlib import redirect_stdout
 from hashlib import sha256
 from io import StringIO
 
+from onejournal.market_data import QuoteCaptureContractError
+
 
 PROJECT_DIR = Path(__file__).resolve().parents[1]
 SCRIPT_PATH = PROJECT_DIR / "scripts/journal/import_schwab_quote_evidence.py"
@@ -116,6 +118,11 @@ class QuoteEvidenceImportTests(unittest.TestCase):
             summary = json.loads(output.getvalue())
             self.assertEqual(summary["capture_id"], CAPTURE_ID)
             self.assertEqual(summary["adapter_version"], "schwab-quote-json-v1")
+            self.assertEqual(
+                summary["capture_contract_version"],
+                "onejournal.market-data.quote-capture.v1",
+            )
+            self.assertEqual(summary["marketdata_policy_version"], 1)
             self.assertEqual(summary["freshness_status"], "live_fresh")
             self.assertTrue(summary["valuation_allowed"])
             self.assertEqual(summary["database_writes"], 0)
@@ -196,6 +203,22 @@ class QuoteEvidenceImportTests(unittest.TestCase):
             summary = json.loads(output.getvalue())
             self.assertEqual(summary["freshness_status"], "live_stale")
             self.assertFalse(summary["valuation_allowed"])
+
+    def test_provider_quote_time_must_match_explicit_market_date(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_dir:
+            root = Path(temporary_dir) / "vault"
+            bundle = self.make_bundle(root)
+            self.mutate_manifest(
+                bundle,
+                lambda item: item["request"].update(market_date="2026-08-26"),
+            )
+            args = self.base_args(root, bundle)
+            args[args.index("2026-08-27")] = "2026-08-26"
+            with self.assertRaisesRegex(
+                QuoteCaptureContractError,
+                "market date",
+            ):
+                quote_import.main(args)
 
     def test_importer_has_no_credential_network_or_database_capability(self) -> None:
         source = SCRIPT_PATH.read_text(encoding="utf-8")

@@ -19,8 +19,13 @@ This status means:
   example;
 - OneJournal verifies and normalizes only a transferred, versioned private
   evidence bundle produced by OneBot;
-- tests prove the local fail-closed boundary without credentials, network,
-  provider calls, private live evidence, or database writes; and
+- the verified bundle is adapted into OneJournal's provider-neutral capture
+  envelope, which binds request identity, source checksum/locator, quote and
+  receipt times, New York market date, and the repository freshness policy;
+- tests prove the local fail-closed boundary and temporary-DuckDB persistence
+  contract without credentials, network, provider calls, or private live
+  evidence; the Schwab evidence operator itself still performs no database
+  write; and
 - no official Schwab payload, live entitlement result, provider capture, or
   end-to-end PNL-02 acceptance evidence exists yet.
 
@@ -105,15 +110,19 @@ The operator emits only a secret-free summary. It does not write private
 evidence, normalized files, DuckDB, migrations, caches, or generated output.
 The normalized quote's current repository-shaped `raw_path` is an in-memory
 logical locator under `data/raw/schwab/external/<capture-id>/`; no normalized
-quote is persisted by this operator. A durable external-vault locator contract
-must be approved before database ingestion.
+quote is persisted by this operator. The provider-neutral capture envelope now
+retains the actual raw file as a safe path relative to the approved private-vault
+root and binds it to the same SHA-256. A future approved ingestion operator may
+persist that envelope through the common repository; this temporary OneBot-edge
+operator does not become the target provider connector.
 
 ## Validation boundary
 
 Offline tests establish exact-decimal mapping, identity and symbol scope,
 manifest/schema/hash/mode/provenance enforcement, explicit freshness
-evaluation, zero evidence or database writes, and absence of credential,
-network, refresh, account, order, and database capabilities in OneJournal.
+evaluation, provider-neutral capture validation, temporary-DuckDB atomic replay,
+zero evidence writes by the Schwab importer, and absence of credential, network,
+refresh, account, and order capabilities in OneJournal.
 
 They do not establish current Schwab schema compatibility, entitlement,
 licensing, live freshness, transfer integrity in an actual private vault,

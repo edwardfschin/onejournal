@@ -13,8 +13,11 @@ from decimal import Decimal, InvalidOperation
 from hashlib import sha256
 import json
 from pathlib import PurePosixPath
+from pathlib import Path
 import re
 from typing import Literal
+
+import yaml
 
 from onejournal.brokers.normalized import NormalizedQuote
 
@@ -51,6 +54,17 @@ class QuoteFreshnessPolicy:
         ):
             if getattr(self, field_name) < 0:
                 raise QuoteContractError(f"{field_name} must not be negative")
+
+
+@dataclass(frozen=True)
+class MarketDataPolicy:
+    """Validated repository policy used by quote-ingestion callers."""
+
+    contract_version: int
+    provider_selection: str
+    provider_sequence: tuple[str, ...]
+    allow_cross_provider_fallback: bool
+    freshness: QuoteFreshnessPolicy
 
 
 @dataclass(frozen=True)
@@ -161,26 +175,105 @@ def validate_normalized_quote(quote: NormalizedQuote) -> None:
 
 
 def build_quote_uid(quote: NormalizedQuote) -> str:
-    """Return an identity hash covering source, timestamp, and quote values."""
+    """Return a versioned identity hash covering the complete quote evidence."""
 
     validate_normalized_quote(quote)
     payload = {
+        "identity_version": "onejournal.normalized-quote.v2",
         "provider": quote.provider.lower(),
         "connection_uid": quote.connection_uid,
         "instrument_key": quote.instrument_key,
         "provider_instrument_id": quote.provider_instrument_id,
+        "symbol": quote.symbol,
+        "asset_class": quote.asset_class,
+        "currency": quote.currency,
         "bid": None if quote.bid is None else format(quote.bid, "f"),
         "ask": None if quote.ask is None else format(quote.ask, "f"),
         "last": None if quote.last is None else format(quote.last, "f"),
         "provider_quote_at": _utc(
             quote.provider_quote_at, "provider_quote_at"
         ).isoformat(),
+        "received_at": _utc(quote.received_at, "received_at").isoformat(),
+        "market_session": quote.market_session,
         "data_mode": quote.data_mode,
+        "entitlement_status": quote.entitlement_status,
+        "asof": quote.asof.isoformat(),
+        "raw_path": quote.raw_path,
         "raw_sha256": quote.raw_sha256.lower(),
+        "adapter_version": quote.adapter_version,
     }
     return "quote:" + sha256(
         json.dumps(payload, sort_keys=True, separators=(",", ":")).encode("utf-8")
     ).hexdigest()
+
+
+def load_market_data_policy(path: Path) -> MarketDataPolicy:
+    """Load and fail closed on an incomplete or ambiguous market-data policy."""
+
+    try:
+        document = yaml.safe_load(path.read_text(encoding="utf-8"))
+    except (OSError, yaml.YAMLError) as exc:
+        raise QuoteContractError(f"unable to load market-data policy: {path}") from exc
+    if not isinstance(document, dict) or set(document) != {"marketdata"}:
+        raise QuoteContractError("market-data policy must contain only a marketdata object")
+    config = document["marketdata"]
+    if not isinstance(config, dict):
+        raise QuoteContractError("marketdata must be an object")
+
+    version = config.get("contract_version")
+    if type(version) is not int or version != 1:
+        raise QuoteContractError("marketdata.contract_version must be the supported integer 1")
+    if config.get("mode") != "read_only":
+        raise QuoteContractError("marketdata.mode must remain read_only")
+    if config.get("provider_selection") != "account_broker":
+        raise QuoteContractError("marketdata.provider_selection must be account_broker")
+    if config.get("allow_cross_provider_fallback") is not False:
+        raise QuoteContractError("cross-provider fallback must remain disabled")
+
+    sequence = config.get("provider_sequence")
+    if (
+        not isinstance(sequence, list)
+        or not sequence
+        or any(
+            not isinstance(provider, str)
+            or not re.fullmatch(r"[a-z][a-z0-9_]*", provider)
+            for provider in sequence
+        )
+        or len(set(sequence)) != len(sequence)
+    ):
+        raise QuoteContractError("provider_sequence must contain unique lowercase providers")
+    providers = config.get("providers")
+    if not isinstance(providers, dict) or any(provider not in providers for provider in sequence):
+        raise QuoteContractError("provider_sequence entries must exist in providers")
+
+    freshness = config.get("freshness")
+    expected_freshness_fields = {
+        "regular_session_seconds",
+        "extended_session_seconds",
+        "future_tolerance_seconds",
+        "delayed_quotes_are_current",
+        "unknown_entitlement_is_valid",
+    }
+    if not isinstance(freshness, dict) or set(freshness) != expected_freshness_fields:
+        raise QuoteContractError("marketdata.freshness fields do not match contract version 1")
+    for field_name in (
+        "regular_session_seconds",
+        "extended_session_seconds",
+        "future_tolerance_seconds",
+    ):
+        if type(freshness[field_name]) is not int:
+            raise QuoteContractError(f"marketdata.freshness.{field_name} must be an integer")
+    for field_name in ("delayed_quotes_are_current", "unknown_entitlement_is_valid"):
+        if type(freshness[field_name]) is not bool:
+            raise QuoteContractError(f"marketdata.freshness.{field_name} must be a boolean")
+
+    return MarketDataPolicy(
+        contract_version=version,
+        provider_selection=config["provider_selection"],
+        provider_sequence=tuple(sequence),
+        allow_cross_provider_fallback=config["allow_cross_provider_fallback"],
+        freshness=QuoteFreshnessPolicy(**freshness),
+    )
 
 
 def assess_quote_freshness(

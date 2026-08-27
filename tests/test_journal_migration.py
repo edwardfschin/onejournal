@@ -92,6 +92,8 @@ class JournalMigrationTests(unittest.TestCase):
             self.assertEqual(rows[9][1], "applied")
             self.assertEqual(rows[10][0], "0011")
             self.assertEqual(rows[10][1], "applied")
+            self.assertEqual(rows[11][0], "0012")
+            self.assertEqual(rows[11][1], "applied")
 
             fill_columns = {
                 row[1]: row[2]
@@ -106,6 +108,14 @@ class JournalMigrationTests(unittest.TestCase):
                 ).fetchall()
             }
             self.assertEqual(lifecycle_columns["event_at_utc"], "VARCHAR")
+            quote_run_columns = {
+                row[1]: row[2]
+                for row in con.execute(
+                    "PRAGMA table_info(market_quote_ingestion_runs)"
+                ).fetchall()
+            }
+            self.assertEqual(quote_run_columns["ingestion_contract_version"], "VARCHAR")
+            self.assertEqual(quote_run_columns["source_locator"], "VARCHAR")
 
     def test_released_migration_0002_checksum_is_immutable(self) -> None:
         migration_path = (
@@ -123,7 +133,7 @@ class JournalMigrationTests(unittest.TestCase):
 
         with duckdb.connect(str(self.db_path), read_only=True) as con:
             count = con.execute("SELECT COUNT(*) FROM schema_migrations").fetchone()[0]
-            self.assertEqual(count, 11)
+            self.assertEqual(count, 12)
 
     def test_migration_0005_backfills_existing_reviews_from_version_0002(self) -> None:
         apply_schema_migrations(
@@ -160,7 +170,7 @@ class JournalMigrationTests(unittest.TestCase):
             self.db_path,
             migrations_dir=MIGRATIONS_DIR,
         )
-        self.assertEqual(resulting_version, 11)
+        self.assertEqual(resulting_version, 12)
 
         with duckdb.connect(str(self.db_path), read_only=True) as con:
             rows = con.execute(

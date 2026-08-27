@@ -158,7 +158,7 @@ presentation layer.
 | ID | Status | Action | Completion evidence |
 |---|---|---|---|
 | PNL-01 | COMPLETE | Implement realized P&L from closed lifecycle allocations. | ADR-0004 rules and the Decimal FIFO/lifecycle implementation are validated by focused tests and five owner-accepted, broker-reconciled real-evidence scopes: ordinary close, partial close, expiration, assignment through successor closure, and the original-contract roll boundary. The bounded acceptance is recorded under `data/audit/trust_proofs/PNL-01/`. It excludes real exercise, the roll replacement contract's closure, unresolved `review_required` or unapproved description-only events, complete account history, portfolio-wide correctness, unrealized P&L/valuation, production readiness, and complete ADR-0010 provenance. |
-| PNL-02 | IN PROGRESS | Select a market-data provider and define quote ingestion, storage, licensing, and freshness. | ADR-0009 accepts Schwab first, IBKR next, and Moomoo later through a provider-independent, local-only quote contract. Configurable polling/freshness defaults, migration 0011, atomic normalized storage, lineage, synthetic contract tests, and a fail-closed acknowledgement contract are implemented. The current one-app evidence bridge is implemented offline: OneBot/VPS is the temporary single Schwab-token owner and bundle producer, while OneJournal's current runtime has only verifier/normalizer/import paths. The target is an isolated OneJournal-owned multi-provider connector plane, with OneBot's Schwab access retired at cutover. The adapter remains synthetic-contract evidence. Completion still requires separately approved provider capture, private transfer, sanitized official response validation, connector security and ownership design, durable ingestion, single-owner cutover, and end-to-end acceptance. |
+| PNL-02 | IN PROGRESS | Select a market-data provider and define quote ingestion, storage, licensing, and freshness. | ADR-0009 accepts Schwab first, IBKR next, and Moomoo later through a provider-independent, local-only quote contract. Repository-policy loading, migrations 0011/0012, a provider-neutral complete-capture envelope, atomic normalized storage, full-envelope replay lineage, synthetic contract tests, and a fail-closed acknowledgement contract are implemented offline. The current one-app evidence bridge remains bounded: OneBot/VPS is the temporary single Schwab-token owner and bundle producer, while OneJournal's credential-free importer only verifies, normalizes, and validates that evidence against the common envelope without persisting it. The target is an isolated OneJournal-owned multi-provider connector plane, with OneBot's Schwab access retired at cutover. The adapter remains synthetic-contract evidence. Completion still requires separately approved provider capture, private transfer, sanitized official response validation, connector security and ownership design, an approved durable ingestion operator/runtime migration, single-owner cutover, and end-to-end acceptance. |
 | PNL-03 | BLOCKED | Implement current positions, cost basis, market value, and unrealized P&L. | FIFO open quantity/cost groundwork exists, but current `normalized_positions` are derived independently from each import date's fills and use the last fill as `market_price`; they are not cumulative broker snapshots or approved valuations. Completion requires PNL-02 plus broker-position reconciliation. |
 | PNL-04 | BLOCKED | Build account and consolidated portfolio snapshots over time. | As-of payload selection exists, but its inputs are per-import derived position rows rather than canonical cumulative and broker-reconciled portfolio state. Historical snapshots cannot yet satisfy the acceptance criterion. |
 | PNL-05 | BLOCKED | Implement performance metrics: total P&L, returns, win rate, profit factor, average win/loss, holding period, drawdown, and exposure. | Win/loss, profit factor, average result, and holding-time groundwork exists; returns and max drawdown are explicitly unavailable and valuation-dependent exposure is not approved. |
@@ -196,8 +196,9 @@ The remaining closure conditions are:
   correctness, unrealized P&L/valuation, or complete ADR-0010 provenance.
 - PNL-02: the project owner approved Schwab first, IBKR next, and Moomoo later,
   local-only personal-account evidence, no silent provider fallback, and the
-  ADR-0009 polling/freshness policy. The provider-neutral contract and storage
-  pipeline are implemented offline. PNL-02A adds a synthetic-contract-validated
+  ADR-0009 polling/freshness policy. The provider-neutral quote and complete-
+  capture contracts plus temporary-DuckDB storage pipeline are implemented
+  offline. PNL-02A adds a synthetic-contract-validated
   Schwab adapter. The interim one-app evidence bridge makes OneBot/VPS the
   temporary single token-owning producer and the current OneJournal runtime a
   credential-free evidence importer; it does not add provider acceptance or
@@ -208,7 +209,8 @@ The remaining closure conditions are:
   activation and retrieval, but it cannot replace provider-reported
   entitlement. Its persistence and UI remain gated on the authentication and
   tenancy decisions. Completion remains gated on a separately approved
-  read-only Schwab call, sanitized official payload fixture, connector
+  read-only Schwab call, private transfer, sanitized official payload fixture,
+  an approved durable ingestion operator/runtime migration, connector
   security/ownership design, single-owner cutover, and end-to-end adapter
   validation; no live call has occurred.
 - PNL-03/04: canonical cumulative positions and portfolio snapshots must be
@@ -328,7 +330,9 @@ call, migration, or runtime change.
 
 The current actionable sequence is:
 
-1. `PNL-02` - approve market-data provider, quote ingestion/storage policy, licensing, and freshness contract.
+1. `PNL-02` - validate the approved Schwab-first quote contract against official
+   evidence, complete the target connector/security boundary, and obtain
+   end-to-end acceptance.
 2. `PNL-03` and `PNL-04` - replace per-import fill-derived position views
    with canonical cumulative lot state, approved valuations, broker
    reconciliation, and reproducible portfolio snapshots.

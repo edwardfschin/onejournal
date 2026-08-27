@@ -108,6 +108,13 @@ normalization. Journal, lifecycle, financial, portfolio, and UI code must use
 only broker-independent contracts and must not receive provider credentials or
 parse provider payloads.
 
+Before persistence, every connector/adapter result must cross the versioned
+provider-neutral quote-capture envelope. It binds the exact provider-instrument
+to OneJournal-instrument request scope, provider/connection identity, quote,
+receive, and evaluation times, New York market date, checksum-backed local
+source locator, adapter version, and complete normalized quote set. Partial or
+identity-mismatched batches fail before accepted quote rows are written.
+
 The current runtime does not implement this provider-connection plane. Its
 credential storage, user/connection identity, tenancy, scheduling, deployment,
 and single-owner cutover require separate decisions and approvals. When the
@@ -122,6 +129,7 @@ same token lifecycle.
 - NormalizedFill
 - NormalizedPosition
 - NormalizedTransaction
+- NormalizedQuote
 - TradeEpisode
 - TradeLeg
 - JournalEntry

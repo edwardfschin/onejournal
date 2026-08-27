@@ -193,16 +193,20 @@ and distribution context; it requires separate provider-specific licensing,
 retention, privacy, authentication, and tenancy approval before server-side
 quote storage is enabled.
 
-The repository implements the normalized contract, configuration defaults,
-additive migration, transactional persistence, and synthetic validation. The
-Schwab-specific adapter and credential-free evidence importer are implemented
-offline under `docs/schwab_quotes_json_schema_contract.md`; the current OneBot
-capture producer is only a temporary evidence bridge. The target provider plane
-is an isolated OneJournal integration service with one connector per provider.
-Neither the bridge nor the target plane is accepted for live use. Provider
-compatibility still requires an official authenticated payload captured through
-a separately approved read-only call and a sanitized contract fixture derived
-without private data.
+The repository implements the normalized contract, fail-closed policy loader,
+additive migrations, transactional persistence, and synthetic validation.
+Migration `0012` adds a provider-neutral capture envelope that binds exact
+instrument requests, quote/receive/evaluation times, New York market date,
+checksum-backed local evidence location, and the complete ingestion fingerprint
+before normalized rows may be persisted. The Schwab-specific adapter and
+credential-free evidence importer are implemented offline under
+`docs/schwab_quotes_json_schema_contract.md`; the current OneBot capture producer
+is only a temporary evidence bridge. The target provider plane is an isolated
+OneJournal integration service with one connector per provider. Neither the
+bridge nor the target plane is accepted for live use. Provider compatibility
+still requires an official authenticated payload captured through a separately
+approved read-only call and a sanitized contract fixture derived without
+private data.
 
 ## Alternatives considered
 
@@ -255,6 +259,18 @@ the live journal database as part of this work. Existing payloads and position
 rows remain compatible but do not gain authoritative freshness by migration
 alone.
 
+Migration `0012` adds nullable envelope-lineage columns to the ingestion-run
+table without rewriting migration `0011`. New provider-neutral writes require
+the versioned capture contract and full-envelope fingerprint. Existing
+migration-0011 rows remain legacy normalized evidence; no current runtime
+database was migrated by this implementation.
+
+Newly normalized quotes use identity version `onejournal.normalized-quote.v2`,
+which covers receipt time, session, entitlement, market date, logical raw
+location, and adapter version in addition to source, instrument, provider quote
+time, and prices. Existing migration-0011 rows remain readable; they are not
+silently re-identified or replayed as version-2 capture rows.
+
 Any future quote payload/API contract must be versioned and must expose source,
 as-of time, freshness status, and failure state without account identifiers or
 private raw paths.
@@ -278,6 +294,10 @@ The accepted contract requires tests for:
 - fresh, stale, delayed, denied, unknown, future, crossed, closed, and missing-
   price behavior
 - provider/connection/as-of consistency within an ingestion run
+- exact requested/received identity equality and complete-batch acceptance
+- receive/evaluation ordering and New York market-date consistency
+- repository-policy loading with cross-provider fallback disabled
+- provider-neutral source location and full-envelope replay conflict handling
 - atomic and idempotent temporary-DuckDB persistence
 - migration creation, ordering, checksums, and replay
 - no secret, raw payload, runtime DB, or generated-output tracking
