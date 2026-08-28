@@ -97,3 +97,4 @@ policy.
 | [ADR-0009](decisions/0009-provider-independent-market-quotes.md) | Accepted | Use Schwab first, then IBKR and Moomoo, through local provider-independent quote evidence and explicit freshness states |
 | [ADR-0010](decisions/0010-complete-evidence-provenance-and-correction-governance.md) | Proposed | Define immutable evidence versions, governed corrections, supersession, invalidation, recalculation, and complete raw-to-output lineage |
 | [ADR-0011](decisions/0011-provider-native-market-session-authority.md) | Accepted | Use each connected account broker as the exclusive schedule authority for its quotes, with no cross-provider or external-calendar fallback |
+| [ADR-0012](decisions/0012-isolated-provider-connectors-and-single-credential-ownership.md) | Accepted | Isolate provider connectors and enforce single credential and session ownership without choosing production authentication or tenancy |
