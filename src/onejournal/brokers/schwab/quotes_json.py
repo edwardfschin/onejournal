@@ -92,13 +92,24 @@ class SchwabQuoteRequest:
 def load_quotes_json(path: Path) -> dict[str, Any]:
     """Load exact-decimal Schwab quote JSON from an already captured file."""
 
-    payload = json.loads(
-        path.read_text(encoding="utf-8"),
+    return load_quotes_json_bytes(path.read_bytes())
+
+
+def load_quotes_json_bytes(body: bytes) -> dict[str, Any]:
+    """Load exact-decimal Schwab quote JSON from immutable captured bytes."""
+
+    if not isinstance(body, bytes) or not body:
+        raise SchwabQuoteAdapterError("Schwab quote response body must be non-empty bytes")
+    try:
+        payload = json.loads(
+            body.decode("utf-8"),
         parse_float=Decimal,
         parse_constant=lambda value: (_ for _ in ()).throw(
             SchwabQuoteAdapterError(f"invalid non-finite JSON number: {value}")
         ),
-    )
+        )
+    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+        raise SchwabQuoteAdapterError("Schwab quotes JSON is invalid") from exc
     if not isinstance(payload, dict):
         raise SchwabQuoteAdapterError("Schwab quotes JSON must be a top-level object")
     return payload
