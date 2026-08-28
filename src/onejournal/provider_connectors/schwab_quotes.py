@@ -30,6 +30,7 @@ from onejournal.market_data.ingestion import (
     QuoteInstrumentRequest,
     validate_quote_capture,
 )
+from onejournal.market_data.capture_artifact import quote_capture_artifact_bytes
 from onejournal.market_data.quotes import QuoteFreshnessPolicy
 from onejournal.provider_connectors.usage_policy import (
     ProviderUsageAcknowledgement,
@@ -39,6 +40,7 @@ from onejournal.provider_connectors.usage_policy import (
     validate_provider_usage_acknowledgement,
 )
 from onejournal.provider_connectors.private_capture import (
+    PRIVATE_CAPTURE_MANIFEST_SCHEMA,
     LocalPrivateRawCaptureStore,
     PrivateRawCaptureManifest,
 )
@@ -461,7 +463,7 @@ class SchwabQuoteConnector:
             source=source,
             raw_response_bytes=response.body,
             manifest=PrivateRawCaptureManifest(
-                schema="onejournal.private-raw-capture-manifest.v1",
+                schema=PRIVATE_CAPTURE_MANIFEST_SCHEMA,
                 provider="schwab",
                 quote_run_uid=request.quote_run_uid,
                 connection_uid=request.connection_uid,
@@ -474,8 +476,12 @@ class SchwabQuoteConnector:
                 completed_at=evaluated_at,
                 raw_sha256=raw_sha256,
                 raw_byte_count=len(response.body),
+                capture_envelope_sha256=sha256(
+                    quote_capture_artifact_bytes(capture)
+                ).hexdigest(),
                 final_status="captured_private_uningested",
             ),
+            capture=capture,
         )
         return SchwabQuoteCaptureResult(
             capture=capture,

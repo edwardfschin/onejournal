@@ -48,9 +48,14 @@ foundation simple and dependency-free.
   boundary. It proves that missing, incomplete, superseded, scope-expanded, or
   tampered acknowledgements fail before retrieval; acknowledgement cannot
   replace provider-reported entitlement; and raw evidence cannot be scheduled
-  for automatic or unaudited deletion. No real acknowledgement, provider call,
-  credential, private evidence, database write, or deletion is used. Mark
-  selection is explicitly deferred to PNL-03 policy.
+  for automatic or unaudited deletion. T12/T13 add the offline connector and
+  restart-safe durable ingestion boundary: atomic private raw/manifest/envelope
+  storage, checksum-bound recovery, exact approval scope, explicit write mode,
+  required pre-applied migrations, transactional first-write/replay behavior,
+  and exact-run semantic read-back on temporary DuckDB databases. No real
+  acknowledgement, provider call, credential, private evidence, journal write,
+  migration, or deletion is used. Mark selection is explicitly deferred to
+  PNL-03 policy.
 - Integration: schema initialization and migration, import, append-only journal
   history, review compatibility projection, replay preservation, DuckDB reads,
   and DB dashboard payload construction using a temporary database.

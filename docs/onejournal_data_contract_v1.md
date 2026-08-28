@@ -116,6 +116,15 @@ receive, and evaluation times, New York market date, checksum-backed local
 source locator, adapter version, and complete normalized quote set. Partial or
 identity-mismatched batches fail before accepted quote rows are written.
 
+For restart-safe local ingestion, the immutable private capture directory also
+contains a deterministic provider-neutral envelope artifact. Its SHA-256 is
+bound by the private manifest separately from the raw-response SHA-256. The
+durable ingestion operator reloads both, validates their exact identity and
+request scope, persists the capture transactionally, and reads back only the
+same provider, connection, run UID, and market date. Raw response bytes never
+enter DuckDB. An identical replay is accepted; changed or incomplete lineage
+fails closed.
+
 Quote freshness may consume a separate provider-neutral market-session
 observation normalized from the same connected broker as the quote. The raw
 provider evidence may come from a quote, market-hours, trading-schedule, or

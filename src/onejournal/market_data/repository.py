@@ -14,6 +14,8 @@ import duckdb
 from onejournal.brokers.normalized import NormalizedQuote
 from onejournal.market_data.ingestion import (
     QuoteCaptureEnvelope,
+    QuoteEvidenceSource,
+    QuoteInstrumentRequest,
     build_quote_capture_fingerprint,
     request_scope_json,
     validate_quote_capture,
@@ -39,6 +41,37 @@ class QuoteIngestionRun:
     adapter_version: str
     status: str = "ok"
     notes: str | None = None
+
+
+@dataclass(frozen=True)
+class QuotePersistenceResult:
+    """Atomic write outcome, including whether the capture was an exact replay."""
+
+    persisted_quote_count: int
+    was_replay: bool
+
+
+@dataclass(frozen=True)
+class QuoteCaptureReadBack:
+    """Exact-run database evidence after persistence.
+
+    Decimal values are compared semantically by callers because DuckDB's fixed
+    scale adds trailing zeroes on read-back without changing financial value.
+    """
+
+    quote_run_uid: str
+    provider: str
+    connection_uid: str
+    asof: date
+    started_at: datetime
+    received_at: datetime
+    evaluated_at: datetime
+    requests: tuple[QuoteInstrumentRequest, ...]
+    source: QuoteEvidenceSource
+    adapter_version: str
+    contract_version: str
+    input_fingerprint: str
+    quotes: tuple[NormalizedQuote, ...]
 
 
 def _utc_text(value: datetime, field_name: str) -> str:
@@ -224,12 +257,12 @@ def persist_quote_batch(
         con.close()
 
 
-def persist_quote_capture(
+def persist_quote_capture_result(
     db_path: Path,
     capture: QuoteCaptureEnvelope,
     *,
     policy: QuoteFreshnessPolicy,
-) -> int:
+) -> QuotePersistenceResult:
     """Persist one complete provider-neutral capture atomically and idempotently.
 
     Migration 0012 must be applied first. Failed or partial connector results do
@@ -270,7 +303,10 @@ def persist_quote_capture(
                     f"quote capture {capture.quote_run_uid} has incomplete normalized rows"
                 )
             con.execute("COMMIT")
-            return len(stored_quote_uids)
+            return QuotePersistenceResult(
+                persisted_quote_count=len(stored_quote_uids),
+                was_replay=True,
+            )
 
         duplicate = con.execute(
             """
@@ -322,12 +358,30 @@ def persist_quote_capture(
         )
         _insert_quotes(con, capture.quote_run_uid, quotes)
         con.execute("COMMIT")
-        return len(quotes)
+        return QuotePersistenceResult(
+            persisted_quote_count=len(quotes),
+            was_replay=False,
+        )
     except Exception:
         con.execute("ROLLBACK")
         raise
     finally:
         con.close()
+
+
+def persist_quote_capture(
+    db_path: Path,
+    capture: QuoteCaptureEnvelope,
+    *,
+    policy: QuoteFreshnessPolicy,
+) -> int:
+    """Compatibility wrapper returning only the accepted normalized-row count."""
+
+    return persist_quote_capture_result(
+        db_path,
+        capture,
+        policy=policy,
+    ).persisted_quote_count
 
 
 def _parse_utc_text(value: str, field_name: str) -> datetime:
@@ -341,6 +395,174 @@ def _parse_utc_text(value: str, field_name: str) -> datetime:
     if parsed.tzinfo is None or parsed.utcoffset() is None:
         raise ValueError(f"stored {field_name} must include a timezone")
     return parsed.astimezone(UTC)
+
+
+def _quote_from_row(row: tuple[object, ...]) -> NormalizedQuote:
+    return NormalizedQuote(
+        quote_uid=str(row[0]),
+        provider=str(row[1]),
+        connection_uid=str(row[2]),
+        instrument_key=str(row[3]),
+        provider_instrument_id=str(row[4]),
+        symbol=str(row[5]),
+        asset_class=str(row[6]),
+        currency=str(row[7]),
+        bid=row[8],  # type: ignore[arg-type]
+        ask=row[9],  # type: ignore[arg-type]
+        last=row[10],  # type: ignore[arg-type]
+        provider_quote_at=_parse_utc_text(str(row[11]), "provider_quote_at_utc"),
+        received_at=_parse_utc_text(str(row[12]), "received_at_utc"),
+        market_session=str(row[13]),
+        data_mode=str(row[14]),
+        entitlement_status=str(row[15]),
+        asof=row[16],  # type: ignore[arg-type]
+        raw_path=str(row[17]),
+        raw_sha256=str(row[18]),
+        adapter_version=str(row[19]),
+    )
+
+
+def load_quote_capture_run(
+    db_path: Path,
+    *,
+    quote_run_uid: str,
+    provider: str,
+    connection_uid: str,
+    asof: date,
+    policy: QuoteFreshnessPolicy,
+) -> QuoteCaptureReadBack:
+    """Reconstruct and validate one exact persisted capture without fallback."""
+
+    for value, field in (
+        (quote_run_uid, "quote_run_uid"),
+        (provider, "provider"),
+        (connection_uid, "connection_uid"),
+    ):
+        if not isinstance(value, str) or not value.strip() or value != value.strip():
+            raise ValueError(f"{field} must be a non-empty trimmed string")
+    con = duckdb.connect(str(db_path), read_only=True)
+    try:
+        run = con.execute(
+            """
+            SELECT quote_run_uid, provider, connection_uid, asof_date,
+                   started_at_utc, received_at_utc, completed_at_utc,
+                   requested_instrument_count, received_quote_count,
+                   accepted_quote_count, rejected_quote_count,
+                   input_fingerprint, adapter_version, status,
+                   ingestion_contract_version, request_scope_json,
+                   source_storage_kind, source_locator, source_raw_sha256
+            FROM market_quote_ingestion_runs
+            WHERE quote_run_uid = ? AND provider = ? AND connection_uid = ?
+              AND asof_date = ?
+            """,
+            [quote_run_uid, provider, connection_uid, asof],
+        ).fetchone()
+        if run is None:
+            raise ValueError("exact scoped quote capture run was not found")
+        quote_rows = con.execute(
+            """
+            SELECT quote_uid, provider, connection_uid, instrument_key,
+                   provider_instrument_id, symbol, asset_class, currency,
+                   bid, ask, last_price, provider_quote_at_utc,
+                   received_at_utc, market_session, data_mode,
+                   entitlement_status, asof_date, raw_path, raw_sha256,
+                   adapter_version
+            FROM normalized_market_quotes
+            WHERE quote_run_uid = ?
+            ORDER BY instrument_key, quote_uid
+            """,
+            [quote_run_uid],
+        ).fetchall()
+    finally:
+        con.close()
+
+    if run[13] != "ok" or run[14] is None:
+        raise ValueError("stored quote capture run is not an accepted envelope")
+    if any(run[index] is None for index in (5, 15, 16, 17, 18)):
+        raise ValueError("stored quote capture run is missing required lineage")
+    try:
+        request_rows = json.loads(str(run[15]))
+    except json.JSONDecodeError as exc:
+        raise ValueError("stored quote capture request scope is invalid JSON") from exc
+    if not isinstance(request_rows, list):
+        raise ValueError("stored quote capture request scope must be an array")
+    required_request_fields = {
+        "instrument_key",
+        "provider_instrument_id",
+        "asset_class",
+        "currency",
+    }
+    requests = []
+    for row in request_rows:
+        if not isinstance(row, dict) or set(row) != required_request_fields:
+            raise ValueError("stored quote capture request scope fields are invalid")
+        requests.append(
+            QuoteInstrumentRequest(
+                instrument_key=str(row["instrument_key"]),
+                provider_instrument_id=str(row["provider_instrument_id"]),
+                asset_class=str(row["asset_class"]),
+                currency=str(row["currency"]),
+            )
+        )
+    quotes = tuple(_quote_from_row(row) for row in quote_rows)
+    expected_count = len(quotes)
+    if (
+        run[7] != len(requests)
+        or run[8] != expected_count
+        or run[9] != expected_count
+        or run[10] != 0
+    ):
+        raise ValueError("stored quote capture audit counts are inconsistent")
+    read_back = QuoteCaptureReadBack(
+        quote_run_uid=str(run[0]),
+        provider=str(run[1]),
+        connection_uid=str(run[2]),
+        asof=run[3],
+        started_at=_parse_utc_text(str(run[4]), "started_at_utc"),
+        received_at=_parse_utc_text(str(run[5]), "received_at_utc"),
+        evaluated_at=_parse_utc_text(str(run[6]), "completed_at_utc"),
+        requests=tuple(requests),
+        source=QuoteEvidenceSource(
+            storage_kind=str(run[16]),  # type: ignore[arg-type]
+            locator=str(run[17]),
+            raw_sha256=str(run[18]),
+        ),
+        adapter_version=str(run[12]),
+        quotes=quotes,
+        contract_version=str(run[14]),
+        input_fingerprint=str(run[11]),
+    )
+    for quote in read_back.quotes:
+        validate_normalized_quote(quote)
+        if (
+            quote.provider != read_back.provider
+            or quote.connection_uid != read_back.connection_uid
+            or quote.asof != read_back.asof
+            or quote.adapter_version != read_back.adapter_version
+            or quote.raw_sha256 != read_back.source.raw_sha256
+            or quote.received_at != read_back.received_at
+        ):
+            raise ValueError("stored normalized quote differs from its ingestion run")
+    request_keys = {request.instrument_key for request in read_back.requests}
+    quote_keys = {quote.instrument_key for quote in read_back.quotes}
+    if (
+        len(request_keys) != len(read_back.requests)
+        or len(quote_keys) != len(read_back.quotes)
+    ):
+        raise ValueError("stored quote capture contains duplicate instrument scope")
+    if request_keys != quote_keys:
+        raise ValueError("stored quote capture scope is incomplete")
+    for request in read_back.requests:
+        quote = next(
+            item for item in read_back.quotes if item.instrument_key == request.instrument_key
+        )
+        if (
+            quote.provider_instrument_id != request.provider_instrument_id
+            or quote.asset_class != request.asset_class
+            or quote.currency != request.currency
+        ):
+            raise ValueError("stored normalized quote identity differs from request scope")
+    return read_back
 
 
 def load_latest_quotes(
@@ -410,31 +632,7 @@ def load_latest_quotes(
     finally:
         con.close()
 
-    quotes = tuple(
-        NormalizedQuote(
-            quote_uid=row[0],
-            provider=row[1],
-            connection_uid=row[2],
-            instrument_key=row[3],
-            provider_instrument_id=row[4],
-            symbol=row[5],
-            asset_class=row[6],
-            currency=row[7],
-            bid=row[8],
-            ask=row[9],
-            last=row[10],
-            provider_quote_at=_parse_utc_text(row[11], "provider_quote_at_utc"),
-            received_at=_parse_utc_text(row[12], "received_at_utc"),
-            market_session=row[13],
-            data_mode=row[14],
-            entitlement_status=row[15],
-            asof=row[16],
-            raw_path=row[17],
-            raw_sha256=row[18],
-            adapter_version=row[19],
-        )
-        for row in rows
-    )
+    quotes = tuple(_quote_from_row(row) for row in rows)
     for quote in quotes:
         validate_normalized_quote(quote)
     return quotes

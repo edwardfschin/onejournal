@@ -20,10 +20,14 @@ from .ingestion import (
     validate_quote_capture,
 )
 from .repository import (
+    QuoteCaptureReadBack,
     QuoteIngestionRun,
+    QuotePersistenceResult,
     load_latest_quotes,
+    load_quote_capture_run,
     persist_quote_batch,
     persist_quote_capture,
+    persist_quote_capture_result,
 )
 from .sessions import (
     PROVIDER_SESSION_AUTHORITY_CONTRACT_VERSION,
@@ -60,9 +64,13 @@ __all__ = [
     "build_quote_capture_fingerprint",
     "validate_quote_capture",
     "QuoteIngestionRun",
+    "QuoteCaptureReadBack",
+    "QuotePersistenceResult",
     "load_latest_quotes",
+    "load_quote_capture_run",
     "persist_quote_batch",
     "persist_quote_capture",
+    "persist_quote_capture_result",
     "SESSION_AUTHORITY_CONTRACT_VERSION",
     "PROVIDER_SESSION_AUTHORITY_CONTRACT_VERSION",
     "MarketSessionAuthority",

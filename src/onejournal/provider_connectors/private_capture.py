@@ -1,8 +1,9 @@
 """Local immutable private raw-capture storage for provider connectors.
 
-This store accepts only exact bytes plus secret-free metadata. It has no provider,
-credential, database, deletion, or overwrite capability. The operator must provision
-the private root with mode 0700 before a connector can use it.
+This store accepts only exact bytes, a provider-neutral capture artifact, and
+secret-free metadata. It has no provider, credential, database, deletion, or
+overwrite capability. The operator must provision the private root with mode
+0700 before a connector can use it.
 """
 
 from __future__ import annotations
@@ -13,14 +14,27 @@ from hashlib import sha256
 import json
 import os
 from pathlib import Path
+import re
 import stat
 from typing import Mapping
 from uuid import uuid4
 
-from onejournal.market_data.ingestion import QuoteEvidenceSource
+from onejournal.market_data.capture_artifact import (
+    QuoteCaptureArtifactError,
+    load_quote_capture_artifact_bytes,
+    quote_capture_artifact_bytes,
+)
+from onejournal.market_data.ingestion import (
+    QuoteCaptureEnvelope,
+    QuoteEvidenceSource,
+    validate_quote_capture,
+)
+from onejournal.market_data.quotes import QuoteFreshnessPolicy
 
 
-PRIVATE_CAPTURE_MANIFEST_SCHEMA = "onejournal.private-raw-capture-manifest.v1"
+PRIVATE_CAPTURE_MANIFEST_SCHEMA = "onejournal.private-raw-capture-manifest.v2"
+PRIVATE_CAPTURE_ENVELOPE_FILENAME = "capture-envelope.json"
+_PROVIDER_RE = re.compile(r"[a-z][a-z0-9_]*")
 
 
 class PrivateRawCaptureError(ValueError):
@@ -44,7 +58,16 @@ class PrivateRawCaptureManifest:
     completed_at: datetime
     raw_sha256: str
     raw_byte_count: int
+    capture_envelope_sha256: str
     final_status: str
+
+
+@dataclass(frozen=True)
+class LoadedPrivateQuoteCapture:
+    """A restart-safe capture revalidated from its immutable private bundle."""
+
+    capture: QuoteCaptureEnvelope
+    manifest: PrivateRawCaptureManifest
 
 
 class LocalPrivateRawCaptureStore:
@@ -57,8 +80,8 @@ class LocalPrivateRawCaptureStore:
         self, *, provider: str, asof: date, quote_run_uid: str, raw_sha256: str
     ) -> QuoteEvidenceSource:
         self._require_root()
-        if provider != "schwab":
-            raise PrivateRawCaptureError("private capture provider is unsupported")
+        if not isinstance(provider, str) or not _PROVIDER_RE.fullmatch(provider):
+            raise PrivateRawCaptureError("private capture provider is invalid")
         if not isinstance(quote_run_uid, str) or not quote_run_uid:
             raise PrivateRawCaptureError("quote_run_uid is required")
         if not isinstance(raw_sha256, str) or len(raw_sha256) != 64:
@@ -78,6 +101,7 @@ class LocalPrivateRawCaptureStore:
         source: QuoteEvidenceSource,
         raw_response_bytes: bytes,
         manifest: PrivateRawCaptureManifest,
+        capture: QuoteCaptureEnvelope,
     ) -> None:
         self._require_root()
         if source.storage_kind != "external_private_vault":
@@ -99,6 +123,21 @@ class LocalPrivateRawCaptureStore:
             raise PrivateRawCaptureError("raw digest does not match manifest")
         if sha256(raw_response_bytes).hexdigest() != source.raw_sha256:
             raise PrivateRawCaptureError("raw bytes do not match expected digest")
+        if capture.source != source:
+            raise PrivateRawCaptureError("capture envelope source does not match raw source")
+        capture_bytes = quote_capture_artifact_bytes(capture)
+        if sha256(capture_bytes).hexdigest() != manifest.capture_envelope_sha256:
+            raise PrivateRawCaptureError("capture envelope digest does not match manifest")
+        if (
+            capture.quote_run_uid != manifest.quote_run_uid
+            or capture.provider != manifest.provider
+            or capture.connection_uid != manifest.connection_uid
+            or capture.asof != manifest.asof
+            or capture.started_at != manifest.started_at
+            or capture.received_at != manifest.received_at
+            or capture.evaluated_at != manifest.completed_at
+        ):
+            raise PrivateRawCaptureError("capture envelope does not bind the manifest")
         locator_path = Path(source.locator)
         if locator_path.is_absolute() or ".." in locator_path.parts:
             raise PrivateRawCaptureError("private capture locator is unsafe")
@@ -114,6 +153,9 @@ class LocalPrivateRawCaptureStore:
         try:
             temp_dir.mkdir(mode=0o700)
             self._write_private_file(temp_dir / "quote-response.json", raw_response_bytes)
+            self._write_private_file(
+                temp_dir / PRIVATE_CAPTURE_ENVELOPE_FILENAME, capture_bytes
+            )
             manifest_bytes = json.dumps(
                 _manifest_json(manifest), sort_keys=True, separators=(",", ":")
             ).encode("utf-8")
@@ -123,11 +165,97 @@ class LocalPrivateRawCaptureStore:
             self._discard_pending(temp_dir)
             raise PrivateRawCaptureError("private raw capture commit failed") from exc
 
+    def load_capture(
+        self,
+        *,
+        source: QuoteEvidenceSource,
+        policy: QuoteFreshnessPolicy,
+    ) -> LoadedPrivateQuoteCapture:
+        """Load and revalidate an immutable capture without returning raw bytes."""
+
+        self._require_root()
+        if source.storage_kind != "external_private_vault":
+            raise PrivateRawCaptureError("private capture source kind is unsafe")
+        locator = Path(source.locator)
+        if locator.is_absolute() or ".." in locator.parts:
+            raise PrivateRawCaptureError("private capture locator is unsafe")
+        raw_path = self._root / locator
+        if raw_path.name != "quote-response.json":
+            raise PrivateRawCaptureError("private capture file name is unsafe")
+        capture_dir = raw_path.parent
+        self._validate_private_path(capture_dir)
+        expected_names = {
+            "quote-response.json",
+            "capture-manifest.json",
+            PRIVATE_CAPTURE_ENVELOPE_FILENAME,
+        }
+        if {path.name for path in capture_dir.iterdir()} != expected_names:
+            raise PrivateRawCaptureError("private capture bundle files do not match contract")
+        raw_body = self._read_private_file(raw_path, "raw response")
+        manifest_body = self._read_private_file(
+            capture_dir / "capture-manifest.json", "capture manifest"
+        )
+        capture_body = self._read_private_file(
+            capture_dir / PRIVATE_CAPTURE_ENVELOPE_FILENAME, "capture envelope"
+        )
+        manifest = _load_manifest(manifest_body)
+        if source.locator != (
+            f"{manifest.provider}/{manifest.asof.isoformat()}"
+            f"/quote-captures/{manifest.quote_run_uid}/quote-response.json"
+        ):
+            raise PrivateRawCaptureError("private capture locator does not bind the manifest")
+        if source.raw_sha256 != manifest.raw_sha256:
+            raise PrivateRawCaptureError("private capture source digest does not bind manifest")
+        if len(raw_body) != manifest.raw_byte_count:
+            raise PrivateRawCaptureError("private capture raw byte count changed")
+        if sha256(raw_body).hexdigest() != manifest.raw_sha256:
+            raise PrivateRawCaptureError("private capture raw digest changed")
+        if sha256(capture_body).hexdigest() != manifest.capture_envelope_sha256:
+            raise PrivateRawCaptureError("private capture envelope digest changed")
+        try:
+            capture = load_quote_capture_artifact_bytes(capture_body)
+        except QuoteCaptureArtifactError as exc:
+            raise PrivateRawCaptureError("private capture envelope is invalid") from exc
+        if (
+            capture.source != source
+            or capture.quote_run_uid != manifest.quote_run_uid
+            or capture.provider != manifest.provider
+            or capture.connection_uid != manifest.connection_uid
+            or capture.asof != manifest.asof
+            or capture.started_at != manifest.started_at
+            or capture.received_at != manifest.received_at
+            or capture.evaluated_at != manifest.completed_at
+        ):
+            raise PrivateRawCaptureError("private capture envelope does not bind manifest")
+        validate_quote_capture(capture, policy=policy)
+        return LoadedPrivateQuoteCapture(capture=capture, manifest=manifest)
+
     def _require_root(self) -> None:
         if not self._root.is_absolute() or self._root.is_symlink() or not self._root.is_dir():
             raise PrivateRawCaptureError("private capture root must be an absolute directory")
         if stat.S_IMODE(self._root.stat().st_mode) != 0o700:
             raise PrivateRawCaptureError("private capture root must have mode 0700")
+
+    def _validate_private_path(self, target: Path) -> None:
+        try:
+            relative = target.relative_to(self._root)
+        except ValueError as exc:
+            raise PrivateRawCaptureError("private capture path escapes root") from exc
+        current = self._root
+        for component in relative.parts:
+            current = current / component
+            if current.is_symlink() or not current.is_dir():
+                raise PrivateRawCaptureError("private capture path is unsafe")
+            if stat.S_IMODE(current.stat().st_mode) != 0o700:
+                raise PrivateRawCaptureError("private capture directory must have mode 0700")
+
+    @staticmethod
+    def _read_private_file(path: Path, field: str) -> bytes:
+        if path.is_symlink() or not path.is_file():
+            raise PrivateRawCaptureError(f"{field} must be a non-symlink file")
+        if stat.S_IMODE(path.stat().st_mode) != 0o600:
+            raise PrivateRawCaptureError(f"{field} must have mode 0600")
+        return path.read_bytes()
 
     def _ensure_private_parent(self, target: Path) -> None:
         relative = target.relative_to(self._root)
@@ -160,7 +288,11 @@ class LocalPrivateRawCaptureStore:
     def _discard_pending(path: Path) -> None:
         if not path.exists() or path.is_symlink():
             return
-        for filename in ("quote-response.json", "capture-manifest.json"):
+        for filename in (
+            "quote-response.json",
+            "capture-manifest.json",
+            PRIVATE_CAPTURE_ENVELOPE_FILENAME,
+        ):
             candidate = path / filename
             if candidate.exists() and candidate.is_file() and not candidate.is_symlink():
                 candidate.unlink()
@@ -178,3 +310,82 @@ def _manifest_json(manifest: PrivateRawCaptureManifest) -> Mapping[str, object]:
         assert isinstance(value, datetime)
         payload[field] = value.astimezone(UTC).isoformat().replace("+00:00", "Z")
     return payload
+
+
+def _load_manifest(body: bytes) -> PrivateRawCaptureManifest:
+    try:
+        payload = json.loads(body.decode("utf-8"))
+    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+        raise PrivateRawCaptureError("capture manifest is not valid JSON") from exc
+    expected = {
+        "schema",
+        "provider",
+        "quote_run_uid",
+        "connection_uid",
+        "approval_id",
+        "acknowledgement_uid",
+        "asof",
+        "request_scope_sha256",
+        "started_at",
+        "received_at",
+        "completed_at",
+        "raw_sha256",
+        "raw_byte_count",
+        "capture_envelope_sha256",
+        "final_status",
+    }
+    if not isinstance(payload, dict) or set(payload) != expected:
+        raise PrivateRawCaptureError("capture manifest fields do not match contract")
+    if payload["schema"] != PRIVATE_CAPTURE_MANIFEST_SCHEMA:
+        raise PrivateRawCaptureError("capture manifest schema is unsupported")
+
+    def text(field: str) -> str:
+        value = payload[field]
+        if not isinstance(value, str) or not value:
+            raise PrivateRawCaptureError(f"manifest {field} is invalid")
+        return value
+
+    def timestamp(field: str) -> datetime:
+        value = payload[field]
+        if not isinstance(value, str):
+            raise PrivateRawCaptureError(f"manifest {field} is invalid")
+        try:
+            parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+        except ValueError as exc:
+            raise PrivateRawCaptureError(f"manifest {field} is invalid") from exc
+        if parsed.tzinfo is None or parsed.utcoffset() is None:
+            raise PrivateRawCaptureError(f"manifest {field} must include a timezone")
+        return parsed.astimezone(UTC)
+
+    try:
+        asof = date.fromisoformat(text("asof"))
+    except ValueError as exc:
+        raise PrivateRawCaptureError("manifest asof is invalid") from exc
+    if type(payload["raw_byte_count"]) is not int or payload["raw_byte_count"] <= 0:
+        raise PrivateRawCaptureError("manifest raw_byte_count is invalid")
+    manifest = PrivateRawCaptureManifest(
+        schema=text("schema"),
+        provider=text("provider"),
+        quote_run_uid=text("quote_run_uid"),
+        connection_uid=text("connection_uid"),
+        approval_id=text("approval_id"),
+        acknowledgement_uid=text("acknowledgement_uid"),
+        asof=asof,
+        request_scope_sha256=text("request_scope_sha256"),
+        started_at=timestamp("started_at"),
+        received_at=timestamp("received_at"),
+        completed_at=timestamp("completed_at"),
+        raw_sha256=text("raw_sha256"),
+        raw_byte_count=payload["raw_byte_count"],
+        capture_envelope_sha256=text("capture_envelope_sha256"),
+        final_status=text("final_status"),
+    )
+    if not manifest.started_at <= manifest.received_at <= manifest.completed_at:
+        raise PrivateRawCaptureError("capture manifest timing is unsafe")
+    for field in ("raw_sha256", "capture_envelope_sha256", "request_scope_sha256"):
+        value = getattr(manifest, field)
+        if not isinstance(value, str) or not re.fullmatch(r"[0-9a-f]{64}", value):
+            raise PrivateRawCaptureError(f"manifest {field} is invalid")
+    if manifest.final_status != "captured_private_uningested":
+        raise PrivateRawCaptureError("capture manifest status is not ingestible")
+    return manifest

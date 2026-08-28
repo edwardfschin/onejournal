@@ -165,9 +165,11 @@ class SchwabQuoteConnectorTests(unittest.TestCase):
         )
         raw_path = self.private_root / result.capture.source.locator
         manifest_path = raw_path.with_name("capture-manifest.json")
+        envelope_path = raw_path.with_name("capture-envelope.json")
         self.assertEqual(raw_path.read_bytes(), self.raw_body)
         self.assertEqual(stat.S_IMODE(raw_path.stat().st_mode), 0o600)
         self.assertEqual(stat.S_IMODE(manifest_path.stat().st_mode), 0o600)
+        self.assertEqual(stat.S_IMODE(envelope_path.stat().st_mode), 0o600)
         with self.assertRaisesRegex(PrivateRawCaptureError, "private capture"):
             self.connector(transport).capture(self.request())
 

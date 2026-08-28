@@ -35,7 +35,9 @@ from .schwab_quotes import (
     SchwabQuoteTransportResponse,
 )
 from .private_capture import (
+    PRIVATE_CAPTURE_ENVELOPE_FILENAME,
     PRIVATE_CAPTURE_MANIFEST_SCHEMA,
+    LoadedPrivateQuoteCapture,
     LocalPrivateRawCaptureStore,
     PrivateRawCaptureError,
     PrivateRawCaptureManifest,
@@ -73,6 +75,8 @@ __all__ = [
     "SchwabQuoteTransportRequest",
     "SchwabQuoteTransportResponse",
     "PRIVATE_CAPTURE_MANIFEST_SCHEMA",
+    "PRIVATE_CAPTURE_ENVELOPE_FILENAME",
+    "LoadedPrivateQuoteCapture",
     "LocalPrivateRawCaptureStore",
     "PrivateRawCaptureError",
     "PrivateRawCaptureManifest",
