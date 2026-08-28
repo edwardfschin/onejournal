@@ -190,7 +190,7 @@ class MarketDataQuoteContractTests(unittest.TestCase):
         self.assertTrue(acknowledgement["required_before_quote_retrieval"])
         self.assertTrue(acknowledgement["fail_closed_when_missing_or_outdated"])
         self.assertEqual(
-            acknowledgement["acceptance_scope"], "user_provider_connection"
+            acknowledgement["acceptance_scope"], "owner_operated_local_connection"
         )
         self.assertFalse(acknowledgement["onejournal_grants_market_data_rights"])
         self.assertTrue(
@@ -198,7 +198,7 @@ class MarketDataQuoteContractTests(unittest.TestCase):
         )
         self.assertEqual(
             acknowledgement["enforcement_status"],
-            "contract_only_until_auth_and_tenancy_are_approved",
+            "local_owner_boundary_enforced_production_identity_deferred",
         )
 
     def test_persistence_is_atomic_idempotent_and_lineage_preserving(self) -> None:

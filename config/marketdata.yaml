@@ -23,15 +23,56 @@ marketdata:
     local_only: true
     credentials_separate: true
     redistribution_allowed: false
-    retention_policy: provider_terms_and_owner_policy_required
+    retention_policy: onejournal-local-raw-market-data-lifecycle.v1
   terms_acknowledgement:
     required_before_connection_activation: true
     required_before_quote_retrieval: true
     fail_closed_when_missing_or_outdated: true
-    acceptance_scope: user_provider_connection
+    acceptance_scope: owner_operated_local_connection
     onejournal_grants_market_data_rights: false
     runtime_entitlement_verification_required: true
-    enforcement_status: contract_only_until_auth_and_tenancy_are_approved
+    enforcement_status: local_owner_boundary_enforced_production_identity_deferred
+  provider_usage:
+    contract_version: onejournal.provider-usage-policy.v1
+    active_profiles:
+      schwab:
+        profile_id: schwab-local-owner-market-data-2026-08-28.v1
+        notice_version: onejournal-schwab-local-owner-notice.v1
+        operating_scope: owner_operated_local_connection
+        permitted_use: personal_noncommercial
+        reviewed_at_utc: "2026-08-28T00:00:00Z"
+        official_terms:
+          - reference_id: schwab-online-services-agreement
+            title: Schwab Online Services Agreement
+            url: https://www.schwab.com/legal/terms
+          - reference_id: schwab-market-data-online-addendum
+            title: Online Addendum to Electronic Services Agreement
+            url: https://www.schwab.com/legal/electronic-services-agreement-online
+          - reference_id: schwab-trader-api-market-data-production
+            title: Trader API Market Data Production specification and authenticated terms
+            url: https://developer.schwab.com/products/trader-api--individual/details/specifications/Market%20Data%20Production
+        requires_authenticated_provider_terms_confirmation: true
+        provider_reported_entitlement_required: true
+        redistribution_allowed: false
+        public_display_allowed: false
+        hosted_storage_allowed: false
+        required_declarations:
+          - authorized_connection
+          - applicable_terms_accepted
+          - authenticated_provider_terms_reviewed
+          - required_entitlements_maintained
+          - personal_noncommercial_use_only
+          - no_redistribution_or_public_exposure
+          - onejournal_does_not_grant_market_data_rights
+          - raw_evidence_lifecycle_accepted
+        raw_evidence_lifecycle:
+          policy_id: onejournal-local-raw-market-data-lifecycle.v1
+          mode: retain_until_explicit_approved_deletion_or_provider_requirement
+          automatic_deletion_enabled: false
+          fixed_retention_period_days: null
+          deletion_requires_explicit_approval: true
+          deletion_audit_required: true
+          provider_rule_change_requires_new_profile: true
   polling:
     background_enabled: false
     poll_only_when_authenticated_and_active: true

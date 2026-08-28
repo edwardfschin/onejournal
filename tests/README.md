@@ -43,8 +43,14 @@ foundation simple and dependency-free.
   importer test proves that matching injected authority can qualify a quote
   whose provider session is absent without writing evidence or a database.
   Concrete provider schedule adapters, official schedule evidence, and broader
-  provider/asset validation remain open. Mark selection is explicitly deferred
-  to PNL-03 policy.
+  provider/asset validation remain open. PNL-02 T11 adds the strict local-owner
+  provider-use profile and deterministic connection-scoped acknowledgement
+  boundary. It proves that missing, incomplete, superseded, scope-expanded, or
+  tampered acknowledgements fail before retrieval; acknowledgement cannot
+  replace provider-reported entitlement; and raw evidence cannot be scheduled
+  for automatic or unaudited deletion. No real acknowledgement, provider call,
+  credential, private evidence, database write, or deletion is used. Mark
+  selection is explicitly deferred to PNL-03 policy.
 - Integration: schema initialization and migration, import, append-only journal
   history, review compatibility projection, replay preservation, DuckDB reads,
   and DB dashboard payload construction using a temporary database.
