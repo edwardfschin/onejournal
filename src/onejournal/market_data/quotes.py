@@ -21,8 +21,9 @@ import yaml
 
 from onejournal.brokers.normalized import NormalizedQuote
 from onejournal.market_data.sessions import (
-    MarketSessionAuthority,
-    validate_session_authority_binding,
+    ProviderMarketSessionAuthority,
+    SessionAuthorityError,
+    validate_provider_session_authority_binding,
 )
 
 
@@ -296,12 +297,12 @@ def assess_quote_freshness(
     *,
     evaluated_at: datetime,
     policy: QuoteFreshnessPolicy | None = None,
-    session_authority: MarketSessionAuthority | None = None,
+    session_authority: ProviderMarketSessionAuthority | None = None,
 ) -> FreshnessAssessment:
     """Classify freshness from provider evidence and optional session authority.
 
-    The authority is injected; this function has no clock-based session
-    inference, calendar-provider selection, network access, or persistence.
+    The provider-native authority is injected; this function has no clock-based
+    session inference, resolver selection, network access, or persistence.
     """
 
     validate_normalized_quote(quote)
@@ -321,46 +322,32 @@ def assess_quote_freshness(
         evaluation_session_source = quote_session_source
         session_conflict = False
     else:
-        validate_session_authority_binding(
+        if not isinstance(session_authority, ProviderMarketSessionAuthority):
+            raise SessionAuthorityError(
+                "legacy or unsupported session authority cannot qualify a quote"
+            )
+        validate_provider_session_authority_binding(
             session_authority,
-            instrument_key=quote.instrument_key,
+            quote=quote,
             evaluated_at=now_utc,
         )
         authority_uid = session_authority.authority_uid
-        evaluation_session = session_authority.market_session
+        evaluation_session = session_authority.evaluation_market_session
         evaluation_session_source = "authority"
-        authority_phase_start = _utc(
-            session_authority.phase_started_at, "authority.phase_started_at"
-        )
-        authority_phase_end = _utc(
-            session_authority.phase_ends_at, "authority.phase_ends_at"
-        )
-        authority_covers_quote = (
-            authority_phase_start <= quote_utc < authority_phase_end
-        )
-        if authority_covers_quote and quote.market_session == "unknown":
-            quote_session = session_authority.market_session
+        if quote.market_session == "unknown":
+            quote_session = session_authority.quote_market_session
             quote_session_source = "authority"
             session_conflict = False
         elif (
-            authority_covers_quote
-            and quote.market_session == session_authority.market_session
+            quote.market_session == session_authority.quote_market_session
         ):
             quote_session = quote.market_session
             quote_session_source = "provider_and_authority"
             session_conflict = False
-        elif authority_covers_quote:
+        else:
             quote_session = quote.market_session
             quote_session_source = "unavailable"
             session_conflict = True
-        elif quote.market_session == "unknown":
-            quote_session = "unknown"
-            quote_session_source = "unavailable"
-            session_conflict = False
-        else:
-            quote_session = quote.market_session
-            quote_session_source = "provider"
-            session_conflict = False
 
     def result(
         status: Literal[

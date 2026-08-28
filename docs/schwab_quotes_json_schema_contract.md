@@ -69,13 +69,15 @@ The bounded official response confirmed the listed identity, asset, price,
 quote-time, real-time, and security-status mappings. It did not supply
 `marketSession`. The owner has selected Schwab-native market-hours or schedule
 evidence from the same connected Schwab boundary as the exclusive resolver
-source for this quote. The current provider-neutral `v1` authority object is not
-sufficient because it lacks provider/connection binding and requires a MIC; the
-versioned replacement and acceptance matrix are defined in
-`docs/provider_native_market_session_contract.md` but are not yet implemented
-or wired to this importer. Actual matching Schwab authority evidence therefore
-remains required before this capture can become freshness-eligible. The adapter
-and importer must not infer session from retrieval time, use another broker or
+source for this quote. The legacy provider-neutral `v1` authority object is not
+sufficient because it lacks provider/connection binding and requires a MIC.
+`onejournal.provider-market-session-authority.v2` now supplies the exact
+provider/connection/quote/instrument/schedule/source boundary, and the importer
+can consume it only through an injected credential-free resolver. No concrete
+Schwab schedule adapter or official schedule response is implemented or
+accepted yet. Actual matching Schwab authority evidence therefore remains
+required before this capture can become freshness-eligible. The adapter and
+importer must not infer session from retrieval time, use another broker or
 external calendar, or weaken the fail-closed contract.
 
 ## Interim one-app evidence bridge
@@ -131,6 +133,13 @@ retains the actual raw file as a safe path relative to the approved private-vaul
 root and binds it to the same SHA-256. A future approved ingestion operator may
 persist that envelope through the common repository; this temporary OneBot-edge
 operator does not become the target provider connector.
+
+The versioned summary schema is now
+`onejournal.schwab.quote-evidence-import-summary.v2`. It adds quote/evaluation
+session-source labels and nullable provider-session authority contract/UID
+fields. It contains no schedule raw path, payload, account identifier, or
+credential. With no injected resolver, those authority fields remain null and
+the existing quote-only behavior remains fail closed when session is unknown.
 
 ## Validation boundary
 

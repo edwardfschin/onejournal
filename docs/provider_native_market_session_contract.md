@@ -37,15 +37,16 @@ broker cannot supply sufficient evidence, the affected session, freshness, and
 valuation remain `unavailable`; supporting that broker for freshness-dependent
 valuation is blocked rather than patched with another source.
 
-## Normalized boundary required for T09
+## Implemented normalized boundary
 
 The current `onejournal.market-session-authority.v1` value remains unchanged
 for compatibility. It is not sufficient for the approved provider-native
 policy because it does not bind provider, connection, or provider instrument,
 and it requires every venue identifier to be a four-character MIC.
 
-T09 must introduce a new contract version rather than reinterpret `v1`. The new
-observation must bind at least:
+T09 introduces `onejournal.provider-market-session-authority.v2` rather than
+reinterpreting `v1`. `ProviderMarketSessionAuthority` and the credential-free
+resolver interface bind:
 
 - provider and opaque `connection_uid` matching the quote;
 - provider instrument identifier and broker-independent `instrument_key`;
@@ -69,7 +70,14 @@ evidence with an explicit validity window. An unexpired cached response from
 the same provider and connection may be reused according to that provider's
 documented rules. A missing, expired, conflicting, identity-mismatched, or
 outage-affected response fails closed; it does not trigger another provider or
-external-calendar fallback.
+external-calendar fallback. The Schwab evidence importer accepts this value only
+through an injected resolver and records its contract version and deterministic
+UID in the versioned secret-free summary. Its command line cannot construct an
+authority value, call a provider, or access credentials.
+
+This common boundary does not claim a Schwab, IBKR, or Moomoo schedule adapter.
+Each concrete adapter still requires official provider response evidence and
+the later connector/evidence gates.
 
 ## Provider eligibility gate
 
@@ -145,9 +153,10 @@ rollout is approved; they are not required to close the initial Schwab scope.
 
 ## Approval boundaries
 
-T09 may implement the new provider-neutral value contract, provider interface,
-offline adapters, fixtures, and tests locally after model reassessment. That
-does not authorize a Schwab, IBKR, Moomoo, or other provider call.
+T09 implements the provider-neutral value contract, injected resolver interface,
+freshness integration, and credential-free importer seam with synthetic tests.
+It does not implement or authorize a Schwab, IBKR, Moomoo, or other provider
+call or claim provider-specific schedule compatibility.
 
 Each credential installation or use, token refresh, live provider capture,
 private-evidence transfer, runtime database migration, connector activation,

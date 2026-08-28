@@ -35,9 +35,16 @@ foundation simple and dependency-free.
   capture producer and tests the current OneJournal runtime as a credential-free,
   read-only verifier/normalizer of a transferred two-file private bundle. This
   does not test or define the target OneJournal-owned multi-provider connector
-  plane.
-  Broader provider/asset validation and authoritative session context remain
-  open. Mark selection is explicitly deferred to PNL-03 policy.
+  plane. PNL-02 T09 adds the versioned provider-native session authority and
+  injected resolver boundary, proving exact same-provider/connection/quote/
+  instrument/source binding, separate quote/evaluation phases, optional MIC,
+  DST, regular/extended/closed/holiday/early-close/unscheduled-closure behavior,
+  expiry, conflict, outage, and cross-provider failure. A credential-free
+  importer test proves that matching injected authority can qualify a quote
+  whose provider session is absent without writing evidence or a database.
+  Concrete provider schedule adapters, official schedule evidence, and broader
+  provider/asset validation remain open. Mark selection is explicitly deferred
+  to PNL-03 policy.
 - Integration: schema initialization and migration, import, append-only journal
   history, review compatibility projection, replay preservation, DuckDB reads,
   and DB dashboard payload construction using a temporary database.

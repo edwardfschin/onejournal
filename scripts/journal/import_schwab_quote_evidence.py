@@ -30,11 +30,13 @@ from onejournal.brokers.schwab.quotes_json import (  # noqa: E402
     normalized_quotes_from_payload,
 )
 from onejournal.market_data import (  # noqa: E402
+    ProviderMarketSessionResolver,
     QuoteCaptureEnvelope,
     QuoteEvidenceSource,
     QuoteInstrumentRequest,
     assess_quote_freshness,
     load_market_data_policy,
+    resolve_provider_session_authority,
     validate_quote_capture,
 )
 
@@ -358,7 +360,11 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
-def main(argv: Sequence[str] | None = None) -> int:
+def main(
+    argv: Sequence[str] | None = None,
+    *,
+    session_resolver: ProviderMarketSessionResolver | None = None,
+) -> int:
     args = build_parser().parse_args(argv)
     bundle = verify_bundle(
         private_vault_root=args.private_vault_root,
@@ -413,13 +419,21 @@ def main(argv: Sequence[str] | None = None) -> int:
         quotes=(quote,),
     )
     validate_quote_capture(capture, policy=policy.freshness)
+    session_authority = None
+    if session_resolver is not None:
+        session_authority = resolve_provider_session_authority(
+            session_resolver,
+            quote=quote,
+            evaluated_at=args.evaluated_at,
+        )
     freshness = assess_quote_freshness(
         quote,
         evaluated_at=args.evaluated_at,
         policy=policy.freshness,
+        session_authority=session_authority,
     )
     summary = {
-        "schema": "onejournal.schwab.quote-evidence-import-summary.v1",
+        "schema": "onejournal.schwab.quote-evidence-import-summary.v2",
         "capture_id": bundle.capture_id,
         "quote_uid": quote.quote_uid,
         "adapter_version": quote.adapter_version,
@@ -429,6 +443,12 @@ def main(argv: Sequence[str] | None = None) -> int:
         "marketdata_policy_version": policy.contract_version,
         "freshness_status": freshness.status,
         "valuation_allowed": freshness.valuation_allowed,
+        "quote_session_source": freshness.quote_session_source,
+        "evaluation_session_source": freshness.evaluation_session_source,
+        "session_authority_contract_version": (
+            None if session_authority is None else session_authority.contract_version
+        ),
+        "session_authority_uid": freshness.session_authority_uid,
         "database_writes": 0,
     }
     print(json.dumps(summary, sort_keys=True, separators=(",", ":")))

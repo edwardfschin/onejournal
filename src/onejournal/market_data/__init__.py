@@ -26,12 +26,21 @@ from .repository import (
     persist_quote_capture,
 )
 from .sessions import (
+    PROVIDER_SESSION_AUTHORITY_CONTRACT_VERSION,
     SESSION_AUTHORITY_CONTRACT_VERSION,
     MarketSessionAuthority,
+    ProviderMarketSessionAuthority,
     SessionAuthorityError,
+    build_provider_session_authority_uid,
     build_session_authority_uid,
+    validate_provider_session_authority,
+    validate_provider_session_authority_binding,
     validate_market_session_authority,
     validate_session_authority_binding,
+)
+from .resolver import (
+    ProviderMarketSessionResolver,
+    resolve_provider_session_authority,
 )
 
 __all__ = [
@@ -55,9 +64,16 @@ __all__ = [
     "persist_quote_batch",
     "persist_quote_capture",
     "SESSION_AUTHORITY_CONTRACT_VERSION",
+    "PROVIDER_SESSION_AUTHORITY_CONTRACT_VERSION",
     "MarketSessionAuthority",
+    "ProviderMarketSessionAuthority",
     "SessionAuthorityError",
     "build_session_authority_uid",
+    "build_provider_session_authority_uid",
     "validate_market_session_authority",
+    "validate_provider_session_authority",
     "validate_session_authority_binding",
+    "validate_provider_session_authority_binding",
+    "ProviderMarketSessionResolver",
+    "resolve_provider_session_authority",
 ]

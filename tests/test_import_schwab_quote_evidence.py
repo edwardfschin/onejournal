@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from dataclasses import replace
+from datetime import UTC, date, datetime, timedelta
 import importlib.util
 import json
 from pathlib import Path
@@ -10,7 +12,11 @@ from contextlib import redirect_stdout
 from hashlib import sha256
 from io import StringIO
 
-from onejournal.market_data import QuoteCaptureContractError
+from onejournal.market_data import (
+    ProviderMarketSessionAuthority,
+    QuoteCaptureContractError,
+    build_provider_session_authority_uid,
+)
 
 
 PROJECT_DIR = Path(__file__).resolve().parents[1]
@@ -105,6 +111,70 @@ class QuoteEvidenceImportTests(unittest.TestCase):
         path.write_text(json.dumps(manifest) + "\n", encoding="utf-8")
         path.chmod(0o600)
 
+    def remove_quote_session(self, bundle: Path) -> None:
+        raw_path = bundle / quote_import.RAW_FILENAME
+        payload = json.loads(raw_path.read_text(encoding="utf-8"))
+        payload["AAPL"]["quote"].pop("marketSession")
+        body = (json.dumps(payload, sort_keys=True) + "\n").encode("utf-8")
+        raw_path.write_bytes(body)
+        raw_path.chmod(0o600)
+
+        def update_capture(manifest) -> None:
+            manifest["capture"]["body_bytes"] = len(body)
+            manifest["capture"]["body_sha256"] = sha256(body).hexdigest()
+
+        self.mutate_manifest(bundle, update_capture)
+
+    def provider_session_resolver(self):
+        class Resolver:
+            def resolve(self, *, quote, evaluated_at):
+                authority = ProviderMarketSessionAuthority(
+                    authority_uid="pending",
+                    provider=quote.provider,
+                    connection_uid=quote.connection_uid,
+                    quote_uid=quote.quote_uid,
+                    instrument_key=quote.instrument_key,
+                    provider_instrument_id=quote.provider_instrument_id,
+                    schedule_scope_id="schwab-equity-us",
+                    mic=None,
+                    venue_timezone="America/New_York",
+                    provider_quote_at=quote.provider_quote_at,
+                    evaluated_at=evaluated_at,
+                    quote_market_date=date(2026, 8, 27),
+                    evaluation_market_date=date(2026, 8, 27),
+                    quote_market_session="regular",
+                    evaluation_market_session="regular",
+                    quote_trading_day_kind="regular",
+                    evaluation_trading_day_kind="regular",
+                    quote_phase_started_at=datetime(
+                        2026, 8, 27, 13, 30, tzinfo=UTC
+                    ),
+                    quote_phase_ends_at=datetime(2026, 8, 27, 20, 0, tzinfo=UTC),
+                    evaluation_phase_started_at=datetime(
+                        2026, 8, 27, 13, 30, tzinfo=UTC
+                    ),
+                    evaluation_phase_ends_at=datetime(
+                        2026, 8, 27, 20, 0, tzinfo=UTC
+                    ),
+                    retrieved_at=evaluated_at - timedelta(seconds=1),
+                    resolved_at=evaluated_at,
+                    valid_until=evaluated_at + timedelta(minutes=1),
+                    source_response_type="market_hours",
+                    provider_source_version=None,
+                    raw_path=(
+                        "data/raw/schwab/external/PNL-02B-AAPL-20260827/"
+                        "market-hours-response.json"
+                    ),
+                    raw_sha256="b" * 64,
+                    adapter_version="schwab-market-hours-v1",
+                )
+                return replace(
+                    authority,
+                    authority_uid=build_provider_session_authority_uid(authority),
+                )
+
+        return Resolver()
+
     def test_valid_bundle_normalizes_and_assesses_without_writes(self) -> None:
         with tempfile.TemporaryDirectory() as temporary_dir:
             root = Path(temporary_dir) / "vault"
@@ -126,6 +196,41 @@ class QuoteEvidenceImportTests(unittest.TestCase):
             self.assertEqual(summary["freshness_status"], "live_fresh")
             self.assertTrue(summary["valuation_allowed"])
             self.assertEqual(summary["database_writes"], 0)
+
+    def test_injected_provider_resolver_qualifies_missing_quote_session(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_dir:
+            root = Path(temporary_dir) / "vault"
+            bundle = self.make_bundle(root)
+            self.remove_quote_session(bundle)
+            before = sorted(path.relative_to(root) for path in root.rglob("*"))
+
+            with redirect_stdout(StringIO()) as output:
+                result = quote_import.main(
+                    self.base_args(root, bundle),
+                    session_resolver=self.provider_session_resolver(),
+                )
+
+            after = sorted(path.relative_to(root) for path in root.rglob("*"))
+            summary = json.loads(output.getvalue())
+            self.assertEqual(result, 0)
+            self.assertEqual(before, after)
+            self.assertEqual(
+                summary["schema"],
+                "onejournal.schwab.quote-evidence-import-summary.v2",
+            )
+            self.assertEqual(summary["freshness_status"], "live_fresh")
+            self.assertTrue(summary["valuation_allowed"])
+            self.assertEqual(summary["quote_session_source"], "authority")
+            self.assertEqual(summary["evaluation_session_source"], "authority")
+            self.assertEqual(
+                summary["session_authority_contract_version"],
+                "onejournal.provider-market-session-authority.v2",
+            )
+            self.assertTrue(
+                summary["session_authority_uid"].startswith(
+                    "provider-session-authority:"
+                )
+            )
 
     def test_hash_and_byte_tampering_fail_closed(self) -> None:
         with tempfile.TemporaryDirectory() as temporary_dir:

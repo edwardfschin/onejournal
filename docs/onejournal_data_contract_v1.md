@@ -143,11 +143,13 @@ fallback.
 A freshness assessment records quote-time and evaluation-time sessions
 separately and whether each came from the quote response, the same-provider
 schedule authority, or both. These are point-in-time assessment facts, not
-permanent properties of the stored quote. The current `v1` authority object is
+permanent properties of the stored quote. The legacy `v1` authority object is
 not sufficient because it lacks provider/connection binding and requires an
-exact MIC. The accepted replacement contract and acceptance matrix are defined
-in `docs/provider_native_market_session_contract.md`; no compliant resolver is
-currently wired to the Schwab evidence importer or a OneJournal runtime.
+exact MIC. `onejournal.provider-market-session-authority.v2` implements the
+replacement value, exact binding, freshness integration, and credential-free
+importer injection seam defined in
+`docs/provider_native_market_session_contract.md`. No concrete Schwab, IBKR, or
+Moomoo schedule adapter or provider response is accepted or wired to a runtime.
 
 The current runtime does not implement this provider-connection plane. Its
 credential storage, user/connection identity, tenancy, scheduling, deployment,
