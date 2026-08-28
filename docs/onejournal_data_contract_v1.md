@@ -101,6 +101,7 @@ categories, not approved implementation signatures:
 - positions
 - transactions
 - market quotes
+- market hours and trading schedules
 
 Provider connectors own provider-specific authentication, request construction,
 rate-limit handling, and immutable raw capture. Evidence adapters own
@@ -115,28 +116,38 @@ receive, and evaluation times, New York market date, checksum-backed local
 source locator, adapter version, and complete normalized quote set. Partial or
 identity-mismatched batches fail before accepted quote rows are written.
 
-Quote freshness may consume a separate
-`onejournal.market-session-authority.v1` observation. That observation is not
-provider payload data and is not persisted as part of a normalized quote. It
-binds one broker-independent instrument and one evaluation instant to an
-explicit MIC, calendar ID, IANA venue timezone, market date, session phase,
-half-open phase window, trading-day kind (`regular`, `early_close`, `holiday`,
-or `unscheduled_closure`), resolver source/version, validity window, and
-deterministic UID. Missing or invalid authority cannot replace an unknown
-provider session. When supplied, its instrument and evaluation instant must
+Quote freshness may consume a separate provider-neutral market-session
+observation normalized from the same connected broker as the quote. The raw
+provider evidence may come from a quote, market-hours, trading-schedule, or
+instrument response, but broker-specific payloads do not cross the adapter
+boundary. The normalized observation is not persisted as a permanent property
+of a quote. It binds provider, opaque connection, provider instrument,
+broker-independent instrument, provider-declared schedule scope, IANA venue
+timezone, market date, session phase, half-open phase window, trading-day kind
+(`regular`, `early_close`, `holiday`, or `unscheduled_closure`), source lineage,
+validity window, and deterministic identity. A MIC is retained only when the
+provider supplies it or an approved mapping proves it; OneJournal does not
+guess one.
+
+Missing or invalid authority cannot replace an unknown provider session. When
+supplied, its provider, connection, instrument, and evaluation instant must
 exactly match the quote assessment; its own market date must match that instant
 in the declared venue timezone. Provider and authority sessions are compared
 only when the authority phase window covers the provider quote instant, so a
 regular quote retained into a later closed phase is not misclassified as a
 conflict. Same-phase conflicts, expired observations, unsupported states, or
-timezone/date/window mismatches make freshness unavailable. The contract
-selects no calendar provider and performs no clock-based inference.
+identity/timezone/date/window mismatches make freshness unavailable. No other
+broker, third-party calendar, weekday rule, or clock inference may supply a
+fallback.
 
 A freshness assessment records quote-time and evaluation-time sessions
-separately and whether each came from the provider, authority, or both. These
-are point-in-time assessment facts, not permanent properties of the stored
-quote. No approved resolver is currently wired to the Schwab evidence importer
-or a OneJournal runtime.
+separately and whether each came from the quote response, the same-provider
+schedule authority, or both. These are point-in-time assessment facts, not
+permanent properties of the stored quote. The current `v1` authority object is
+not sufficient because it lacks provider/connection binding and requires an
+exact MIC. The accepted replacement contract and acceptance matrix are defined
+in `docs/provider_native_market_session_contract.md`; no compliant resolver is
+currently wired to the Schwab evidence importer or a OneJournal runtime.
 
 The current runtime does not implement this provider-connection plane. Its
 credential storage, user/connection identity, tenancy, scheduling, deployment,

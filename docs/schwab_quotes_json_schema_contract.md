@@ -67,11 +67,16 @@ unexpected symbols reject the whole batch.
 
 The bounded official response confirmed the listed identity, asset, price,
 quote-time, real-time, and security-status mappings. It did not supply
-`marketSession`. OneJournal now has a provider-neutral, point-in-time session-
-authority input contract, but no approved resolver is selected or wired to this
-importer. Actual matching authority evidence therefore remains required before
-this capture can become freshness-eligible. The adapter and importer must not
-infer session from retrieval time or weaken the fail-closed contract.
+`marketSession`. The owner has selected Schwab-native market-hours or schedule
+evidence from the same connected Schwab boundary as the exclusive resolver
+source for this quote. The current provider-neutral `v1` authority object is not
+sufficient because it lacks provider/connection binding and requires a MIC; the
+versioned replacement and acceptance matrix are defined in
+`docs/provider_native_market_session_contract.md` but are not yet implemented
+or wired to this importer. Actual matching Schwab authority evidence therefore
+remains required before this capture can become freshness-eligible. The adapter
+and importer must not infer session from retrieval time, use another broker or
+external calendar, or weaken the fail-closed contract.
 
 ## Interim one-app evidence bridge
 

@@ -96,3 +96,4 @@ policy.
 | [ADR-0008](decisions/0008-durable-journal-domain-and-history.md) | Accepted | Preserve journal/review history and define private strategy, tag, lesson, mistake, and attachment boundaries |
 | [ADR-0009](decisions/0009-provider-independent-market-quotes.md) | Accepted | Use Schwab first, then IBKR and Moomoo, through local provider-independent quote evidence and explicit freshness states |
 | [ADR-0010](decisions/0010-complete-evidence-provenance-and-correction-governance.md) | Proposed | Define immutable evidence versions, governed corrections, supersession, invalidation, recalculation, and complete raw-to-output lineage |
+| [ADR-0011](decisions/0011-provider-native-market-session-authority.md) | Accepted | Use each connected account broker as the exclusive schedule authority for its quotes, with no cross-provider or external-calendar fallback |
