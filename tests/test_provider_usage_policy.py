@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from dataclasses import replace
 from datetime import UTC, datetime, timedelta
+from hashlib import sha256
+import json
 from pathlib import Path
 import tempfile
 import unittest
@@ -14,7 +16,9 @@ from onejournal.provider_connectors import (
     ProviderUsagePolicyError,
     authorize_raw_evidence_deletion,
     build_provider_usage_acknowledgement_uid,
+    load_provider_usage_acknowledgement_artifact_bytes,
     load_provider_usage_policy,
+    provider_usage_acknowledgement_artifact_bytes,
     validate_provider_usage_acknowledgement,
 )
 
@@ -95,6 +99,41 @@ class ProviderUsagePolicyTests(unittest.TestCase):
             build_provider_usage_acknowledgement_uid(acknowledgement),
         )
         self.assertTrue(authorization.provider_reported_entitlement_required)
+
+    def test_canonical_acknowledgement_artifact_round_trips_and_rejects_reformat(self) -> None:
+        acknowledgement = self._acknowledgement()
+        body = provider_usage_acknowledgement_artifact_bytes(
+            acknowledgement,
+            creation_approval_id="PNL-02-T14-TERMS-APPROVAL-0001",
+        )
+
+        artifact, authorization = load_provider_usage_acknowledgement_artifact_bytes(
+            body,
+            policy=self.policy,
+            expected_provider="schwab",
+            expected_connection_uid="local-schwab-primary",
+            evaluated_at_utc=self.evaluated_at,
+            expected_sha256=sha256(body).hexdigest(),
+        )
+
+        self.assertEqual(artifact.acknowledgement, acknowledgement)
+        self.assertEqual(
+            authorization.acknowledgement_uid,
+            acknowledgement.acknowledgement_uid,
+        )
+
+        reformatted = json.dumps(
+            json.loads(body), sort_keys=True, indent=2
+        ).encode("utf-8")
+        with self.assertRaisesRegex(ProviderUsagePolicyError, "not canonical"):
+            load_provider_usage_acknowledgement_artifact_bytes(
+                reformatted,
+                policy=self.policy,
+                expected_provider="schwab",
+                expected_connection_uid="local-schwab-primary",
+                evaluated_at_utc=self.evaluated_at,
+                expected_sha256=sha256(reformatted).hexdigest(),
+            )
 
     def test_acknowledgement_cannot_substitute_for_active_profile_or_scope(self) -> None:
         cases = (

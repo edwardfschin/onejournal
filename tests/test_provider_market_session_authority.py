@@ -164,6 +164,35 @@ class ProviderMarketSessionAuthorityTests(unittest.TestCase):
         self.assertEqual(assessment.status, "live_fresh")
         self.assertEqual(assessment.age_seconds, Decimal("119.0"))
 
+    def test_after_hours_uses_extended_threshold(self) -> None:
+        evaluated_at = datetime(2026, 8, 11, 20, 30, tzinfo=UTC)
+        quote = self._quote(
+            provider_quote_at=evaluated_at - timedelta(seconds=120),
+            received_at=evaluated_at - timedelta(seconds=119),
+        )
+        authority = self._authority(
+            quote=quote,
+            evaluated_at=evaluated_at,
+            quote_market_session="after_hours",
+            evaluation_market_session="after_hours",
+            quote_phase_started_at=datetime(2026, 8, 11, 20, 0, tzinfo=UTC),
+            quote_phase_ends_at=datetime(2026, 8, 12, 0, 0, tzinfo=UTC),
+            evaluation_phase_started_at=datetime(2026, 8, 11, 20, 0, tzinfo=UTC),
+            evaluation_phase_ends_at=datetime(2026, 8, 12, 0, 0, tzinfo=UTC),
+            retrieved_at=evaluated_at - timedelta(seconds=2),
+            resolved_at=evaluated_at - timedelta(seconds=1),
+            valid_until=evaluated_at + timedelta(minutes=1),
+        )
+
+        assessment = assess_quote_freshness(
+            quote,
+            evaluated_at=evaluated_at,
+            session_authority=authority,
+        )
+
+        self.assertEqual(assessment.status, "live_fresh")
+        self.assertEqual(assessment.age_seconds, Decimal("120.0"))
+
     def test_early_close_is_never_labelled_live(self) -> None:
         evaluated_at = datetime(2026, 8, 11, 21, 0, tzinfo=UTC)
         quote = self._quote(
@@ -227,6 +256,29 @@ class ProviderMarketSessionAuthorityTests(unittest.TestCase):
         with self.assertRaises(SessionAuthorityError):
             validate_provider_session_authority(invalid)
 
+        unscheduled = self._authority(
+            quote=quote,
+            evaluated_at=evaluated_at,
+            quote_market_session="closed",
+            evaluation_market_session="closed",
+            quote_trading_day_kind="unscheduled_closure",
+            evaluation_trading_day_kind="unscheduled_closure",
+            quote_phase_started_at=datetime(2026, 8, 11, 4, 0, tzinfo=UTC),
+            quote_phase_ends_at=datetime(2026, 8, 12, 4, 0, tzinfo=UTC),
+            evaluation_phase_started_at=datetime(2026, 8, 11, 4, 0, tzinfo=UTC),
+            evaluation_phase_ends_at=datetime(2026, 8, 12, 4, 0, tzinfo=UTC),
+            retrieved_at=evaluated_at - timedelta(seconds=2),
+            resolved_at=evaluated_at - timedelta(seconds=1),
+            valid_until=evaluated_at + timedelta(minutes=1),
+        )
+        assessment = assess_quote_freshness(
+            quote,
+            evaluated_at=evaluated_at,
+            session_authority=unscheduled,
+        )
+        self.assertEqual(assessment.status, "market_closed_last")
+        self.assertTrue(assessment.valuation_allowed)
+
     def test_quote_schedule_conflict_fails_closed(self) -> None:
         quote = self._quote(market_session="regular")
         authority = self._authority(
@@ -255,6 +307,7 @@ class ProviderMarketSessionAuthorityTests(unittest.TestCase):
             entitlement_status="delayed",
         )
         denied = self._quote(entitlement_status="denied")
+        unknown = self._quote(entitlement_status="unknown")
 
         delayed_result = assess_quote_freshness(
             delayed,
@@ -266,11 +319,18 @@ class ProviderMarketSessionAuthorityTests(unittest.TestCase):
             evaluated_at=self.EVALUATED_AT,
             session_authority=self._authority(quote=denied),
         )
+        unknown_result = assess_quote_freshness(
+            unknown,
+            evaluated_at=self.EVALUATED_AT,
+            session_authority=self._authority(quote=unknown),
+        )
 
         self.assertEqual(delayed_result.status, "delayed")
         self.assertFalse(delayed_result.valuation_allowed)
         self.assertEqual(denied_result.status, "unavailable")
         self.assertFalse(denied_result.valuation_allowed)
+        self.assertEqual(unknown_result.status, "unavailable")
+        self.assertFalse(unknown_result.valuation_allowed)
 
     def test_quote_and_evaluation_phases_are_separate_across_close(self) -> None:
         evaluated_at = datetime(2026, 8, 11, 20, 1, tzinfo=UTC)

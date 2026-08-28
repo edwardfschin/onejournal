@@ -62,6 +62,37 @@ class SchwabQuotesAdapterTests(unittest.TestCase):
         self.assertEqual(quote.entitlement_status, "entitled")
         self.assertTrue(quote.quote_uid.startswith("quote:"))
 
+    def test_synthetic_listed_option_shape_preserves_exact_identity(self) -> None:
+        provider_symbol = "AAPL  260116C00200000"
+        payload = load_quotes_json(FIXTURE)
+        payload[provider_symbol] = payload.pop("AAPL")
+        payload[provider_symbol]["symbol"] = provider_symbol
+        payload[provider_symbol]["assetMainType"] = "OPTION"
+        request = SchwabQuoteRequest(
+            provider_symbol=provider_symbol,
+            instrument_key="option|AAPL|2026-01-16|call|200",
+            asset_class="option",
+            currency="USD",
+        )
+
+        (quote,) = self.normalize(payload=payload, request=request)
+
+        self.assertEqual(quote.provider_instrument_id, provider_symbol)
+        self.assertEqual(quote.symbol, provider_symbol)
+        self.assertEqual(quote.instrument_key, "option|AAPL|2026-01-16|call|200")
+        self.assertEqual(quote.asset_class, "option")
+        self.assertEqual(quote.bid, Decimal("199.90"))
+        self.assertEqual(quote.ask, Decimal("200.10"))
+
+    def test_missing_all_prices_fails_closed(self) -> None:
+        payload = load_quotes_json(FIXTURE)
+        payload["AAPL"]["quote"]["bidPrice"] = None
+        payload["AAPL"]["quote"]["askPrice"] = None
+        payload["AAPL"]["quote"]["lastPrice"] = None
+
+        with self.assertRaisesRegex(ValueError, "at least one of bid, ask, or last"):
+            self.normalize(payload=payload)
+
     def test_unexpected_or_missing_symbol_rejects_the_whole_batch(self) -> None:
         payload = dict(self.payload)
         payload["MSFT"] = dict(payload["AAPL"], symbol="MSFT")

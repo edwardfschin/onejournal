@@ -24,11 +24,28 @@ PROVIDER_USAGE_POLICY_CONTRACT_VERSION = "onejournal.provider-usage-policy.v1"
 PROVIDER_USAGE_ACKNOWLEDGEMENT_CONTRACT_VERSION = (
     "onejournal.provider-usage-acknowledgement.v1"
 )
+PROVIDER_USAGE_ACKNOWLEDGEMENT_ARTIFACT_SCHEMA = (
+    "onejournal.provider-usage-acknowledgement-artifact.v1"
+)
 RAW_EVIDENCE_LIFECYCLE_MODE = (
     "retain_until_explicit_approved_deletion_or_provider_requirement"
 )
 
 _SAFE_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:-]{7,127}$")
+_SHA256 = re.compile(r"^[0-9a-f]{64}$")
+_ACKNOWLEDGEMENT_FIELDS = {
+    "contract_version",
+    "acknowledgement_uid",
+    "provider",
+    "connection_uid",
+    "terms_profile_id",
+    "notice_version",
+    "operating_scope",
+    "accepted_at_utc",
+    "product_version",
+    "raw_evidence_policy_id",
+    "declarations",
+}
 _REQUIRED_PROFILE_FIELDS = {
     "profile_id",
     "notice_version",
@@ -136,6 +153,15 @@ class ProviderUsageAuthorization:
     terms_profile_id: str
     raw_evidence_lifecycle: RawEvidenceLifecyclePolicy
     provider_reported_entitlement_required: bool
+
+
+@dataclass(frozen=True)
+class ProviderUsageAcknowledgementArtifact:
+    """Canonical private acknowledgement plus its owner-approval reference."""
+
+    schema: str
+    creation_approval_id: str
+    acknowledgement: ProviderUsageAcknowledgement
 
 
 @dataclass(frozen=True)
@@ -422,6 +448,155 @@ def build_provider_usage_acknowledgement_uid(
         ensure_ascii=True,
     ).encode("utf-8")
     return f"provider-usage-ack:{sha256(payload).hexdigest()}"
+
+
+def provider_usage_acknowledgement_artifact_bytes(
+    acknowledgement: ProviderUsageAcknowledgement,
+    *,
+    creation_approval_id: str,
+) -> bytes:
+    """Serialize one canonical, deterministic, secret-free private artifact."""
+
+    approval_id = _require_safe_id(
+        creation_approval_id, field="creation_approval_id"
+    )
+    expected_uid = build_provider_usage_acknowledgement_uid(acknowledgement)
+    if acknowledgement.acknowledgement_uid != expected_uid:
+        raise ProviderUsagePolicyError("acknowledgement identity mismatch")
+    document = {
+        "schema": PROVIDER_USAGE_ACKNOWLEDGEMENT_ARTIFACT_SCHEMA,
+        "creation_approval_id": approval_id,
+        "acknowledgement": {
+            **_acknowledgement_identity_payload(acknowledgement),
+            "acknowledgement_uid": acknowledgement.acknowledgement_uid,
+        },
+    }
+    return (
+        json.dumps(
+            document,
+            sort_keys=True,
+            separators=(",", ":"),
+            ensure_ascii=True,
+        )
+        + "\n"
+    ).encode("utf-8")
+
+
+def load_provider_usage_acknowledgement_artifact_bytes(
+    body: bytes,
+    *,
+    policy: ProviderUsagePolicy,
+    expected_provider: str,
+    expected_connection_uid: str,
+    evaluated_at_utc: datetime,
+    expected_sha256: str | None = None,
+) -> tuple[ProviderUsageAcknowledgementArtifact, ProviderUsageAuthorization]:
+    """Load, checksum, canonicalize, and authorize one private artifact."""
+
+    if not isinstance(body, bytes) or not body or len(body) > 64 * 1024:
+        raise ProviderUsagePolicyError("acknowledgement artifact byte size is invalid")
+    if expected_sha256 is not None:
+        if not isinstance(expected_sha256, str) or not _SHA256.fullmatch(
+            expected_sha256
+        ):
+            raise ProviderUsagePolicyError(
+                "expected acknowledgement artifact SHA-256 is invalid"
+            )
+        if sha256(body).hexdigest() != expected_sha256:
+            raise ProviderUsagePolicyError(
+                "acknowledgement artifact checksum mismatch"
+            )
+    try:
+        document = json.loads(
+            body.decode("utf-8"),
+            parse_constant=lambda value: (_ for _ in ()).throw(
+                ValueError(f"non-finite JSON value: {value}")
+            ),
+        )
+    except (UnicodeDecodeError, json.JSONDecodeError, ValueError) as exc:
+        raise ProviderUsagePolicyError(
+            "acknowledgement artifact is not finite JSON"
+        ) from exc
+    root = _require_mapping(document, field="acknowledgement artifact")
+    _require_exact_fields(
+        root,
+        field="acknowledgement artifact",
+        expected={"schema", "creation_approval_id", "acknowledgement"},
+    )
+    if root["schema"] != PROVIDER_USAGE_ACKNOWLEDGEMENT_ARTIFACT_SCHEMA:
+        raise ProviderUsagePolicyError("unsupported acknowledgement artifact schema")
+    approval_id = _require_safe_id(
+        root["creation_approval_id"], field="creation_approval_id"
+    )
+    payload = _require_mapping(
+        root["acknowledgement"], field="acknowledgement"
+    )
+    _require_exact_fields(
+        payload,
+        field="acknowledgement",
+        expected=_ACKNOWLEDGEMENT_FIELDS,
+    )
+    declarations_value = payload["declarations"]
+    if not isinstance(declarations_value, list) or not all(
+        isinstance(value, str) for value in declarations_value
+    ):
+        raise ProviderUsagePolicyError(
+            "acknowledgement declarations must be a string array"
+        )
+    declarations = frozenset(declarations_value)
+    if len(declarations) != len(declarations_value):
+        raise ProviderUsagePolicyError("acknowledgement declarations contain duplicates")
+    acknowledgement = ProviderUsageAcknowledgement(
+        contract_version=_require_string(
+            payload["contract_version"], field="contract_version"
+        ),
+        acknowledgement_uid=_require_safe_id(
+            payload["acknowledgement_uid"], field="acknowledgement_uid"
+        ),
+        provider=_require_string(payload["provider"], field="provider"),
+        connection_uid=_require_safe_id(
+            payload["connection_uid"], field="connection_uid"
+        ),
+        terms_profile_id=_require_safe_id(
+            payload["terms_profile_id"], field="terms_profile_id"
+        ),
+        notice_version=_require_safe_id(
+            payload["notice_version"], field="notice_version"
+        ),
+        operating_scope=_require_string(
+            payload["operating_scope"], field="operating_scope"
+        ),
+        accepted_at_utc=_parse_utc(
+            payload["accepted_at_utc"], field="accepted_at_utc"
+        ),
+        product_version=_require_string(
+            payload["product_version"], field="product_version"
+        ),
+        raw_evidence_policy_id=_require_safe_id(
+            payload["raw_evidence_policy_id"], field="raw_evidence_policy_id"
+        ),
+        declarations=declarations,
+    )
+    authorization = validate_provider_usage_acknowledgement(
+        acknowledgement,
+        policy=policy,
+        expected_provider=expected_provider,
+        expected_connection_uid=expected_connection_uid,
+        evaluated_at_utc=evaluated_at_utc,
+    )
+    artifact = ProviderUsageAcknowledgementArtifact(
+        schema=PROVIDER_USAGE_ACKNOWLEDGEMENT_ARTIFACT_SCHEMA,
+        creation_approval_id=approval_id,
+        acknowledgement=acknowledgement,
+    )
+    if body != provider_usage_acknowledgement_artifact_bytes(
+        acknowledgement,
+        creation_approval_id=approval_id,
+    ):
+        raise ProviderUsagePolicyError(
+            "acknowledgement artifact bytes are not canonical"
+        )
+    return artifact, authorization
 
 
 def validate_provider_usage_acknowledgement(

@@ -1,10 +1,12 @@
 """Provider-connector contracts that remain independent of provider clients."""
 
 from .usage_policy import (
+    PROVIDER_USAGE_ACKNOWLEDGEMENT_ARTIFACT_SCHEMA,
     PROVIDER_USAGE_ACKNOWLEDGEMENT_CONTRACT_VERSION,
     PROVIDER_USAGE_POLICY_CONTRACT_VERSION,
     ProviderTermsProfile,
     ProviderUsageAcknowledgement,
+    ProviderUsageAcknowledgementArtifact,
     ProviderUsageAuthorization,
     ProviderUsagePolicy,
     ProviderUsagePolicyError,
@@ -14,7 +16,15 @@ from .usage_policy import (
     authorize_raw_evidence_deletion,
     build_provider_usage_acknowledgement_uid,
     load_provider_usage_policy,
+    load_provider_usage_acknowledgement_artifact_bytes,
+    provider_usage_acknowledgement_artifact_bytes,
     validate_provider_usage_acknowledgement,
+)
+from .usage_acknowledgement_store import (
+    LocalProviderUsageAcknowledgementStore,
+    ProviderUsageAcknowledgementStoreError,
+    StoredProviderUsageAcknowledgement,
+    generate_provider_connection_uid,
 )
 from .schwab_quotes import (
     SCHWAB_QUOTE_CONNECTOR_CONTRACT_VERSION,
@@ -44,10 +54,12 @@ from .private_capture import (
 )
 
 __all__ = [
+    "PROVIDER_USAGE_ACKNOWLEDGEMENT_ARTIFACT_SCHEMA",
     "PROVIDER_USAGE_ACKNOWLEDGEMENT_CONTRACT_VERSION",
     "PROVIDER_USAGE_POLICY_CONTRACT_VERSION",
     "ProviderTermsProfile",
     "ProviderUsageAcknowledgement",
+    "ProviderUsageAcknowledgementArtifact",
     "ProviderUsageAuthorization",
     "ProviderUsagePolicy",
     "ProviderUsagePolicyError",
@@ -57,7 +69,13 @@ __all__ = [
     "authorize_raw_evidence_deletion",
     "build_provider_usage_acknowledgement_uid",
     "load_provider_usage_policy",
+    "load_provider_usage_acknowledgement_artifact_bytes",
+    "provider_usage_acknowledgement_artifact_bytes",
     "validate_provider_usage_acknowledgement",
+    "LocalProviderUsageAcknowledgementStore",
+    "ProviderUsageAcknowledgementStoreError",
+    "StoredProviderUsageAcknowledgement",
+    "generate_provider_connection_uid",
     "SCHWAB_QUOTE_CONNECTOR_CONTRACT_VERSION",
     "SCHWAB_QUOTE_MAX_ATTEMPTS",
     "SCHWAB_QUOTE_OPERATION",
