@@ -295,13 +295,13 @@ array request gap, an under-validated market-hours response boundary, and an
 opaque-placeholder acknowledgement gap. The corrected v3 runner now validates
 the full canonical private acknowledgement before token access and preserves an
 exact checksum-bound copy in the evidence bundle. Its SHA-256 is
-`8305922381879507f3c8ebf0de4142bcbf5600b243f75f13fbb721fbeae4764c`;
+`fc3ba1b4b313ec642ff7f0a2d5f7124e74eed12f086a264031f6bf3e707f2e06`;
 the corrected test SHA-256 is
-`d49082cfa584d993b27614993da0b536d299959b1d3b002ccccacd239c58cf69`.
+`e84258b74bc987987ff2da4dacf55631f4beddcb45720b826c8428595fd12537`.
 These supersede the earlier reviewed temporary hashes before any transfer or
 execution occurred.
 
-Nine offline tests passed using injected fake token and transport boundaries.
+Ten offline tests passed using injected fake token and transport boundaries.
 They cover the exact five-request order, repeated-key market serialization,
 full acknowledgement/checksum/declaration/connection, source-contract, and
 runtime-hash gates before token access, exact schedule scope/date/product/session
