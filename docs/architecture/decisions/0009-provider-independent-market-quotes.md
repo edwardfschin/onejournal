@@ -158,8 +158,18 @@ the connected user's jurisdiction and product remain authoritative at runtime.
     quotes fail closed.
 23. An official close, frozen quote, or last real-time quote retained after
     provider-declared market close is labelled `market_closed_last`, never
-    `live_fresh`. An approved exchange-calendar service must supply market-open
-    expectations before OneJournal relies on calendar inference.
+    `live_fresh`. When provider session is absent, the implemented
+    `onejournal.market-session-authority.v1` boundary may supply session only
+    through a separately resolved, deterministic observation bound to the exact
+    instrument, MIC, calendar ID, IANA venue timezone, market date, evaluation
+    instant, half-open phase window, trading-day kind, source/version, and
+    validity window. The boundary does not infer session from the clock or
+    select/call a calendar provider. It preserves quote-time and evaluation-
+    time sessions separately: provider/authority disagreement is a conflict
+    only when the authoritative phase window covers the provider quote time.
+    A regular-session quote retained into an authoritative closed phase is not
+    a false conflict. Missing, expired, identity/date/time-mismatched,
+    unsupported, or same-phase conflicting authority fails closed.
 24. Recommended active-session polling defaults are 15 seconds for stocks,
     30 seconds for options, and 60 seconds in extended sessions. Polling pauses
     after five minutes of user inactivity and stops while the market is closed.
@@ -209,6 +219,14 @@ Schwab mapping and real-time entitlement, but the response supplied no
 market-session field. The fail-closed result was therefore `unavailable` and
 valuation was disallowed. Authoritative session context and broader
 provider/asset validation remain required.
+
+The provider-neutral session-authority value object and freshness integration
+are implemented without a calendar dependency, network access, persistence, or
+provider selection. Freshness results expose distinct quote-time and evaluation-
+time sessions, the evidence source for each, and the deterministic authority UID
+when present. No approved resolver currently produces this value
+for the importer or runtime, so the bounded Schwab evidence remains
+`unavailable`; implementation of the boundary alone is not session evidence.
 
 ## Alternatives considered
 
@@ -273,6 +291,13 @@ location, and adapter version in addition to source, instrument, provider quote
 time, and prices. Existing migration-0011 rows remain readable; they are not
 silently re-identified or replayed as version-2 capture rows.
 
+The former optional `expected_market_open` boolean on the internal freshness
+function is replaced by the versioned, exact-scope `MarketSessionAuthority`
+contract. The repository had no non-test runtime caller of that boolean. This
+change does not alter normalized quote identity, capture-envelope identity,
+DuckDB schema, or persisted rows. Session authority and computed freshness
+remain point-in-time inputs/results rather than permanent quote properties.
+
 Any future quote payload/API contract must be versioned and must expose source,
 as-of time, freshness status, and failure state without account identifiers or
 private raw paths.
@@ -306,11 +331,16 @@ The accepted contract requires tests for:
 - no network or order calls in unit and migration tests
 - fail-closed acknowledgement configuration that cannot substitute for
   provider-reported entitlement
+- deterministic session-authority identity plus exact instrument, market-date,
+  evaluation-time, phase-window, source-validity, and IANA-timezone binding
+- regular, extended, closed, holiday, early-close, provider-conflict, expired,
+  mismatched, and unsupported session-authority behavior
 
 The bounded official equity evidence validates only the observed Schwab response
 shape and the producer/consumer handoff. It does not establish options or
 multi-provider compatibility or the target provider-integration plane. PNL-02
-is not complete until authoritative session context, durable storage,
+is not complete until an approved resolver supplies authoritative session
+context in the ingestion/runtime path, durable storage,
 freshness eligibility, security controls, broader provider/asset evidence, and
 single-owner cutover prove the end-to-end OneJournal connector boundary.
 

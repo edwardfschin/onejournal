@@ -67,9 +67,11 @@ unexpected symbols reject the whole batch.
 
 The bounded official response confirmed the listed identity, asset, price,
 quote-time, real-time, and security-status mappings. It did not supply
-`marketSession`; an authoritative exchange-calendar/session source remains
-required before freshness can become valuation-eligible. PNL-02B must not infer
-session from retrieval time or weaken the fail-closed contract.
+`marketSession`. OneJournal now has a provider-neutral, point-in-time session-
+authority input contract, but no approved resolver is selected or wired to this
+importer. Actual matching authority evidence therefore remains required before
+this capture can become freshness-eligible. The adapter and importer must not
+infer session from retrieval time or weaken the fail-closed contract.
 
 ## Interim one-app evidence bridge
 
@@ -135,9 +137,10 @@ refresh, account, and order capabilities in OneJournal.
 
 The bounded capture establishes compatibility for the observed equity response,
 provider-reported real-time entitlement, and actual private-vault transfer
-integrity. It does not establish options compatibility, market-session
-authority, licensing, valuation eligibility, production readiness, durable
-quote storage, or PNL-02 completion.
+integrity. The repository session-authority boundary is validated with synthetic
+contract fixtures only. The capture does not establish a resolver output,
+options compatibility, licensing, valuation eligibility, production readiness,
+durable quote storage, or PNL-02 completion.
 
 The current active OneJournal runtime is credential-free: the former ad hoc
 Schwab raw-history credential operators have been retired. That retirement does

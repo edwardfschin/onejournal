@@ -105,6 +105,35 @@ class MarketDataQuoteContractTests(unittest.TestCase):
         with self.assertRaisesRegex(QuoteContractError, "crossed quote"):
             validate_normalized_quote(crossed)
 
+    def test_receipt_and_evaluation_order_fail_closed(self) -> None:
+        received_late = self._quote(
+            provider_quote_at=datetime(2026, 8, 11, 14, 29, 58, tzinfo=UTC),
+            received_at=datetime(2026, 8, 11, 14, 30, 2, tzinfo=UTC),
+        )
+        assessment = assess_quote_freshness(
+            received_late,
+            evaluated_at=datetime(2026, 8, 11, 14, 30, tzinfo=UTC),
+        )
+        self.assertEqual(assessment.status, "unavailable")
+        self.assertEqual(
+            assessment.reason,
+            "quote was received after evaluation instant",
+        )
+
+        quote_after_receipt = self._quote(
+            provider_quote_at=datetime(2026, 8, 11, 14, 30, 6, tzinfo=UTC),
+            received_at=datetime(2026, 8, 11, 14, 30, tzinfo=UTC),
+        )
+        assessment = assess_quote_freshness(
+            quote_after_receipt,
+            evaluated_at=datetime(2026, 8, 11, 14, 30, 10, tzinfo=UTC),
+        )
+        self.assertEqual(assessment.status, "unavailable")
+        self.assertEqual(
+            assessment.reason,
+            "provider quote timestamp exceeds receipt time",
+        )
+
     def test_official_close_is_labelled_not_live(self) -> None:
         quote = self._quote(
             bid=None,
@@ -116,7 +145,6 @@ class MarketDataQuoteContractTests(unittest.TestCase):
         assessment = assess_quote_freshness(
             quote,
             evaluated_at=quote.provider_quote_at + timedelta(hours=4),
-            expected_market_open=False,
         )
 
         self.assertTrue(assessment.valuation_allowed)

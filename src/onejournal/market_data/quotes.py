@@ -20,6 +20,10 @@ from typing import Literal
 import yaml
 
 from onejournal.brokers.normalized import NormalizedQuote
+from onejournal.market_data.sessions import (
+    MarketSessionAuthority,
+    validate_session_authority_binding,
+)
 
 
 REAL_TIME_DATA_MODES = {"real_time"}
@@ -82,6 +86,17 @@ class FreshnessAssessment:
     age_seconds: Decimal | None
     evaluated_at: datetime
     reason: str
+    quote_market_session: Literal[
+        "pre_market", "regular", "after_hours", "closed", "unknown"
+    ]
+    evaluation_market_session: Literal[
+        "pre_market", "regular", "after_hours", "closed", "unknown"
+    ]
+    quote_session_source: Literal[
+        "provider", "authority", "provider_and_authority", "unavailable"
+    ]
+    evaluation_session_source: Literal["provider", "authority", "unavailable"]
+    session_authority_uid: str | None
 
 
 def _utc(value: datetime, field_name: str) -> datetime:
@@ -281,91 +296,172 @@ def assess_quote_freshness(
     *,
     evaluated_at: datetime,
     policy: QuoteFreshnessPolicy | None = None,
-    expected_market_open: bool | None = None,
+    session_authority: MarketSessionAuthority | None = None,
 ) -> FreshnessAssessment:
-    """Classify quote freshness without guessing an exchange calendar.
+    """Classify freshness from provider evidence and optional session authority.
 
-    ``expected_market_open`` must come from an approved calendar/session
-    service when supplied. ``None`` means only provider-declared session and
-    data mode are available.
+    The authority is injected; this function has no clock-based session
+    inference, calendar-provider selection, network access, or persistence.
     """
 
     validate_normalized_quote(quote)
     policy = policy or QuoteFreshnessPolicy()
     now_utc = _utc(evaluated_at, "evaluated_at")
     quote_utc = _utc(quote.provider_quote_at, "provider_quote_at")
+    received_utc = _utc(quote.received_at, "received_at")
     age = Decimal(str((now_utc - quote_utc).total_seconds()))
 
-    if age < -Decimal(policy.future_tolerance_seconds):
+    authority_uid = None
+    if session_authority is None:
+        quote_session = quote.market_session
+        evaluation_session = quote.market_session
+        quote_session_source = (
+            "unavailable" if quote.market_session == "unknown" else "provider"
+        )
+        evaluation_session_source = quote_session_source
+        session_conflict = False
+    else:
+        validate_session_authority_binding(
+            session_authority,
+            instrument_key=quote.instrument_key,
+            evaluated_at=now_utc,
+        )
+        authority_uid = session_authority.authority_uid
+        evaluation_session = session_authority.market_session
+        evaluation_session_source = "authority"
+        authority_phase_start = _utc(
+            session_authority.phase_started_at, "authority.phase_started_at"
+        )
+        authority_phase_end = _utc(
+            session_authority.phase_ends_at, "authority.phase_ends_at"
+        )
+        authority_covers_quote = (
+            authority_phase_start <= quote_utc < authority_phase_end
+        )
+        if authority_covers_quote and quote.market_session == "unknown":
+            quote_session = session_authority.market_session
+            quote_session_source = "authority"
+            session_conflict = False
+        elif (
+            authority_covers_quote
+            and quote.market_session == session_authority.market_session
+        ):
+            quote_session = quote.market_session
+            quote_session_source = "provider_and_authority"
+            session_conflict = False
+        elif authority_covers_quote:
+            quote_session = quote.market_session
+            quote_session_source = "unavailable"
+            session_conflict = True
+        elif quote.market_session == "unknown":
+            quote_session = "unknown"
+            quote_session_source = "unavailable"
+            session_conflict = False
+        else:
+            quote_session = quote.market_session
+            quote_session_source = "provider"
+            session_conflict = False
+
+    def result(
+        status: Literal[
+            "live_fresh",
+            "live_stale",
+            "delayed",
+            "market_closed_last",
+            "unavailable",
+        ],
+        valuation_allowed: bool,
+        result_age: Decimal | None,
+        reason: str,
+    ) -> FreshnessAssessment:
         return FreshnessAssessment(
-            "unavailable", False, age, now_utc, "provider quote timestamp is in the future"
+            status=status,
+            valuation_allowed=valuation_allowed,
+            age_seconds=result_age,
+            evaluated_at=now_utc,
+            reason=reason,
+            quote_market_session=quote_session,
+            evaluation_market_session=evaluation_session,
+            quote_session_source=quote_session_source,
+            evaluation_session_source=evaluation_session_source,
+            session_authority_uid=authority_uid,
+        )
+
+    if age < -Decimal(policy.future_tolerance_seconds):
+        return result(
+            "unavailable", False, age, "provider quote timestamp is in the future"
         )
     age = max(age, Decimal("0"))
 
-    if quote.entitlement_status == "denied":
-        return FreshnessAssessment(
-            "unavailable", False, age, now_utc, "provider entitlement denied"
+    if received_utc > now_utc:
+        return result(
+            "unavailable", False, age, "quote was received after evaluation instant"
         )
+    if (quote_utc - received_utc).total_seconds() > policy.future_tolerance_seconds:
+        return result(
+            "unavailable", False, age, "provider quote timestamp exceeds receipt time"
+        )
+
+    if session_conflict:
+        return result(
+            "unavailable",
+            False,
+            age,
+            "provider and authoritative market sessions conflict",
+        )
+
+    if quote.entitlement_status == "denied":
+        return result("unavailable", False, age, "provider entitlement denied")
     if (
         quote.entitlement_status == "unknown"
         and not policy.unknown_entitlement_is_valid
     ):
-        return FreshnessAssessment(
-            "unavailable", False, age, now_utc, "provider entitlement is unknown"
-        )
+        return result("unavailable", False, age, "provider entitlement is unknown")
     if quote.data_mode == "unknown":
-        return FreshnessAssessment(
-            "unavailable", False, age, now_utc, "provider data mode is unknown"
-        )
-    if quote.market_session == "unknown":
-        return FreshnessAssessment(
-            "unavailable", False, age, now_utc, "provider market session is unknown"
-        )
+        return result("unavailable", False, age, "provider data mode is unknown")
+    if quote_session == "unknown":
+        return result("unavailable", False, age, "provider market session is unknown")
     if quote.data_mode == "delayed" or quote.entitlement_status == "delayed":
-        return FreshnessAssessment(
+        return result(
             "delayed",
             policy.delayed_quotes_are_current,
             age,
-            now_utc,
             "provider reports delayed market data",
         )
 
-    provider_says_closed = quote.market_session == "closed"
+    evaluation_session_closed = evaluation_session == "closed"
     if quote.data_mode in CLOSED_DATA_MODES:
-        if expected_market_open is True:
-            return FreshnessAssessment(
-                "live_stale", False, age, now_utc, "closed/frozen quote while market is expected open"
-            )
-        if provider_says_closed or expected_market_open is False:
-            return FreshnessAssessment(
-                "market_closed_last",
-                True,
+        if not evaluation_session_closed:
+            return result(
+                "live_stale",
+                False,
                 age,
-                now_utc,
-                "provider-declared closed-session mark; not a live quote",
+                "closed/frozen quote while evaluation session is open",
             )
-        return FreshnessAssessment(
-            "unavailable", False, age, now_utc, "closed/frozen quote lacks closed-session evidence"
-        )
-
-    if expected_market_open is False or provider_says_closed:
-        return FreshnessAssessment(
+        return result(
             "market_closed_last",
             True,
             age,
-            now_utc,
-            "latest real-time quote retained after provider-declared market close",
+            "closed-session mark; not a live quote",
+        )
+
+    if evaluation_session_closed:
+        return result(
+            "market_closed_last",
+            True,
+            age,
+            "latest real-time quote retained after effective market close",
         )
 
     threshold = (
         policy.regular_session_seconds
-        if quote.market_session == "regular"
+        if quote_session == "regular"
         else policy.extended_session_seconds
     )
     if age <= Decimal(threshold):
-        return FreshnessAssessment(
-            "live_fresh", True, age, now_utc, "real-time quote is within freshness threshold"
+        return result(
+            "live_fresh", True, age, "real-time quote is within freshness threshold"
         )
-    return FreshnessAssessment(
-        "live_stale", False, age, now_utc, "real-time quote exceeds freshness threshold"
+    return result(
+        "live_stale", False, age, "real-time quote exceeds freshness threshold"
     )

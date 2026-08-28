@@ -115,6 +115,29 @@ receive, and evaluation times, New York market date, checksum-backed local
 source locator, adapter version, and complete normalized quote set. Partial or
 identity-mismatched batches fail before accepted quote rows are written.
 
+Quote freshness may consume a separate
+`onejournal.market-session-authority.v1` observation. That observation is not
+provider payload data and is not persisted as part of a normalized quote. It
+binds one broker-independent instrument and one evaluation instant to an
+explicit MIC, calendar ID, IANA venue timezone, market date, session phase,
+half-open phase window, trading-day kind (`regular`, `early_close`, `holiday`,
+or `unscheduled_closure`), resolver source/version, validity window, and
+deterministic UID. Missing or invalid authority cannot replace an unknown
+provider session. When supplied, its instrument and evaluation instant must
+exactly match the quote assessment; its own market date must match that instant
+in the declared venue timezone. Provider and authority sessions are compared
+only when the authority phase window covers the provider quote instant, so a
+regular quote retained into a later closed phase is not misclassified as a
+conflict. Same-phase conflicts, expired observations, unsupported states, or
+timezone/date/window mismatches make freshness unavailable. The contract
+selects no calendar provider and performs no clock-based inference.
+
+A freshness assessment records quote-time and evaluation-time sessions
+separately and whether each came from the provider, authority, or both. These
+are point-in-time assessment facts, not permanent properties of the stored
+quote. No approved resolver is currently wired to the Schwab evidence importer
+or a OneJournal runtime.
+
 The current runtime does not implement this provider-connection plane. Its
 credential storage, user/connection identity, tenancy, scheduling, deployment,
 and single-owner cutover require separate decisions and approvals. When the

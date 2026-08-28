@@ -25,6 +25,14 @@ from .repository import (
     persist_quote_batch,
     persist_quote_capture,
 )
+from .sessions import (
+    SESSION_AUTHORITY_CONTRACT_VERSION,
+    MarketSessionAuthority,
+    SessionAuthorityError,
+    build_session_authority_uid,
+    validate_market_session_authority,
+    validate_session_authority_binding,
+)
 
 __all__ = [
     "FreshnessAssessment",
@@ -46,4 +54,10 @@ __all__ = [
     "load_latest_quotes",
     "persist_quote_batch",
     "persist_quote_capture",
+    "SESSION_AUTHORITY_CONTRACT_VERSION",
+    "MarketSessionAuthority",
+    "SessionAuthorityError",
+    "build_session_authority_uid",
+    "validate_market_session_authority",
+    "validate_session_authority_binding",
 ]
