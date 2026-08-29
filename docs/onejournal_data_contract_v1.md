@@ -62,6 +62,15 @@ not change the target provider-connector architecture, authorize continuous or
 website-triggered acquisition, or make OneBot-derived normalized values
 authoritative OneJournal state.
 
+`onejournal.external-provider-acquisition.v1` is the versioned bridge intake.
+Its canonical manifest binds the sole source owner and epoch, source artifact
+hashes, approval and acknowledgement, active usage/lifecycle profile, exact
+request/response scope, immutable byte digests, bounded activity counts, and
+manifest-last completeness. OneJournal converts only verified exact provider
+bytes through its own adapters. Deterministic conversion prepares the existing
+quote-capture and private-capture contracts in memory; it does not itself write
+private evidence or DuckDB. See `docs/external_provider_acquisition_contract.md`.
+
 The dashboard is not the source of truth. It is a view.
 
 ## Market Date Standard

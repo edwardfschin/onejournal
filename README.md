@@ -117,6 +117,13 @@ read-back, failure cases, and owner acceptance are proven. It does not approve
 continuous acquisition, a public website data service, or OneBot-derived state
 as OneJournal authority.
 
+The credential-free `onejournal.external-provider-acquisition.v1` intake and
+in-memory conversion boundary is implemented and offline-tested. It validates
+canonical external lineage and exact Schwab quote/market-hours bytes, then uses
+OneJournal's own adapters to prepare the existing capture contracts without a
+provider, credential, private-evidence, or database action. See
+[`docs/external_provider_acquisition_contract.md`](docs/external_provider_acquisition_contract.md).
+
 The target architecture removes that OneBot dependency: OneJournal becomes the
 only project that owns approved provider connections and calls Schwab, IBKR,
 Moomoo, or later providers through isolated provider-specific connectors. All
