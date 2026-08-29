@@ -13,3 +13,13 @@ The shipped module provides no network client, token value, credential backend, 
 The connector rejects before returning a capture if acknowledgement/profile binding, exclusive owner lease, credential-generation continuity, fixed transport result, response content type/size/timing, JSON shape, exact requested symbol scope, adapter normalization, or existing complete-capture validation fails. It does not treat an acknowledgement as provider entitlement, and it preserves the adapter's provider reported entitlement and session facts.
 
 No live provider activation is implied. `config/marketdata.yaml` keeps Schwab disabled, OneBot remains the temporary Schwab token owner, and the T15 break-before-make cutover remains required before any OneJournal credential use.
+
+The 2026-08-29 T15 target approval selects the current Mac as a temporary,
+local-only staging host. `onejournal.macos-provider-staging.v1` adds a
+provider-disabled policy loader, an exact macOS Keychain generic-password
+boundary, generation-checked credential capability, and a cross-process local
+owner lease. Checked-in policy disables credential installation, provider calls,
+and token refresh; it also rejects a public listener or DuckDB mount. Synthetic
+tests exercise the mechanism through an injected fake Keychain runner only. No
+Keychain item, credential, token, provider call, listener, database access,
+private evidence, deployment, or OneBot change is created by this boundary.

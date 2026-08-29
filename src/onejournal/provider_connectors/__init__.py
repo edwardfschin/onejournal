@@ -62,6 +62,21 @@ from .cutover import (
     ProviderOwnerCapabilityState,
     validate_provider_connection_cutover,
 )
+from .macos_staging import (
+    MACOS_KEYCHAIN_CREDENTIAL_SCHEMA,
+    MACOS_KEYCHAIN_SERVICE,
+    MACOS_STAGING_CONTRACT_VERSION,
+    KeychainCommandResult,
+    MacOSFileOwnerLeaseRegistry,
+    MacOSKeychainCredentialRecord,
+    MacOSKeychainCredentialStore,
+    MacOSStagingError,
+    MacOSStagingPolicy,
+    SubprocessKeychainCommandRunner,
+    load_macos_keychain_credential_record_bytes,
+    load_macos_staging_policy,
+    macos_keychain_credential_record_bytes,
+)
 
 __all__ = [
     "PROVIDER_USAGE_ACKNOWLEDGEMENT_ARTIFACT_SCHEMA",
@@ -116,4 +131,17 @@ __all__ = [
     "ProviderConnectionCutoverValidation",
     "ProviderOwnerCapabilityState",
     "validate_provider_connection_cutover",
+    "MACOS_KEYCHAIN_CREDENTIAL_SCHEMA",
+    "MACOS_KEYCHAIN_SERVICE",
+    "MACOS_STAGING_CONTRACT_VERSION",
+    "KeychainCommandResult",
+    "MacOSFileOwnerLeaseRegistry",
+    "MacOSKeychainCredentialRecord",
+    "MacOSKeychainCredentialStore",
+    "MacOSStagingError",
+    "MacOSStagingPolicy",
+    "SubprocessKeychainCommandRunner",
+    "load_macos_keychain_credential_record_bytes",
+    "load_macos_staging_policy",
+    "macos_keychain_credential_record_bytes",
 ]

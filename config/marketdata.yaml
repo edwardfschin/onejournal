@@ -17,6 +17,17 @@ marketdata:
     moomoo:
       enabled: false
       phase: future
+  pnl02_t15_staging:
+    contract_version: onejournal.macos-provider-staging.v1
+    target: local_macos
+    enabled: false
+    credential_installation_enabled: false
+    provider_calls_enabled: false
+    token_refresh_enabled: false
+    public_listener_enabled: false
+    journal_database_mounted: false
+    credential_backend: macos_keychain
+    private_capture_storage: external_private_vault
   storage:
     raw_root_pattern: data/raw/{provider}
     normalized_store: data/journal/onejournal.duckdb

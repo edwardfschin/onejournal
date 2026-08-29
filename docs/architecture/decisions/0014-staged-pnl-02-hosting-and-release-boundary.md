@@ -27,16 +27,21 @@ OneBot is the temporary Schwab evidence bridge and token owner. ADR-0012 prohibi
 dual token lifecycle ownership and requires break-before-make cutover. It is not a
 permanent OneJournal runtime or a foundation for the OneJournal deployment design.
 
+On 2026-08-29, the project owner approved the current Mac as the temporary,
+local-only T15 staging host. The approved scope uses macOS Keychain, exposes no
+public listener, mounts no operational DuckDB journal, and forbids copying any
+OneBot token. This is a bounded local target selection, not provider activation.
+
 ## Decision
 
 PNL-02 will use a staged release sequence:
 
 1. PNL-02-T12 through T14 remain local, offline, and credential-free until their
    separately approved provider-access gates are reached.
-2. When T15 is ready for explicit operational approval, the connector may be deployed
-   only to a dedicated OneJournal-owned staging host or VM, distinct from any OneBot
-   runtime. The connector runs under a distinct service identity and is not a public
-   listener.
+2. For the bounded T15 local-owner cutover, the current owner-operated Mac is the
+   approved temporary staging host and must remain distinct from every OneBot runtime.
+   A later remote staging host or VM requires a new approval. The connector runs under
+   a distinct local identity and is not a public listener.
 3. The staging connector is an isolated provider boundary: it has no order capability,
    no shared OneBot credential or refresh path, no mount of the operational DuckDB
    journal, and only the specifically approved provider egress and local operator or
@@ -45,8 +50,9 @@ PNL-02 will use a staged release sequence:
    deployment platform remain decisions for WEB-01 and OPS-01 through OPS-06. The
    Streamlit prototype must not be exposed as that website.
 
-This ADR accepts an isolation and release boundary, not an actual host, deployment,
-provider activation, credential installation, or storage authorization.
+This ADR and the dated target approval accept the isolation boundary and temporary
+local Mac target. They do not authorize deployment, provider activation, credential
+installation, provider access, private-evidence creation, or journal storage.
 
 ## Boundaries
 
@@ -55,11 +61,12 @@ refresh, Schwab access, OneBot changes, database migration, private-evidence tra
 live quote capture, deployment, synchronization, or a public service.
 
 The current provider-use profile continues to prohibit hosted raw or normalized live
-market-data storage. Before any T15 deployment that would store such data, the owner
-must approve a replacement provider-use profile after an authenticated review of the
-applicable provider terms, exact data products, and storage location. Until then, a
-provider-disabled staging artifact may be rehearsed only without live provider data or
-credentials.
+market-data storage. The temporary Mac is local rather than hosted; any private raw
+capture must still use the separately approved external private vault and lifecycle,
+not the repository or DuckDB. A future hosted target requires a replacement
+provider-use profile after an authenticated review of the applicable provider terms,
+exact data products, and storage location. Until separately approved, the Mac target
+remains provider-disabled and credential-free.
 
 At cutover, ADR-0012's break-before-make rule remains controlling: disable and make
 the OneBot Schwab token unavailable before provisioning a newly authorized OneJournal
@@ -103,8 +110,8 @@ website decisions separately approval-gated. It is accepted.
 
 ### Negative and trade-offs
 
-- A real provider cutover requires later environment, credential, hosted-data,
-  deployment, backup, rollback, and operational approvals.
+- A real provider cutover requires later credential, provider-access, private-evidence,
+  OneBot-retirement, rollback, and operational approvals.
 - This decision deliberately does not accelerate public website delivery.
 - A dedicated staging host introduces future operating work that must be designed and
   accepted under the OPS roadmap.
@@ -124,23 +131,23 @@ owner, connection identity, egress path, raw-evidence lifecycle, or session evid
 is absent or inconsistent. It must not submit orders or expose credentials, account
 identifiers, raw provider payloads, or financial data in public endpoints or logs.
 
-The future connector host must be separate from OneBot and the journal store. Any
-private or financial data on it requires approved encrypted storage, retention,
-deletion, backup, and restoration controls before operational use. No quote may become
-authoritative merely because it passed through a hosted component.
+The connector host must be separate from OneBot and the journal store. The temporary
+Mac stores credentials only in macOS Keychain and may write approved raw capture only
+to the external private vault; it must not mount DuckDB. No quote may become
+authoritative merely because it passed through the connector.
 
 ## Validation
 
 This document is validated by the ADR register test and repository documentation
 checks. It is not operational acceptance evidence.
 
-Before a later provider-disabled staging rehearsal, validate the release artifact
+Before a provider-disabled Mac staging rehearsal, validate the release artifact
 identity, disabled-provider configuration, absence of credentials and live data,
-service isolation, lack of public listener, no journal-database mount, and rollback
-procedure. Before a real T15 cutover, additionally require the approved hosted-data
-profile, a fresh owner authorization, break-before-make evidence, secret-safe logs,
-allowed egress, backup and restoration rehearsal where persisted private data is in
-scope, and the PNL-02-T15 acceptance evidence. The credential-free
+Keychain policy gates, process identity, lack of public listener, no journal-database
+mount, and rollback procedure. Before a real T15 cutover, additionally require a
+fresh owner authorization, break-before-make evidence, secret-safe logs, exact allowed
+egress, the approved private-evidence lifecycle, and PNL-02-T15 acceptance evidence.
+The credential-free
 `onejournal.provider-connection-cutover.v1` validator defines the required
 four-phase evidence sequence, but passing it does not establish the external facts
 or authorize any operational action.

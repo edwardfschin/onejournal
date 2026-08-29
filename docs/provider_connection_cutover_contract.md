@@ -48,14 +48,15 @@ authentic and current.
 The offline validator closes only the contract/rehearsal gap. T15 remains
 blocked until all of the following are separately established and approved:
 
-1. A dedicated OneJournal-owned staging host or VM, distinct from every OneBot
-   runtime, with its exact host identity, service identity, deployment method,
-   secret backend, provider egress allowlist, private storage, backup, restore,
-   and rollback procedure approved.
-2. A replacement provider-use profile approved after authenticated review of
-   the applicable Schwab terms and exact data products. The current repository
-   profile has `hosted_storage_allowed: false` and cannot authorize live capture
-   on a staging host.
+1. The project owner approved the current Mac on 2026-08-29 as the temporary
+   local-only staging host, distinct from the OneBot VPS. The operational
+   rehearsal must still record its exact host and process identities and prove
+   the approved Keychain, no-public-listener, no-DuckDB, private-vault, and
+   rollback boundaries. A remote host or VM requires new approval.
+2. A current authenticated Schwab terms acknowledgement and provider-use profile
+   covering the exact local data products and private-vault lifecycle. The current
+   profile does not authorize hosted storage; this local target does not expand it
+   to hosted use.
 3. A provider-disabled staging rehearsal proving artifact identity, no
    credentials or live data, no public listener, no operational DuckDB mount,
    secret-safe logs, service isolation, and clean removal.
@@ -66,10 +67,11 @@ blocked until all of the following are separately established and approved:
    locations. Logs alone are insufficient when service, scheduler, process,
    credential-store, or network state can be inspected directly.
 
-OneBot's usable Schwab token must not be copied into OneJournal. It must first
-lose every call and refresh path and the former credential must be revoked or
-made inaccessible. Only then may OneJournal receive a newly authorized
-credential generation. No failure permits silent OneBot reactivation.
+OneBot's usable Schwab token must not be copied into OneJournal or imported into
+Keychain. It must first lose every call and refresh path and the former credential
+must be revoked or made inaccessible. Only then may OneJournal complete a fresh
+Schwab authorization into a new Keychain generation. No failure permits silent
+OneBot reactivation.
 
 ## Validation
 

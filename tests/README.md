@@ -72,7 +72,11 @@ foundation simple and dependency-free.
   rollback. It rejects dual ownership, reused owner or credential lineage, host
   collision, target exposure, phase/time disorder, and malformed evidence
   without performing any operational action. Mark selection is explicitly
-  deferred to PNL-03 policy.
+  deferred to PNL-03 policy. The temporary Mac staging tests keep every checked-in
+  capability disabled, use an injected fake Keychain runner, prove secrets do not
+  enter command arguments or representations, enforce credential-generation and
+  owner-epoch continuity, serialize a private local owner lease, and reject public
+  listeners, DuckDB mounts, provider calls, refresh, or installation while disabled.
 - Integration: schema initialization and migration, import, append-only journal
   history, review compatibility projection, replay preservation, DuckDB reads,
   and DB dashboard payload construction using a temporary database.
