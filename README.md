@@ -111,6 +111,12 @@ single owner of the available Schwab application and refreshable token. The
 current OneJournal runtime has no active Schwab credential or provider-call
 operator and consumes only separately approved private evidence bundles.
 
+ADR-0016 accepts that credential-free bridge as a bounded local route to PNL-02
+completion after its external-acquisition intake, end-to-end persistence and
+read-back, failure cases, and owner acceptance are proven. It does not approve
+continuous acquisition, a public website data service, or OneBot-derived state
+as OneJournal authority.
+
 The target architecture removes that OneBot dependency: OneJournal becomes the
 only project that owns approved provider connections and calls Schwab, IBKR,
 Moomoo, or later providers through isolated provider-specific connectors. All

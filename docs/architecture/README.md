@@ -101,3 +101,4 @@ policy.
 | [ADR-0013](decisions/0013-provider-usage-authorization-and-raw-evidence-lifecycle.md) | Accepted | Require an exact connection-scoped provider-use acknowledgement and explicit audited raw-evidence lifecycle without inferring entitlement or production identity |
 | [ADR-0014](decisions/0014-staged-pnl-02-hosting-and-release-boundary.md) | Accepted | Keep offline PNL-02 delivery, isolated connector cutover hosting, and future website hosting as separate release decisions |
 | [ADR-0015](decisions/0015-temporary-external-provider-evidence-bridge.md) | Accepted | Keep OneBot as the temporary sole Schwab credential owner while OneJournal accepts only provider bytes and verified external-acquisition lineage |
+| [ADR-0016](decisions/0016-bounded-bridge-mode-pnl-02-completion.md) | Accepted | Permit bounded local PNL-02 completion through credential-free external evidence while retaining single-owner cutover as later target-architecture work |

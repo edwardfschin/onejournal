@@ -9,7 +9,7 @@
   `onejournal.market-data.quote-capture-artifact.v1`,
   `onejournal.private-raw-capture-manifest.v2`
 - Supersedes: None
-- Superseded by: None
+- Superseded by: ADR-0016 for decisions 15-16 on PNL-02 completion scope only
 
 ## Context
 
@@ -40,7 +40,7 @@ manifest is also not an external acquisition contract because it binds a
 OneJournal-normalized capture envelope produced inside the isolated connector.
 A distinct external-acquisition intake boundary is therefore required.
 
-## Proposed decision
+## Decision
 
 ### Temporary operating mode
 

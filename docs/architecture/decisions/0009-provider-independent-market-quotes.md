@@ -7,7 +7,7 @@
 - Related contracts: ADR-0002, ADR-0003, ADR-0004, ADR-0007,
   `config/marketdata.yaml`
 - Supersedes: None
-- Superseded by: None
+- Superseded by: ADR-0016 for the PNL-02 single-owner-cutover completion gate only
 
 ## Context
 

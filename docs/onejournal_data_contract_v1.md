@@ -55,6 +55,13 @@ provider connections and calls Schwab, IBKR, Moomoo, or later providers. That
 future integration boundary must keep credentials outside Git, raw evidence,
 normalized records, DuckDB, logs, and UI state.
 
+For bounded PNL-02 completion, ADR-0016 permits a temporary local bridge mode in
+which OneBot remains the sole Schwab credential owner and OneJournal accepts
+only exact provider bytes plus verified external-acquisition lineage. This does
+not change the target provider-connector architecture, authorize continuous or
+website-triggered acquisition, or make OneBot-derived normalized values
+authoritative OneJournal state.
+
 The dashboard is not the source of truth. It is a view.
 
 ## Market Date Standard
