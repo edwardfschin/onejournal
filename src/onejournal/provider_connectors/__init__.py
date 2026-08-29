@@ -77,6 +77,13 @@ from .macos_staging import (
     load_macos_staging_policy,
     macos_keychain_credential_record_bytes,
 )
+from .macos_staging_rehearsal import (
+    MACOS_STAGING_REHEARSAL_CONTRACT_VERSION,
+    MacOSStagingRehearsal,
+    MacOSStagingRehearsalError,
+    macos_staging_rehearsal_bytes,
+    run_macos_provider_staging_rehearsal,
+)
 
 __all__ = [
     "PROVIDER_USAGE_ACKNOWLEDGEMENT_ARTIFACT_SCHEMA",
@@ -144,4 +151,9 @@ __all__ = [
     "load_macos_keychain_credential_record_bytes",
     "load_macos_staging_policy",
     "macos_keychain_credential_record_bytes",
+    "MACOS_STAGING_REHEARSAL_CONTRACT_VERSION",
+    "MacOSStagingRehearsal",
+    "MacOSStagingRehearsalError",
+    "macos_staging_rehearsal_bytes",
+    "run_macos_provider_staging_rehearsal",
 ]

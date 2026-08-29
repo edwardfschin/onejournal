@@ -43,6 +43,21 @@ service. The module has no HTTP client, OAuth flow, listener, scheduler, CLI,
 DuckDB dependency, account operation, or order operation. Repository policy is
 checked before any credential read, install, token release, or refresh write.
 
+## Provider-disabled rehearsal probe
+
+`scripts/journal/rehearse_macos_provider_staging.py` is a one-shot local probe
+for the checked-in disabled artifact. It accepts an operator-supplied opaque host
+UID, resolves its own local Git HEAD, and refuses a dirty worktree before reading
+`config/marketdata.yaml`. It writes one canonical secret-free JSON result to standard
+output. It does not inspect or access Keychain, network, provider, DuckDB, listener,
+private vault, or an evidence file.
+
+It fails if any staging capability is enabled. A passing result proves only the
+policy and the probe process itself; it does not prove global listener absence,
+Keychain absence, a running service identity, OneBot retirement, or operational
+cutover acceptance. An operator may retain the stdout result in the approved private
+evidence location only under a separate evidence-write approval.
+
 ## Operational sequence and remaining gates
 
 The operational cutover remains break-before-make:

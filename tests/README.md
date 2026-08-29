@@ -77,6 +77,10 @@ foundation simple and dependency-free.
   enter command arguments or representations, enforce credential-generation and
   owner-epoch continuity, serialize a private local owner lease, and reject public
   listeners, DuckDB mounts, provider calls, refresh, or installation while disabled.
+- The macOS provider-disabled rehearsal probe emits one canonical, secret-free stdout
+  record bound to an operator-supplied host ID, artifact commit, timestamp, and policy
+  hash. It rejects any enabled staging capability and has no Keychain, network,
+  provider, DuckDB, listener, or evidence-file operation.
 - Integration: schema initialization and migration, import, append-only journal
   history, review compatibility projection, replay preservation, DuckDB reads,
   and DB dashboard payload construction using a temporary database.
