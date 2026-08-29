@@ -273,13 +273,21 @@ The following remain separate explicit approvals:
    **Completed 2026-08-28; no provider or credential action.**
 3. Review the authenticated Schwab specification and freeze the exact market-
    hours endpoint/query contract, symbols, dates, hashes, and capture metadata.
-   **Specification review and offline runner correction completed 2026-08-28;
-   owner-approved source-contract bytes, a real owner-attested acknowledgement,
-   a generated connection identity, a private output root, and capture metadata
-   remain pending.**
+   **Completed and owner-approved for capture `-04` on 2026-08-28.**
 4. Execute the bounded provider calls and private evidence write on the VPS.
+   **Completed for `PNL-02-T14-SCHWAB-20260828-04` on 2026-08-28: five GETs,
+   zero refreshes, and zero account/order/database actions.**
 5. Transfer the complete evidence bundle into the OneJournal private vault.
+   **Completed on 2026-08-28 with nine-file checksum parity and `0700`/`0600`
+   permissions.**
 6. Implement and test the credential-free Schwab schedule/option adapters.
+   **The official option shape passes the existing quote adapter. The isolated
+   `schwab-market-hours-json-v1` parser accepts the exact normal, closed, and
+   shortened-session bytes without inventing missing calendar semantics. The
+   owner-approved offline resolver preserves unnamed closure as
+   `closed_unspecified`, offset-validates the explicit Schwab product/timezone
+   mapping, and binds combined evidence through the manifest. The real quotes
+   still lack an exact-date schedule.**
 7. Commit and push focused OneJournal code or documentation.
 8. Perform T15 cutover, deployment, migration, real ingestion, or end-to-end
    acceptance.
@@ -301,8 +309,12 @@ the corrected test SHA-256 is
 These supersede the earlier reviewed temporary hashes before any transfer or
 execution occurred.
 
-Ten offline tests passed using injected fake token and transport boundaries.
-They cover the exact five-request order, repeated-key market serialization,
+The final v5 runner passed twelve offline tests using injected fake token and
+transport boundaries. Its SHA-256 is
+`4c092ee5cd0c57dfa71d50b8d54310139a7e45bf9b8a969c40337a6a4fc0f6b0`;
+the final test SHA-256 is
+`54885858f7f468f5e4ee57de6dca16d57442ad44eebe8bfdb4592ade377d136b`.
+The tests cover the exact five-request order, repeated-key market serialization,
 full acknowledgement/checksum/declaration/connection, source-contract, and
 runtime-hash gates before token access, exact schedule scope/date/product/session
 validation, manifest-last private output, secret exclusion, no overwrite,
@@ -323,12 +335,22 @@ later approval review:
 - Requests version `2.31.0` from
   `/usr/lib/python3/dist-packages/requests`.
 
-No real acknowledgement or connection identity exists, no source contract has
-been frozen, no approved private VPS output root has been selected, and the
-runner has not been transferred or executed on the VPS. This evidence does not
-authorize or establish token access, provider calls, response capture, transfer,
-adapter compatibility, or T14 completion. Any changed runner or runtime hash
-requires renewed review.
+The owner attestation, append-only acknowledgement, source contract, private VPS
+root, bounded provider capture, and private-vault transfer now exist for `-04`.
+The complete local bundle contains nine files and preserves manifest SHA-256
+`0a76515d4966e5222435ffc63067b1fc4de6ec7e95539a90264a2ad950482bc1`.
+Both official quotes report real-time entitlement and pass the existing
+credential-free quote adapter. The market-hours parser accepts the three exact
+responses and preserves their offsets and phase boundaries.
+
+The 2026-08-29 source-faithful correction is approved and implemented offline:
+unnamed closure remains `closed_unspecified`; exact Schwab product scopes map
+explicitly to `America/New_York` with per-timestamp offset checks; and
+multi-response authority lineage uses the checksum manifest. T14 is not
+complete because the quote date is 2026-08-28 while the captured schedules are
+for 2026-08-31, 2026-09-07, and 2026-11-27. The actual quotes therefore fail
+closed for missing exact-date schedule evidence. Any new capture, changed
+runner, or changed runtime hash still requires separate review and approval.
 
 ## Rollback
 

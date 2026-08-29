@@ -2,11 +2,13 @@
 
 ## Status
 
-PNL-02A and the interim one-app quote evidence bridge are implemented. A bounded
-one-symbol official Schwab response was captured, transferred privately, and
-validated on 2026-08-27. During this bounded step, OneBot/VPS is the temporary single
-owner of the Schwab application and refreshable token for quote capture. The
-current OneJournal quote path is credential-free and cannot call Schwab.
+PNL-02A and the interim one-app quote evidence bridge are implemented. The
+bounded `PNL-02-T14-SCHWAB-20260828-04` capture was transferred privately and
+validated on 2026-08-28. It contains one official equity quote, one official
+listed-option quote, and Schwab market-hours responses for an approved normal,
+closed, and shortened-session date. During this bounded step, OneBot/VPS remains
+the temporary single owner of the Schwab application and refreshable token. The
+current OneJournal path is credential-free and cannot call Schwab.
 
 This is not the target provider architecture. The target makes OneJournal the
 only project that owns approved provider connections and uses isolated Schwab,
@@ -16,8 +18,10 @@ implemented or approved.
 
 This status means:
 
-- the Schwab adapter is covered by a deliberately minimal synthetic example and
-  a sanitized official-shape fixture with all symbol and price values replaced;
+- the Schwab quote adapter accepts the exact private equity and listed-option
+  response shapes without logging or copying their prices into Git;
+- `schwab-market-hours-json-v1` losslessly parses the exact private normal,
+  closed-sentinel, and shortened-session response shapes;
 - OneJournal verifies and normalizes only a transferred, versioned private
   evidence bundle produced by OneBot;
 - the verified bundle is adapted into OneJournal's provider-neutral capture
@@ -27,10 +31,13 @@ This status means:
   contract without credentials, network, provider calls, or private live
   evidence; the Schwab evidence operator itself still performs no database
   write; and
-- the bounded response reported real-time entitlement and supplied bid, ask,
-  last, quote time, and normal security status, but supplied no market-session
-  field; OneJournal therefore preserved session as `unknown` and disallowed
-  valuation; and
+- both bounded quote responses reported real-time entitlement and supplied bid,
+  ask, last, quote time, and normal security status, but supplied no
+  market-session field; OneJournal therefore preserves quote session as
+  `unknown` until matching provider-native authority exists; and
+- the market-hours evidence supplies exact offset-aware phase intervals and a
+  market-level `isOpen=false` sentinel, but no IANA timezone identifier and no
+  provider label distinguishing holiday from another closed-day reason; and
 - this bounded evidence does not establish licensing, durable ingestion,
   production readiness, or end-to-end PNL-02 acceptance.
 
@@ -65,20 +72,32 @@ unexpected symbols reject the whole batch.
 | `quote.marketSession` or top-level `marketSession` | explicit market session | Missing becomes `unknown`; unsupported values reject |
 | `quote.securityStatus` | safety status | A present value other than `Normal` rejects |
 
-The bounded official response confirmed the listed identity, asset, price,
-quote-time, real-time, and security-status mappings. It did not supply
-`marketSession`. The owner has selected Schwab-native market-hours or schedule
-evidence from the same connected Schwab boundary as the exclusive resolver
-source for this quote. The legacy provider-neutral `v1` authority object is not
+The bounded official responses confirmed the listed identity, stock/option,
+price, quote-time, real-time, and security-status mappings. Neither quote
+supplied `marketSession`. The owner has selected Schwab-native market-hours or
+schedule evidence from the same connected Schwab boundary as the exclusive
+resolver source. The legacy provider-neutral `v1` authority object is not
 sufficient because it lacks provider/connection binding and requires a MIC.
-`onejournal.provider-market-session-authority.v2` now supplies the exact
-provider/connection/quote/instrument/schedule/source boundary, and the importer
-can consume it only through an injected credential-free resolver. No concrete
-Schwab schedule adapter or official schedule response is implemented or
-accepted yet. Actual matching Schwab authority evidence therefore remains
-required before this capture can become freshness-eligible. The adapter and
-importer must not infer session from retrieval time, use another broker or
-external calendar, or weaken the fail-closed contract.
+`onejournal.provider-market-session-authority.v2` supplies the exact provider/
+connection/quote/instrument/schedule/source boundary, and the importer can
+consume it only through an injected credential-free resolver.
+
+`src/onejournal/brokers/schwab/market_hours_json.py` is the concrete,
+credential-free payload adapter. It validates the exact equity/option scope,
+product identity, requested date, open state, provider session names,
+offset-aware increasing intervals, and the observed exact closed-market
+sentinel. It deliberately stops before producing a v2 authority value because
+the raw response itself does not name an IANA timezone or distinguish a holiday
+from another provider-confirmed closed date. The owner-approved
+`schwab-market-hours-resolver-v1` adds only the explicit `EQ`/`EQO`/`IND` to
+`America/New_York` scope mapping, rejects response offsets that conflict with
+that zone, classifies shortened phases against a checksum-bound normal response,
+and preserves unnamed closure as `closed_unspecified`. Its v2 lineage points to
+the combined manifest that binds every schedule member used. The three captured
+schedule dates still do not match the 2026-08-28 quote date, so the real quotes
+remain authority-ineligible. The adapter and importer must not repair that gap
+using retrieval time, another broker, an external calendar, or an unapproved
+label.
 
 ## Interim one-app evidence bridge
 
@@ -149,12 +168,14 @@ evaluation, provider-neutral capture validation, temporary-DuckDB atomic replay,
 zero evidence writes by the Schwab importer, and absence of credential, network,
 refresh, account, and order capabilities in OneJournal.
 
-The bounded capture establishes compatibility for the observed equity response,
-provider-reported real-time entitlement, and actual private-vault transfer
-integrity. The repository session-authority boundary is validated with synthetic
-contract fixtures only. The capture does not establish a resolver output,
-options compatibility, licensing, valuation eligibility, production readiness,
-durable quote storage, or PNL-02 completion.
+The bounded capture establishes compatibility for the observed equity and
+listed-option responses, provider-reported real-time entitlement, exact normal/
+closed/shortened market-hours payloads, and private-vault transfer integrity.
+The concrete schedule parser and offline resolver are validated synthetically,
+and the approved scope/offset mappings validate directly against the
+checksum-bound private bytes. The capture does not establish an actual v2
+resolver output, exact same-date quote/schedule binding, valuation eligibility,
+production readiness, durable quote storage, or PNL-02 completion.
 
 The current active OneJournal runtime is credential-free: the former ad hoc
 Schwab raw-history credential operators have been retired. That retirement does

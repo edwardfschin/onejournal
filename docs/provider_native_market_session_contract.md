@@ -57,7 +57,9 @@ resolver interface bind:
 - quote-time and evaluation-time phase evidence where the provider makes each
   available;
 - regular, pre-market, after-hours, closed, holiday, early-close, and
-  unscheduled-closure state where applicable to the instrument;
+  unscheduled-closure state where applicable to the instrument, plus
+  `closed_unspecified` when the provider confirms closure without naming its
+  reason;
 - source endpoint or response type, immutable raw locator and hash, adapter
   version, retrieval time, provider source version when available, and a
   bounded validity window; and
@@ -75,9 +77,15 @@ through an injected resolver and records its contract version and deterministic
 UID in the versioned secret-free summary. Its command line cannot construct an
 authority value, call a provider, or access credentials.
 
-This common boundary does not claim a Schwab, IBKR, or Moomoo schedule adapter.
-Each concrete adapter still requires official provider response evidence and
-the later connector/evidence gates.
+T14 now supplies the credential-free Schwab payload parser
+`schwab-market-hours-json-v1` and bounded official Schwab response evidence.
+The owner-approved 2026-08-29 correction adds
+`schwab-market-hours-resolver-v1`: explicit `EQ`/`EQO`/`IND` mappings name
+`America/New_York`, every response offset is validated against that zone,
+provider-confirmed closure remains `closed_unspecified`, and combined schedule
+lineage uses its checksum manifest. The captured quote and schedule dates still
+differ, so no actual v2 authority is accepted. IBKR, Moomoo, and later concrete
+adapters require their own official provider evidence and connector gates.
 
 ## Provider eligibility gate
 
@@ -109,7 +117,7 @@ the UI must expose that limitation explicitly.
 | Regular session | Same-provider schedule covers quote and evaluation instants; entitlement is usable | Regular threshold may apply |
 | Pre-market or after-hours | Provider explicitly supports and identifies the phase | Extended threshold may apply |
 | Normal close | Provider schedule shows the evaluation phase closed | Last eligible quote may be `market_closed_last`, never `live_fresh` |
-| Holiday | Provider-native schedule identifies the non-trading date | Closed; no active polling or live classification |
+| Holiday or provider-confirmed closed date | Provider-native schedule identifies the non-trading date; reason is preserved only when supplied | Closed; `closed_unspecified` when the reason is absent; no active polling or live classification |
 | Early close | Provider-native schedule carries the irregular closing boundary | Closed after the declared boundary |
 | Unscheduled closure or material halt | Provider status/schedule evidence explicitly reports it | Closed or unavailable according to the provider evidence; never inferred |
 | DST transition | Provider timezone and phase instants resolve through an IANA zone | Correct UTC windows and local provider trading date |
@@ -134,10 +142,17 @@ rollout is approved; they are not required to close the initial Schwab scope.
 ## Source evidence reviewed
 
 - Schwab's authenticated Market Data Production specification remains the
-  authoritative provider contract. The bounded official equity response
-  already preserved in private evidence supplied no `marketSession`, so a
-  separate Schwab-native market-hours or schedule response still has to be
-  proven: <https://developer.schwab.com/products/trader-api--individual/details/specifications/Market%20Data%20Production>.
+  authoritative provider contract. The bounded `-04` private evidence contains
+  official real-time equity and listed-option responses plus normal, closed,
+  and shortened-session market-hours responses. Neither quote supplies
+  `marketSession`. The schedule payloads preserve offset-aware intervals, but
+  no IANA timezone; the closed payload reports only `isOpen=false`; and its
+  schedule dates do not match the quote date. The approved resolver now supplies
+  only the explicit scope-to-IANA mapping, validates the observed offsets, and
+  preserves the closed reason as unspecified. These facts prove adapter
+  compatibility, but the missing same-date schedule still blocks actual v2
+  authority:
+  <https://developer.schwab.com/products/trader-api--individual/details/specifications/Market%20Data%20Production>.
 - IBKR officially documents a contract schedule endpoint that returns exchange,
   timezone, and trading times for up to one month. This establishes a plausible
   future IBKR-native adapter source, not authority for Schwab quotes:

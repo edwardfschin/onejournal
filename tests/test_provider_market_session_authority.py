@@ -279,6 +279,35 @@ class ProviderMarketSessionAuthorityTests(unittest.TestCase):
         self.assertEqual(assessment.status, "market_closed_last")
         self.assertTrue(assessment.valuation_allowed)
 
+        closed_unspecified = self._authority(
+            quote=quote,
+            evaluated_at=evaluated_at,
+            quote_market_session="closed",
+            evaluation_market_session="closed",
+            quote_trading_day_kind="closed_unspecified",
+            evaluation_trading_day_kind="closed_unspecified",
+            quote_phase_started_at=datetime(2026, 8, 11, 4, 0, tzinfo=UTC),
+            quote_phase_ends_at=datetime(2026, 8, 12, 4, 0, tzinfo=UTC),
+            evaluation_phase_started_at=datetime(2026, 8, 11, 4, 0, tzinfo=UTC),
+            evaluation_phase_ends_at=datetime(2026, 8, 12, 4, 0, tzinfo=UTC),
+            retrieved_at=evaluated_at - timedelta(seconds=2),
+            resolved_at=evaluated_at - timedelta(seconds=1),
+            valid_until=evaluated_at + timedelta(minutes=1),
+        )
+        assessment = assess_quote_freshness(
+            quote,
+            evaluated_at=evaluated_at,
+            session_authority=closed_unspecified,
+        )
+        self.assertEqual(assessment.status, "market_closed_last")
+
+        invalid_unspecified = replace(
+            closed_unspecified,
+            evaluation_market_session="regular",
+        )
+        with self.assertRaisesRegex(SessionAuthorityError, "closed-day kind"):
+            validate_provider_session_authority(invalid_unspecified)
+
     def test_quote_schedule_conflict_fails_closed(self) -> None:
         quote = self._quote(market_session="regular")
         authority = self._authority(

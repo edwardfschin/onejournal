@@ -36,6 +36,9 @@ SUPPORTED_TRADING_DAY_KINDS = {
     "holiday",
     "unscheduled_closure",
 }
+SUPPORTED_PROVIDER_TRADING_DAY_KINDS = SUPPORTED_TRADING_DAY_KINDS | {
+    "closed_unspecified",
+}
 SUPPORTED_PROVIDER_RESPONSE_TYPES = {
     "quote",
     "market_hours",
@@ -108,10 +111,18 @@ class ProviderMarketSessionAuthority:
         "pre_market", "regular", "after_hours", "closed"
     ]
     quote_trading_day_kind: Literal[
-        "regular", "early_close", "holiday", "unscheduled_closure"
+        "regular",
+        "early_close",
+        "holiday",
+        "unscheduled_closure",
+        "closed_unspecified",
     ]
     evaluation_trading_day_kind: Literal[
-        "regular", "early_close", "holiday", "unscheduled_closure"
+        "regular",
+        "early_close",
+        "holiday",
+        "unscheduled_closure",
+        "closed_unspecified",
     ]
     quote_phase_started_at: datetime
     quote_phase_ends_at: datetime
@@ -409,16 +420,16 @@ def validate_provider_session_authority(
         if getattr(authority, field_name) not in SUPPORTED_AUTHORITY_SESSIONS:
             raise SessionAuthorityError(f"unsupported {field_name}")
     for field_name in ("quote_trading_day_kind", "evaluation_trading_day_kind"):
-        if getattr(authority, field_name) not in SUPPORTED_TRADING_DAY_KINDS:
+        if getattr(authority, field_name) not in SUPPORTED_PROVIDER_TRADING_DAY_KINDS:
             raise SessionAuthorityError(f"unsupported {field_name}")
     for prefix in ("quote", "evaluation"):
         if (
             getattr(authority, f"{prefix}_trading_day_kind")
-            in {"holiday", "unscheduled_closure"}
+            in {"holiday", "unscheduled_closure", "closed_unspecified"}
             and getattr(authority, f"{prefix}_market_session") != "closed"
         ):
             raise SessionAuthorityError(
-                f"{prefix} holiday and unscheduled closure must report closed"
+                f"{prefix} closed-day kind must report a closed session"
             )
 
     if authority.source_response_type not in SUPPORTED_PROVIDER_RESPONSE_TYPES:

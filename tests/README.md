@@ -42,8 +42,16 @@ foundation simple and dependency-free.
   expiry, conflict, outage, and cross-provider failure. A credential-free
   importer test proves that matching injected authority can qualify a quote
   whose provider session is absent without writing evidence or a database.
-  Concrete provider schedule adapters, official schedule evidence, and broader
-  provider/asset validation remain open. PNL-02 T11 adds the strict local-owner
+  PNL-02 T14 adds a concrete credential-free Schwab market-hours payload parser.
+  It proves exact equity/option product scope, offset-aware normal/extended and
+  shortened-session intervals, the observed closed-market sentinel, and
+  fail-closed malformed/overlapping/unsupported shapes. The approved offline
+  resolver adds exact Schwab product scopes, IANA offset validation,
+  `closed_unspecified`, normal-versus-shortened comparison, combined-manifest
+  lineage, and exact-date resolution. The official private equity, option, and
+  market-hours bytes are checked separately outside the automated suite and are
+  never copied into Git. Their missing same-date combination remains open.
+  PNL-02 T11 adds the strict local-owner
   provider-use profile and deterministic connection-scoped acknowledgement
   boundary. It proves that missing, incomplete, superseded, scope-expanded, or
   tampered acknowledgements fail before retrieval; acknowledgement cannot

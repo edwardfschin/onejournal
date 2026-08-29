@@ -2,6 +2,7 @@
 
 - Status: Accepted
 - Date: 2026-08-28
+- Source-to-authority correction accepted: 2026-08-29
 - Decision owners: OneJournal project owner
 - Related roadmap items: PNL-02 through PNL-04, PNL-08
 - Related contracts: ADR-0003, ADR-0007, ADR-0009,
@@ -56,6 +57,17 @@ evidence should not be repaired silently with an unrelated source.
 8. The detailed provider eligibility gate, acceptance matrix, real-evidence
    cases, and approval boundaries are part of this decision through
    `docs/provider_native_market_session_contract.md`.
+9. A provider-confirmed closed date whose response does not identify the reason
+   is normalized as `closed_unspecified`, never guessed as a holiday or
+   unscheduled closure. This day kind is valid only with a closed session.
+10. The Schwab `EQ`, `EQO`, and `IND` market-hours scopes use the explicit
+    `America/New_York` adapter mapping. The mapping supplies no calendar fact or
+    phase boundary; every provider timestamp must match the IANA zone's wall
+    time and UTC offset for the instant or fail closed.
+11. When classification or resolution uses multiple schedule responses, the
+    authority source is their checksum-binding manifest with
+    `source_response_type=combined`. Every used response digest must be a
+    manifest member.
 
 ## Boundaries
 
@@ -68,6 +80,12 @@ activation, deployment, synchronization, redistribution, or order capability.
 OneBot/VPS remains only the temporary Schwab token owner and bounded evidence
 bridge until the separately approved single-owner cutover. The current
 OneJournal runtime remains credential-free.
+
+The 2026-08-29 correction is implemented offline by
+`schwab-market-hours-resolver-v1` and documented in
+`docs/schwab_market_hours_resolver_contract.md`. It does not authorize a new
+provider call. The captured T14 quote and schedule dates differ, so no real v2
+authority is accepted yet.
 
 ## Alternatives considered
 
