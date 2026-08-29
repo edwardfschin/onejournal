@@ -66,8 +66,13 @@ foundation simple and dependency-free.
   required pre-applied migrations, transactional first-write/replay behavior,
   and exact-run semantic read-back on temporary DuckDB databases. No real
   acknowledgement, provider call, credential, private evidence, journal write,
-  migration, or deletion is used. Mark selection is explicitly deferred to
-  PNL-03 policy.
+  migration, or deletion is used. The T15 offline rehearsal contract validates
+  the provider-neutral `source_active -> owner_gap ->
+  target_provisioned_disabled -> target_active` sequence for forward cutover and
+  rollback. It rejects dual ownership, reused owner or credential lineage, host
+  collision, target exposure, phase/time disorder, and malformed evidence
+  without performing any operational action. Mark selection is explicitly
+  deferred to PNL-03 policy.
 - Integration: schema initialization and migration, import, append-only journal
   history, review compatibility projection, replay preservation, DuckDB reads,
   and DB dashboard payload construction using a temporary database.

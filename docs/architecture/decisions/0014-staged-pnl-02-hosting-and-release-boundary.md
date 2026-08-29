@@ -140,7 +140,10 @@ service isolation, lack of public listener, no journal-database mount, and rollb
 procedure. Before a real T15 cutover, additionally require the approved hosted-data
 profile, a fresh owner authorization, break-before-make evidence, secret-safe logs,
 allowed egress, backup and restoration rehearsal where persisted private data is in
-scope, and the PNL-02-T15 acceptance evidence.
+scope, and the PNL-02-T15 acceptance evidence. The credential-free
+`onejournal.provider-connection-cutover.v1` validator defines the required
+four-phase evidence sequence, but passing it does not establish the external facts
+or authorize any operational action.
 
 ## Rollback or supersession
 

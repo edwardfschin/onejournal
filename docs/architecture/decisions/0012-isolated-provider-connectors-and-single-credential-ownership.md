@@ -336,7 +336,11 @@ Before any real provider activation, automated validation must prove:
   without assuming Schwab OAuth behavior;
 - repository secret/order guards and the full clean CI suite pass; and
 - a credential-free cutover rehearsal proves break-before-make state
-  transitions and rollback ordering.
+  transitions and rollback ordering through
+  `onejournal.provider-connection-cutover.v1`; and
+- the pure validator rejects dual ownership, a missing owner gap, reused owner
+  or credential lineage, host collision, phase/time disorder, a public target
+  listener, and an operational journal mount without performing the cutover.
 
 Real credentials, provider calls, private evidence, deployment, and the T15
 cutover require separate bounded approval and dated evidence.
