@@ -71,25 +71,28 @@ dates, expired evidence, or missing exact-date schedules fail closed.
 
 ## Current T14 evidence result
 
-The checksum-bound `PNL-02-T14-SCHWAB-20260828-04` schedule files validate for
-the approved `EQ` and `EQO` scopes, including the observed daylight-saving
-offsets and shortened-session boundaries. The official equity and option quotes
-are dated 2026-08-28, while the bundle's schedules are dated 2026-08-31,
-2026-09-07, and 2026-11-27. The resolver therefore rejects both actual quotes
-because no exact 2026-08-28 schedule exists. That is the intended fail-closed
-result.
+The checksum-bound `PNL-02-T14-SCHWAB-20260829-06` bundle preserves manifest
+SHA-256 `a518edd8869b4e3cc41fec9355f30fb109d5c241a1fb567003adb2e7dae74317`.
+Its official equity and option quotes and normal `EQ`/`EQO`/`IND` schedules are
+all dated 2026-08-28; its closed and shortened schedules remain 2026-09-07 and
+2026-11-27. All member hashes, offsets, phases, and exact scope mappings pass.
+The option produces actual combined v2 authority and `market_closed_last`.
+The equity's observed `securityStatus=Closed` is preserved by
+`schwab-quote-json-v2` as `data_mode=frozen` with session unknown; it becomes
+`market_closed_last` only when this exact v2 authority reports the evaluation
+session closed and remains ineligible while a supported session is open.
 
-T14 still requires one separately approved same-date quote-and-schedule evidence
-capture before real provider-session authority can be accepted. This document
-does not authorize that provider call or any later T15 action.
+This evidence closes the same-date resolver gap. It does not authorize T15,
+provider activation, persistence, migration, or production use.
 
 ## Validation and rollback
 
 Synthetic tests cover stock and listed-option normal phases, shortened regular
 and extended phases, closed unspecified days, IANA offset conflicts, manifest
 membership and path/hash failures, provider/connection/asset mismatches,
-validity expiry, and missing exact-date evidence. The private `-04` bytes are
-checked read-only outside the automated suite and are never copied into Git.
+validity expiry, missing exact-date evidence, and frozen quotes before and after
+effective market close. The private `-06` bytes are checked read-only outside
+the automated suite and are never copied into Git.
 
 Before commit, rollback is removal of the resolver, tests, and this approved
 contract correction. No external or persisted state needs restoration.

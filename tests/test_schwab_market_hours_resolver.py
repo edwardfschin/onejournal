@@ -109,6 +109,7 @@ class SchwabMarketHoursResolverTests(unittest.TestCase):
         asset_class: str = "stock",
         provider: str = "schwab",
         connection_uid: str = CONNECTION_UID,
+        data_mode: str = "real_time",
     ) -> NormalizedQuote:
         if asset_class == "stock":
             instrument_key = "stock|AAPL"
@@ -131,7 +132,7 @@ class SchwabMarketHoursResolverTests(unittest.TestCase):
             provider_quote_at=provider_quote_at,
             received_at=provider_quote_at + timedelta(milliseconds=200),
             market_session="unknown",
-            data_mode="real_time",
+            data_mode=data_mode,
             entitlement_status="entitled",
             asof=provider_quote_at.astimezone().date(),
             raw_path=f"data/raw/{provider}/external/test-bundle/quote.json",
@@ -231,6 +232,41 @@ class SchwabMarketHoursResolverTests(unittest.TestCase):
         self.assertEqual(authority.quote_trading_day_kind, "closed_unspecified")
         self.assertEqual(authority.evaluation_trading_day_kind, "closed_unspecified")
         self.assertEqual(assessment.status, "market_closed_last")
+
+    def test_frozen_security_quote_requires_effective_market_close(self) -> None:
+        quote = self.quote(
+            provider_quote_at=datetime.fromisoformat("2026-08-31T19:59:30-04:00"),
+            data_mode="frozen",
+        )
+
+        open_evaluation = datetime.fromisoformat("2026-08-31T19:59:31-04:00")
+        open_authority = self.resolver().resolve(
+            quote=quote,
+            evaluated_at=open_evaluation,
+        )
+        open_assessment = assess_quote_freshness(
+            quote,
+            evaluated_at=open_evaluation,
+            session_authority=open_authority,
+        )
+
+        closed_evaluation = datetime.fromisoformat("2026-08-31T20:00:30-04:00")
+        closed_authority = self.resolver().resolve(
+            quote=quote,
+            evaluated_at=closed_evaluation,
+        )
+        closed_assessment = assess_quote_freshness(
+            quote,
+            evaluated_at=closed_evaluation,
+            session_authority=closed_authority,
+        )
+
+        self.assertEqual(open_authority.evaluation_market_session, "after_hours")
+        self.assertEqual(open_assessment.status, "live_stale")
+        self.assertFalse(open_assessment.valuation_allowed)
+        self.assertEqual(closed_authority.evaluation_market_session, "closed")
+        self.assertEqual(closed_assessment.status, "market_closed_last")
+        self.assertTrue(closed_assessment.valuation_allowed)
 
     def test_offset_must_match_approved_iana_scope(self) -> None:
         payload = normal_payload()

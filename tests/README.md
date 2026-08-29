@@ -48,9 +48,13 @@ foundation simple and dependency-free.
   fail-closed malformed/overlapping/unsupported shapes. The approved offline
   resolver adds exact Schwab product scopes, IANA offset validation,
   `closed_unspecified`, normal-versus-shortened comparison, combined-manifest
-  lineage, and exact-date resolution. The official private equity, option, and
+  lineage, and exact-date resolution. `schwab-quote-json-v2` adds the observed
+  `securityStatus=Closed` boundary: it produces a frozen quote with unknown
+  session, remains unavailable without authority, remains stale while an
+  effective session is open, and becomes `market_closed_last` only after exact
+  v2 authority reports close. The official private `-06` equity, option, and
   market-hours bytes are checked separately outside the automated suite and are
-  never copied into Git. Their missing same-date combination remains open.
+  never copied into Git; both quote paths produce same-date combined authority.
   PNL-02 T11 adds the strict local-owner
   provider-use profile and deterministic connection-scoped acknowledgement
   boundary. It proves that missing, incomplete, superseded, scope-expanded, or

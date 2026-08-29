@@ -275,19 +275,29 @@ The following remain separate explicit approvals:
    hours endpoint/query contract, symbols, dates, hashes, and capture metadata.
    **Completed and owner-approved for capture `-04` on 2026-08-28.**
 4. Execute the bounded provider calls and private evidence write on the VPS.
-   **Completed for `PNL-02-T14-SCHWAB-20260828-04` on 2026-08-28: five GETs,
-   zero refreshes, and zero account/order/database actions.**
+   **Completed for same-date capture `PNL-02-T14-SCHWAB-20260829-06` on
+   2026-08-29. `-05` stopped before any GET because the existing access token
+   was expired. The first separately approved refresh command for `-06` made
+   one failed OAuth request because the authoritative Schwab environment was not
+   loaded; no capture ran. After the root invocation error was identified, the
+   owner approved one corrected OneBot-owned refresh with
+   `config/schwab_env.sh` loaded. It succeeded once, after which unchanged v5
+   completed five GETs with zero in-capture refreshes and zero
+   account/order/database actions.**
 5. Transfer the complete evidence bundle into the OneJournal private vault.
-   **Completed on 2026-08-28 with nine-file checksum parity and `0700`/`0600`
-   permissions.**
+   **Completed for `-06` on 2026-08-29 with nine-file checksum parity and
+   `0700`/`0600` permissions. `-05` remains preserved and incomplete.**
 6. Implement and test the credential-free Schwab schedule/option adapters.
-   **The official option shape passes the existing quote adapter. The isolated
+   **The official option shape passes `schwab-quote-json-v2`. The isolated
    `schwab-market-hours-json-v1` parser accepts the exact normal, closed, and
    shortened-session bytes without inventing missing calendar semantics. The
    owner-approved offline resolver preserves unnamed closure as
    `closed_unspecified`, offset-validates the explicit Schwab product/timezone
-   mapping, and binds combined evidence through the manifest. The real quotes
-   still lack an exact-date schedule.**
+   mapping, and binds combined evidence through the manifest. Capture `-06`
+   supplies same-date quote and normal-schedule evidence. Its option produces
+   actual combined v2 authority. Its equity `securityStatus=Closed` is preserved
+   as a frozen quote with unknown session and becomes `market_closed_last` only
+   through exact v2 authority; an open effective session remains ineligible.**
 7. Commit and push focused OneJournal code or documentation.
 8. Perform T15 cutover, deployment, migration, real ingestion, or end-to-end
    acceptance.
@@ -336,26 +346,33 @@ later approval review:
   `/usr/lib/python3/dist-packages/requests`.
 
 The owner attestation, append-only acknowledgement, source contract, private VPS
-root, bounded provider capture, and private-vault transfer now exist for `-04`.
+root, bounded provider capture, and private-vault transfer now exist for `-06`.
 The complete local bundle contains nine files and preserves manifest SHA-256
-`0a76515d4966e5222435ffc63067b1fc4de6ec7e95539a90264a2ad950482bc1`.
-Both official quotes report real-time entitlement and pass the existing
-credential-free quote adapter. The market-hours parser accepts the three exact
+`a518edd8869b4e3cc41fec9355f30fb109d5c241a1fb567003adb2e7dae74317`.
+Both official quotes report real-time entitlement. The option reports
+`securityStatus=Normal`; the after-hours equity reports
+`securityStatus=Closed`. The market-hours parser accepts the three exact
 responses and preserves their offsets and phase boundaries.
 
 The 2026-08-29 source-faithful correction is approved and implemented offline:
 unnamed closure remains `closed_unspecified`; exact Schwab product scopes map
 explicitly to `America/New_York` with per-timestamp offset checks; and
-multi-response authority lineage uses the checksum manifest. T14 is not
-complete because the quote date is 2026-08-28 while the captured schedules are
-for 2026-08-31, 2026-09-07, and 2026-11-27. The actual quotes therefore fail
-closed for missing exact-date schedule evidence. Any new capture, changed
-runner, or changed runtime hash still requires separate review and approval.
+multi-response authority lineage uses the checksum manifest. Capture `-06`
+closes the date gap with a normal 2026-08-28 schedule matching both quote dates.
+Read-only review produces actual combined v2 authority and
+`market_closed_last` for the option. `schwab-quote-json-v2` maps the observed
+equity `Closed` state to `data_mode=frozen`, keeps session unknown, and permits
+the same result only when exact v2 authority reports the evaluation session
+closed. Focused regression proves it remains ineligible while the effective
+market is open. Any new capture, changed runner, or changed runtime hash still
+requires separate review and approval.
 
 ## Rollback
 
 Before provider use, rollback is removal or revision of the proposed design and
-temporary implementation. After capture, provider state is unchanged because
-the operation is read-only and cannot refresh; immutable evidence is retained
-until separately approved deletion. No rollback may copy or reactivate a token,
-create a second credential owner, or convert the bridge into a recurring path.
+temporary implementation. The v5 capture itself remains read-only and cannot
+refresh. The separately approved corrected pre-capture refresh rotated only the
+existing OneBot-owned token lifecycle and cannot be reversed by restoring stale
+token bytes. Immutable evidence is retained until separately approved deletion.
+No rollback may copy or reactivate a token, create a second credential owner, or
+convert the bridge into a recurring path.

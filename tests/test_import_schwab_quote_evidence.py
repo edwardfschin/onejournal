@@ -187,7 +187,7 @@ class QuoteEvidenceImportTests(unittest.TestCase):
             self.assertEqual(before, after)
             summary = json.loads(output.getvalue())
             self.assertEqual(summary["capture_id"], CAPTURE_ID)
-            self.assertEqual(summary["adapter_version"], "schwab-quote-json-v1")
+            self.assertEqual(summary["adapter_version"], "schwab-quote-json-v2")
             self.assertEqual(
                 summary["capture_contract_version"],
                 "onejournal.market-data.quote-capture.v1",

@@ -68,6 +68,12 @@ evidence should not be repaired silently with an unrelated source.
     authority source is their checksum-binding manifest with
     `source_response_type=combined`. Every used response digest must be a
     manifest member.
+12. Schwab `securityStatus=Closed` is a provider security state, not schedule
+    evidence. `schwab-quote-json-v2` preserves it as provider-neutral
+    `data_mode=frozen`, retains provider-reported entitlement, and forces quote
+    session to `unknown`. Valuation therefore requires exact same-date v2
+    authority and remains unavailable while the effective session is open.
+    `Halted` and unrecognized statuses fail closed.
 
 ## Boundaries
 
@@ -83,9 +89,10 @@ OneJournal runtime remains credential-free.
 
 The 2026-08-29 correction is implemented offline by
 `schwab-market-hours-resolver-v1` and documented in
-`docs/schwab_market_hours_resolver_contract.md`. It does not authorize a new
-provider call. The captured T14 quote and schedule dates differ, so no real v2
-authority is accepted yet.
+`docs/schwab_market_hours_resolver_contract.md`. Same-date capture `-06` and the
+v2 quote-status correction now produce real offline stock and listed-option v2
+authority for the bounded T14 scope. This does not activate a connector,
+persist a quote, authorize T15, or establish end-to-end PNL-02 acceptance.
 
 ## Alternatives considered
 

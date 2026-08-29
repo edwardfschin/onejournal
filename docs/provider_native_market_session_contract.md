@@ -83,9 +83,12 @@ The owner-approved 2026-08-29 correction adds
 `schwab-market-hours-resolver-v1`: explicit `EQ`/`EQO`/`IND` mappings name
 `America/New_York`, every response offset is validated against that zone,
 provider-confirmed closure remains `closed_unspecified`, and combined schedule
-lineage uses its checksum manifest. The captured quote and schedule dates still
-differ, so no actual v2 authority is accepted. IBKR, Moomoo, and later concrete
-adapters require their own official provider evidence and connector gates.
+lineage uses its checksum manifest. Capture `PNL-02-T14-SCHWAB-20260829-06`
+supplies matching 2026-08-28 quote and normal-schedule evidence. Read-only review
+produces actual v2 authority for the listed option and, through
+`schwab-quote-json-v2`, the frozen closed-status equity quote. IBKR, Moomoo, and
+later concrete adapters require their own official provider evidence and
+connector gates.
 
 ## Provider eligibility gate
 
@@ -142,16 +145,15 @@ rollout is approved; they are not required to close the initial Schwab scope.
 ## Source evidence reviewed
 
 - Schwab's authenticated Market Data Production specification remains the
-  authoritative provider contract. The bounded `-04` private evidence contains
-  official real-time equity and listed-option responses plus normal, closed,
-  and shortened-session market-hours responses. Neither quote supplies
-  `marketSession`. The schedule payloads preserve offset-aware intervals, but
-  no IANA timezone; the closed payload reports only `isOpen=false`; and its
-  schedule dates do not match the quote date. The approved resolver now supplies
-  only the explicit scope-to-IANA mapping, validates the observed offsets, and
-  preserves the closed reason as unspecified. These facts prove adapter
-  compatibility, but the missing same-date schedule still blocks actual v2
-  authority:
+  authoritative provider contract. The bounded `-06` private evidence contains
+  official real-time equity and listed-option responses plus matching-date
+  normal and separate closed/shortened market-hours responses. Neither quote
+  supplies `marketSession`; the equity reports `securityStatus=Closed`, which
+  v2 maps to a frozen quote without inventing session evidence. The schedule
+  payloads preserve offset-aware intervals but no IANA timezone, and the closed
+  payload reports only `isOpen=false`. The approved resolver supplies only the
+  explicit scope-to-IANA mapping, validates observed offsets, preserves the
+  closed reason as unspecified, and produces actual combined v2 authority:
   <https://developer.schwab.com/products/trader-api--individual/details/specifications/Market%20Data%20Production>.
 - IBKR officially documents a contract schedule endpoint that returns exchange,
   timezone, and trading times for up to one month. This establishes a plausible

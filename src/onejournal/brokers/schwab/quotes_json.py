@@ -20,7 +20,7 @@ from onejournal.brokers.normalized import NormalizedQuote
 from onejournal.market_data.quotes import build_quote_uid, validate_normalized_quote
 
 
-ADAPTER_VERSION = "schwab-quote-json-v1"
+ADAPTER_VERSION = "schwab-quote-json-v2"
 
 _INSTRUMENT_KEY_RE = re.compile(r"[^\x00-\x1f\x7f]{1,512}")
 _PROVIDER_SYMBOL_RE = re.compile(r"[^\x00-\x1f\x7f,]{1,64}")
@@ -268,13 +268,25 @@ def normalized_quotes_from_payload(
         if not isinstance(quote, Mapping):
             raise SchwabQuoteAdapterError(f"{symbol_key}.quote must be an object")
         security_status = quote.get("securityStatus")
-        if security_status is not None and (
-            not isinstance(security_status, str)
-            or security_status.strip().upper() != "NORMAL"
-        ):
+        if security_status is not None and not isinstance(security_status, str):
             raise SchwabQuoteAdapterError(
-                f"{symbol_key}.securityStatus is not NORMAL"
+                f"{symbol_key}.securityStatus must be a string when present"
             )
+        normalized_security_status = (
+            None if security_status is None else security_status.strip().upper()
+        )
+        if normalized_security_status not in {None, "NORMAL", "CLOSED"}:
+            raise SchwabQuoteAdapterError(
+                f"{symbol_key}.securityStatus is unsupported"
+            )
+
+        market_session = _market_session(item, quote)
+        if normalized_security_status == "CLOSED":
+            # CLOSED is a provider security state, not market-session evidence.
+            # Preserve it as a frozen quote and require exact provider-native
+            # session authority before downstream valuation can qualify it.
+            data_mode = "frozen"
+            market_session = "unknown"
 
         candidate = NormalizedQuote(
             quote_uid="pending",
@@ -292,7 +304,7 @@ def normalized_quotes_from_payload(
                 quote.get("quoteTime"), f"{symbol_key}.quoteTime"
             ),
             received_at=received_at.astimezone(UTC),
-            market_session=_market_session(item, quote),
+            market_session=market_session,
             data_mode=data_mode,
             entitlement_status=entitlement_status,
             asof=asof,

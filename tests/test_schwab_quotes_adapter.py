@@ -211,10 +211,33 @@ class SchwabQuotesAdapterTests(unittest.TestCase):
         self.assertEqual(assessment.reason, "provider market session is unknown")
         self.assertFalse(assessment.valuation_allowed)
 
-    def test_non_normal_security_status_is_rejected(self) -> None:
+    def test_closed_security_status_is_frozen_and_requires_authority(self) -> None:
         payload = load_quotes_json(FIXTURE)
-        payload["AAPL"]["quote"]["securityStatus"] = "Halted"
-        with self.assertRaisesRegex(SchwabQuoteAdapterError, "not NORMAL"):
+        payload["AAPL"]["quote"]["securityStatus"] = "Closed"
+
+        (quote,) = self.normalize(payload=payload)
+        assessment = assess_quote_freshness(
+            quote,
+            evaluated_at=quote.provider_quote_at + timedelta(seconds=1),
+        )
+
+        self.assertEqual(quote.data_mode, "frozen")
+        self.assertEqual(quote.entitlement_status, "entitled")
+        self.assertEqual(quote.market_session, "unknown")
+        self.assertEqual(assessment.status, "unavailable")
+        self.assertEqual(assessment.reason, "provider market session is unknown")
+        self.assertFalse(assessment.valuation_allowed)
+
+    def test_unsafe_or_unsupported_security_status_is_rejected(self) -> None:
+        payload = load_quotes_json(FIXTURE)
+        for security_status in ("Halted", "Unknown", ""):
+            with self.subTest(security_status=security_status):
+                payload["AAPL"]["quote"]["securityStatus"] = security_status
+                with self.assertRaisesRegex(SchwabQuoteAdapterError, "unsupported"):
+                    self.normalize(payload=payload)
+
+        payload["AAPL"]["quote"]["securityStatus"] = 1
+        with self.assertRaisesRegex(SchwabQuoteAdapterError, "must be a string"):
             self.normalize(payload=payload)
 
 
