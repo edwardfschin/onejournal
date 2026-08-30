@@ -17,6 +17,12 @@ elif [ -x "${PROJECT_DIR}/.venv/bin/python3" ]; then
   PYTHON_BIN="${PROJECT_DIR}/.venv/bin/python3"
 elif [ -x "${PROJECT_DIR}/.venv/bin/python3.13" ]; then
   PYTHON_BIN="${PROJECT_DIR}/.venv/bin/python3.13"
+elif [ -x "${HOME}/python-envs/onejournal-env/bin/python" ]; then
+  # The documented shared local OneJournal environment may live outside the
+  # checkout; keep CI on the canonical repository while using that interpreter.
+  PYTHON_BIN="${HOME}/python-envs/onejournal-env/bin/python"
+elif command -v python3.13 >/dev/null 2>&1; then
+  PYTHON_BIN="python3.13"
 elif command -v python >/dev/null 2>&1; then
   PYTHON_BIN="python"
 elif command -v python3 >/dev/null 2>&1; then
