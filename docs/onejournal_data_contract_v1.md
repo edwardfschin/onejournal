@@ -193,6 +193,12 @@ same token lifecycle.
 - NormalizedPosition
 - NormalizedTransaction
 - NormalizedQuote
+- BrokerPositionSnapshot (PNL-03 implemented as a credential-free complete
+  account envelope; no provider adapter or real evidence accepted yet)
+- CanonicalOpenPosition (PNL-03 implemented as a cumulative FIFO/lifecycle
+  result in the isolated service boundary)
+- ValuationMarkAssessment (PNL-03 implemented as a quote-bound selected mark
+  with freshness/session and reconciliation lineage)
 - TradeEpisode
 - TradeLeg
 - JournalEntry
@@ -200,6 +206,27 @@ same token lifecycle.
 - RiskEvent
 
 All normalized records should include source_broker, source_account_id, source_record_id where applicable, asof, fetched_at, normalized_at, and raw_path.
+
+### PNL-03 authority boundary
+
+ADR-0019 is accepted policy for canonical position and valuation authority.
+Migration 0013 and its repository are implemented and validated only against
+temporary DuckDB databases; no actual journal migration or dashboard/API
+contract change is accepted. The existing
+`NormalizedPosition` and `normalized_positions` records are prototype/import
+diagnostic rows and cannot establish PNL-03 current position, cost basis,
+market value, unrealized P&L, or portfolio totals.
+
+The isolated PNL-03 service now binds every supported current valuation
+to all of the following: one `onejournal.instrument-identity.v1`, cumulative
+accepted fills/lifecycle events through an exact UTC evaluation instant, an
+independent complete broker-position snapshot, one exact provider/connection
+quote and PNL-02 freshness assessment, mark-selection policy/version, native
+currency, calculation/input lineage, status, and failure reason where
+unavailable. Active-session marks use long bid/short ask; eligible
+`market_closed_last` uses exact last. Missing, stale, mismatched, partial, or
+unreconciled evidence is unavailable, never zero. A multi-leg strategy total
+requires every included leg to satisfy the same boundary.
 
 ## Dashboard Payload v1
 

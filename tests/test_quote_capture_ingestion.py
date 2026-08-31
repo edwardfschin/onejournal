@@ -183,7 +183,11 @@ class QuoteCaptureIngestionTests(unittest.TestCase):
             persist_quote_batch(db_path, run, (quote,))
 
             self.assertEqual(
-                apply_schema_migrations(db_path, migrations_dir=MIGRATIONS_DIR),
+                apply_schema_migrations(
+                    db_path,
+                    target_version="0012",
+                    migrations_dir=MIGRATIONS_DIR,
+                ),
                 12,
             )
             with duckdb.connect(str(db_path), read_only=True) as con:

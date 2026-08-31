@@ -29,7 +29,7 @@ from onejournal.provider_connectors.private_capture import (
 
 
 DURABLE_QUOTE_INGESTION_AUDIT_SCHEMA = "onejournal.market-data.quote-ingestion-audit.v1"
-REQUIRED_QUOTE_SCHEMA_VERSION = 12
+MINIMUM_QUOTE_SCHEMA_VERSION = 12
 
 
 class DurableQuoteIngestionError(RuntimeError):
@@ -184,9 +184,9 @@ def require_quote_ingestion_schema(
                     "journal migration ledger contains a non-applied migration"
                 )
             current_version = max(int(version) for version in applied_rows)
-            if current_version != REQUIRED_QUOTE_SCHEMA_VERSION:
+            if current_version < MINIMUM_QUOTE_SCHEMA_VERSION:
                 raise DurableQuoteIngestionError(
-                    "journal schema version is not the reviewed quote-ingestion version"
+                    "journal schema version predates the reviewed quote-ingestion version"
                 )
             for version, filename in (
                 ("0011", "0011_add_normalized_market_quotes.sql"),

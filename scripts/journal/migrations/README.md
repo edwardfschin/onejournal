@@ -49,6 +49,11 @@ There are currently twelve migration files:
   receive time, checksum-bound source storage/locator, and full-envelope replay
   lineage to quote ingestion runs without rewriting migration 0011 or existing
   quote rows.
+- `0013_add_canonical_position_valuations.sql`:
+  add complete-account broker position snapshot runs and exact instrument rows,
+  plus versioned PNL-03 reconciliation and valuation results with quote,
+  freshness, mark-policy, calculation, and input-fingerprint lineage. Legacy
+  `normalized_positions` remain unchanged and non-authoritative.
 
 The existing DuckDB schema is a prototype bootstrap baseline created (and now
 versioned) by `scripts/journal/init_journal_db.py`.

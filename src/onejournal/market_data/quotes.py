@@ -76,6 +76,10 @@ class MarketDataPolicy:
 class FreshnessAssessment:
     """Computed quote state at one explicit evaluation instant."""
 
+    quote_uid: str
+    provider: str
+    connection_uid: str
+    instrument_key: str
     status: Literal[
         "live_fresh",
         "live_stale",
@@ -362,6 +366,10 @@ def assess_quote_freshness(
         reason: str,
     ) -> FreshnessAssessment:
         return FreshnessAssessment(
+            quote_uid=quote.quote_uid,
+            provider=quote.provider,
+            connection_uid=quote.connection_uid,
+            instrument_key=quote.instrument_key,
             status=status,
             valuation_allowed=valuation_allowed,
             age_seconds=result_age,

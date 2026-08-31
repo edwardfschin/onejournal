@@ -74,6 +74,7 @@ Examples:
 0010_add_approved_lifecycle_pnl_allocations.sql
 0011_add_normalized_market_quotes.sql
 0012_add_quote_capture_envelope.sql
+0013_add_canonical_position_valuations.sql
 ```
 
 Migration 0009 adds explicit canonical UTC evidence fields without
@@ -98,6 +99,11 @@ provider-neutral capture envelope: exact request scope, receive time,
 checksum-backed source locator, and full-envelope replay fingerprint. Existing
 migration-0011 rows remain legacy evidence. Migration 0012 has not been applied
 to a live journal database.
+
+Migration 0013 additively introduces PNL-03 broker-position snapshot and
+canonical valuation result tables. It does not copy or reinterpret legacy
+`normalized_positions`. Repository validation uses temporary DuckDB databases
+only; applying 0013 to an actual journal remains separately approval-gated.
 
 Rules:
 

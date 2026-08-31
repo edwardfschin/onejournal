@@ -55,6 +55,10 @@ class JournalMigrationTests(unittest.TestCase):
             self.assertIn("pnl_lifecycle_allocations", tables)
             self.assertIn("market_quote_ingestion_runs", tables)
             self.assertIn("normalized_market_quotes", tables)
+            self.assertIn("broker_position_snapshot_runs", tables)
+            self.assertIn("broker_position_snapshot_records", tables)
+            self.assertIn("pnl_position_valuation_runs", tables)
+            self.assertIn("pnl_canonical_position_valuations", tables)
             self.assertIn("journal_entries", tables)
             self.assertIn("journal_entry_revisions", tables)
             self.assertIn("journal_reviews", tables)
@@ -94,6 +98,8 @@ class JournalMigrationTests(unittest.TestCase):
             self.assertEqual(rows[10][1], "applied")
             self.assertEqual(rows[11][0], "0012")
             self.assertEqual(rows[11][1], "applied")
+            self.assertEqual(rows[12][0], "0013")
+            self.assertEqual(rows[12][1], "applied")
 
             fill_columns = {
                 row[1]: row[2]
@@ -133,7 +139,7 @@ class JournalMigrationTests(unittest.TestCase):
 
         with duckdb.connect(str(self.db_path), read_only=True) as con:
             count = con.execute("SELECT COUNT(*) FROM schema_migrations").fetchone()[0]
-            self.assertEqual(count, 12)
+            self.assertEqual(count, 13)
 
     def test_migration_0005_backfills_existing_reviews_from_version_0002(self) -> None:
         apply_schema_migrations(
@@ -170,7 +176,7 @@ class JournalMigrationTests(unittest.TestCase):
             self.db_path,
             migrations_dir=MIGRATIONS_DIR,
         )
-        self.assertEqual(resulting_version, 12)
+        self.assertEqual(resulting_version, 13)
 
         with duckdb.connect(str(self.db_path), read_only=True) as con:
             rows = con.execute(
