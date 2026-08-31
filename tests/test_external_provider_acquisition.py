@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+from contextlib import redirect_stdout
 from dataclasses import replace
 from datetime import UTC, date, datetime, timedelta
 from hashlib import sha256
+from io import StringIO
 import json
 from pathlib import Path
 import sys
@@ -64,6 +66,9 @@ from onejournal.provider_connectors.usage_policy import (
     TermsReference,
     build_provider_usage_acknowledgement_uid,
     provider_usage_acknowledgement_artifact_bytes,
+)
+from scripts.journal.materialize_external_provider_acquisition import (
+    main as external_acquisition_operator_main,
 )
 from types import MappingProxyType
 
@@ -793,6 +798,92 @@ class ExternalProviderAcquisitionTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "future tolerance"):
             converted_for(future)
 
+    def test_operator_validates_then_materializes_without_provider_or_database(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            root = Path(temporary_directory)
+            acquisition_root = root / "acquisition"
+            acquisition_root.mkdir(mode=0o700)
+            acquisition_root.chmod(0o700)
+            bundle_files = {
+                "acquisition-manifest.json": external_provider_acquisition_manifest_bytes(
+                    self.manifest
+                ),
+                "quote-aapl.json": self.quote,
+                "market-hours-2026-08-31.json": self.schedule,
+            }
+            for name, body in bundle_files.items():
+                path = acquisition_root / name
+                path.write_bytes(body)
+                path.chmod(0o600)
+            acknowledgement_path = root / "provider-usage-acknowledgement.json"
+            acknowledgement_path.write_bytes(self.acknowledgement_bytes)
+            acknowledgement_path.chmod(0o600)
+            private_root = root / "onejournal-private"
+            private_root.mkdir(mode=0o700)
+            private_root.chmod(0o700)
+            common = [
+                "--acquisition-root",
+                str(acquisition_root),
+                "--acknowledgement",
+                str(acknowledgement_path),
+                "--expected-run-uid",
+                RUN_UID,
+                "--expected-approval-id",
+                APPROVAL_ID,
+                "--expected-owner-uid",
+                OWNER_UID,
+                "--expected-owner-epoch-uid",
+                OWNER_EPOCH_UID,
+                "--evaluated-at",
+                self.evaluated_at.isoformat(),
+                "--normal-reference-date",
+                MARKET_DATE.isoformat(),
+                "--schedule-valid-until",
+                (self.evaluated_at + timedelta(days=1)).isoformat(),
+                "--quote-mapping",
+                QUOTE_REQUEST_UID,
+                "stock|AAPL",
+                "AAPL",
+                "stock",
+                "USD",
+                "equity",
+                "--require-valuation-allowed",
+            ]
+
+            validation_output = StringIO()
+            with redirect_stdout(validation_output):
+                self.assertEqual(external_acquisition_operator_main(common), 0)
+            validation = json.loads(validation_output.getvalue())
+            self.assertEqual(
+                validation["final_status"],
+                "validated_external_unmaterialized",
+            )
+            self.assertFalse(validation["materialized_private"])
+            self.assertEqual(validation["quotes"][0]["freshness_status"], "live_fresh")
+            self.assertTrue(validation["quotes"][0]["valuation_allowed"])
+            self.assertEqual(list(private_root.iterdir()), [])
+
+            materialization_output = StringIO()
+            materialize = [
+                *common,
+                "--private-vault-root",
+                str(private_root),
+                "--materialize-private",
+            ]
+            with redirect_stdout(materialization_output):
+                self.assertEqual(external_acquisition_operator_main(materialize), 0)
+            materialization = json.loads(materialization_output.getvalue())
+            self.assertEqual(
+                materialization["final_status"],
+                "materialized_private_uningested",
+            )
+            source_path = private_root / materialization["quotes"][0]["source_locator"]
+            self.assertTrue(source_path.is_file())
+            self.assertEqual(source_path.stat().st_mode & 0o777, 0o600)
+            self.assertEqual(source_path.parent.stat().st_mode & 0o777, 0o700)
+            with self.assertRaisesRegex(ValueError, "already exists"):
+                external_acquisition_operator_main(materialize)
+
     def test_module_has_no_provider_credential_database_or_write_capability(self) -> None:
         source = (
             PROJECT_ROOT / "src/onejournal/provider_connectors/external_acquisition.py"
@@ -804,6 +895,23 @@ class ExternalProviderAcquisitionTests(unittest.TestCase):
         ):
             with self.subTest(forbidden=forbidden):
                 self.assertNotIn(forbidden, source)
+
+        operator_source = (
+            PROJECT_ROOT
+            / "scripts/journal/materialize_external_provider_acquisition.py"
+        ).read_text(encoding="utf-8")
+        for forbidden in (
+            "import requests",
+            "import duckdb",
+            "Authorization",
+            "access_token",
+            "refresh_token",
+            "subprocess",
+            "socket",
+            "urllib",
+        ):
+            with self.subTest(operator_forbidden=forbidden):
+                self.assertNotIn(forbidden, operator_source)
 
 
 if __name__ == "__main__":

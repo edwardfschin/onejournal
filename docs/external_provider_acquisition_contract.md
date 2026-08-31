@@ -70,14 +70,37 @@ Account, position, transaction, order, request-body, and database counts must
 be zero. An owner-side OAuth refresh count may be zero or one; one requires its
 own explicit approval ID and is evidence only, never a OneJournal action.
 
+## Credential-free intake operator
+
+`scripts/journal/materialize_external_provider_acquisition.py` is the guarded
+filesystem operator for a checksum-preserving transferred bundle. It requires
+an existing absolute `0700` acquisition root containing exactly the canonical
+manifest and its named `0600` provider responses, plus the exact current `0600`
+provider-use acknowledgement. The operator requires explicit expected run,
+approval, source-owner, owner-epoch, quote-mapping, schedule-scope, evaluation,
+normal-reference-date, and schedule-validity inputs.
+
+Validation-only is the default. It verifies and converts the acquisition,
+builds exact same-provider schedule authority, and reports the freshness result
+without writing evidence. `--require-valuation-allowed` stops before any write
+unless every quote is eligible under the current policy. Append-only private
+materialization additionally requires `--materialize-private` and an already
+provisioned absolute `0700` OneJournal vault root. Existing capture identities
+are never overwritten.
+
+The operator has no provider, credential, refresh, account, order, migration,
+database, scheduling, listener, synchronization, or deployment capability. Its
+secret-free stdout audit supplies the exact capture identities needed by the
+separate durable-ingestion operator.
+
 ## Conversion and later approval gates
 
 The pure boundary is implemented in
-`src/onejournal/provider_connectors/external_acquisition.py`. A later private
-materialization action may pass a returned conversion result to the existing
-append-only private capture store. That write remains separately approved and
-must preserve `0700`/`0600`, no-overwrite, exact response bytes, capture
-artifact, and manifest-last rules.
+`src/onejournal/provider_connectors/external_acquisition.py`. The guarded
+operator may pass a verified conversion result to the existing append-only
+private capture store only under its explicit materialization flag. A real
+private write remains separately approved and preserves `0700`/`0600`,
+no-overwrite, exact response bytes, capture artifact, and manifest-last rules.
 
 Durable ingestion remains a later action through the existing guarded
 operator. It requires an approved prepared local DuckDB, explicit persistence,
@@ -90,8 +113,10 @@ acceptance, or PNL-02 completion.
 Focused offline tests cover canonical replay, exact response checksums,
 provider-use and owner-epoch binding, quote conversion, schedule lineage,
 arbitrary endpoint/method/query rejection, forbidden activity counts,
-incomplete manifests, tampering, mapping mismatches, and the absence of network,
-credential, database, subprocess, or file-write capability.
+incomplete manifests, tampering, mapping mismatches, validation-only behavior,
+explicit append-only materialization, permission enforcement, overwrite
+rejection, and the absence of network, credential, database, and subprocess
+capability.
 
 Before materialization, rollback is a focused code reversion; no private or
 database state exists. After any separately approved materialization, immutable
