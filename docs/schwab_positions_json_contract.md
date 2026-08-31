@@ -45,3 +45,12 @@ The initial field compatibility is therefore tested synthetically against the
 response shape already consumed by the repository's isolated legacy position
 readers. Bounded real evidence must confirm the shape before PNL-03 acceptance;
 the adapter fails closed rather than adding aliases or inferred fallbacks.
+
+ADR-0020 and `schwab-read-only-single-account-positions.v1` now provide the
+offline external-acquisition boundary needed to carry one exact private
+response into this adapter without giving OneJournal credential capability.
+The canonical manifest contains only a safe endpoint template and account-hash
+digest; the raw hash, expected account number, and complete symbol mapping are
+separate owner-only conversion inputs. Synthetic profile and conversion tests
+pass. No provider capture, private materialization, or real compatibility
+acceptance has yet occurred.

@@ -18,6 +18,12 @@ import re
 from types import MappingProxyType
 from typing import Literal, Mapping
 
+from onejournal.brokers.schwab.positions_json import (
+    SchwabPositionAdapterError,
+    SchwabPositionCaptureContext,
+    SchwabPositionMapping,
+    broker_position_snapshot_from_bytes,
+)
 from onejournal.brokers.schwab.market_hours_json import (
     load_market_hours_json_bytes,
     market_hours_from_payload,
@@ -49,23 +55,38 @@ from onejournal.provider_connectors.usage_policy import (
     ProviderUsagePolicyError,
     load_provider_usage_acknowledgement_artifact_bytes,
 )
+from onejournal.pnl.position_reconciliation import BrokerPositionSnapshot
 
 
 EXTERNAL_PROVIDER_ACQUISITION_SCHEMA = "onejournal.external-provider-acquisition.v1"
 EXTERNAL_PROVIDER_ACQUISITION_MANIFEST_FILENAME = "acquisition-manifest.json"
 SCHWAB_EXTERNAL_ACQUISITION_PROFILE = "schwab-read-only-quotes-and-market-hours.v1"
+SCHWAB_POSITION_EXTERNAL_ACQUISITION_PROFILE = (
+    "schwab-read-only-single-account-positions.v1"
+)
 SCHWAB_QUOTES_URL = "https://api.schwabapi.com/marketdata/v1/quotes"
 SCHWAB_MARKET_HOURS_URL = "https://api.schwabapi.com/marketdata/v1/markets"
+SCHWAB_POSITION_ACCOUNT_URL_TEMPLATE = (
+    "https://api.schwabapi.com/trader/v1/accounts/{accountHash}"
+)
 MAX_EXTERNAL_ACQUISITION_MANIFEST_BYTES = 256 * 1024
 MAX_EXTERNAL_RESPONSE_BYTES = 4 * 1024 * 1024
 
 _SAFE_ID = re.compile(r"[A-Za-z0-9][A-Za-z0-9_.:-]{7,127}")
 _SHA256 = re.compile(r"[0-9a-f]{64}")
 _FILENAME = re.compile(r"[A-Za-z0-9][A-Za-z0-9_.-]{0,127}\.json")
+_PROVIDER_ACCOUNT_HASH = re.compile(r"[A-Za-z0-9._~-]{1,512}")
 _SOURCE_ROLES = frozenset(
     {"producer", "provider_client_boundary", "runtime", "source_contract"}
 )
-_OPERATIONS = ("quote", "market_hours")
+_QUOTE_SCHEDULE_OPERATIONS = ("quote", "market_hours")
+_POSITION_OPERATIONS = ("position",)
+_SUPPORTED_PROFILES = frozenset(
+    {
+        SCHWAB_EXTERNAL_ACQUISITION_PROFILE,
+        SCHWAB_POSITION_EXTERNAL_ACQUISITION_PROFILE,
+    }
+)
 _ROOT_FIELDS = {
     "schema",
     "profile",
@@ -102,6 +123,7 @@ _REQUEST_FIELDS = {
     "attempt_count",
     "redirects_followed",
 }
+_POSITION_REQUEST_FIELDS = _REQUEST_FIELDS | {"provider_account_hash_sha256"}
 
 
 class ExternalProviderAcquisitionError(ValueError):
@@ -142,7 +164,7 @@ class ExternalAcquisitionProviderUse:
 @dataclass(frozen=True)
 class ExternalAcquisitionRequest:
     request_uid: str
-    operation: Literal["quote", "market_hours"]
+    operation: Literal["quote", "market_hours", "position"]
     method: str
     url: str
     query: tuple[ExternalAcquisitionQueryParameter, ...]
@@ -156,6 +178,7 @@ class ExternalAcquisitionRequest:
     response_sha256: str
     attempt_count: int
     redirects_followed: int
+    provider_account_hash_sha256: str | None = None
 
 
 @dataclass(frozen=True)
@@ -221,6 +244,16 @@ class ConvertedExternalQuoteCapture:
     capture: QuoteCaptureEnvelope
     private_manifest: PrivateRawCaptureManifest
     capture_artifact_bytes: bytes
+
+
+@dataclass(frozen=True)
+class ConvertedExternalPositionSnapshot:
+    """Credential-free in-memory position result; nothing has been written."""
+
+    external_manifest_sha256: str
+    external_request_uid: str
+    raw_response_bytes: bytes
+    snapshot: BrokerPositionSnapshot
 
 
 def _mapping(value: object, field: str) -> Mapping[str, object]:
@@ -307,12 +340,27 @@ def _parse_query(value: object, field: str) -> tuple[ExternalAcquisitionQueryPar
     return tuple(result)
 
 
-def _parse_request(value: object, index: int) -> ExternalAcquisitionRequest:
+def _parse_request(
+    value: object,
+    index: int,
+    *,
+    profile: str,
+) -> ExternalAcquisitionRequest:
     field = f"requests[{index}]"
     row = _mapping(value, field)
-    _fields(row, _REQUEST_FIELDS, field)
+    expected_fields = (
+        _POSITION_REQUEST_FIELDS
+        if profile == SCHWAB_POSITION_EXTERNAL_ACQUISITION_PROFILE
+        else _REQUEST_FIELDS
+    )
+    _fields(row, expected_fields, field)
     operation = row["operation"]
-    if operation not in _OPERATIONS:
+    allowed_operations = (
+        _POSITION_OPERATIONS
+        if profile == SCHWAB_POSITION_EXTERNAL_ACQUISITION_PROFILE
+        else _QUOTE_SCHEDULE_OPERATIONS
+    )
+    if operation not in allowed_operations:
         raise ExternalProviderAcquisitionError(f"{field}.operation is unsupported")
     requested_at = _utc(row["requested_at_utc"], f"{field}.requested_at_utc")
     received_at = _utc(row["received_at_utc"], f"{field}.received_at_utc")
@@ -346,18 +394,41 @@ def _parse_request(value: object, index: int) -> ExternalAcquisitionRequest:
         response_sha256=_digest(row["response_sha256"], f"{field}.response_sha256"),
         attempt_count=_integer(row["attempt_count"], f"{field}.attempt_count", minimum=1),
         redirects_followed=_integer(row["redirects_followed"], f"{field}.redirects_followed"),
+        provider_account_hash_sha256=(
+            _digest(
+                row["provider_account_hash_sha256"],
+                f"{field}.provider_account_hash_sha256",
+            )
+            if profile == SCHWAB_POSITION_EXTERNAL_ACQUISITION_PROFILE
+            else None
+        ),
     )
-    _validate_schwab_request(request, field)
+    _validate_schwab_request(request, field, profile=profile)
     return request
 
 
-def _validate_schwab_request(request: ExternalAcquisitionRequest, field: str) -> None:
+def _validate_schwab_request(
+    request: ExternalAcquisitionRequest,
+    field: str,
+    *,
+    profile: str,
+) -> None:
     if request.method != "GET" or request.attempt_count != 1 or request.redirects_followed != 0:
         raise ExternalProviderAcquisitionError(f"{field} must be one redirect-free GET attempt")
     if request.status_code != 200:
         raise ExternalProviderAcquisitionError(f"{field} provider status must be exactly 200")
     query = tuple((item.name, item.value) for item in request.query)
-    if request.operation == "quote":
+    if profile == SCHWAB_POSITION_EXTERNAL_ACQUISITION_PROFILE:
+        if (
+            request.operation != "position"
+            or request.url != SCHWAB_POSITION_ACCOUNT_URL_TEMPLATE
+            or query != (("fields", "positions"),)
+            or request.provider_account_hash_sha256 is None
+        ):
+            raise ExternalProviderAcquisitionError(
+                f"{field} position endpoint scope is invalid"
+            )
+    elif request.operation == "quote":
         if request.url != SCHWAB_QUOTES_URL or len(query) != 2:
             raise ExternalProviderAcquisitionError(f"{field} quote endpoint scope is invalid")
         if query[0][0] != "symbols" or query[1] != ("fields", "quote,reference"):
@@ -380,7 +451,8 @@ def _parse_manifest(document: object) -> ExternalProviderAcquisitionManifest:
     _fields(root, _ROOT_FIELDS, "acquisition manifest")
     if root["schema"] != EXTERNAL_PROVIDER_ACQUISITION_SCHEMA:
         raise ExternalProviderAcquisitionError("unsupported external acquisition schema")
-    if root["profile"] != SCHWAB_EXTERNAL_ACQUISITION_PROFILE or root["provider"] != "schwab":
+    profile = root["profile"]
+    if profile not in _SUPPORTED_PROFILES or root["provider"] != "schwab":
         raise ExternalProviderAcquisitionError("unsupported external acquisition profile")
 
     owner_row = _mapping(root["source_owner"], "source_owner")
@@ -452,11 +524,21 @@ def _parse_manifest(document: object) -> ExternalProviderAcquisitionManifest:
     )
 
     request_rows = root["requests"]
-    if not isinstance(request_rows, list) or not 2 <= len(request_rows) <= 5:
+    if not isinstance(request_rows, list):
+        raise ExternalProviderAcquisitionError("requests must be an array")
+    if profile == SCHWAB_POSITION_EXTERNAL_ACQUISITION_PROFILE:
+        if len(request_rows) != 1:
+            raise ExternalProviderAcquisitionError(
+                "position profile requires exactly one bounded GET"
+            )
+    elif not 2 <= len(request_rows) <= 5:
         raise ExternalProviderAcquisitionError(
             "requests must contain two through five bounded GETs"
         )
-    requests = tuple(_parse_request(item, index) for index, item in enumerate(request_rows))
+    requests = tuple(
+        _parse_request(item, index, profile=profile)
+        for index, item in enumerate(request_rows)
+    )
     if len({item.request_uid for item in requests}) != len(requests):
         raise ExternalProviderAcquisitionError("request_uid values must be unique")
     if len({item.response_filename for item in requests}) != len(requests):
@@ -468,20 +550,34 @@ def _parse_manifest(document: object) -> ExternalProviderAcquisitionManifest:
         if isinstance(root["operation_allowlist"], list)
         else ()
     )
-    if operations != _OPERATIONS or set(item.operation for item in requests) != set(_OPERATIONS):
-        raise ExternalProviderAcquisitionError(
-            "operation allowlist must bind quote and market_hours"
+    if profile == SCHWAB_POSITION_EXTERNAL_ACQUISITION_PROFILE:
+        if operations != _POSITION_OPERATIONS or requests[0].operation != "position":
+            raise ExternalProviderAcquisitionError(
+                "operation allowlist must bind only position"
+            )
+    else:
+        if operations != _QUOTE_SCHEDULE_OPERATIONS or set(
+            item.operation for item in requests
+        ) != set(_QUOTE_SCHEDULE_OPERATIONS):
+            raise ExternalProviderAcquisitionError(
+                "operation allowlist must bind quote and market_hours"
+            )
+        quote_requests = tuple(item for item in requests if item.operation == "quote")
+        schedule_requests = tuple(
+            item for item in requests if item.operation == "market_hours"
         )
-    quote_requests = tuple(item for item in requests if item.operation == "quote")
-    schedule_requests = tuple(item for item in requests if item.operation == "market_hours")
-    if not 1 <= len(quote_requests) <= 2 or not 1 <= len(schedule_requests) <= 3:
-        raise ExternalProviderAcquisitionError(
-            "Schwab scope requires one or two quotes and one through three schedules"
-        )
-    if len({item.query[0].value.upper() for item in quote_requests}) != len(quote_requests):
-        raise ExternalProviderAcquisitionError("quote provider symbols must be unique")
-    if len({item.approved_market_date for item in schedule_requests}) != len(schedule_requests):
-        raise ExternalProviderAcquisitionError("market-hours dates must be unique")
+        if not 1 <= len(quote_requests) <= 2 or not 1 <= len(schedule_requests) <= 3:
+            raise ExternalProviderAcquisitionError(
+                "Schwab scope requires one or two quotes and one through three schedules"
+            )
+        if len({item.query[0].value.upper() for item in quote_requests}) != len(
+            quote_requests
+        ):
+            raise ExternalProviderAcquisitionError("quote provider symbols must be unique")
+        if len({item.approved_market_date for item in schedule_requests}) != len(
+            schedule_requests
+        ):
+            raise ExternalProviderAcquisitionError("market-hours dates must be unique")
 
     controls_row = _mapping(root["controls"], "controls")
     _fields(
@@ -540,13 +636,16 @@ def _parse_manifest(document: object) -> ExternalProviderAcquisitionManifest:
         raise ExternalProviderAcquisitionError(
             "provider GET and response counts must match requests"
         )
-    if any(
-        value != 0
-        for value in (
-            controls.account_endpoint_calls, controls.position_endpoint_calls,
-            controls.transaction_endpoint_calls, controls.order_endpoint_calls,
-            controls.database_writes, controls.request_body_count,
-        )
+    permitted_position_count = (
+        1 if profile == SCHWAB_POSITION_EXTERNAL_ACQUISITION_PROFILE else 0
+    )
+    if (
+        controls.account_endpoint_calls != 0
+        or controls.position_endpoint_calls != permitted_position_count
+        or controls.transaction_endpoint_calls != 0
+        or controls.order_endpoint_calls != 0
+        or controls.database_writes != 0
+        or controls.request_body_count != 0
     ):
         raise ExternalProviderAcquisitionError(
             "forbidden account, order, body, or database activity recorded"
@@ -559,7 +658,7 @@ def _parse_manifest(document: object) -> ExternalProviderAcquisitionManifest:
         raise ExternalProviderAcquisitionError("acquisition is incomplete or not manifest-last")
     return ExternalProviderAcquisitionManifest(
         schema=EXTERNAL_PROVIDER_ACQUISITION_SCHEMA,
-        profile=SCHWAB_EXTERNAL_ACQUISITION_PROFILE,
+        profile=profile,
         provider="schwab",
         connection_uid=_safe_id(root["connection_uid"], "connection_uid"),
         source_owner=owner,
@@ -630,6 +729,15 @@ def _manifest_document(manifest: ExternalProviderAcquisitionManifest) -> dict[st
                 "response_sha256": item.response_sha256,
                 "attempt_count": item.attempt_count,
                 "redirects_followed": item.redirects_followed,
+                **(
+                    {
+                        "provider_account_hash_sha256": (
+                            item.provider_account_hash_sha256
+                        )
+                    }
+                    if item.operation == "position"
+                    else {}
+                ),
             }
             for item in manifest.requests
         ],
@@ -871,6 +979,79 @@ def convert_external_schwab_quotes(
             )
         )
     return tuple(results)
+
+
+def convert_external_schwab_positions(
+    acquisition: VerifiedExternalProviderAcquisition,
+    *,
+    provider_account_hash: str,
+    provider_account_number: str,
+    source_account_id: str,
+    mappings: tuple[SchwabPositionMapping, ...],
+) -> ConvertedExternalPositionSnapshot:
+    """Convert one verified private position response without side effects.
+
+    The raw provider account hash and account number are supplied only in
+    memory by a later private operator.  The manifest carries only the hash
+    digest and safe endpoint template, so neither identifier enters canonical
+    acquisition metadata or ordinary audit output.
+    """
+
+    if (
+        acquisition.manifest.profile
+        != SCHWAB_POSITION_EXTERNAL_ACQUISITION_PROFILE
+    ):
+        raise ExternalProviderAcquisitionError(
+            "position conversion requires the position acquisition profile"
+        )
+    if not isinstance(provider_account_hash, str) or not _PROVIDER_ACCOUNT_HASH.fullmatch(
+        provider_account_hash
+    ):
+        raise ExternalProviderAcquisitionError("provider account hash is invalid")
+    source_account = _safe_id(source_account_id, "source_account_id")
+    (request,) = acquisition.manifest.requests
+    observed_account_hash_digest = sha256(provider_account_hash.encode("utf-8")).hexdigest()
+    if observed_account_hash_digest != request.provider_account_hash_sha256:
+        raise ExternalProviderAcquisitionError("provider account hash binding failed")
+    raw_body = acquisition.response_bytes[request.response_filename]
+    raw_path = (
+        f"data/raw/schwab/external/{acquisition.manifest.acquisition_run_uid}/"
+        f"{request.response_filename}"
+    )
+    try:
+        snapshot = broker_position_snapshot_from_bytes(
+            raw_body,
+            context=SchwabPositionCaptureContext(
+                request_url=(
+                    "https://api.schwabapi.com/trader/v1/accounts/"
+                    f"{provider_account_hash}?fields=positions"
+                ),
+                provider_account_hash_sha256=observed_account_hash_digest,
+                provider_account_number=provider_account_number,
+                connection_uid=acquisition.manifest.connection_uid,
+                source_account_id=source_account,
+                asof=request.approved_market_date,
+                retrieved_at=request.received_at_utc,
+                raw_path=raw_path,
+                raw_sha256=request.response_sha256,
+                method=request.method,
+                status_code=request.status_code,
+                content_type=request.content_type,
+                attempt_count=request.attempt_count,
+                redirect_count=request.redirects_followed,
+            ),
+            mappings=mappings,
+        )
+    except SchwabPositionAdapterError as exc:
+        raise ExternalProviderAcquisitionError(
+            "Schwab position evidence failed the OneJournal adapter contract"
+        ) from exc
+    return ConvertedExternalPositionSnapshot(
+        external_manifest_sha256=acquisition.manifest_sha256,
+        external_request_uid=request.request_uid,
+        raw_response_bytes=raw_body,
+        snapshot=snapshot,
+    )
 
 
 def build_external_schwab_schedule_evidence(

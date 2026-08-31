@@ -6,12 +6,16 @@
 intake and in-memory conversion boundary approved by ADR-0015 and ADR-0016. The
 first profile is `schwab-read-only-quotes-and-market-hours.v1` for explicitly
 bounded evidence produced inside the sole OneBot credential-owner boundary.
+ADR-0020 additively defines
+`schwab-read-only-single-account-positions.v1` for one separately approved,
+complete account-position response under the same sole-owner boundary.
 
-This implementation does not call Schwab, access or refresh credentials, read
-accounts, positions, transactions, or orders, write private evidence or
-DuckDB, schedule work, listen for requests, synchronize, or deploy. It accepts
-bytes supplied by an operator only after the separately approved acquisition
-and checksum-preserving transfer steps.
+This implementation does not call Schwab, access or refresh credentials,
+discover accounts, read transactions or orders, write private evidence or
+DuckDB, schedule work, listen for requests, synchronize, or deploy. The
+position profile only validates and converts already supplied position bytes;
+the actual acquisition and checksum-preserving transfer remain separately
+approved actions.
 
 ## Authoritative inputs and outputs
 
@@ -49,7 +53,7 @@ bounded activity counts, and final completeness.
 JSON is UTF-8, finite, newline-terminated, key-sorted, and compact. Unknown,
 missing, duplicate, or noncanonical fields fail closed. The manifest contains
 no provider response body, authorization header, token, secret, credential
-path, account identifier, normalized value, or derived financial result.
+path, raw account identifier, normalized value, or derived financial result.
 
 ## Schwab allowlist
 
@@ -70,6 +74,23 @@ Account, position, transaction, order, request-body, and database counts must
 be zero. An owner-side OAuth refresh count may be zero or one; one requires its
 own explicit approval ID and is evidence only, never a OneJournal action.
 
+The separate `schwab-read-only-single-account-positions.v1` profile permits
+exactly one response from one redirect-free GET represented by
+`https://api.schwabapi.com/trader/v1/accounts/{accountHash}` with exactly
+`fields=positions`. Its controls require one provider GET, one response, one
+position-endpoint call, and zero account-discovery, transaction, order,
+request-body, or database activity. The safe manifest stores only the endpoint
+template and SHA-256 digest of the opaque account hash. The raw account hash
+and provider account number remain owner-only conversion inputs and must never
+enter Git or ordinary audit output.
+
+Position conversion verifies that private account hash against the manifest,
+binds the exact response account number and checksum, and invokes only
+`schwab-position-json-v1` with an explicit complete provider-symbol mapping.
+It returns an in-memory `BrokerPositionSnapshot`; it does not create canonical
+lots, reconcile quantities, select a mark, calculate P&L, persist data, or
+establish PNL-03 acceptance.
+
 ## Credential-free intake operator
 
 `scripts/journal/materialize_external_provider_acquisition.py` is the guarded
@@ -87,6 +108,12 @@ unless every quote is eligible under the current policy. Append-only private
 materialization additionally requires `--materialize-private` and an already
 provisioned absolute `0700` OneJournal vault root. Existing capture identities
 are never overwritten.
+
+That filesystem operator remains quote/market-hours-specific and must reject
+the position profile. PNL-03G implements only the pure in-memory position
+verification/conversion boundary. A later owner-only position operator must be
+separately reviewed and approved before it may read a private account-binding
+or mapping input, transfer evidence, or materialize a capture.
 
 The operator has no provider, credential, refresh, account, order, migration,
 database, scheduling, listener, synchronization, or deployment capability. Its

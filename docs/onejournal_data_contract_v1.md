@@ -235,6 +235,14 @@ mappings. It preserves broker figures as reconciliation evidence and makes no
 provider call or database write. Synthetic compatibility tests pass; bounded
 real evidence is still required before operational or financial acceptance.
 
+PNL-03G adds the separate
+`schwab-read-only-single-account-positions.v1` external-acquisition profile.
+It permits only one privacy-preserving, checksum-bound position response and
+converts it in memory through `schwab-position-json-v1`. The raw account hash,
+provider account number, response bytes, and mappings remain private; only the
+account-hash digest is canonical acquisition metadata. Offline success does not
+establish provider compatibility, reconciliation, valuation, or acceptance.
+
 PNL-03 strategy and portfolio presentation must consume the pure aggregation
 boundary, not add financial values in a UI handler. A declared multi-leg
 strategy totals only if every exact included leg is valid in one valuation run
