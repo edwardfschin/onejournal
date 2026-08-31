@@ -37,15 +37,17 @@ The repository already has:
 - A documented read-only boundary between journal and future execution planes.
 - Reproducible locked dependencies, automated tests, and a local clean-CI
   workflow.
+- An accepted open-source production web foundation and visible vertical
+  delivery contract; implementation has not started.
 
 The repository does not yet have:
 
 - Broker-reconciled, lifecycle-event-allocated P&L across the complete
   portfolio scope.
-- Provider-backed market-data valuation with approved freshness and licensing
-  policy.
+- Continuous provider-backed acquisition and PNL-03-approved valuation marks
+  for real portfolio use.
 - Time-period reporting and export workflows that reconcile to canonical P&L.
-- Production web architecture, authentication, or deployment.
+- Production web implementation, authentication, hosted runtime, or deployment.
 - Hosted-CI execution evidence from the GitHub workflow.
 - Paper or live trading within the OneJournal architecture.
 
@@ -58,6 +60,12 @@ The repository does not yet have:
 - Only one material implementation item should be in progress at a time.
 - Every item requires acceptance criteria and validation before completion.
 - Financial and data-contract work precedes presentation work that depends on it.
+- Synthetic presentation work may precede a financial dependency only when it
+  is unmistakably demo-only and the corresponding real metric remains
+  unavailable until its financial gate passes.
+- No more than two consecutive trust/backend work packages should complete
+  without a browser-visible increment or an explicit reason why no safe visible
+  increment exists.
 - Generated artifacts are fixed through their producers, not patched directly.
 - Paper and live execution remain blocked until their entry gates are satisfied.
 
@@ -74,6 +82,49 @@ Queue status values are delivery-workflow states:
 `COMPLETE` does not by itself mean the capability is available in an intended
 runtime, production ready, operationally accepted, or financially accepted.
 Those states require their own explicit evidence and acceptance.
+
+## Phase 1 - Private Owner Release
+
+ADR-0018 defines the finite first releasable product. Phase 1 is a secure,
+private, single-owner Schwab website for supported US equities and listed equity
+options, with trustworthy journal, current portfolio, realized/unrealized P&L,
+bounded reporting/export, explicit quality states, and production recovery.
+
+Phase 1 progress: **2 of 12 work packages complete**.
+
+This tracker is the authoritative Phase 1 completion record. Update the row and
+evidence whenever a package changes state. A broader PNL, UXJ, WEB, or OPS item
+is not complete merely because its required Phase 1 slice is complete.
+
+| ID | Status | Phase 1 work package | Completion evidence |
+|---|---|---|---|
+| P1-01 | COMPLETE | Approve the finite Phase 1 owner, broker, account, instrument, financial, web, operational, and explicit non-goal scope. | Accepted ADR-0002 and ADR-0018 define the Private Owner Release and its exit gate. No implementation or operational acceptance is claimed. |
+| P1-02 | COMPLETE | Approve the open-source web foundation, portable topology, information architecture, user journeys, and vertical-delivery policy. | Accepted ADR-0017 and `docs/production_web_delivery_contract.md`; corresponds to WEB-W01 and WEB-W02. |
+| P1-03 | NEXT | Render and approve the distinctive OneJournal design system, responsive shell, and high-fidelity synthetic routes. | WEB-W03 and WEB-W04 pass desktop/mobile visual, state, keyboard, and owner-experience review with no private data. |
+| P1-04 | QUEUED | Implement the versioned FastAPI/frontend application boundary against safe fixtures. | WEB-W05 passes OpenAPI, decimal/time/quality, privacy-safe failure, build, and contract tests with no raw-file or direct-database browser access. |
+| P1-05 | BLOCKED | Implement and accept a repeatable read-only Schwab evidence/import route for required account, position, order, transaction, fill, cash, quote, and session families. | Original evidence and exact lineage feed OneJournal-owned normalization, reconciliation, replay-safe persistence, and audit. Manual or credential-free external acquisition is allowed; OneJournal token ownership, continuous polling, T15, and OneBot-derived state are not required or accepted. Provider access and evidence use remain separately approval-gated. |
+| P1-06 | QUEUED | Deliver the private local-owner trade and journal vertical slice through the new application boundary. | WEB-W06 proves search, review queues, lifecycle inspection, append-only entries/reviews, audit, replay, and privacy against approved local state without Streamlit or broker calls. |
+| P1-07 | BLOCKED | Approve and deliver canonical current positions, cost basis, marks, market value, and unrealized P&L. | PNL-03 and WEB-W07 pass cumulative position authority, broker reconciliation, mark selection, instrument/spread, exact as-of, and fail-closed financial acceptance. |
+| P1-08 | BLOCKED | Deliver the bounded Phase 1 current portfolio, account/symbol breakdown, date-filtered P&L history, CSV export, and complete quality states for displayed metrics. | WEB-W08 and the required bounded PNL-06 through PNL-08 slices reconcile every displayed/exported value and preserve processed/unavailable counts and reasons. Advanced returns, drawdown, exposure, portfolio-history series, and broader analytics remain later. |
+| P1-09 | BLOCKED | Implement and accept owner authentication, authorization, secure sessions, recovery, and audit. | WEB-W10 security decision and negative route/service/record/session/recovery tests pass with no critical finding. |
+| P1-10 | BLOCKED | Establish approved environments, private HTTPS hosting, production state, deployment/rollback, observability, encrypted backup, and tested restoration. | WEB-W12 and required OPS gates prove environment identity, migration/reconciliation where needed, release/rollback, monitoring, recovery, and privacy without provider or order-safety drift. |
+| P1-11 | BLOCKED | Complete production accessibility, responsive, browser/device, performance, visual-regression, and end-to-end validation. | WEB-W11 passes the approved quality budgets and supported-device matrix using privacy-safe evidence. |
+| P1-12 | BLOCKED | Execute and accept the end-to-end private production release. | WEB-W13 produces a dated acceptance pack identifying artifact, environment, owner scope, supported instruments, data routes, calculations, quality/freshness, limitations, recovery, and rollback; the owner explicitly accepts Phase 1 and Streamlit disposition is recorded. |
+
+### Phase 1 exit gate
+
+Phase 1 is complete only when:
+
+- `P1-01` through `P1-12` are all `COMPLETE`;
+- the deployed private website passes its financial, security, accessibility,
+  migration, recovery, and operational acceptance checks;
+- every displayed financial scope reconciles or is visibly unavailable; and
+- the project owner explicitly accepts the dated Private Owner Release scope.
+
+IBKR/Moomoo, multi-user/public features, continuous OneJournal-owned Schwab
+connectivity, attachments, advanced journal routines, advanced analytics,
+paper/live trading, and automated trading are explicitly post-Phase 1 and do
+not block this gate.
 
 ## Queue 0 - Make the foundation truthful and reproducible
 
@@ -277,15 +328,38 @@ the new website reaches parity.
 
 | ID | Status | Action | Completion evidence |
 |---|---|---|---|
-| WEB-01 | BLOCKED | Decide frontend, backend/API, database evolution, background-job, and hosting architecture. | ADR-0014 deliberately does not select the website stack or host. Completion requires a separate approved architecture decision with security, cost, and migration trade-offs. |
-| WEB-02 | BLOCKED | Define information architecture and priority user journeys. | Approved sitemap and flows for dashboard, portfolio, trades, journal, reports, and settings. |
-| WEB-03 | BLOCKED | Create the OneJournal visual design system. | Approved typography, colour, spacing, components, charts, states, and responsive rules. |
-| WEB-04 | BLOCKED | Design high-fidelity responsive screens and validate them before full implementation. | Desktop, tablet, and mobile designs cover loading, empty, stale, and error states. |
-| WEB-05 | BLOCKED | Build the application/API layer so the frontend never reads raw broker data or DuckDB files directly. | Versioned API contracts and authorization tests pass. |
+| WEB-01 | COMPLETE | Decide frontend, backend/API, database evolution, background-job, and portable hosting architecture. | Accepted ADR-0017 and `docs/production_web_delivery_contract.md` select React/TypeScript/Vite, Tailwind CSS, shadcn/ui with Base UI, Apache ECharts, FastAPI, local DuckDB, later migration-gated PostgreSQL, an isolated worker boundary, and a self-hostable vendor-neutral topology. No implementation, host, migration, deployment, or private runtime is claimed. |
+| WEB-02 | COMPLETE | Define information architecture and priority user journeys. | The production web delivery contract defines Today, Portfolio, Trades, Journal, Reports, Data & connections, and Settings plus current-state, trade-review, portfolio, import/reconciliation, and reporting journeys with authority and unavailable-state rules. Screen implementation and usability acceptance remain separate. |
+| WEB-03 | NEXT | Create the OneJournal visual design system and responsive application shell. | Approved rendered typography, colour, spacing, components, charts, state gallery, and responsive rules produce a distinctive local synthetic-data shell with no private data. |
+| WEB-04 | QUEUED | Design high-fidelity responsive screens and validate them before full implementation. | Desktop, tablet, and mobile designs cover loading, empty, demo, stale, partial, unavailable, and error states for all initial routes. |
+| WEB-05 | QUEUED | Build the application/API layer so the frontend never reads raw broker data, generated payloads, or database files directly. | Versioned OpenAPI contracts, generated frontend compatibility, decimal/time/quality-state behavior, privacy-safe failures, and boundary tests pass against safe fixtures. |
 | WEB-06 | BLOCKED | Implement authentication, authorization, secure sessions, account recovery, and audit logging. | Security review and negative authorization tests pass. |
-| WEB-07 | BLOCKED | Implement portfolio, P&L, trade, journal, report, and settings experiences. | Production UI reaches approved functional parity and visual QA. |
+| WEB-07 | BLOCKED | Implement local-owner journal, portfolio, P&L, trade, report, data-health, and settings vertical slices. | Each slice uses authoritative Python services through the API, reaches its financial dependency gate, and passes functional and visual acceptance. PNL-03 blocks authoritative position/valuation views but not the synthetic preview or accepted journal slice. |
 | WEB-08 | BLOCKED | Add accessibility, performance, browser, device, and end-to-end testing. | Agreed accessibility and performance targets pass in supported browsers. |
 | WEB-09 | BLOCKED | Migrate operator workflows away from Streamlit only after verified parity. | Production website is authoritative; Streamlit retirement/retention is documented. |
+
+### Production web work-breakdown tracker
+
+This is the authoritative status summary for the finite web route. Detailed
+deliverables, visible checkpoints, validation, model profiles, and approval
+boundaries are in `docs/production_web_delivery_contract.md`. Update this table
+whenever a package changes state.
+
+| WBS | Status | Outcome |
+|---|---|---|
+| WEB-W01 | COMPLETE | Open-source application architecture and portable service topology accepted. |
+| WEB-W02 | COMPLETE | Information architecture and priority user journeys accepted. |
+| WEB-W03 | NEXT | Render and approve the OneJournal design system and synthetic local application shell. |
+| WEB-W04 | QUEUED | Produce and validate high-fidelity responsive synthetic workflows. |
+| WEB-W05 | QUEUED | Establish the versioned FastAPI and frontend contract boundary. |
+| WEB-W06 | QUEUED | Deliver the existing journal capability through a local-owner web vertical slice. |
+| WEB-W07 | BLOCKED | Deliver authoritative current positions and unrealized P&L after PNL-03 acceptance. |
+| WEB-W08 | BLOCKED | Deliver the bounded Phase 1 account/symbol breakdown, date-filtered P&L history, CSV export, and complete quality states for displayed metrics. |
+| WEB-W09 | LATER | Deliver post-Phase 1 attachments and recurring review workflows after UXJ-05 and UXJ-06 privacy/dependency gates. |
+| WEB-W10 | BLOCKED | Implement and accept production authentication, authorization, sessions, recovery, and audit. |
+| WEB-W11 | BLOCKED | Complete accessibility, performance, browser/device, visual-regression, and end-to-end acceptance. |
+| WEB-W12 | BLOCKED | Establish environments, hosted state, deployment, observability, backup, recovery, and private staging acceptance. |
+| WEB-W13 | BLOCKED | Obtain private production acceptance and record the Streamlit transition. |
 
 ### Queue 5 exit gate
 
@@ -350,25 +424,39 @@ approval and successful completion of every prior safety gate.
 CON-02's seven owner decisions are resolved in accepted ADR-0003. CON-07 and
 JRN-08 remain separate future provenance/correction work. PNL-02 is complete
 only for the bounded local bridge scope; that completion does not authorize a
-live provider service, production migration, or PNL-03 valuation.
+live provider service, production migration, or PNL-03 valuation. ADR-0017 now
+permits a clearly labelled synthetic web preview before PNL-03 while preserving
+PNL-03 as the authority gate for real positions and unrealized P&L.
 
 The current actionable sequence is:
 
-1. `PNL-03` - first approve cumulative broker-position authority and
+1. `WEB-W03` and `WEB-W04` - render the design system, application shell, and
+   high-fidelity initial routes locally with synthetic data only. This is the
+   first browser-visible checkpoint and grants no financial or runtime
+   acceptance.
+2. `WEB-W05` - establish versioned FastAPI/frontend contracts against safe
+   deterministic fixtures; keep raw evidence and databases out of the browser.
+3. `P1-05` and `PNL-03` - establish the approved read-only Schwab evidence
+   route, then approve and implement cumulative broker-position authority and
    reconciliation, cost-basis scope, mark-selection and spread/instrument
    policy, and fail-closed unavailable behavior. Do not treat PNL-02 evidence
    as a valuation mark before this gate is accepted.
-2. `PNL-03` and `PNL-04` - replace per-import fill-derived position views
-   with canonical cumulative lot state, approved valuations, broker
-   reconciliation, and reproducible portfolio snapshots.
-3. `PNL-05` and `PNL-06` - complete metrics and prove every breakdown
-   reconciles to canonical P&L and position totals.
-4. `PNL-07` - deliver daily/monthly/custom period report and export contracts with reconciliation behavior.
-5. `PNL-08` - enforce per-metric source, reconciliation, completeness, and freshness states.
-6. `UXJ-05` - finalize attachment controls policy (storage, authorization, encryption, retention, backup, incident response).
-7. `UXJ-06` - enable non-financial journal process workflows after financial contracts are stable.
-8. `WEB-01` - decide and approve production architecture, security, and hosting stack.
-9. `WEB-02` to `WEB-09` - define IA/design system to production rollout in dependency order.
+4. `WEB-W06` - expose already accepted journal capabilities through the local
+   API/application boundary, then `WEB-W07` may expose real portfolio
+   valuation only after PNL-03 acceptance.
+5. `P1-08` and `WEB-W08` - deliver only the bounded Phase 1 account/symbol
+   breakdown, date-filtered P&L history, export, and complete quality states
+   for displayed metrics. Broader PNL-04 through PNL-08 work remains later
+   where its full gate is not met.
+6. `WEB-W10` and `WEB-W11` - complete authentication/security plus
+   accessibility, performance, browser/device, and end-to-end acceptance.
+7. `WEB-W12` - approve and prove environment, host, PostgreSQL migration,
+   deployment, monitoring, backup, restoration, rollback, and private staging.
+8. `WEB-W13` and `P1-12` - obtain explicit Phase 1 private production
+   acceptance and retire or retain Streamlit only after verified parity.
+9. After Phase 1, continue broader PNL-04 through PNL-08, UXJ-05/06 and
+   WEB-W09, additional brokers, continuous connector ownership, and other
+   explicitly deferred capabilities in approved dependency order.
 
 No implementation should bypass unresolved blockers above, especially P&L
 financial correctness, quote governance, attachment controls, and production

@@ -35,11 +35,12 @@ Not implemented or not yet trustworthy:
 
 - Broker-reconciled, lifecycle-event-allocated P&L across the complete
   portfolio scope (including the remaining complex lifecycle cases)
-- Provider-backed market-data valuation with approved freshness, licensing, and
-  reconciliation policy
+- Continuous provider-backed market-data acquisition and PNL-03-approved
+  valuation marks for real portfolio use
 - Daily, monthly, and custom-period reports and exports, plus an approved
   return-denominator and equity-curve policy
-- Production authentication, API, frontend, hosting, or deployment
+- Production authentication, API/frontend implementation, hosted runtime, or
+  deployment
 - IBKR ingestion beyond its reserved adapter/configuration boundary
 - Paper or live automated trading
 
@@ -58,6 +59,19 @@ The approved first production scope is:
 
 See [ADR-0002](docs/architecture/decisions/0002-initial-product-scope.md)
 for inclusions, exclusions, sequencing, and unresolved instrument boundaries.
+
+[ADR-0018](docs/architecture/decisions/0018-phase-1-private-owner-release.md)
+now defines the finite **Phase 1 — Private Owner Release**. It requires a
+secure private single-owner website with a repeatable read-only Schwab evidence
+route, supported trade/journal workflows, broker-reconciled current positions,
+accepted realized and unrealized P&L, bounded account/symbol reporting and
+export, explicit quality states, backup/restoration, and owner acceptance.
+
+IBKR/Moomoo, multi-user or public features, continuous OneJournal-owned Schwab
+connectivity, attachments, advanced journal routines, advanced analytics, and
+paper/live/automated trading are post-Phase 1 and do not block that release.
+The authoritative 12-item completion tracker is in the
+[product roadmap](docs/onejournal_product_roadmap.md#phase-1---private-owner-release).
 
 ## Safety boundary
 
@@ -222,10 +236,21 @@ Financial contracts—currency, time, identifiers, lifecycle semantics, cost
 basis, realized P&L, unrealized P&L, fees, and reconciliation—must be approved
 before those values are implemented or presented as trustworthy.
 
-The production web stack, authentication, authorization, database evolution,
-background jobs, market data, hosting, and execution architecture remain
-explicit decisions. Streamlit is a workflow-validation surface, not an
-assumption about the final frontend.
+ADR-0017 now selects the production application foundation: React and
+TypeScript built with Vite, Tailwind CSS, shadcn/ui with Base UI, Apache
+ECharts, and a FastAPI authority boundary. DuckDB remains the current local
+journal and analytical store; PostgreSQL is the migration-gated target for a
+future hosted multi-process runtime. Long-running work remains outside
+interactive requests, and the topology must stay self-hostable and
+vendor-neutral. See the
+[Production Web Delivery Contract](docs/production_web_delivery_contract.md)
+for the visible WBS, design direction, data modes, security gates, and
+acceptance boundaries.
+
+The selected foundation is policy only: no frontend workspace, API,
+authentication, hosted database, hosting target, deployment, or private web
+runtime exists yet. Streamlit remains an internal workflow-validation surface
+until the production website reaches verified parity.
 
 ## Working standards
 

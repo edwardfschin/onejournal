@@ -18,8 +18,9 @@ storage, public journal output, broker access, or trading.
   search, and local operator workflows.
 - Persisted state: journal entry/review history, saved filter definitions,
   process goals, habits, and explicit-period review events.
-- User-facing surfaces: internal Streamlit only. The production website and
-  authenticated API remain undecided.
+- User-facing surfaces: internal Streamlit only. ADR-0017 selects the
+  production web/API foundation, but no production frontend or API is
+  implemented and the authentication/security design remains pending.
 - Validation: migration, domain, queue, search, replay, payload privacy,
   routine, and full regression tests on temporary databases.
 - Rollback: restore a verified pre-migration database backup or use a reviewed
