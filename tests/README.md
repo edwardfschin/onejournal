@@ -91,6 +91,9 @@ foundation simple and dependency-free.
 - Journal product: deterministic review queues, private structured entry
   history, search/filter/saved-view behavior, attachment fail-closed policy,
   process goals, habits, and explicit-period recurring review transitions.
+- Web API contract: loopback-only `onejournal.web-fixture.v1` OpenAPI fixture,
+  strict decimal-string and UTC-instant fields, explicit demo/unavailable
+  quality states, and no database, raw-evidence, credential, or provider path.
 
 Tests must not use the production journal database, private broker data, broker
 APIs, or order APIs.

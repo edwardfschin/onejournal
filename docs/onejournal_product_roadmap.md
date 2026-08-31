@@ -90,7 +90,7 @@ private, single-owner Schwab website for supported US equities and listed equity
 options, with trustworthy journal, current portfolio, realized/unrealized P&L,
 bounded reporting/export, explicit quality states, and production recovery.
 
-Phase 1 progress: **3 of 12 work packages complete**.
+Phase 1 progress: **4 of 12 work packages complete**.
 
 This tracker is the authoritative Phase 1 completion record. Update the row and
 evidence whenever a package changes state. A broader PNL, UXJ, WEB, or OPS item
@@ -101,7 +101,7 @@ is not complete merely because its required Phase 1 slice is complete.
 | P1-01 | COMPLETE | Approve the finite Phase 1 owner, broker, account, instrument, financial, web, operational, and explicit non-goal scope. | Accepted ADR-0002 and ADR-0018 define the Private Owner Release and its exit gate. No implementation or operational acceptance is claimed. |
 | P1-02 | COMPLETE | Approve the open-source web foundation, portable topology, information architecture, user journeys, and vertical-delivery policy. | Accepted ADR-0017 and `docs/production_web_delivery_contract.md`; corresponds to WEB-W01 and WEB-W02. |
 | P1-03 | COMPLETE | Render and approve the distinctive OneJournal design system, responsive shell, and high-fidelity synthetic routes. | `web/` synthetic preview implemented across Today, Portfolio, Trades, Journal, Reports, Data, and Settings. Build passes; all routes return HTTP 200; desktop/mobile viewport checks show no horizontal overflow; demo/unavailable states and focus-visible controls are present; owner approved the consolidated visual direction. No private data or provider calls. |
-| P1-04 | QUEUED | Implement the versioned FastAPI/frontend application boundary against safe fixtures. | WEB-W05 passes OpenAPI, decimal/time/quality, privacy-safe failure, build, and contract tests with no raw-file or direct-database browser access. |
+| P1-04 | COMPLETE | Implement the versioned FastAPI/frontend application boundary against safe fixtures. | `onejournal.api` exposes the deterministic `onejournal.web-fixture.v1` contract at `/api/v1/preview`; OpenAPI, decimal-string, UTC-instant, quality/unavailable, privacy, focused API, full clean-CI, frontend build, and loopback HTTP checks pass. No DuckDB, raw file, provider, credential, or private-data access. |
 | P1-05 | BLOCKED | Implement and accept a repeatable read-only Schwab evidence/import route for required account, position, order, transaction, fill, cash, quote, and session families. | Original evidence and exact lineage feed OneJournal-owned normalization, reconciliation, replay-safe persistence, and audit. Manual or credential-free external acquisition is allowed; OneJournal token ownership, continuous polling, T15, and OneBot-derived state are not required or accepted. Provider access and evidence use remain separately approval-gated. |
 | P1-06 | QUEUED | Deliver the private local-owner trade and journal vertical slice through the new application boundary. | WEB-W06 proves search, review queues, lifecycle inspection, append-only entries/reviews, audit, replay, and privacy against approved local state without Streamlit or broker calls. |
 | P1-07 | BLOCKED | Approve and deliver canonical current positions, cost basis, marks, market value, and unrealized P&L. | PNL-03 and WEB-W07 pass cumulative position authority, broker reconciliation, mark selection, instrument/spread, exact as-of, and fail-closed financial acceptance. |
@@ -330,9 +330,9 @@ the new website reaches parity.
 |---|---|---|---|
 | WEB-01 | COMPLETE | Decide frontend, backend/API, database evolution, background-job, and portable hosting architecture. | Accepted ADR-0017 and `docs/production_web_delivery_contract.md` select React/TypeScript/Vite, Tailwind CSS, shadcn/ui with Base UI, Apache ECharts, FastAPI, local DuckDB, later migration-gated PostgreSQL, an isolated worker boundary, and a self-hostable vendor-neutral topology. No implementation, host, migration, deployment, or private runtime is claimed. |
 | WEB-02 | COMPLETE | Define information architecture and priority user journeys. | The production web delivery contract defines Today, Portfolio, Trades, Journal, Reports, Data & connections, and Settings plus current-state, trade-review, portfolio, import/reconciliation, and reporting journeys with authority and unavailable-state rules. Screen implementation and usability acceptance remain separate. |
-| WEB-03 | NEXT | Create the OneJournal visual design system and responsive application shell. | Approved rendered typography, colour, spacing, components, charts, state gallery, and responsive rules produce a distinctive local synthetic-data shell with no private data. |
-| WEB-04 | QUEUED | Design high-fidelity responsive screens and validate them before full implementation. | Desktop, tablet, and mobile designs cover loading, empty, demo, stale, partial, unavailable, and error states for all initial routes. |
-| WEB-05 | QUEUED | Build the application/API layer so the frontend never reads raw broker data, generated payloads, or database files directly. | Versioned OpenAPI contracts, generated frontend compatibility, decimal/time/quality-state behavior, privacy-safe failures, and boundary tests pass against safe fixtures. |
+| WEB-03 | COMPLETE | Create the OneJournal visual design system and responsive application shell. | Approved rendered typography, colour, spacing, components, charts, state gallery, and responsive rules produce a distinctive local synthetic-data shell with no private data. |
+| WEB-04 | COMPLETE | Design high-fidelity responsive screens and validate them before full implementation. | Desktop, tablet, and mobile designs cover loading, empty, demo, stale, partial, unavailable, and error states for all initial routes. |
+| WEB-05 | COMPLETE | Build the application/API layer so the frontend never reads raw broker data, generated payloads, or database files directly. | Versioned OpenAPI fixture contract and typed frontend compatibility seam pass decimal/time/quality, privacy-safe failure, focused API, full clean-CI, frontend build, and loopback HTTP tests. |
 | WEB-06 | BLOCKED | Implement authentication, authorization, secure sessions, account recovery, and audit logging. | Security review and negative authorization tests pass. |
 | WEB-07 | BLOCKED | Implement local-owner journal, portfolio, P&L, trade, report, data-health, and settings vertical slices. | Each slice uses authoritative Python services through the API, reaches its financial dependency gate, and passes functional and visual acceptance. PNL-03 blocks authoritative position/valuation views but not the synthetic preview or accepted journal slice. |
 | WEB-08 | BLOCKED | Add accessibility, performance, browser, device, and end-to-end testing. | Agreed accessibility and performance targets pass in supported browsers. |
@@ -351,7 +351,7 @@ whenever a package changes state.
 | WEB-W02 | COMPLETE | Information architecture and priority user journeys accepted. |
 | WEB-W03 | COMPLETE | Render and approve the OneJournal design system and synthetic local application shell. |
 | WEB-W04 | COMPLETE | Produce and validate high-fidelity responsive synthetic workflows. |
-| WEB-W05 | QUEUED | Establish the versioned FastAPI and frontend contract boundary. |
+| WEB-W05 | COMPLETE | Establish the versioned FastAPI and frontend contract boundary. |
 | WEB-W06 | QUEUED | Deliver the existing journal capability through a local-owner web vertical slice. |
 | WEB-W07 | BLOCKED | Deliver authoritative current positions and unrealized P&L after PNL-03 acceptance. |
 | WEB-W08 | BLOCKED | Deliver the bounded Phase 1 account/symbol breakdown, date-filtered P&L history, CSV export, and complete quality states for displayed metrics. |

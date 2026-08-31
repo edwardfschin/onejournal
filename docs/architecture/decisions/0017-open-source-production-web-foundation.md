@@ -18,9 +18,9 @@
 OneJournal has a validated Python domain and data foundation plus an internal
 Streamlit prototype. The prototype is useful for workflow and contract
 validation, but it is not visually, structurally, or operationally suitable as
-the production website. The repository has no JavaScript application, public
-API, production authentication, hosted operational database, or approved
-production deployment.
+the production website. At the time of this decision, the repository had no
+JavaScript application, public API, production authentication, hosted
+operational database, or approved production deployment.
 
 The previous roadmap placed all PNL work before web delivery. That sequencing
 protected financial correctness, but it also meant that long-running backend
@@ -227,10 +227,9 @@ Policy validation requires:
 - this ADR appears exactly once in the decision register;
 - the delivery contract records architecture, experience, data-state,
   security, migration, validation, and visible WBS boundaries;
-- the roadmap marks WEB-01 and WEB-02 complete only as approved decisions and
-  identifies WEB-03 as the next implementation item;
-- the maturity map reports the website as defined, not implemented or
-  operationally accepted; and
+- the roadmap records the current web package state and its bounded evidence;
+- the maturity map records only the maturity proven by the current local
+  synthetic-fixture evidence, separately from operational acceptance; and
 - repository documentation and clean CI pass with only the focused files
   changed.
 
