@@ -90,7 +90,7 @@ private, single-owner Schwab website for supported US equities and listed equity
 options, with trustworthy journal, current portfolio, realized/unrealized P&L,
 bounded reporting/export, explicit quality states, and production recovery.
 
-Phase 1 progress: **2 of 12 work packages complete**.
+Phase 1 progress: **3 of 12 work packages complete**.
 
 This tracker is the authoritative Phase 1 completion record. Update the row and
 evidence whenever a package changes state. A broader PNL, UXJ, WEB, or OPS item
@@ -100,7 +100,7 @@ is not complete merely because its required Phase 1 slice is complete.
 |---|---|---|---|
 | P1-01 | COMPLETE | Approve the finite Phase 1 owner, broker, account, instrument, financial, web, operational, and explicit non-goal scope. | Accepted ADR-0002 and ADR-0018 define the Private Owner Release and its exit gate. No implementation or operational acceptance is claimed. |
 | P1-02 | COMPLETE | Approve the open-source web foundation, portable topology, information architecture, user journeys, and vertical-delivery policy. | Accepted ADR-0017 and `docs/production_web_delivery_contract.md`; corresponds to WEB-W01 and WEB-W02. |
-| P1-03 | NEXT | Render and approve the distinctive OneJournal design system, responsive shell, and high-fidelity synthetic routes. | WEB-W03 and WEB-W04 pass desktop/mobile visual, state, keyboard, and owner-experience review with no private data. |
+| P1-03 | COMPLETE | Render and approve the distinctive OneJournal design system, responsive shell, and high-fidelity synthetic routes. | `web/` synthetic preview implemented across Today, Portfolio, Trades, Journal, Reports, Data, and Settings. Build passes; all routes return HTTP 200; desktop/mobile viewport checks show no horizontal overflow; demo/unavailable states and focus-visible controls are present; owner approved the consolidated visual direction. No private data or provider calls. |
 | P1-04 | QUEUED | Implement the versioned FastAPI/frontend application boundary against safe fixtures. | WEB-W05 passes OpenAPI, decimal/time/quality, privacy-safe failure, build, and contract tests with no raw-file or direct-database browser access. |
 | P1-05 | BLOCKED | Implement and accept a repeatable read-only Schwab evidence/import route for required account, position, order, transaction, fill, cash, quote, and session families. | Original evidence and exact lineage feed OneJournal-owned normalization, reconciliation, replay-safe persistence, and audit. Manual or credential-free external acquisition is allowed; OneJournal token ownership, continuous polling, T15, and OneBot-derived state are not required or accepted. Provider access and evidence use remain separately approval-gated. |
 | P1-06 | QUEUED | Deliver the private local-owner trade and journal vertical slice through the new application boundary. | WEB-W06 proves search, review queues, lifecycle inspection, append-only entries/reviews, audit, replay, and privacy against approved local state without Streamlit or broker calls. |
@@ -349,8 +349,8 @@ whenever a package changes state.
 |---|---|---|
 | WEB-W01 | COMPLETE | Open-source application architecture and portable service topology accepted. |
 | WEB-W02 | COMPLETE | Information architecture and priority user journeys accepted. |
-| WEB-W03 | NEXT | Render and approve the OneJournal design system and synthetic local application shell. |
-| WEB-W04 | QUEUED | Produce and validate high-fidelity responsive synthetic workflows. |
+| WEB-W03 | COMPLETE | Render and approve the OneJournal design system and synthetic local application shell. |
+| WEB-W04 | COMPLETE | Produce and validate high-fidelity responsive synthetic workflows. |
 | WEB-W05 | QUEUED | Establish the versioned FastAPI and frontend contract boundary. |
 | WEB-W06 | QUEUED | Deliver the existing journal capability through a local-owner web vertical slice. |
 | WEB-W07 | BLOCKED | Deliver authoritative current positions and unrealized P&L after PNL-03 acceptance. |
