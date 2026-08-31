@@ -6,6 +6,7 @@ from hashlib import sha256
 import json
 from pathlib import Path
 import sys
+import tempfile
 import types
 import unittest
 
@@ -25,12 +26,15 @@ from onejournal.brokers.schwab.market_hours_resolver import (
     SCHWAB_EQUITY_SCOPE,
     SchwabMarketHoursResolver,
 )
+from onejournal.journal.migrations import apply_schema_migrations
 from onejournal.market_data import (
     QuoteFreshnessPolicy,
     QuoteInstrumentRequest,
     assess_quote_freshness,
     resolve_provider_session_authority,
 )
+from onejournal.market_data.runtime import persist_durable_quote_capture
+from onejournal.provider_connectors import LocalPrivateRawCaptureStore
 from onejournal.provider_connectors.external_acquisition import (
     EXTERNAL_PROVIDER_ACQUISITION_SCHEMA,
     SCHWAB_EXTERNAL_ACQUISITION_PROFILE,
@@ -65,6 +69,7 @@ from types import MappingProxyType
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
+MIGRATIONS_DIR = PROJECT_ROOT / "scripts" / "journal" / "migrations"
 CONNECTION_UID = "connection:schwab:external-owner"
 RUN_UID = "PNL-02-T16-EXTERNAL-ACQUISITION-0001"
 APPROVAL_ID = "PNL-02-T16-EXTERNAL-APPROVAL-0001"
@@ -455,6 +460,98 @@ class ExternalProviderAcquisitionTests(unittest.TestCase):
         self.assertEqual(assessment.status, "live_fresh")
         self.assertTrue(assessment.valuation_allowed)
 
+    @unittest.skipUnless(hasattr(duckdb, "connect"), "DuckDB is required")
+    def test_t16_chain_materializes_persists_reads_back_and_replays(self) -> None:
+        acquisition = self.load()
+        mapping = ExternalSchwabQuoteMapping(
+            request_uid=QUOTE_REQUEST_UID,
+            instrument=QuoteInstrumentRequest(
+                instrument_key="stock|AAPL",
+                provider_instrument_id="AAPL",
+                asset_class="stock",
+                currency="USD",
+            ),
+        )
+        converted = convert_external_schwab_quotes(
+            acquisition,
+            mappings=(mapping,),
+            evaluated_at_utc=self.evaluated_at,
+            freshness_policy=self.freshness_policy,
+        )[0]
+        evidence = build_external_schwab_schedule_evidence(
+            acquisition,
+            normal_reference_date=MARKET_DATE,
+            valid_until_utc=self.evaluated_at + timedelta(days=1),
+        )
+        authority = resolve_provider_session_authority(
+            SchwabMarketHoursResolver(
+                connection_uid=CONNECTION_UID,
+                scope=SCHWAB_EQUITY_SCOPE,
+                evidence=evidence,
+            ),
+            quote=converted.capture.quotes[0],
+            evaluated_at=self.evaluated_at,
+        )
+        assessment = assess_quote_freshness(
+            converted.capture.quotes[0],
+            evaluated_at=self.evaluated_at,
+            session_authority=authority,
+            policy=self.freshness_policy,
+        )
+
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            root = Path(temporary_directory)
+            private_root = root / "private"
+            private_root.mkdir(mode=0o700)
+            private_root.chmod(0o700)
+            store = LocalPrivateRawCaptureStore(private_root=private_root)
+            store.commit(
+                source=converted.source,
+                raw_response_bytes=converted.raw_response_bytes,
+                manifest=converted.private_manifest,
+                capture=converted.capture,
+            )
+            db_path = root / "journal.duckdb"
+            apply_schema_migrations(db_path, migrations_dir=MIGRATIONS_DIR)
+            common = {
+                "db_path": db_path,
+                "private_capture_store": store,
+                "source": converted.source,
+                "policy": self.freshness_policy,
+                "expected_provider": "schwab",
+                "expected_connection_uid": CONNECTION_UID,
+                "expected_quote_run_uid": converted.capture.quote_run_uid,
+                "expected_asof": MARKET_DATE,
+            }
+            first = persist_durable_quote_capture(**common)
+            replay = persist_durable_quote_capture(**common)
+
+            self.assertEqual(assessment.status, "live_fresh")
+            self.assertTrue(assessment.valuation_allowed)
+            self.assertFalse(first.was_replay)
+            self.assertTrue(replay.was_replay)
+            self.assertEqual(first.persisted_quote_count, 1)
+            self.assertEqual(first.read_back_quote_count, 1)
+            self.assertEqual(first.final_status, "persisted_and_read_back")
+            self.assertEqual(first.source_raw_sha256, converted.source.raw_sha256)
+            self.assertEqual(
+                first.capture_fingerprint,
+                replay.capture_fingerprint,
+            )
+            with duckdb.connect(str(db_path), read_only=True) as connection:
+                self.assertEqual(
+                    connection.execute(
+                        "SELECT COUNT(*) FROM market_quote_ingestion_runs"
+                    ).fetchone()[0],
+                    1,
+                )
+                self.assertEqual(
+                    connection.execute(
+                        "SELECT COUNT(*) FROM normalized_market_quotes"
+                    ).fetchone()[0],
+                    1,
+                )
+
     def test_noncanonical_manifest_and_tampered_response_fail_closed(self) -> None:
         canonical = external_provider_acquisition_manifest_bytes(self.manifest)
         noncanonical = json.dumps(json.loads(canonical)).encode("utf-8")
@@ -481,6 +578,32 @@ class ExternalProviderAcquisitionTests(unittest.TestCase):
                 }
             )
 
+        credential_bearing = json.loads(canonical)
+        credential_bearing["access_token"] = "must-never-cross-the-boundary"
+        credential_bearing_bytes = (
+            json.dumps(
+                credential_bearing,
+                sort_keys=True,
+                separators=(",", ":"),
+            )
+            + "\n"
+        ).encode("utf-8")
+        with self.assertRaisesRegex(ExternalProviderAcquisitionError, "fields"):
+            load_external_provider_acquisition(
+                credential_bearing_bytes,
+                response_bytes={
+                    "quote-aapl.json": self.quote,
+                    "market-hours-2026-08-31.json": self.schedule,
+                },
+                acknowledgement_bytes=self.acknowledgement_bytes,
+                usage_policy=self.usage_policy,
+                evaluated_at_utc=self.evaluated_at,
+                expected_acquisition_run_uid=RUN_UID,
+                expected_acquisition_approval_id=APPROVAL_ID,
+                expected_owner_uid=OWNER_UID,
+                expected_owner_epoch_uid=OWNER_EPOCH_UID,
+            )
+
     def test_owner_acknowledgement_scope_and_completeness_fail_closed(self) -> None:
         mutations = (
             replace(
@@ -505,6 +628,7 @@ class ExternalProviderAcquisitionTests(unittest.TestCase):
         mutations = (
             replace(quote_request, url="https://example.invalid"),
             replace(quote_request, method="POST"),
+            replace(quote_request, status_code=403),
             replace(quote_request, query=(ExternalAcquisitionQueryParameter("symbols", "AAPL"),)),
             replace(
                 schedule_request,
@@ -527,11 +651,16 @@ class ExternalProviderAcquisitionTests(unittest.TestCase):
                     replace(self.manifest, requests=requests)
                 )
 
-        forbidden_controls = replace(self.manifest.controls, order_endpoint_calls=1)
-        with self.assertRaises(ExternalProviderAcquisitionError):
-            external_provider_acquisition_manifest_bytes(
-                replace(self.manifest, controls=forbidden_controls)
-            )
+        for forbidden_controls in (
+            replace(self.manifest.controls, account_endpoint_calls=1),
+            replace(self.manifest.controls, order_endpoint_calls=1),
+        ):
+            with self.subTest(controls=forbidden_controls), self.assertRaises(
+                ExternalProviderAcquisitionError
+            ):
+                external_provider_acquisition_manifest_bytes(
+                    replace(self.manifest, controls=forbidden_controls)
+                )
         silent_refresh = replace(self.manifest.controls, oauth_refresh_count=1)
         with self.assertRaises(ExternalProviderAcquisitionError):
             external_provider_acquisition_manifest_bytes(
@@ -557,6 +686,112 @@ class ExternalProviderAcquisitionTests(unittest.TestCase):
                 normal_reference_date=MARKET_DATE,
                 valid_until_utc=self.started_at,
             )
+
+    def test_t16_temporal_and_freshness_fail_closed_matrix(self) -> None:
+        mapping = ExternalSchwabQuoteMapping(
+            request_uid=QUOTE_REQUEST_UID,
+            instrument=QuoteInstrumentRequest(
+                instrument_key="stock|AAPL",
+                provider_instrument_id="AAPL",
+                asset_class="stock",
+                currency="USD",
+            ),
+        )
+
+        def converted_for(payload: dict[str, object]):
+            body = (
+                json.dumps(payload, sort_keys=True, separators=(",", ":")) + "\n"
+            ).encode("utf-8")
+            quote_request, schedule_request = self.manifest.requests
+            manifest = replace(
+                self.manifest,
+                requests=(
+                    replace(
+                        quote_request,
+                        response_byte_count=len(body),
+                        response_sha256=sha256(body).hexdigest(),
+                    ),
+                    schedule_request,
+                ),
+            )
+            acquisition = self.load(
+                manifest=manifest,
+                responses={
+                    "quote-aapl.json": body,
+                    "market-hours-2026-08-31.json": self.schedule,
+                },
+            )
+            converted = convert_external_schwab_quotes(
+                acquisition,
+                mappings=(mapping,),
+                evaluated_at_utc=self.evaluated_at,
+                freshness_policy=self.freshness_policy,
+            )[0]
+            evidence = build_external_schwab_schedule_evidence(
+                acquisition,
+                normal_reference_date=MARKET_DATE,
+                valid_until_utc=self.evaluated_at + timedelta(days=1),
+            )
+            authority = resolve_provider_session_authority(
+                SchwabMarketHoursResolver(
+                    connection_uid=CONNECTION_UID,
+                    scope=SCHWAB_EQUITY_SCOPE,
+                    evidence=evidence,
+                ),
+                quote=converted.capture.quotes[0],
+                evaluated_at=self.evaluated_at,
+            )
+            return converted.capture.quotes[0], authority
+
+        stale = json.loads(self.quote)
+        stale["AAPL"]["quote"]["quoteTime"] = int(
+            datetime(2026, 8, 31, 13, 55, tzinfo=UTC).timestamp() * 1000
+        )
+        stale_quote, stale_authority = converted_for(stale)
+        stale_assessment = assess_quote_freshness(
+            stale_quote,
+            evaluated_at=self.evaluated_at,
+            session_authority=stale_authority,
+            policy=self.freshness_policy,
+        )
+        self.assertEqual(stale_assessment.status, "live_stale")
+        self.assertFalse(stale_assessment.valuation_allowed)
+
+        delayed = json.loads(self.quote)
+        delayed["AAPL"]["realtime"] = False
+        delayed_quote, delayed_authority = converted_for(delayed)
+        delayed_assessment = assess_quote_freshness(
+            delayed_quote,
+            evaluated_at=self.evaluated_at,
+            session_authority=delayed_authority,
+            policy=self.freshness_policy,
+        )
+        self.assertEqual(delayed_assessment.status, "delayed")
+        self.assertFalse(delayed_assessment.valuation_allowed)
+
+        unknown_session = json.loads(self.quote)
+        del unknown_session["AAPL"]["quote"]["marketSession"]
+        unknown_quote, _authority = converted_for(unknown_session)
+        unknown_assessment = assess_quote_freshness(
+            unknown_quote,
+            evaluated_at=self.evaluated_at,
+            policy=self.freshness_policy,
+        )
+        self.assertEqual(unknown_assessment.status, "unavailable")
+        self.assertFalse(unknown_assessment.valuation_allowed)
+
+        crossed = json.loads(self.quote)
+        crossed["AAPL"]["quote"]["bidPrice"] = 201
+        crossed["AAPL"]["quote"]["askPrice"] = 200
+        with self.assertRaisesRegex(ValueError, "crossed quote"):
+            converted_for(crossed)
+
+        future = json.loads(self.quote)
+        future["AAPL"]["quote"]["quoteTime"] = int(
+            datetime(2026, 8, 31, 14, 1, tzinfo=UTC).timestamp() * 1000
+        )
+        with self.assertRaisesRegex(ValueError, "future tolerance"):
+            converted_for(future)
 
     def test_module_has_no_provider_credential_database_or_write_capability(self) -> None:
         source = (
