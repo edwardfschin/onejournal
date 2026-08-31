@@ -235,6 +235,14 @@ mappings. It preserves broker figures as reconciliation evidence and makes no
 provider call or database write. Synthetic compatibility tests pass; bounded
 real evidence is still required before operational or financial acceptance.
 
+PNL-03 strategy and portfolio presentation must consume the pure aggregation
+boundary, not add financial values in a UI handler. A declared multi-leg
+strategy totals only if every exact included leg is valid in one valuation run
+and one currency. The same rule applies to a same-currency account subtotal.
+Missing, unavailable, unreconciled, mixed-currency, or empty scopes preserve
+counts and reason codes while returning no financial total; no partial subtotal
+may be labelled as a strategy or portfolio total.
+
 ## Dashboard Payload v1
 
 Future dashboard payload: output/dashboard/latest/dashboard_payload.json
