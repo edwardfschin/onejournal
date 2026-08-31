@@ -71,6 +71,13 @@ T13 validation uses only synthetic private bundles and temporary databases. No
 actual journal database has been inspected, backed up, migrated, or written by
 this implementation.
 
+PNL-02-T16 later exercised the same guarded boundary with approved real Schwab
+bridge evidence in a new isolated local acceptance DuckDB, not the production
+journal. Both first writes, exact scoped read-backs, and identical replays
+passed and were owner-accepted on 2026-08-31 for the bounded local bridge scope.
+That evidence does not authorize migration or writing of the production
+journal.
+
 Before migrations 0011/0012 may be applied to an actual journal database, obtain
 separate project-owner approval for a bounded migration rehearsal. That work
 must identify the exact database and every writer, record its current version,

@@ -102,11 +102,14 @@ private capture store only under its explicit materialization flag. A real
 private write remains separately approved and preserves `0700`/`0600`,
 no-overwrite, exact response bytes, capture artifact, and manifest-last rules.
 
-Durable ingestion remains a later action through the existing guarded
+Durable ingestion remains a separate action through the existing guarded
 operator. It requires an approved prepared local DuckDB, explicit persistence,
-exact read-back, and acceptance evidence. Conversion success alone does not
-establish freshness, session authority, valuation eligibility, operational
-acceptance, or PNL-02 completion.
+exact read-back, and acceptance evidence. T16 exercised that separate action in
+an isolated local DuckDB and the project owner accepted the resulting bounded
+bridge scope on 2026-08-31. Conversion success alone still does not establish
+freshness, session authority, valuation eligibility, operational acceptance,
+or PNL-02 completion, and the T16 result does not authorize a production
+journal migration or PNL-03 valuation mark.
 
 ## Validation and rollback
 

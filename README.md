@@ -100,28 +100,33 @@ Current source boundaries:
 | Manual CSV | Normalized-fill parsing, validation, import, and tests |
 | Schwab | Credential-free orders/transactions JSON adapters, reconciliation, and guarded import of externally acquired raw evidence |
 | IBKR | Reserved raw directory, configuration, and package boundary; adapter not implemented |
-| Market data | Schwab first, IBKR next, and Moomoo later are approved through a provider-neutral local quote contract; all live connections remain disabled and unaccepted |
+| Market data | Provider-neutral Schwab quote/session/freshness ingestion is accepted only for the bounded owner-operated local bridge scope; continuous/live connections remain disabled, with IBKR next and Moomoo later |
 
 All normalized activity preserves `source_broker` and `source_account_id` so
 future journal and portfolio logic can distinguish brokers and accounts without
 embedding broker formats in the domain or UI.
 
-During the current PNL-02 evidence-validation step, OneBot/VPS is the temporary
-single owner of the available Schwab application and refreshable token. The
-current OneJournal runtime has no active Schwab credential or provider-call
-operator and consumes only separately approved private evidence bundles.
+For the bounded PNL-02 bridge mode accepted on 2026-08-31, OneBot/VPS remains
+the temporary single owner of the available Schwab application and refreshable
+token. The current OneJournal runtime has no active Schwab credential or
+provider-call operator and consumes only separately approved private evidence
+bundles.
 
-ADR-0016 accepts that credential-free bridge as a bounded local route to PNL-02
-completion after its external-acquisition intake, end-to-end persistence and
-read-back, failure cases, and owner acceptance are proven. It does not approve
-continuous acquisition, a public website data service, or OneBot-derived state
-as OneJournal authority.
+ADR-0016 accepts that credential-free bridge as the bounded local PNL-02
+completion route. T16 proved exact external acquisition, OneJournal-owned
+conversion and session/freshness assessment, append-only private
+materialization, isolated DuckDB persistence, exact read-back, identical
+replay, and fail-closed cases; the project owner accepted that stated scope on
+2026-08-31. This does not approve continuous acquisition, a public website data
+service, production database migration, PNL-03 valuation marks, or
+OneBot-derived state as OneJournal authority.
 
 The credential-free `onejournal.external-provider-acquisition.v1` intake and
-in-memory conversion boundary is implemented and offline-tested. It validates
-canonical external lineage and exact Schwab quote/market-hours bytes, then uses
-OneJournal's own adapters to prepare the existing capture contracts without a
-provider, credential, private-evidence, or database action. See
+conversion boundary is implemented, offline-tested, and validated against the
+bounded T16 Schwab evidence. It validates canonical external lineage and exact
+quote/market-hours bytes, then uses OneJournal's own adapters. Its guarded
+operator defaults to validation-only; private materialization and the separate
+durable-ingestion database write remain explicit actions. See
 [`docs/external_provider_acquisition_contract.md`](docs/external_provider_acquisition_contract.md).
 
 The target architecture removes that OneBot dependency: OneJournal becomes the

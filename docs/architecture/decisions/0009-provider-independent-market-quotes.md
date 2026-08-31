@@ -159,17 +159,19 @@ the connected user's jurisdiction and product remain authoritative at runtime.
 23. An official close, frozen quote, or last real-time quote retained after
     provider-declared market close is labelled `market_closed_last`, never
     `live_fresh`. When provider session is absent, the implemented
-    `onejournal.market-session-authority.v1` boundary may supply session only
-    through a separately resolved, deterministic observation bound to the exact
-    instrument, MIC, calendar ID, IANA venue timezone, market date, evaluation
-    instant, half-open phase window, trading-day kind, source/version, and
-    validity window. The boundary does not infer session from the clock or
-    select/call a calendar provider. It preserves quote-time and evaluation-
-    time sessions separately: provider/authority disagreement is a conflict
-    only when the authoritative phase window covers the provider quote time.
-    A regular-session quote retained into an authoritative closed phase is not
-    a false conflict. Missing, expired, identity/date/time-mismatched,
-    unsupported, or same-phase conflicting authority fails closed.
+    `onejournal.provider-market-session-authority.v2` boundary may supply
+    session only through a separately resolved, deterministic observation from
+    the same provider and connection, bound to the exact OneJournal and
+    provider instrument, schedule scope, optional evidence-backed MIC, IANA
+    venue timezone, market date, evaluation instant, half-open phase window,
+    trading-day kind, source lineage, and validity window. The boundary does
+    not infer session from the clock or select another provider or third-party
+    calendar. It preserves quote-time and evaluation-time sessions separately:
+    provider/authority disagreement is a conflict only when the authoritative
+    phase window covers the provider quote time. A regular-session quote
+    retained into an authoritative closed phase is not a false conflict.
+    Missing, expired, identity/date/time-mismatched, unsupported, or same-phase
+    conflicting authority fails closed.
 24. Recommended active-session polling defaults are 15 seconds for stocks,
     30 seconds for options, and 60 seconds in extended sessions. Polling pauses
     after five minutes of user inactivity and stops while the market is closed.
@@ -208,25 +210,23 @@ additive migrations, transactional persistence, and contract validation.
 Migration `0012` adds a provider-neutral capture envelope that binds exact
 instrument requests, quote/receive/evaluation times, New York market date,
 checksum-backed local evidence location, and the complete ingestion fingerprint
-before normalized rows may be persisted. The Schwab-specific adapter and
-credential-free evidence importer are implemented offline under
-`docs/schwab_quotes_json_schema_contract.md`; the current OneBot capture producer
-is only a temporary evidence bridge. The target provider plane is an isolated
-OneJournal integration service with one connector per provider. Neither the
-bridge nor the target plane is accepted for live use. A separately approved
-2026-08-27 equity capture and sanitized fixture confirmed the core observed
-Schwab mapping and real-time entitlement, but the response supplied no
-market-session field. The fail-closed result was therefore `unavailable` and
-valuation was disallowed. Authoritative session context and broader
-provider/asset validation remain required.
+before normalized rows may be persisted. The Schwab-specific quote adapter,
+market-hours adapter/resolver, credential-free external-acquisition intake,
+append-only private materialization, and guarded durable ingestion are
+implemented. Under ADR-0016, T16 validated and the project owner accepted this
+path on 2026-08-31 only for bounded, owner-operated, local bridge mode while
+OneBot remains the sole credential owner. The target provider plane remains an
+isolated OneJournal integration service with one connector per provider; no
+continuous/live provider connection, public service, or OneJournal credential
+ownership is accepted.
 
-The provider-neutral session-authority value object and freshness integration
-are implemented without a calendar dependency, network access, persistence, or
-provider selection. Freshness results expose distinct quote-time and evaluation-
-time sessions, the evidence source for each, and the deterministic authority UID
-when present. No approved resolver currently produces this value
-for the importer or runtime, so the bounded Schwab evidence remains
-`unavailable`; implementation of the boundary alone is not session evidence.
+The provider-neutral session-authority value and freshness integration expose
+distinct quote-time and evaluation-time sessions, the evidence source for each,
+and the deterministic authority UID. The concrete Schwab resolver produced
+same-provider, same-connection authority from exact T16 market-hours bytes;
+both accepted equity and listed-option captures resolved to
+`market_closed_last` and remained valuation-eligible for that closed-session
+assessment. This evidence does not make either quote an approved PNL-03 mark.
 
 ## Alternatives considered
 
@@ -336,13 +336,12 @@ The accepted contract requires tests for:
 - regular, extended, closed, holiday, early-close, provider-conflict, expired,
   mismatched, and unsupported session-authority behavior
 
-The bounded official equity evidence validates only the observed Schwab response
-shape and the producer/consumer handoff. It does not establish options or
-multi-provider compatibility or the target provider-integration plane. PNL-02
-is not complete until an approved resolver supplies authoritative session
-context in the ingestion/runtime path, durable storage,
-freshness eligibility, security controls, broader provider/asset evidence, and
-single-owner cutover prove the end-to-end OneJournal connector boundary.
+The bounded T16 evidence validates the accepted Schwab equity/listed-option
+bridge scope, exact session authority, durable isolated persistence/read-back,
+and replay. ADR-0016 permits PNL-02 completion without T15 cutover for this
+scope. It does not establish IBKR or Moomoo compatibility, the target provider-
+integration plane, continuous acquisition, production readiness, or approved
+PNL-03 valuation marks.
 
 ## Rollback or supersession
 

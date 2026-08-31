@@ -45,10 +45,10 @@ Broker/API/CSV raw data -> Broker adapter -> Normalized OneJournal records -> Tr
 - Private local config: ~/.onejournal/env/*.env
 
 The current OneJournal runtime has no active broker credential or provider-call
-path. OneBot/VPS is a temporary single-owner bridge only for the bounded PNL-02
-Schwab evidence step. OneJournal currently accepts only separately approved
-private evidence bundles through credential-free validation, adapter,
-reconciliation, and import boundaries.
+path. Under the bounded PNL-02 mode accepted on 2026-08-31, OneBot/VPS remains
+the temporary single-owner Schwab evidence bridge. OneJournal accepts only
+separately approved private evidence bundles through credential-free
+validation, adapter, reconciliation, and import boundaries.
 
 The target architecture makes OneJournal the only project that owns approved
 provider connections and calls Schwab, IBKR, Moomoo, or later providers. That
@@ -173,8 +173,10 @@ not sufficient because it lacks provider/connection binding and requires an
 exact MIC. `onejournal.provider-market-session-authority.v2` implements the
 replacement value, exact binding, freshness integration, and credential-free
 importer injection seam defined in
-`docs/provider_native_market_session_contract.md`. No concrete Schwab, IBKR, or
-Moomoo schedule adapter or provider response is accepted or wired to a runtime.
+`docs/provider_native_market_session_contract.md`. The concrete Schwab
+market-hours adapter and resolver are accepted only for the bounded local T16
+bridge evidence and are not a continuous provider runtime. No IBKR or Moomoo
+schedule adapter is implemented or accepted.
 
 The current runtime does not implement this provider-connection plane. Its
 credential storage, user/connection identity, tenancy, scheduling, deployment,
