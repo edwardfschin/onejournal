@@ -228,6 +228,13 @@ unavailable. Active-session marks use long bid/short ask; eligible
 unreconciled evidence is unavailable, never zero. A multi-leg strategy total
 requires every included leg to satisfy the same boundary.
 
+`schwab-position-json-v1` now supplies the isolated credential-free Schwab
+position intake. It accepts only exact, checksum-bound single-account
+`fields=positions` evidence with explicit account and canonical instrument
+mappings. It preserves broker figures as reconciliation evidence and makes no
+provider call or database write. Synthetic compatibility tests pass; bounded
+real evidence is still required before operational or financial acceptance.
+
 ## Dashboard Payload v1
 
 Future dashboard payload: output/dashboard/latest/dashboard_payload.json
