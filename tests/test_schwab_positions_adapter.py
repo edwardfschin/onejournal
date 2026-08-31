@@ -136,8 +136,8 @@ class SchwabPositionsAdapterTests(unittest.TestCase):
                     "shortOpenProfitLoss": Decimal("60"),
                     "instrument": {
                         "assetType": "OPTION", "symbol": provider_symbol,
-                        "underlyingSymbol": "AAPL", "expirationDate": "2026-09-18",
-                        "putCall": "PUT", "strikePrice": Decimal("200"),
+                        "uniformSymbol": provider_symbol,
+                        "underlyingSymbol": "AAPL", "putCall": "PUT",
                     },
                 }],
             }
@@ -149,6 +149,138 @@ class SchwabPositionsAdapterTests(unittest.TestCase):
         self.assertEqual(position.identity, identity)
         self.assertEqual(position.quantity, Decimal("-2"))
         self.assertEqual(position.broker_unrealized_pnl, Decimal("60"))
+
+    def test_collective_investment_etf_maps_only_to_explicit_equity_identity(self) -> None:
+        payload = json.loads(self.body(), parse_float=Decimal)
+        payload["securitiesAccount"]["positions"][0]["instrument"] = {
+            "assetType": "COLLECTIVE_INVESTMENT",
+            "type": "EXCHANGE_TRADED_FUND",
+            "symbol": "SPY",
+            "uniformSymbol": "SPY",
+        }
+        identity = InstrumentIdentity(
+            asset_class="equity", market_scope="US", currency="USD", symbol="SPY"
+        )
+        snapshot = self.snapshot(
+            payload=payload,
+            mappings=(SchwabPositionMapping("SPY", identity),),
+        )
+        self.assertEqual(snapshot.positions[0].identity, identity)
+
+    def test_other_collective_investments_and_ambiguous_etfs_fail_closed(self) -> None:
+        for collective_type in (
+            None,
+            "MUTUAL_FUND",
+            "MONEY_MARKET_FUND",
+            "exchange_traded_fund",
+            " EXCHANGE_TRADED_FUND ",
+        ):
+            payload = json.loads(self.body(), parse_float=Decimal)
+            instrument = payload["securitiesAccount"]["positions"][0]["instrument"]
+            instrument["assetType"] = "COLLECTIVE_INVESTMENT"
+            if collective_type is not None:
+                instrument["type"] = collective_type
+            with self.subTest(collective_type=collective_type), self.assertRaisesRegex(
+                SchwabPositionAdapterError, "asset-class"
+            ):
+                self.snapshot(payload=payload)
+
+        option_identity = InstrumentIdentity(
+            asset_class="option", market_scope="US", currency="USD",
+            underlying_symbol="AAPL", expiry=date(2026, 9, 18),
+            option_right="PUT", strike=Decimal("200"), multiplier=Decimal("100"),
+        )
+        payload = json.loads(self.body(), parse_float=Decimal)
+        instrument = payload["securitiesAccount"]["positions"][0]["instrument"]
+        instrument.update({
+            "assetType": "COLLECTIVE_INVESTMENT",
+            "type": "EXCHANGE_TRADED_FUND",
+            "symbol": "AAPL  260918P00200000",
+        })
+        with self.assertRaisesRegex(SchwabPositionAdapterError, "asset-class"):
+            self.snapshot(
+                payload=payload,
+                mappings=(
+                    SchwabPositionMapping("AAPL  260918P00200000", option_identity),
+                ),
+            )
+
+    def test_occ_symbol_is_required_and_must_match_every_explicit_option_term(self) -> None:
+        provider_symbol = "AAPL  260918P00200000"
+        identity = InstrumentIdentity(
+            asset_class="option", market_scope="US", currency="USD",
+            underlying_symbol="AAPL", expiry=date(2026, 9, 18),
+            option_right="PUT", strike=Decimal("200"), multiplier=Decimal("100"),
+        )
+
+        def payload_for(symbol: str = provider_symbol):
+            return {
+                "securitiesAccount": {
+                    "accountNumber": "SYNTHETIC-ACCOUNT",
+                    "positions": [{
+                        "longQuantity": 1,
+                        "shortQuantity": 0,
+                        "instrument": {
+                            "assetType": "OPTION",
+                            "symbol": symbol,
+                            "uniformSymbol": symbol,
+                            "underlyingSymbol": "AAPL",
+                            "putCall": "PUT",
+                        },
+                    }],
+                }
+            }
+
+        cases = (
+            ("AAPL260918P00200000", identity, "21-character OCC"),
+            ("aapl  260918p00200000", identity, "21-character OCC"),
+            (" AAPL  260918P00200000 ", identity, "exact OCC"),
+            ("AAPL  261332P00200000", identity, "OCC expiry"),
+            (
+                provider_symbol,
+                replace(identity, underlying_symbol="MSFT"),
+                "underlying mapping",
+            ),
+            (
+                provider_symbol,
+                replace(identity, expiry=date(2026, 9, 19)),
+                "expiry mapping",
+            ),
+            (
+                provider_symbol,
+                replace(identity, option_right="CALL"),
+                "option-right mapping",
+            ),
+            (
+                provider_symbol,
+                replace(identity, strike=Decimal("201")),
+                "strike mapping",
+            ),
+        )
+        for symbol, mapped_identity, message in cases:
+            with self.subTest(message=message), self.assertRaisesRegex(
+                SchwabPositionAdapterError, message
+            ):
+                self.snapshot(
+                    payload=payload_for(symbol),
+                    mappings=(SchwabPositionMapping(symbol, mapped_identity),),
+                )
+
+        explicit_conflicts = (
+            ({"expirationDate": "2026-09-19"}, "expiry mapping"),
+            ({"strikePrice": Decimal("201")}, "strike mapping"),
+            ({"uniformSymbol": "AAPL  260918C00200000"}, "uniformSymbol"),
+        )
+        for fields, message in explicit_conflicts:
+            payload = payload_for()
+            payload["securitiesAccount"]["positions"][0]["instrument"].update(fields)
+            with self.subTest(message=message), self.assertRaisesRegex(
+                SchwabPositionAdapterError, message
+            ):
+                self.snapshot(
+                    payload=payload,
+                    mappings=(SchwabPositionMapping(provider_symbol, identity),),
+                )
 
     def test_explicit_empty_positions_list_is_a_complete_empty_account(self) -> None:
         payload = {

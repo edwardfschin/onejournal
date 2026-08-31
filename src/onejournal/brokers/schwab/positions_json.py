@@ -26,12 +26,17 @@ from onejournal.pnl.position_reconciliation import (
 )
 
 
-ADAPTER_VERSION = "schwab-position-json-v1"
+ADAPTER_VERSION = "schwab-position-json-v2"
 SCHWAB_TRADER_HOST = "api.schwabapi.com"
 _ACCOUNT_PATH_RE = re.compile(r"/trader/v1/accounts/([A-Za-z0-9._~-]{1,512})")
 _DIGEST_RE = re.compile(r"[0-9a-f]{64}")
 _PROVIDER_SYMBOL_RE = re.compile(r"[^\x00-\x1f\x7f]{1,128}")
 _SAFE_VALUE_RE = re.compile(r"[^\x00-\x1f\x7f]{1,256}")
+_OCC_OPTION_SYMBOL_RE = re.compile(
+    r"(?P<root>[A-Z0-9. ]{6})(?P<expiry>[0-9]{6})"
+    r"(?P<right>[CP])(?P<strike>[0-9]{8})"
+)
+_OCC_ROOT_RE = re.compile(r"[A-Z][A-Z0-9.]{0,5}")
 _NEW_YORK = ZoneInfo("America/New_York")
 
 
@@ -220,28 +225,107 @@ def load_positions_json_bytes(body: bytes) -> dict[str, Any]:
 def _option_identity_matches(
     instrument: Mapping[str, Any], identity: InstrumentIdentity, field_name: str
 ) -> None:
-    if _provider_symbol(instrument.get("underlyingSymbol"), f"{field_name}.underlyingSymbol") != identity.underlying_symbol:
-        raise SchwabPositionAdapterError(f"{field_name} underlying mapping mismatch")
-    right = _safe_value(instrument.get("putCall"), f"{field_name}.putCall").upper()
-    if right != identity.option_right:
-        raise SchwabPositionAdapterError(f"{field_name} option-right mapping mismatch")
-    expiry_value = instrument.get("expirationDate")
-    if not isinstance(expiry_value, str):
-        raise SchwabPositionAdapterError(f"{field_name}.expirationDate is required")
+    raw_provider_symbol = instrument.get("symbol")
+    if (
+        not isinstance(raw_provider_symbol, str)
+        or raw_provider_symbol != raw_provider_symbol.strip()
+    ):
+        raise SchwabPositionAdapterError(
+            f"{field_name}.symbol must be an exact OCC symbol"
+        )
+    provider_symbol = raw_provider_symbol
+    match = _OCC_OPTION_SYMBOL_RE.fullmatch(provider_symbol)
+    if match is None:
+        raise SchwabPositionAdapterError(
+            f"{field_name}.symbol must be a strict 21-character OCC symbol"
+        )
+    raw_root = match.group("root")
+    root = raw_root.rstrip(" ")
+    if not _OCC_ROOT_RE.fullmatch(root) or raw_root != root.ljust(6):
+        raise SchwabPositionAdapterError(
+            f"{field_name}.symbol OCC root is invalid"
+        )
+    expiry_text = match.group("expiry")
     try:
-        expiry = date.fromisoformat(expiry_value)
+        expiry = date(
+            2000 + int(expiry_text[0:2]),
+            int(expiry_text[2:4]),
+            int(expiry_text[4:6]),
+        )
     except ValueError as exc:
         raise SchwabPositionAdapterError(
-            f"{field_name}.expirationDate must be YYYY-MM-DD"
+            f"{field_name}.symbol OCC expiry is invalid"
         ) from exc
+    right = "CALL" if match.group("right") == "C" else "PUT"
+    strike = Decimal(match.group("strike")) / Decimal("1000")
+
+    if root != identity.underlying_symbol:
+        raise SchwabPositionAdapterError(f"{field_name} underlying mapping mismatch")
     if expiry != identity.expiry:
         raise SchwabPositionAdapterError(f"{field_name} expiry mapping mismatch")
-    strike = _decimal(
-        instrument.get("strikePrice"), f"{field_name}.strikePrice", required=True,
-        non_negative=True,
-    )
+    if right != identity.option_right:
+        raise SchwabPositionAdapterError(f"{field_name} option-right mapping mismatch")
     if strike != identity.strike:
         raise SchwabPositionAdapterError(f"{field_name} strike mapping mismatch")
+
+    if _provider_symbol(
+        instrument.get("underlyingSymbol"), f"{field_name}.underlyingSymbol"
+    ) != identity.underlying_symbol:
+        raise SchwabPositionAdapterError(f"{field_name} underlying mapping mismatch")
+    provider_right = _safe_value(
+        instrument.get("putCall"), f"{field_name}.putCall"
+    ).upper()
+    if provider_right != identity.option_right:
+        raise SchwabPositionAdapterError(f"{field_name} option-right mapping mismatch")
+
+    uniform_symbol = instrument.get("uniformSymbol")
+    if uniform_symbol is not None and uniform_symbol != provider_symbol:
+        raise SchwabPositionAdapterError(
+            f"{field_name}.uniformSymbol differs from the provider symbol"
+        )
+
+    expiry_value = instrument.get("expirationDate")
+    if expiry_value is not None:
+        if not isinstance(expiry_value, str):
+            raise SchwabPositionAdapterError(
+                f"{field_name}.expirationDate must be YYYY-MM-DD when supplied"
+            )
+        try:
+            explicit_expiry = date.fromisoformat(expiry_value)
+        except ValueError as exc:
+            raise SchwabPositionAdapterError(
+                f"{field_name}.expirationDate must be YYYY-MM-DD when supplied"
+            ) from exc
+        if explicit_expiry != identity.expiry:
+            raise SchwabPositionAdapterError(f"{field_name} expiry mapping mismatch")
+    if instrument.get("strikePrice") is not None:
+        explicit_strike = _decimal(
+            instrument.get("strikePrice"),
+            f"{field_name}.strikePrice",
+            required=True,
+            non_negative=True,
+        )
+        if explicit_strike != identity.strike:
+            raise SchwabPositionAdapterError(f"{field_name} strike mapping mismatch")
+
+
+def _asset_type_matches(
+    instrument: Mapping[str, Any], identity: InstrumentIdentity, field_name: str
+) -> None:
+    provider_asset_type = _safe_value(
+        instrument.get("assetType"), f"{field_name}.assetType"
+    ).upper()
+    if identity.asset_class == "option":
+        if provider_asset_type != "OPTION":
+            raise SchwabPositionAdapterError(f"{field_name} asset-class mapping mismatch")
+        return
+    if provider_asset_type == "EQUITY":
+        return
+    if provider_asset_type == "COLLECTIVE_INVESTMENT":
+        collective_type = instrument.get("type")
+        if collective_type == "EXCHANGE_TRADED_FUND":
+            return
+    raise SchwabPositionAdapterError(f"{field_name} asset-class mapping mismatch")
 
 
 def _position_record(
@@ -254,12 +338,7 @@ def _position_record(
     provider_symbol = _provider_symbol(instrument.get("symbol"), f"{field}.instrument.symbol")
     if provider_symbol != mapping.provider_symbol:
         raise SchwabPositionAdapterError(f"{field} provider-symbol mapping mismatch")
-    provider_asset_type = _safe_value(
-        instrument.get("assetType"), f"{field}.instrument.assetType"
-    ).upper()
-    expected_asset_type = "EQUITY" if mapping.identity.asset_class == "equity" else "OPTION"
-    if provider_asset_type != expected_asset_type:
-        raise SchwabPositionAdapterError(f"{field} asset-class mapping mismatch")
+    _asset_type_matches(instrument, mapping.identity, f"{field}.instrument")
     if mapping.identity.asset_class == "option":
         _option_identity_matches(instrument, mapping.identity, f"{field}.instrument")
 

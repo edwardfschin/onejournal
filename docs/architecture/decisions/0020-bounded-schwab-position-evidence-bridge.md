@@ -17,7 +17,7 @@ bridge while OneBot remains the sole Schwab credential owner. Its first profile
 deliberately allows only quotes and market hours and forbids account and
 position endpoints. ADR-0019 now requires an independently acquired, complete
 broker-position snapshot before a OneJournal position can be reconciled or
-valued. The implemented `schwab-position-json-v1` adapter is credential-free
+valued. The implemented `schwab-position-json-v2` adapter is credential-free
 and synthetically tested, but cannot establish real compatibility without one
 bounded source response.
 
@@ -64,7 +64,7 @@ data. Checked-in tests use visibly synthetic values only.
 
 After the existing external-acquisition owner, acknowledgement, source,
 approval, canonical-byte, checksum, count, and lifecycle gates pass,
-OneJournal converts the response only through `schwab-position-json-v1`.
+OneJournal converts the response only through `schwab-position-json-v2`.
 Explicit provider-symbol to `onejournal.instrument-identity.v1` mappings must
 cover every returned position exactly. Missing positions scope, mapping
 mismatch, duplicate identity, account mismatch, altered bytes, unsupported
@@ -106,6 +106,13 @@ the temporary bridge. OneJournal owns normalization and reconciliation.
 
 Rejected. Provider symbols are lineage, not canonical instrument identity, and
 option multiplier/currency semantics must remain explicit.
+
+Deterministic parsing of a strict 21-character OCC symbol is permitted only to
+verify every available option term against an already explicit private mapping;
+it does not construct or replace that mapping. Schwab
+`COLLECTIVE_INVESTMENT` is likewise accepted as canonical equity only for the
+explicit provider subtype `EXCHANGE_TRADED_FUND`; other subtypes remain
+unsupported and fail closed.
 
 ## Consequences
 

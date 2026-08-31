@@ -86,7 +86,7 @@ enter Git or ordinary audit output.
 
 Position conversion verifies that private account hash against the manifest,
 binds the exact response account number and checksum, and invokes only
-`schwab-position-json-v1` with an explicit complete provider-symbol mapping.
+`schwab-position-json-v2` with an explicit complete provider-symbol mapping.
 It returns an in-memory `BrokerPositionSnapshot`; it does not create canonical
 lots, reconcile quantities, select a mark, calculate P&L, persist data, or
 establish PNL-03 acceptance.

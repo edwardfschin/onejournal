@@ -228,7 +228,7 @@ unavailable. Active-session marks use long bid/short ask; eligible
 unreconciled evidence is unavailable, never zero. A multi-leg strategy total
 requires every included leg to satisfy the same boundary.
 
-`schwab-position-json-v1` now supplies the isolated credential-free Schwab
+`schwab-position-json-v2` now supplies the isolated credential-free Schwab
 position intake. It accepts only exact, checksum-bound single-account
 `fields=positions` evidence with explicit account and canonical instrument
 mappings. It preserves broker figures as reconciliation evidence and makes no
@@ -238,7 +238,7 @@ real evidence is still required before operational or financial acceptance.
 PNL-03G adds the separate
 `schwab-read-only-single-account-positions.v1` external-acquisition profile.
 It permits only one privacy-preserving, checksum-bound position response and
-converts it in memory through `schwab-position-json-v1`. The raw account hash,
+converts it in memory through `schwab-position-json-v2`. The raw account hash,
 provider account number, response bytes, and mappings remain private; only the
 account-hash digest is canonical acquisition metadata. Offline success does not
 establish provider compatibility, reconciliation, valuation, or acceptance.
