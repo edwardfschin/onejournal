@@ -54,3 +54,8 @@ digest; the raw hash, expected account number, and complete symbol mapping are
 separate owner-only conversion inputs. Synthetic profile and conversion tests
 pass. No provider capture, private materialization, or real compatibility
 acceptance has yet occurred.
+
+PNL-03H adds a separate validation-only operator that reads an existing `0700`
+bundle and `0600` private binding without creating any evidence or database
+state. It emits only digest/count-based audit fields. Its validation result is
+not a broker capture or financial acceptance.

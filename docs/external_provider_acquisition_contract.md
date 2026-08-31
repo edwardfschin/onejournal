@@ -109,11 +109,14 @@ materialization additionally requires `--materialize-private` and an already
 provisioned absolute `0700` OneJournal vault root. Existing capture identities
 are never overwritten.
 
-That filesystem operator remains quote/market-hours-specific and must reject
-the position profile. PNL-03G implements only the pure in-memory position
-verification/conversion boundary. A later owner-only position operator must be
-separately reviewed and approved before it may read a private account-binding
-or mapping input, transfer evidence, or materialize a capture.
+That filesystem operator remains quote/market-hours-specific. PNL-03H adds
+`scripts/journal/validate_external_schwab_position_acquisition.py`, a separate
+position-only validation operator. It reads, but never creates or materializes,
+one pre-existing position bundle, acknowledgement, and `0600` private binding;
+its output contains only secret-free digests, count, complete-account flag, and
+validation status. The operator cannot capture, transfer, retain, or persist
+evidence. Its exact input/output contract is documented in
+`docs/schwab_position_evidence_intake_operator.md`.
 
 The operator has no provider, credential, refresh, account, order, migration,
 database, scheduling, listener, synchronization, or deployment capability. Its

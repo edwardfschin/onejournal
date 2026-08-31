@@ -4,10 +4,22 @@ from dataclasses import replace
 from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal
 from hashlib import sha256
+from contextlib import redirect_stdout
+from io import StringIO
 import json
+from pathlib import Path
+import stat
+import tempfile
 from types import MappingProxyType
 import unittest
 
+from onejournal.brokers.schwab.position_binding import (
+    SCHWAB_POSITION_PRIVATE_BINDING_SCHEMA,
+    SchwabPositionPrivateBinding,
+    SchwabPositionPrivateBindingError,
+    load_schwab_position_private_binding_bytes,
+    schwab_position_private_binding_bytes,
+)
 from onejournal.brokers.schwab.positions_json import SchwabPositionMapping
 from onejournal.instruments import InstrumentIdentity
 from onejournal.provider_connectors.external_acquisition import (
@@ -36,6 +48,10 @@ from onejournal.provider_connectors.usage_policy import (
     TermsReference,
     build_provider_usage_acknowledgement_uid,
     provider_usage_acknowledgement_artifact_bytes,
+)
+from scripts.journal.validate_external_schwab_position_acquisition import (
+    ExternalSchwabPositionIntakeError,
+    main as position_intake_main,
 )
 
 
@@ -400,6 +416,109 @@ class ExternalSchwabPositionAcquisitionTests(unittest.TestCase):
                 expected_owner_uid=OWNER_UID,
                 expected_owner_epoch_uid=OWNER_EPOCH_UID,
             )
+
+    def private_binding(self) -> SchwabPositionPrivateBinding:
+        return SchwabPositionPrivateBinding(
+            schema=SCHWAB_POSITION_PRIVATE_BINDING_SCHEMA,
+            connection_uid=CONNECTION_UID,
+            source_account_id=SOURCE_ACCOUNT_ID,
+            provider_account_hash=PROVIDER_ACCOUNT_HASH,
+            provider_account_number=PROVIDER_ACCOUNT_NUMBER,
+            mappings=self.mappings(),
+        )
+
+    def test_private_binding_is_canonical_and_fails_closed(self) -> None:
+        binding = self.private_binding()
+        body = schwab_position_private_binding_bytes(binding)
+        self.assertEqual(load_schwab_position_private_binding_bytes(body), binding)
+        self.assertIn(PROVIDER_ACCOUNT_HASH.encode("utf-8"), body)
+        self.assertIn(PROVIDER_ACCOUNT_NUMBER.encode("utf-8"), body)
+
+        noncanonical = json.dumps(json.loads(body)).encode("utf-8")
+        with self.assertRaisesRegex(
+            SchwabPositionPrivateBindingError, "not canonical"
+        ):
+            load_schwab_position_private_binding_bytes(noncanonical)
+        document = json.loads(body)
+        document["mappings"][0]["identity"]["symbol"] = "MSFT"
+        document["mappings"].append(document["mappings"][0])
+        duplicate = (
+            json.dumps(document, sort_keys=True, separators=(",", ":")) + "\n"
+        ).encode("utf-8")
+        with self.assertRaisesRegex(SchwabPositionPrivateBindingError, "unique"):
+            load_schwab_position_private_binding_bytes(duplicate)
+
+    def test_validation_only_operator_is_private_and_secret_free(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            root = Path(temporary_directory)
+            acquisition_root = root / "acquisition"
+            acquisition_root.mkdir(mode=0o700)
+            acquisition_root.chmod(0o700)
+            for name, body in {
+                "acquisition-manifest.json": external_provider_acquisition_manifest_bytes(
+                    self.manifest
+                ),
+                "positions.json": self.body,
+            }.items():
+                path = acquisition_root / name
+                path.write_bytes(body)
+                path.chmod(0o600)
+            acknowledgement = root / "provider-usage-acknowledgement.json"
+            acknowledgement.write_bytes(self.acknowledgement_bytes)
+            acknowledgement.chmod(0o600)
+            binding = root / "private-position-binding.json"
+            binding.write_bytes(schwab_position_private_binding_bytes(self.private_binding()))
+            binding.chmod(0o600)
+            common = [
+                "--acquisition-root", str(acquisition_root),
+                "--acknowledgement", str(acknowledgement),
+                "--position-binding", str(binding),
+                "--expected-run-uid", RUN_UID,
+                "--expected-approval-id", APPROVAL_ID,
+                "--expected-owner-uid", OWNER_UID,
+                "--expected-owner-epoch-uid", OWNER_EPOCH_UID,
+                "--evaluated-at", (self.completed_at + timedelta(seconds=1)).isoformat(),
+            ]
+            output = StringIO()
+            before = {item.name for item in root.iterdir()}
+            with redirect_stdout(output):
+                self.assertEqual(position_intake_main(common), 0)
+            audit = json.loads(output.getvalue())
+            self.assertEqual(
+                audit["final_status"],
+                "validated_external_position_unmaterialized",
+            )
+            self.assertTrue(audit["account_complete"])
+            self.assertEqual(audit["position_count"], 1)
+            self.assertEqual({item.name for item in root.iterdir()}, before)
+            self.assertNotIn(PROVIDER_ACCOUNT_HASH, output.getvalue())
+            self.assertNotIn(PROVIDER_ACCOUNT_NUMBER, output.getvalue())
+            self.assertNotIn("AAPL", output.getvalue())
+
+            binding.chmod(0o644)
+            with self.assertRaisesRegex(ExternalSchwabPositionIntakeError, "0600"):
+                position_intake_main(common)
+            binding.chmod(0o600)
+            wrong_binding = replace(self.private_binding(), connection_uid="connection:other")
+            binding.write_bytes(schwab_position_private_binding_bytes(wrong_binding))
+            binding.chmod(0o600)
+            with self.assertRaisesRegex(
+                ExternalSchwabPositionIntakeError, "connection mismatch"
+            ):
+                position_intake_main(common)
+
+    def test_position_operator_has_no_provider_or_write_capability(self) -> None:
+        source = (
+            Path(__file__).resolve().parents[1]
+            / "scripts/journal/validate_external_schwab_position_acquisition.py"
+        ).read_text(encoding="utf-8")
+        for forbidden in (
+            "import requests", "import httpx", "import duckdb", "Authorization",
+            "access_token", "refresh_token", "subprocess", "socket", "urllib",
+            "write_bytes(", "write_text(", "mkdir(",
+        ):
+            with self.subTest(forbidden=forbidden):
+                self.assertNotIn(forbidden, source)
 
 
 if __name__ == "__main__":
