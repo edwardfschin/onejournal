@@ -9,8 +9,10 @@ OneJournal adapters after the acquisition has been verified.
 
 from __future__ import annotations
 
+from collections import Counter
 from dataclasses import dataclass
 from datetime import UTC, date, datetime
+from decimal import Decimal, InvalidOperation
 from hashlib import sha256
 import json
 from pathlib import PurePosixPath
@@ -23,6 +25,19 @@ from onejournal.brokers.schwab.positions_json import (
     SchwabPositionCaptureContext,
     SchwabPositionMapping,
     broker_position_snapshot_from_bytes,
+)
+from onejournal.brokers.schwab.orders_json import (
+    SchwabOrdersJsonStats,
+    load_orders_json_bytes,
+    normalized_rows_from_orders,
+)
+from onejournal.brokers.schwab.transactions_json import (
+    SchwabTransactionsJsonStats,
+    extract_lifecycle_event_legs_from_transactions,
+    extract_lifecycle_events_from_transactions,
+    load_transactions_json_bytes,
+    normalized_rows_from_transactions,
+    schwab_transaction_currency_consensus,
 )
 from onejournal.brokers.schwab.market_hours_json import (
     load_market_hours_json_bytes,
@@ -64,11 +79,27 @@ SCHWAB_EXTERNAL_ACQUISITION_PROFILE = "schwab-read-only-quotes-and-market-hours.
 SCHWAB_POSITION_EXTERNAL_ACQUISITION_PROFILE = (
     "schwab-read-only-single-account-positions.v1"
 )
+SCHWAB_LIFECYCLE_EXTERNAL_ACQUISITION_PROFILE = (
+    "schwab-read-only-single-account-lifecycle.v1"
+)
 SCHWAB_QUOTES_URL = "https://api.schwabapi.com/marketdata/v1/quotes"
 SCHWAB_MARKET_HOURS_URL = "https://api.schwabapi.com/marketdata/v1/markets"
 SCHWAB_POSITION_ACCOUNT_URL_TEMPLATE = (
     "https://api.schwabapi.com/trader/v1/accounts/{accountHash}"
 )
+SCHWAB_ACCOUNT_ORDERS_URL_TEMPLATE = (
+    "https://api.schwabapi.com/trader/v1/accounts/{accountHash}/orders"
+)
+SCHWAB_ACCOUNT_TRANSACTIONS_URL_TEMPLATE = (
+    "https://api.schwabapi.com/trader/v1/accounts/{accountHash}/transactions"
+)
+SCHWAB_LIFECYCLE_TRANSACTION_TYPES = (
+    "TRADE,RECEIVE_AND_DELIVER,DIVIDEND_OR_INTEREST,ACH_RECEIPT,"
+    "ACH_DISBURSEMENT,CASH_RECEIPT,CASH_DISBURSEMENT,ELECTRONIC_FUND,"
+    "WIRE_OUT,WIRE_IN,JOURNAL,MEMORANDUM,MARGIN_CALL,MONEY_MARKET,SMA_ADJUSTMENT"
+)
+SCHWAB_LIFECYCLE_MAX_RESULTS = 3000
+SCHWAB_LIFECYCLE_MAX_WINDOW_DAYS = 30
 MAX_EXTERNAL_ACQUISITION_MANIFEST_BYTES = 256 * 1024
 MAX_EXTERNAL_RESPONSE_BYTES = 4 * 1024 * 1024
 
@@ -76,15 +107,18 @@ _SAFE_ID = re.compile(r"[A-Za-z0-9][A-Za-z0-9_.:-]{7,127}")
 _SHA256 = re.compile(r"[0-9a-f]{64}")
 _FILENAME = re.compile(r"[A-Za-z0-9][A-Za-z0-9_.-]{0,127}\.json")
 _PROVIDER_ACCOUNT_HASH = re.compile(r"[A-Za-z0-9._~-]{1,512}")
+_PROVIDER_ACCOUNT_NUMBER = re.compile(r"[^\x00-\x1f\x7f]{1,256}")
 _SOURCE_ROLES = frozenset(
     {"producer", "provider_client_boundary", "runtime", "source_contract"}
 )
 _QUOTE_SCHEDULE_OPERATIONS = ("quote", "market_hours")
 _POSITION_OPERATIONS = ("position",)
+_LIFECYCLE_OPERATIONS = ("orders", "transactions")
 _SUPPORTED_PROFILES = frozenset(
     {
         SCHWAB_EXTERNAL_ACQUISITION_PROFILE,
         SCHWAB_POSITION_EXTERNAL_ACQUISITION_PROFILE,
+        SCHWAB_LIFECYCLE_EXTERNAL_ACQUISITION_PROFILE,
     }
 )
 _ROOT_FIELDS = {
@@ -124,6 +158,10 @@ _REQUEST_FIELDS = {
     "redirects_followed",
 }
 _POSITION_REQUEST_FIELDS = _REQUEST_FIELDS | {"provider_account_hash_sha256"}
+_LIFECYCLE_REQUEST_FIELDS = _POSITION_REQUEST_FIELDS | {
+    "window_start_date",
+    "window_end_date",
+}
 
 
 class ExternalProviderAcquisitionError(ValueError):
@@ -164,7 +202,7 @@ class ExternalAcquisitionProviderUse:
 @dataclass(frozen=True)
 class ExternalAcquisitionRequest:
     request_uid: str
-    operation: Literal["quote", "market_hours", "position"]
+    operation: Literal["quote", "market_hours", "position", "orders", "transactions"]
     method: str
     url: str
     query: tuple[ExternalAcquisitionQueryParameter, ...]
@@ -179,6 +217,8 @@ class ExternalAcquisitionRequest:
     attempt_count: int
     redirects_followed: int
     provider_account_hash_sha256: str | None = None
+    window_start_date: date | None = None
+    window_end_date: date | None = None
 
 
 @dataclass(frozen=True)
@@ -256,6 +296,34 @@ class ConvertedExternalPositionSnapshot:
     snapshot: BrokerPositionSnapshot
 
 
+@dataclass(frozen=True)
+class ExternalLifecycleReconciliation:
+    matched_rows: int
+    only_order_rows: int
+    only_transaction_rows: int
+
+    @property
+    def exact(self) -> bool:
+        return self.only_order_rows == 0 and self.only_transaction_rows == 0
+
+
+@dataclass(frozen=True)
+class ConvertedExternalLifecycleEvidence:
+    """In-memory order/transaction evidence for one exact account window."""
+
+    external_manifest_sha256: str
+    window_start_date: date
+    window_end_date: date
+    raw_response_bytes: Mapping[str, bytes]
+    order_rows: tuple[Mapping[str, str], ...]
+    transaction_rows: tuple[Mapping[str, str], ...]
+    lifecycle_events: tuple[Mapping[str, str], ...]
+    lifecycle_event_legs: tuple[Mapping[str, str], ...]
+    order_stats: SchwabOrdersJsonStats
+    transaction_stats: SchwabTransactionsJsonStats
+    reconciliation: ExternalLifecycleReconciliation
+
+
 def _mapping(value: object, field: str) -> Mapping[str, object]:
     if not isinstance(value, dict):
         raise ExternalProviderAcquisitionError(f"{field} must be an object")
@@ -330,7 +398,9 @@ def _parse_query(value: object, field: str) -> tuple[ExternalAcquisitionQueryPar
         _fields(row, {"name", "value"}, f"{field}[{index}]")
         name = row["name"]
         parameter_value = row["value"]
-        if not isinstance(name, str) or not re.fullmatch(r"[a-z][a-z_]{0,31}", name):
+        if not isinstance(name, str) or not re.fullmatch(
+            r"[A-Za-z][A-Za-z0-9_]{0,31}", name
+        ):
             raise ExternalProviderAcquisitionError(f"{field}[{index}].name is invalid")
         if not isinstance(parameter_value, str) or not parameter_value or any(
             character in parameter_value for character in "\r\n\x00"
@@ -348,18 +418,20 @@ def _parse_request(
 ) -> ExternalAcquisitionRequest:
     field = f"requests[{index}]"
     row = _mapping(value, field)
-    expected_fields = (
-        _POSITION_REQUEST_FIELDS
-        if profile == SCHWAB_POSITION_EXTERNAL_ACQUISITION_PROFILE
-        else _REQUEST_FIELDS
-    )
+    if profile == SCHWAB_POSITION_EXTERNAL_ACQUISITION_PROFILE:
+        expected_fields = _POSITION_REQUEST_FIELDS
+    elif profile == SCHWAB_LIFECYCLE_EXTERNAL_ACQUISITION_PROFILE:
+        expected_fields = _LIFECYCLE_REQUEST_FIELDS
+    else:
+        expected_fields = _REQUEST_FIELDS
     _fields(row, expected_fields, field)
     operation = row["operation"]
-    allowed_operations = (
-        _POSITION_OPERATIONS
-        if profile == SCHWAB_POSITION_EXTERNAL_ACQUISITION_PROFILE
-        else _QUOTE_SCHEDULE_OPERATIONS
-    )
+    if profile == SCHWAB_POSITION_EXTERNAL_ACQUISITION_PROFILE:
+        allowed_operations = _POSITION_OPERATIONS
+    elif profile == SCHWAB_LIFECYCLE_EXTERNAL_ACQUISITION_PROFILE:
+        allowed_operations = _LIFECYCLE_OPERATIONS
+    else:
+        allowed_operations = _QUOTE_SCHEDULE_OPERATIONS
     if operation not in allowed_operations:
         raise ExternalProviderAcquisitionError(f"{field}.operation is unsupported")
     requested_at = _utc(row["requested_at_utc"], f"{field}.requested_at_utc")
@@ -399,7 +471,21 @@ def _parse_request(
                 row["provider_account_hash_sha256"],
                 f"{field}.provider_account_hash_sha256",
             )
-            if profile == SCHWAB_POSITION_EXTERNAL_ACQUISITION_PROFILE
+            if profile
+            in {
+                SCHWAB_POSITION_EXTERNAL_ACQUISITION_PROFILE,
+                SCHWAB_LIFECYCLE_EXTERNAL_ACQUISITION_PROFILE,
+            }
+            else None
+        ),
+        window_start_date=(
+            _date(row["window_start_date"], f"{field}.window_start_date")
+            if profile == SCHWAB_LIFECYCLE_EXTERNAL_ACQUISITION_PROFILE
+            else None
+        ),
+        window_end_date=(
+            _date(row["window_end_date"], f"{field}.window_end_date")
+            if profile == SCHWAB_LIFECYCLE_EXTERNAL_ACQUISITION_PROFILE
             else None
         ),
     )
@@ -427,6 +513,56 @@ def _validate_schwab_request(
         ):
             raise ExternalProviderAcquisitionError(
                 f"{field} position endpoint scope is invalid"
+            )
+    elif profile == SCHWAB_LIFECYCLE_EXTERNAL_ACQUISITION_PROFILE:
+        if (
+            request.provider_account_hash_sha256 is None
+            or request.window_start_date is None
+            or request.window_end_date is None
+        ):
+            raise ExternalProviderAcquisitionError(
+                f"{field} lifecycle account/window binding is missing"
+            )
+        window_days = (request.window_end_date - request.window_start_date).days + 1
+        if (
+            window_days < 1
+            or window_days > SCHWAB_LIFECYCLE_MAX_WINDOW_DAYS
+            or request.approved_market_date != request.window_end_date
+        ):
+            raise ExternalProviderAcquisitionError(
+                f"{field} lifecycle window scope is invalid"
+            )
+        start = f"{request.window_start_date.isoformat()}T00:00:00.000Z"
+        end = f"{request.window_end_date.isoformat()}T23:59:59.999Z"
+        if request.operation == "orders":
+            expected_query = (
+                ("fromEnteredTime", start),
+                ("toEnteredTime", end),
+                ("maxResults", str(SCHWAB_LIFECYCLE_MAX_RESULTS)),
+            )
+            if (
+                request.url != SCHWAB_ACCOUNT_ORDERS_URL_TEMPLATE
+                or query != expected_query
+            ):
+                raise ExternalProviderAcquisitionError(
+                    f"{field} lifecycle orders scope is invalid"
+                )
+        elif request.operation == "transactions":
+            expected_query = (
+                ("startDate", start),
+                ("endDate", end),
+                ("types", SCHWAB_LIFECYCLE_TRANSACTION_TYPES),
+            )
+            if (
+                request.url != SCHWAB_ACCOUNT_TRANSACTIONS_URL_TEMPLATE
+                or query != expected_query
+            ):
+                raise ExternalProviderAcquisitionError(
+                    f"{field} lifecycle transactions scope is invalid"
+                )
+        else:
+            raise ExternalProviderAcquisitionError(
+                f"{field} lifecycle operation is invalid"
             )
     elif request.operation == "quote":
         if request.url != SCHWAB_QUOTES_URL or len(query) != 2:
@@ -531,6 +667,11 @@ def _parse_manifest(document: object) -> ExternalProviderAcquisitionManifest:
             raise ExternalProviderAcquisitionError(
                 "position profile requires exactly one bounded GET"
             )
+    elif profile == SCHWAB_LIFECYCLE_EXTERNAL_ACQUISITION_PROFILE:
+        if len(request_rows) != 2:
+            raise ExternalProviderAcquisitionError(
+                "lifecycle profile requires exactly one paired order/transaction window"
+            )
     elif not 2 <= len(request_rows) <= 5:
         raise ExternalProviderAcquisitionError(
             "requests must contain two through five bounded GETs"
@@ -543,7 +684,10 @@ def _parse_manifest(document: object) -> ExternalProviderAcquisitionManifest:
         raise ExternalProviderAcquisitionError("request_uid values must be unique")
     if len({item.response_filename for item in requests}) != len(requests):
         raise ExternalProviderAcquisitionError("response filenames must be unique")
-    if len({item.response_sha256 for item in requests}) != len(requests):
+    if (
+        profile != SCHWAB_LIFECYCLE_EXTERNAL_ACQUISITION_PROFILE
+        and len({item.response_sha256 for item in requests}) != len(requests)
+    ):
         raise ExternalProviderAcquisitionError("response digests must be unique")
     operations = (
         tuple(root["operation_allowlist"])
@@ -554,6 +698,21 @@ def _parse_manifest(document: object) -> ExternalProviderAcquisitionManifest:
         if operations != _POSITION_OPERATIONS or requests[0].operation != "position":
             raise ExternalProviderAcquisitionError(
                 "operation allowlist must bind only position"
+            )
+    elif profile == SCHWAB_LIFECYCLE_EXTERNAL_ACQUISITION_PROFILE:
+        if operations != _LIFECYCLE_OPERATIONS or tuple(
+            item.operation for item in requests
+        ) != _LIFECYCLE_OPERATIONS:
+            raise ExternalProviderAcquisitionError(
+                "operation allowlist must bind one ordered orders/transactions pair"
+            )
+        if (
+            len({item.provider_account_hash_sha256 for item in requests}) != 1
+            or len({item.window_start_date for item in requests}) != 1
+            or len({item.window_end_date for item in requests}) != 1
+        ):
+            raise ExternalProviderAcquisitionError(
+                "lifecycle requests must bind the same account and date window"
             )
     else:
         if operations != _QUOTE_SCHEDULE_OPERATIONS or set(
@@ -636,19 +795,21 @@ def _parse_manifest(document: object) -> ExternalProviderAcquisitionManifest:
         raise ExternalProviderAcquisitionError(
             "provider GET and response counts must match requests"
         )
-    permitted_position_count = (
-        1 if profile == SCHWAB_POSITION_EXTERNAL_ACQUISITION_PROFILE else 0
+    permitted_position_count = 1 if profile == SCHWAB_POSITION_EXTERNAL_ACQUISITION_PROFILE else 0
+    permitted_transaction_count = (
+        1 if profile == SCHWAB_LIFECYCLE_EXTERNAL_ACQUISITION_PROFILE else 0
     )
+    permitted_order_count = permitted_transaction_count
     if (
         controls.account_endpoint_calls != 0
         or controls.position_endpoint_calls != permitted_position_count
-        or controls.transaction_endpoint_calls != 0
-        or controls.order_endpoint_calls != 0
+        or controls.transaction_endpoint_calls != permitted_transaction_count
+        or controls.order_endpoint_calls != permitted_order_count
         or controls.database_writes != 0
         or controls.request_body_count != 0
     ):
         raise ExternalProviderAcquisitionError(
-            "forbidden account, order, body, or database activity recorded"
+            "forbidden or mismatched account, position, lifecycle, body, or database activity recorded"
         )
 
     completed_at = _utc(root["completed_at_utc"], "completed_at_utc")
@@ -735,7 +896,17 @@ def _manifest_document(manifest: ExternalProviderAcquisitionManifest) -> dict[st
                             item.provider_account_hash_sha256
                         )
                     }
-                    if item.operation == "position"
+                    if item.operation in {"position", "orders", "transactions"}
+                    else {}
+                ),
+                **(
+                    {
+                        "window_start_date": item.window_start_date.isoformat(),
+                        "window_end_date": item.window_end_date.isoformat(),
+                    }
+                    if item.operation in {"orders", "transactions"}
+                    and item.window_start_date is not None
+                    and item.window_end_date is not None
                     else {}
                 ),
             }
@@ -1051,6 +1222,212 @@ def convert_external_schwab_positions(
         external_request_uid=request.request_uid,
         raw_response_bytes=raw_body,
         snapshot=snapshot,
+    )
+
+
+def _provider_record_dates(record: Mapping[str, object], fields: tuple[str, ...]) -> set[date]:
+    result: set[date] = set()
+    for field in fields:
+        value = record.get(field)
+        if not isinstance(value, str) or not value.strip():
+            continue
+        text = value.strip()
+        try:
+            if len(text) == 10:
+                result.add(date.fromisoformat(text))
+            else:
+                parsed = datetime.fromisoformat(text.replace("Z", "+00:00"))
+                if parsed.tzinfo is None or parsed.utcoffset() is None:
+                    raise ValueError("timezone missing")
+                result.add(parsed.astimezone(UTC).date())
+        except ValueError as exc:
+            raise ExternalProviderAcquisitionError(
+                f"Schwab lifecycle {field} is not an exact date or UTC instant"
+            ) from exc
+    return result
+
+
+def _validate_lifecycle_records(
+    records: list[dict[str, object]],
+    *,
+    provider_account_number: str,
+    window_start: date,
+    window_end: date,
+    kind: Literal["orders", "transactions"],
+) -> None:
+    date_fields = ("enteredTime",) if kind == "orders" else ("time", "tradeDate")
+    for index, record in enumerate(records):
+        if str(record.get("accountNumber", "")).strip() != provider_account_number:
+            raise ExternalProviderAcquisitionError(
+                f"Schwab lifecycle {kind}[{index}] account binding failed"
+            )
+        observed_dates = _provider_record_dates(record, date_fields)
+        if not observed_dates or not any(
+            window_start <= observed <= window_end for observed in observed_dates
+        ):
+            raise ExternalProviderAcquisitionError(
+                f"Schwab lifecycle {kind}[{index}] falls outside the approved window"
+            )
+
+
+def _privacy_map_rows(
+    rows: list[dict[str, str]], source_account_id: str
+) -> tuple[Mapping[str, str], ...]:
+    return tuple(
+        MappingProxyType({**row, "source_account_id": source_account_id})
+        for row in rows
+    )
+
+
+def _exact_decimal_text(value: str) -> str:
+    try:
+        parsed = Decimal(value)
+    except (InvalidOperation, ValueError) as exc:
+        raise ExternalProviderAcquisitionError(
+            "normalized lifecycle reconciliation contains an invalid decimal"
+        ) from exc
+    if not parsed.is_finite():
+        raise ExternalProviderAcquisitionError(
+            "normalized lifecycle reconciliation contains a non-finite decimal"
+        )
+    text = format(parsed, "f")
+    if "." in text:
+        text = text.rstrip("0").rstrip(".")
+    return "0" if text in {"", "-0"} else text
+
+
+def _lifecycle_fill_key(row: Mapping[str, str]) -> tuple[str, ...]:
+    asset_class = row.get("asset_class", "").strip().lower()
+    identity = (
+        "".join(row.get("option_symbol", "").upper().split())
+        if asset_class == "option"
+        else row.get("symbol", "").strip().upper()
+    )
+    return (
+        row.get("asof", "").strip(),
+        row.get("source_order_id", "").strip(),
+        asset_class,
+        identity,
+        row.get("side", "").strip().lower(),
+        _exact_decimal_text(row.get("quantity", "")),
+        _exact_decimal_text(row.get("fill_price", "")),
+        (
+            _exact_decimal_text(row.get("multiplier", ""))
+            if asset_class == "option"
+            else "1"
+        ),
+    )
+
+
+def _reconcile_lifecycle_rows(
+    order_rows: tuple[Mapping[str, str], ...],
+    transaction_rows: tuple[Mapping[str, str], ...],
+) -> ExternalLifecycleReconciliation:
+    order_counter = Counter(_lifecycle_fill_key(row) for row in order_rows)
+    transaction_counter = Counter(
+        _lifecycle_fill_key(row) for row in transaction_rows
+    )
+    matched = sum(
+        min(order_counter.get(key, 0), transaction_counter.get(key, 0))
+        for key in set(order_counter) | set(transaction_counter)
+    )
+    return ExternalLifecycleReconciliation(
+        matched_rows=matched,
+        only_order_rows=sum((order_counter - transaction_counter).values()),
+        only_transaction_rows=sum((transaction_counter - order_counter).values()),
+    )
+
+
+def convert_external_schwab_lifecycle(
+    acquisition: VerifiedExternalProviderAcquisition,
+    *,
+    provider_account_hash: str,
+    provider_account_number: str,
+    source_account_id: str,
+) -> ConvertedExternalLifecycleEvidence:
+    """Convert one verified paired lifecycle window without side effects."""
+
+    if acquisition.manifest.profile != SCHWAB_LIFECYCLE_EXTERNAL_ACQUISITION_PROFILE:
+        raise ExternalProviderAcquisitionError(
+            "lifecycle conversion requires the lifecycle acquisition profile"
+        )
+    if not isinstance(provider_account_hash, str) or not _PROVIDER_ACCOUNT_HASH.fullmatch(
+        provider_account_hash
+    ):
+        raise ExternalProviderAcquisitionError("provider account hash is invalid")
+    if not isinstance(provider_account_number, str) or not _PROVIDER_ACCOUNT_NUMBER.fullmatch(
+        provider_account_number.strip()
+    ):
+        raise ExternalProviderAcquisitionError("provider account number is invalid")
+    checked_account_number = provider_account_number.strip()
+    checked_source_account = _safe_id(source_account_id, "source_account_id")
+    observed_digest = sha256(provider_account_hash.encode("utf-8")).hexdigest()
+    for request in acquisition.manifest.requests:
+        if request.provider_account_hash_sha256 != observed_digest:
+            raise ExternalProviderAcquisitionError("provider account hash binding failed")
+
+    order_request, transaction_request = acquisition.manifest.requests
+    window_start = order_request.window_start_date
+    window_end = order_request.window_end_date
+    if window_start is None or window_end is None:
+        raise ExternalProviderAcquisitionError("lifecycle window binding is missing")
+    order_body = acquisition.response_bytes[order_request.response_filename]
+    transaction_body = acquisition.response_bytes[transaction_request.response_filename]
+    try:
+        orders = load_orders_json_bytes(order_body)
+        transactions = load_transactions_json_bytes(transaction_body)
+    except (UnicodeDecodeError, json.JSONDecodeError, ValueError) as exc:
+        raise ExternalProviderAcquisitionError(
+            "Schwab lifecycle response failed the JSON adapter contract"
+        ) from exc
+    if len(orders) >= SCHWAB_LIFECYCLE_MAX_RESULTS:
+        raise ExternalProviderAcquisitionError(
+            "Schwab lifecycle order response may be truncated at maxResults"
+        )
+    _validate_lifecycle_records(
+        orders,
+        provider_account_number=checked_account_number,
+        window_start=window_start,
+        window_end=window_end,
+        kind="orders",
+    )
+    _validate_lifecycle_records(
+        transactions,
+        provider_account_number=checked_account_number,
+        window_start=window_start,
+        window_end=window_end,
+        kind="transactions",
+    )
+    try:
+        raw_order_rows, order_stats = normalized_rows_from_orders(orders)
+        currency_consensus = schwab_transaction_currency_consensus(transactions)
+        raw_transaction_rows, transaction_stats = normalized_rows_from_transactions(
+            transactions,
+            currency_consensus=currency_consensus,
+        )
+        raw_events = extract_lifecycle_events_from_transactions(transactions)
+        raw_event_legs = extract_lifecycle_event_legs_from_transactions(transactions)
+    except (InvalidOperation, ValueError) as exc:
+        raise ExternalProviderAcquisitionError(
+            "Schwab lifecycle evidence failed the OneJournal adapter contract"
+        ) from exc
+
+    order_rows = _privacy_map_rows(raw_order_rows, checked_source_account)
+    transaction_rows = _privacy_map_rows(raw_transaction_rows, checked_source_account)
+    lifecycle_events = _privacy_map_rows(raw_events, checked_source_account)
+    lifecycle_event_legs = tuple(MappingProxyType(dict(row)) for row in raw_event_legs)
+    return ConvertedExternalLifecycleEvidence(
+        external_manifest_sha256=acquisition.manifest_sha256,
+        window_start_date=window_start,
+        window_end_date=window_end,
+        raw_response_bytes=acquisition.response_bytes,
+        order_rows=order_rows,
+        transaction_rows=transaction_rows,
+        lifecycle_events=lifecycle_events,
+        lifecycle_event_legs=lifecycle_event_legs,
+        order_stats=order_stats,
+        transaction_stats=transaction_stats,
+        reconciliation=_reconcile_lifecycle_rows(order_rows, transaction_rows),
     )
 
 

@@ -53,9 +53,13 @@ _OPTION_SYMBOL_RE = re.compile(
 )
 
 
-def load_orders_json(path: Path) -> list[dict[str, Any]]:
+def load_orders_json_bytes(body: bytes) -> list[dict[str, Any]]:
+    """Parse exact Schwab order response bytes without filesystem access."""
+
+    if not isinstance(body, bytes) or not body:
+        raise ValueError("Schwab orders JSON bytes are invalid")
     payload = json.loads(
-        path.read_text(encoding="utf-8"),
+        body.decode("utf-8"),
         parse_float=Decimal,
         parse_constant=lambda value: (_ for _ in ()).throw(
             ValueError(f"Invalid non-finite JSON number: {value}")
@@ -69,6 +73,10 @@ def load_orders_json(path: Path) -> list[dict[str, Any]]:
             raise ValueError(f"Schwab orders JSON item {idx} is not an object")
         orders.append(item)
     return orders
+
+
+def load_orders_json(path: Path) -> list[dict[str, Any]]:
+    return load_orders_json_bytes(path.read_bytes())
 
 
 def flatten_orders(orders: Iterable[dict[str, Any]]) -> list[dict[str, Any]]:

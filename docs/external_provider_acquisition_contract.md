@@ -9,13 +9,17 @@ bounded evidence produced inside the sole OneBot credential-owner boundary.
 ADR-0020 additively defines
 `schwab-read-only-single-account-positions.v1` for one separately approved,
 complete account-position response under the same sole-owner boundary.
+ADR-0021 additively defines
+`schwab-read-only-single-account-lifecycle.v1` for one paired, bounded order
+and transaction history window under that same boundary.
 
 This implementation does not call Schwab, access or refresh credentials,
-discover accounts, read transactions or orders, write private evidence or
+discover accounts, write private evidence or
 DuckDB, schedule work, listen for requests, synchronize, or deploy. The
 position profile only validates and converts already supplied position bytes;
-the actual acquisition and checksum-preserving transfer remain separately
-approved actions.
+the lifecycle profile only validates and converts already supplied order and
+transaction bytes. Actual acquisition and checksum-preserving transfer remain
+separately approved actions.
 
 ## Authoritative inputs and outputs
 
@@ -91,6 +95,41 @@ It returns an in-memory `BrokerPositionSnapshot`; it does not create canonical
 lots, reconcile quantities, select a mark, calculate P&L, persist data, or
 establish PNL-03 acceptance.
 
+The separate `schwab-read-only-single-account-lifecycle.v1` profile permits
+exactly one ordered pair of successful redirect-free account-scoped GETs for
+one inclusive window of at most 30 days: orders with exact UTC
+`fromEnteredTime`/`toEnteredTime` and `maxResults=3000`, followed by transactions
+with the same exact UTC `startDate`/`endDate` and the approved complete type
+list. Both requests bind the same digest of the owner-private account hash and
+the same start/end dates. Controls require exactly two provider GETs, one order
+call, and one transaction call; account discovery, position, body, database,
+retry, and redirect counts remain zero.
+
+An order response containing 3000 records is rejected as potentially
+truncated. A smaller separately approved window is required. Empty paired JSON
+arrays are valid source evidence for that exact window but cannot prove a flat
+account or complete history.
+
+Lifecycle conversion receives an owner-only
+`onejournal.schwab-account-private-binding.v1` input containing connection UID,
+opaque OneJournal account ID, provider account hash, and provider account
+number. It verifies the account digest, response account numbers, and record
+dates, then invokes the existing order and transaction adapters in memory.
+Normalized rows contain only the opaque OneJournal account ID. Transaction rows
+are accounting authority; order rows are independent execution evidence.
+Privacy-safe exact-identity reconciliation reports matched and unmatched rows
+without persisting or accepting financial state.
+
+After the account/window gate, lifecycle conversion derives a currency
+consensus only from explicit CURRENCY legs on eligible valid trade records with
+supported security legs. It may use that consensus for an otherwise eligible
+same-window trade whose individual currency leg is absent only when exactly
+one code exists across the eligible scope. The validation audit reports the
+code, explicit evidence-item count, and resolved-record count. Zero or
+conflicting eligible currency codes remain fail-closed. This is provider-byte
+lineage, not a Schwab-wide or account-configuration USD default. Any unmatched
+transaction remains pending and unavailable for accepted P&L.
+
 ## Credential-free intake operator
 
 `scripts/journal/materialize_external_provider_acquisition.py` is the guarded
@@ -117,6 +156,14 @@ its output contains only secret-free digests, count, complete-account flag, and
 validation status. The operator cannot capture, transfer, retain, or persist
 evidence. Its exact input/output contract is documented in
 `docs/schwab_position_evidence_intake_operator.md`.
+
+PNL-03L adds
+`scripts/journal/validate_external_schwab_lifecycle_acquisition.py`, a separate
+lifecycle-window validation operator. It requires exact `0700`/`0600` inputs,
+the active acknowledgement, and the owner-private account binding. It emits
+only secret-safe digests, dates, counts, reconciliation status, and validation
+status. Its exact contract is documented in
+`docs/schwab_lifecycle_evidence_intake_operator.md`.
 
 The operator has no provider, credential, refresh, account, order, migration,
 database, scheduling, listener, synchronization, or deployment capability. Its

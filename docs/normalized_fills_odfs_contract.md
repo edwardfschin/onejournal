@@ -61,8 +61,11 @@ Required columns:
 Financial values use canonical decimal strings. Broker adapters must parse
 source decimal tokens without a binary-float intermediate and fail closed on
 missing, malformed, non-finite, or ambiguous required financial evidence.
-Currency must be explicit in accounting evidence; a presentation or account
-default is not currency evidence.
+Currency must be explicit in accounting evidence. This may be the record's
+currency leg or a unique, conflict-free set of explicit provider currency legs
+inside the same verified account/window, with resolution provenance recorded.
+A broker-name, presentation, or account-configuration default is not currency
+evidence.
 
 ### Stable identity and replay rules
 

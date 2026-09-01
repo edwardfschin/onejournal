@@ -12,6 +12,7 @@ from onejournal.brokers.schwab.orders_json import (
 from onejournal.brokers.schwab.transactions_json import (
     load_transactions_json,
     normalized_rows_from_transactions,
+    schwab_transaction_currency_consensus,
 )
 
 
@@ -113,6 +114,92 @@ class SchwabDecimalBoundaryTests(unittest.TestCase):
         )
         with self.assertRaisesRegex(ValueError, "Mixed Schwab transaction currencies"):
             normalized_rows_from_transactions([mixed])
+
+    def test_unique_explicit_scope_currency_resolves_one_missing_record(self) -> None:
+        first_security = {
+            "amount": Decimal("1"),
+            "cost": Decimal("10"),
+            "price": Decimal("10"),
+            "instrument": {"assetType": "EQUITY", "symbol": "AAPL"},
+        }
+        second_security = {
+            "amount": Decimal("2"),
+            "cost": Decimal("40"),
+            "price": Decimal("20"),
+            "instrument": {"assetType": "EQUITY", "symbol": "MSFT"},
+        }
+        transactions = [
+            self._transaction(
+                [first_security, self._currency_item("CURRENCY_USD")]
+            ),
+            {
+                **self._transaction([second_security]),
+                "activityId": "BOUNDARY-2",
+            },
+            {
+                **self._transaction(
+                    [first_security, self._currency_item("CURRENCY_EUR")]
+                ),
+                "activityId": "BOUNDARY-3",
+                "type": "DIVIDEND_OR_INTEREST",
+            },
+        ]
+        consensus = schwab_transaction_currency_consensus(transactions)
+
+        self.assertIsNotNone(consensus)
+        assert consensus is not None
+        self.assertEqual(consensus.currency_code, "USD")
+        self.assertEqual(consensus.evidence_item_count, 1)
+        rows, stats = normalized_rows_from_transactions(
+            transactions,
+            currency_consensus=consensus,
+        )
+
+        self.assertEqual([row["currency"] for row in rows], ["USD", "USD"])
+        self.assertEqual(stats.currency_items, 1)
+        self.assertEqual(stats.currency_consensus_code, "USD")
+        self.assertEqual(stats.currency_consensus_evidence_items, 1)
+        self.assertEqual(stats.currency_consensus_resolved_records, 1)
+
+    def test_zero_or_conflicting_scope_currency_cannot_resolve_missing_record(self) -> None:
+        security = {
+            "amount": Decimal("1"),
+            "cost": Decimal("10"),
+            "price": Decimal("10"),
+            "instrument": {"assetType": "EQUITY", "symbol": "AAPL"},
+        }
+        missing = self._transaction([security])
+        self.assertIsNone(schwab_transaction_currency_consensus([missing]))
+
+        conflicting_scope = [
+            self._transaction([security, self._currency_item("CURRENCY_USD")]),
+            {
+                **self._transaction(
+                    [security, self._currency_item("CURRENCY_EUR")]
+                ),
+                "activityId": "BOUNDARY-2",
+            },
+            {**missing, "activityId": "BOUNDARY-3"},
+        ]
+        self.assertIsNone(
+            schwab_transaction_currency_consensus(conflicting_scope)
+        )
+        with self.assertRaisesRegex(ValueError, "Missing Schwab transaction currency"):
+            normalized_rows_from_transactions(conflicting_scope)
+
+        usd_consensus = schwab_transaction_currency_consensus(
+            [self._transaction([security, self._currency_item("CURRENCY_USD")])]
+        )
+        assert usd_consensus is not None
+        with self.assertRaisesRegex(ValueError, "conflicts with scope consensus"):
+            normalized_rows_from_transactions(
+                [
+                    self._transaction(
+                        [security, self._currency_item("CURRENCY_EUR")]
+                    )
+                ],
+                currency_consensus=usd_consensus,
+            )
 
     def test_float_non_finite_and_missing_multiplier_fail_closed(self) -> None:
         with self.assertRaisesRegex(ValueError, "exact decimal value"):

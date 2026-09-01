@@ -112,6 +112,23 @@ class SchwabTransactionsJsonStats:
     unsupported_activity_counts: dict[str, int] = field(default_factory=dict)
     unsupported_asset_counts: dict[str, int] = field(default_factory=dict)
     unsupported_record_counts: dict[str, int] = field(default_factory=dict)
+    currency_consensus_code: str = ""
+    currency_consensus_evidence_items: int = 0
+    currency_consensus_resolved_records: int = 0
+
+
+@dataclass(frozen=True)
+class SchwabTransactionCurrencyConsensus:
+    """Unique explicit provider currency evidence for one verified scope."""
+
+    currency_code: str
+    evidence_item_count: int
+
+    def __post_init__(self) -> None:
+        if not re.fullmatch(r"[A-Z]{3}", self.currency_code):
+            raise ValueError("Schwab currency consensus code is invalid")
+        if type(self.evidence_item_count) is not int or self.evidence_item_count < 1:
+            raise ValueError("Schwab currency consensus evidence count is invalid")
 
 
 def validate_asof(value: str | None) -> str | None:
@@ -121,9 +138,13 @@ def validate_asof(value: str | None) -> str | None:
     return value
 
 
-def load_transactions_json(path: Path) -> list[dict[str, Any]]:
+def load_transactions_json_bytes(body: bytes) -> list[dict[str, Any]]:
+    """Parse exact Schwab transaction response bytes without filesystem access."""
+
+    if not isinstance(body, bytes) or not body:
+        raise ValueError("Schwab transactions JSON bytes are invalid")
     payload = json.loads(
-        path.read_text(encoding="utf-8"),
+        body.decode("utf-8"),
         parse_float=Decimal,
         parse_constant=lambda value: (_ for _ in ()).throw(
             ValueError(f"Invalid non-finite JSON number: {value}")
@@ -137,6 +158,10 @@ def load_transactions_json(path: Path) -> list[dict[str, Any]]:
             raise ValueError(f"Schwab transactions JSON item {idx} is not an object")
         out.append(item)
     return out
+
+
+def load_transactions_json(path: Path) -> list[dict[str, Any]]:
+    return load_transactions_json_bytes(path.read_bytes())
 
 
 def _date_part(value: str) -> str:
@@ -565,6 +590,54 @@ def _currency_code(instrument: dict[str, Any]) -> str:
     return match.group("code")
 
 
+def schwab_transaction_currency_consensus(
+    transactions: list[dict[str, Any]],
+) -> SchwabTransactionCurrencyConsensus | None:
+    """Return one conflict-free currency from eligible valid-trade legs.
+
+    The caller owns account and window validation.  No consensus is returned
+    when the response has no explicit currency or contains more than one code.
+    """
+
+    currency_codes: set[str] = set()
+    evidence_item_count = 0
+    for transaction in transactions:
+        if (
+            str(transaction.get("type", "")).strip().upper() != "TRADE"
+            or str(transaction.get("status", "")).strip().upper() != "VALID"
+            or _lifecycle_event_reason(transaction) is not None
+        ):
+            continue
+        items = transaction.get("transferItems")
+        if not isinstance(items, list):
+            continue
+        has_supported_security = any(
+            isinstance(item, dict)
+            and isinstance(item.get("instrument"), dict)
+            and str(item["instrument"].get("assetType", "")).strip().upper()
+            in {"OPTION", "EQUITY", "STOCK"}
+            for item in items
+        )
+        if not has_supported_security:
+            continue
+        for item in items:
+            if not isinstance(item, dict):
+                continue
+            instrument = item.get("instrument")
+            if not isinstance(instrument, dict):
+                continue
+            if str(instrument.get("assetType", "")).strip().upper() != "CURRENCY":
+                continue
+            currency_codes.add(_currency_code(instrument))
+            evidence_item_count += 1
+    if len(currency_codes) != 1:
+        return None
+    return SchwabTransactionCurrencyConsensus(
+        currency_code=next(iter(currency_codes)),
+        evidence_item_count=evidence_item_count,
+    )
+
+
 def _fee_value(item: dict[str, Any], *, fee_type: str) -> Decimal:
     candidates: list[Decimal] = []
     for field_name in ("cost", "amount"):
@@ -587,7 +660,9 @@ def _fee_value(item: dict[str, Any], *, fee_type: str) -> Decimal:
 
 def _fee_totals(
     items: list[dict[str, Any]],
-) -> tuple[Decimal, Decimal, int, str]:
+    *,
+    currency_consensus: SchwabTransactionCurrencyConsensus | None = None,
+) -> tuple[Decimal, Decimal, int, str, bool]:
     commission = Decimal("0")
     fees = Decimal("0")
     currency_count = 0
@@ -608,13 +683,24 @@ def _fee_totals(
             commission += value
         else:
             fees += value
+    used_consensus = False
     if not currencies:
-        raise ValueError("Missing Schwab transaction currency evidence")
+        if currency_consensus is None:
+            raise ValueError("Missing Schwab transaction currency evidence")
+        currencies.add(currency_consensus.currency_code)
+        used_consensus = True
     if len(currencies) != 1:
         raise ValueError(
             f"Mixed Schwab transaction currencies are not supported: {sorted(currencies)}"
         )
-    return commission, fees, currency_count, next(iter(currencies))
+    currency = next(iter(currencies))
+    if (
+        currency_consensus is not None
+        and not used_consensus
+        and currency != currency_consensus.currency_code
+    ):
+        raise ValueError("Schwab transaction currency conflicts with scope consensus")
+    return commission, fees, currency_count, currency, used_consensus
 
 
 def _allocate_total(total: Decimal, count: int) -> list[Decimal]:
@@ -635,11 +721,17 @@ def _allocate_total(total: Decimal, count: int) -> list[Decimal]:
     return allocations
 
 
-def normalized_rows_from_transactions(transactions: list[dict[str, Any]], *, asof: str | None = None) -> tuple[list[dict[str, str]], SchwabTransactionsJsonStats]:
+def normalized_rows_from_transactions(
+    transactions: list[dict[str, Any]],
+    *,
+    asof: str | None = None,
+    currency_consensus: SchwabTransactionCurrencyConsensus | None = None,
+) -> tuple[list[dict[str, str]], SchwabTransactionsJsonStats]:
     rows: list[dict[str, str]] = []
     trade_valid = 0
     security_items = 0
     currency_items = 0
+    currency_consensus_resolved_records = 0
     unsupported = 0
 
     unsupported_activity_counts: dict[str, int] = {}
@@ -712,10 +804,19 @@ def normalized_rows_from_transactions(transactions: list[dict[str, Any]], *, aso
             unsupported_record_counts["record_security:unsupported_or_missing"] = unsupported_record_counts.get("record_security:unsupported_or_missing", 0) + 1
             continue
 
-        commission_total, fees_total, currency_count, currency = _fee_totals(
-            [item for item in items if isinstance(item, dict)]
+        (
+            commission_total,
+            fees_total,
+            currency_count,
+            currency,
+            used_currency_consensus,
+        ) = _fee_totals(
+            [item for item in items if isinstance(item, dict)],
+            currency_consensus=currency_consensus,
         )
         currency_items += currency_count
+        if used_currency_consensus:
+            currency_consensus_resolved_records += 1
         commission_allocations = _allocate_total(commission_total, len(security))
         fee_allocations = _allocate_total(fees_total, len(security))
 
@@ -813,15 +914,24 @@ def normalized_rows_from_transactions(transactions: list[dict[str, Any]], *, aso
             })
 
     return rows, SchwabTransactionsJsonStats(
-    transactions=len(transactions),
-    trade_valid=trade_valid,
-    security_items=security_items,
-    currency_items=currency_items,
-    fill_rows=len(rows),
-    unsupported_items=unsupported,
-    unsupported_activity_counts=unsupported_activity_counts,
-    unsupported_asset_counts=unsupported_asset_counts,
-    unsupported_record_counts=unsupported_record_counts,
+        transactions=len(transactions),
+        trade_valid=trade_valid,
+        security_items=security_items,
+        currency_items=currency_items,
+        fill_rows=len(rows),
+        unsupported_items=unsupported,
+        unsupported_activity_counts=unsupported_activity_counts,
+        unsupported_asset_counts=unsupported_asset_counts,
+        unsupported_record_counts=unsupported_record_counts,
+        currency_consensus_code=(
+            currency_consensus.currency_code if currency_consensus is not None else ""
+        ),
+        currency_consensus_evidence_items=(
+            currency_consensus.evidence_item_count
+            if currency_consensus is not None
+            else 0
+        ),
+        currency_consensus_resolved_records=currency_consensus_resolved_records,
     )
 
 

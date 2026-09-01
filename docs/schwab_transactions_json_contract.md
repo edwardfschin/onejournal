@@ -137,8 +137,26 @@ and missing required financial evidence fail closed.
 
 Transaction currency comes from CURRENCY transfer-item instrument symbols such
 as `CURRENCY_USD`. All currency items in one transaction must identify the same
-valid ISO 4217 code. Missing or mixed currency evidence fails closed; the
-adapter does not relabel a transaction as USD.
+valid ISO 4217 code.
+
+The transaction adapter remains transaction-strict by default: a record with
+no currency item fails closed, and the adapter never treats Schwab or an
+account configuration default as USD. The verified external lifecycle boundary
+may supply one provider currency consensus only after it has proved that every
+record belongs to the same account and approved window. That consensus:
+
+- considers only explicit CURRENCY legs on eligible `TRADE`/`VALID` records
+  with supported security legs;
+- exists only when those legs contain exactly one ISO 4217 code;
+- records the code, explicit evidence-item count, and number of records it
+  resolved; and
+- may resolve a same-window eligible trade whose individual currency leg is
+  absent.
+
+Zero explicit codes or conflicting codes cannot resolve a missing record and
+therefore fail closed. A transaction's explicit currency conflicting with a
+supplied consensus also fails closed. Consensus resolution does not establish
+order reconciliation, complete history, accepted P&L, or permission to persist.
 
 ## Source identity rule
 
