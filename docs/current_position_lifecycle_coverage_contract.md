@@ -31,9 +31,11 @@ the entire assembly.
 
 Order fills, transaction fills, lifecycle events, and event legs use their
 stable source identities. Exact replays deduplicate; the same stable identity
-with different normalized content fails closed. Rows after the broker snapshot
-cutoff are excluded and counted so later activity cannot alter an earlier
-position.
+with different normalized content fails closed. Each source window already
+admits fills by exact execution time and lifecycle events/legs by exact event
+time. The assembler preserves and reports those source-window exclusion counts
+separately. Rows after the broker snapshot cutoff are also excluded and counted
+so later activity cannot alter an earlier position.
 
 Order and transaction fills reconcile across the complete assembled set using
 exact date, provider order reference, asset class, instrument identity, side,
@@ -78,7 +80,8 @@ owner acceptance.
 
 The audit includes only the contract and assembly digests, opaque connection,
 window and evaluation times, row/reconciliation counts, position status/reason
-counts, exclusion/deduplication counts, and an explicit unmaterialized status.
+counts, exact source-window and post-evaluation exclusion counts,
+deduplication counts, and an explicit unmaterialized status.
 It emits no provider symbols, account identifiers, quantities, prices, raw
 payloads, private paths, or credentials.
 
@@ -87,7 +90,8 @@ payloads, private paths, or credentials.
 Offline tests cover cross-window matching, deterministic replay, duplicate and
 conflict behavior, gaps, overlaps, account mismatch, missing provider order
 IDs, earlier-history requirements, lifecycle review, post-snapshot exclusion,
-option identity conflict, and privacy-safe output.
+source-window exclusion accounting, option identity conflict, and privacy-safe
+output.
 
 Rollback removes the additive module, exports, tests, and this contract. No
 private evidence or database state is created or changed.

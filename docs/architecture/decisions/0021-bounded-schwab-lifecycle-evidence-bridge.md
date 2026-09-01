@@ -71,10 +71,13 @@ number. It is an owner-only `0600` input, never Git or ordinary audit output.
 It deliberately does not contain instrument mappings, so lifecycle evidence
 can establish those mappings rather than depend on them circularly.
 
-Credential-free conversion verifies the account-hash digest, every non-empty
-response record's provider account number, and every record's membership in the
-approved window. Empty paired responses remain valid evidence of an empty
-window; they do not prove complete account history or a flat position.
+Credential-free conversion verifies the account-hash digest and every
+non-empty response record's provider account number. An order record belongs
+to the approved window when its entry, close, or recursive execution evidence
+intersects the window. Transaction record membership continues to require an
+observed provider time or trade date in the window. Empty paired responses
+remain valid evidence of an empty window; they do not prove complete account
+history or a flat position.
 
 ### OneJournal conversion and reconciliation
 
@@ -83,6 +86,13 @@ request, and private account gates pass, OneJournal parses the exact response
 bytes through its existing order and transaction adapters in memory. Raw
 provider account numbers are replaced in normalized results by the opaque
 OneJournal account ID.
+
+The approved record-level gate does not decide normalized row membership.
+Normalized order and transaction fills are admitted only by exact execution
+timestamp. Lifecycle events are admitted only by exact event timestamp, and
+their legs only with the admitted event. The converter and cross-window audit
+expose each out-of-window fill, event, and leg count, and the assembly digest
+binds those counts. Provider bytes remain immutable.
 
 Transaction rows remain accounting authority for currency, fees, option
 multiplier, and provider-observed lifecycle evidence. Order rows remain
@@ -147,8 +157,9 @@ execution evidence is required for the existing reconciliation contract.
 - Order-entry windows can contain fills completed later; complete reconciliation
   is assessed across the assembled accepted window set, not inferred from one
   pair.
-- First live compatibility and provider date-range behavior remain unaccepted
-  until a separately approved bounded capture succeeds.
+- Live compatibility is accepted only for the separately approved bounded
+  PNL-03M/O captures; broader history and provider date-range behavior remain
+  unaccepted.
 
 ## Validation
 

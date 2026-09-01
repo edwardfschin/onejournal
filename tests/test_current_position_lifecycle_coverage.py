@@ -116,6 +116,10 @@ def window(
     events: tuple[dict[str, str], ...] = (),
     legs: tuple[dict[str, str], ...] = (),
     connection_uid: str = "connection:schwab:test-0001",
+    excluded_order_rows: int = 0,
+    excluded_transaction_rows: int = 0,
+    excluded_events: int = 0,
+    excluded_legs: int = 0,
 ) -> ConvertedExternalLifecycleEvidence:
     return ConvertedExternalLifecycleEvidence(
         external_manifest_sha256=digest_char * 64,
@@ -132,6 +136,10 @@ def window(
         order_stats=SchwabOrdersJsonStats(fill_rows=len(orders)),
         transaction_stats=SchwabTransactionsJsonStats(fill_rows=len(transactions)),
         reconciliation=ExternalLifecycleReconciliation(0, len(orders), len(transactions)),
+        excluded_out_of_window_order_fill_rows=excluded_order_rows,
+        excluded_out_of_window_transaction_fill_rows=excluded_transaction_rows,
+        excluded_out_of_window_lifecycle_events=excluded_events,
+        excluded_out_of_window_lifecycle_event_legs=excluded_legs,
     )
 
 
@@ -349,6 +357,15 @@ class CurrentPositionLifecycleCoverageTests(unittest.TestCase):
             filled_at="2026-02-01T21:00:00Z",
         )
         order = {**transaction, "source_fill_id": "order-fill-1"}
+        event = lifecycle_event(
+            event_uid="event-after-snapshot",
+            event_at="2026-02-01T21:00:00Z",
+        )
+        leg = lifecycle_leg(
+            event_uid="event-after-snapshot",
+            event_leg_uid="event-after-snapshot:leg:0",
+            symbol="MSFT",
+        )
         result = assemble_current_position_lifecycle_coverage(
             (
                 window(
@@ -357,6 +374,8 @@ class CurrentPositionLifecycleCoverageTests(unittest.TestCase):
                     end=date(2026, 2, 1),
                     orders=(order,),
                     transactions=(transaction,),
+                    events=(event,),
+                    legs=(leg,),
                 ),
             ),
             (self.target(),),
@@ -365,7 +384,39 @@ class CurrentPositionLifecycleCoverageTests(unittest.TestCase):
 
         self.assertEqual(result.excluded_post_evaluation_order_rows, 1)
         self.assertEqual(result.excluded_post_evaluation_transaction_rows, 1)
+        self.assertEqual(result.excluded_post_evaluation_lifecycle_events, 1)
+        self.assertEqual(result.excluded_post_evaluation_lifecycle_event_legs, 1)
+        self.assertEqual(result.privacy_safe_audit()["excluded_post_evaluation_rows"], 4)
         self.assertEqual(result.positions[0].status, "history_extension_required")
+
+    def test_source_window_exclusion_counts_are_bound_into_audit_and_digest(self) -> None:
+        baseline = window(
+            digest_char="a",
+            start=date(2026, 1, 1),
+            end=date(2026, 2, 1),
+        )
+        excluded = window(
+            digest_char="a",
+            start=date(2026, 1, 1),
+            end=date(2026, 2, 1),
+            excluded_order_rows=1,
+            excluded_transaction_rows=2,
+            excluded_events=3,
+            excluded_legs=4,
+        )
+        baseline_result = assemble_current_position_lifecycle_coverage(
+            (baseline,), (self.target(),), evaluated_at=self.evaluated_at
+        )
+        result = assemble_current_position_lifecycle_coverage(
+            (excluded,), (self.target(),), evaluated_at=self.evaluated_at
+        )
+
+        audit = result.privacy_safe_audit()
+        self.assertEqual(audit["excluded_out_of_window_order_fill_rows"], 1)
+        self.assertEqual(audit["excluded_out_of_window_transaction_fill_rows"], 2)
+        self.assertEqual(audit["excluded_out_of_window_lifecycle_events"], 3)
+        self.assertEqual(audit["excluded_out_of_window_lifecycle_event_legs"], 4)
+        self.assertNotEqual(result.assembly_sha256, baseline_result.assembly_sha256)
 
     def test_gap_overlap_scope_and_conflicting_replay_fail_closed(self) -> None:
         first = window(

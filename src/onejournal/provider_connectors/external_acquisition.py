@@ -10,7 +10,7 @@ OneJournal adapters after the acquisition has been verified.
 from __future__ import annotations
 
 from collections import Counter
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import UTC, date, datetime
 from decimal import Decimal, InvalidOperation
 from hashlib import sha256
@@ -325,6 +325,10 @@ class ConvertedExternalLifecycleEvidence:
     order_stats: SchwabOrdersJsonStats
     transaction_stats: SchwabTransactionsJsonStats
     reconciliation: ExternalLifecycleReconciliation
+    excluded_out_of_window_order_fill_rows: int = 0
+    excluded_out_of_window_transaction_fill_rows: int = 0
+    excluded_out_of_window_lifecycle_events: int = 0
+    excluded_out_of_window_lifecycle_event_legs: int = 0
 
 
 def _mapping(value: object, field: str) -> Mapping[str, object]:
@@ -1250,6 +1254,47 @@ def _provider_record_dates(record: Mapping[str, object], fields: tuple[str, ...]
     return result
 
 
+def _order_record_dates(record: Mapping[str, object]) -> set[date]:
+    """Return entry, close, and recursive execution dates for one order tree."""
+
+    result = _provider_record_dates(record, ("enteredTime", "closeTime"))
+    activities = record.get("orderActivityCollection")
+    if isinstance(activities, list):
+        for activity in activities:
+            if not isinstance(activity, dict):
+                continue
+            result.update(_provider_record_dates(activity, ("time",)))
+            execution_legs = activity.get("executionLegs")
+            if isinstance(execution_legs, list):
+                for execution_leg in execution_legs:
+                    if isinstance(execution_leg, dict):
+                        result.update(
+                            _provider_record_dates(execution_leg, ("time",))
+                        )
+    children = record.get("childOrderStrategies")
+    if isinstance(children, list):
+        for child in children:
+            if isinstance(child, dict):
+                result.update(_order_record_dates(child))
+    return result
+
+
+def _normalized_row_in_window(
+    row: Mapping[str, str],
+    *,
+    timestamp_field: Literal["filled_at", "event_at"],
+    window_start: date,
+    window_end: date,
+) -> bool:
+    observed_dates = _provider_record_dates(row, (timestamp_field,))
+    if len(observed_dates) != 1:
+        raise ExternalProviderAcquisitionError(
+            f"normalized lifecycle {timestamp_field} is missing"
+        )
+    observed = next(iter(observed_dates))
+    return window_start <= observed <= window_end
+
+
 def _validate_lifecycle_records(
     records: list[dict[str, object]],
     *,
@@ -1258,13 +1303,16 @@ def _validate_lifecycle_records(
     window_end: date,
     kind: Literal["orders", "transactions"],
 ) -> None:
-    date_fields = ("enteredTime",) if kind == "orders" else ("time", "tradeDate")
     for index, record in enumerate(records):
         if str(record.get("accountNumber", "")).strip() != provider_account_number:
             raise ExternalProviderAcquisitionError(
                 f"Schwab lifecycle {kind}[{index}] account binding failed"
             )
-        observed_dates = _provider_record_dates(record, date_fields)
+        observed_dates = (
+            _order_record_dates(record)
+            if kind == "orders"
+            else _provider_record_dates(record, ("time", "tradeDate"))
+        )
         if not observed_dates or not any(
             window_start <= observed <= window_end for observed in observed_dates
         ):
@@ -1420,10 +1468,51 @@ def convert_external_schwab_lifecycle(
             "Schwab lifecycle evidence failed the OneJournal adapter contract"
         ) from exc
 
-    order_rows = _privacy_map_rows(raw_order_rows, checked_source_account)
-    transaction_rows = _privacy_map_rows(raw_transaction_rows, checked_source_account)
-    lifecycle_events = _privacy_map_rows(raw_events, checked_source_account)
-    lifecycle_event_legs = tuple(MappingProxyType(dict(row)) for row in raw_event_legs)
+    admitted_order_rows = [
+        row
+        for row in raw_order_rows
+        if _normalized_row_in_window(
+            row,
+            timestamp_field="filled_at",
+            window_start=window_start,
+            window_end=window_end,
+        )
+    ]
+    admitted_transaction_rows = [
+        row
+        for row in raw_transaction_rows
+        if _normalized_row_in_window(
+            row,
+            timestamp_field="filled_at",
+            window_start=window_start,
+            window_end=window_end,
+        )
+    ]
+    admitted_events = [
+        row
+        for row in raw_events
+        if _normalized_row_in_window(
+            row,
+            timestamp_field="event_at",
+            window_start=window_start,
+            window_end=window_end,
+        )
+    ]
+    admitted_event_uids = {row["event_uid"] for row in admitted_events}
+    admitted_event_legs = [
+        row for row in raw_event_legs if row.get("event_uid", "") in admitted_event_uids
+    ]
+
+    order_rows = _privacy_map_rows(admitted_order_rows, checked_source_account)
+    transaction_rows = _privacy_map_rows(
+        admitted_transaction_rows, checked_source_account
+    )
+    lifecycle_events = _privacy_map_rows(admitted_events, checked_source_account)
+    lifecycle_event_legs = tuple(
+        MappingProxyType(dict(row)) for row in admitted_event_legs
+    )
+    order_stats = replace(order_stats, fill_rows=len(order_rows))
+    transaction_stats = replace(transaction_stats, fill_rows=len(transaction_rows))
     return ConvertedExternalLifecycleEvidence(
         external_manifest_sha256=acquisition.manifest_sha256,
         source_broker="schwab",
@@ -1439,6 +1528,18 @@ def convert_external_schwab_lifecycle(
         order_stats=order_stats,
         transaction_stats=transaction_stats,
         reconciliation=reconcile_lifecycle_rows(order_rows, transaction_rows),
+        excluded_out_of_window_order_fill_rows=(
+            len(raw_order_rows) - len(admitted_order_rows)
+        ),
+        excluded_out_of_window_transaction_fill_rows=(
+            len(raw_transaction_rows) - len(admitted_transaction_rows)
+        ),
+        excluded_out_of_window_lifecycle_events=(
+            len(raw_events) - len(admitted_events)
+        ),
+        excluded_out_of_window_lifecycle_event_legs=(
+            len(raw_event_legs) - len(admitted_event_legs)
+        ),
     )
 
 

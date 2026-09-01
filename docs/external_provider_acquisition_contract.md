@@ -114,7 +114,20 @@ Lifecycle conversion receives an owner-only
 `onejournal.schwab-account-private-binding.v1` input containing connection UID,
 opaque OneJournal account ID, provider account hash, and provider account
 number. It verifies the account digest, response account numbers, and record
-dates, then invokes the existing order and transaction adapters in memory.
+dates, then invokes the existing order and transaction adapters in memory. A
+provider-returned order record belongs to the approved window only when its
+entry time, close time, or execution evidence anywhere in its recursive child
+order tree intersects that window. This keeps a pre-window order whose actual
+execution or closure occurred inside the requested period without treating
+the order's entry date as the fill date.
+
+Every normalized order and transaction fill is then admitted only when its
+exact execution timestamp is inside the window. Every lifecycle event is
+admitted only when its exact event timestamp is inside the window, and its
+legs are admitted only with that event. Out-of-window fill, event, and leg
+counts remain explicit in the privacy-safe validation audit; raw provider
+bytes are never altered.
+
 Normalized rows contain only the opaque OneJournal account ID. Transaction rows
 are accounting authority; order rows are independent execution evidence.
 Privacy-safe exact-identity reconciliation reports matched and unmatched rows
@@ -125,8 +138,9 @@ PNL-03N adds the pure
 multiple already verified lifecycle windows only when their provider,
 connection, opaque account, and contiguous non-overlapping dates agree. Exact
 stable-identity replay deduplicates; conflicting replay fails closed. Order and
-transaction rows reconcile across the assembled set, and rows later than the
-broker snapshot instant are excluded and counted.
+transaction rows reconcile across the assembled set. Source-window exclusions
+and rows later than the broker snapshot instant are independently counted and
+bound into the deterministic assembly digest.
 
 For each private current-position target, transaction evidence supplies the
 canonical currency and instrument terms. Exact signed fill net against the

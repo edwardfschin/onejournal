@@ -183,9 +183,14 @@ class AssembledLifecycleCoverage:
     transaction_rows: tuple[Mapping[str, str], ...]
     lifecycle_events: tuple[Mapping[str, str], ...]
     lifecycle_event_legs: tuple[Mapping[str, str], ...]
+    excluded_out_of_window_order_fill_rows: int
+    excluded_out_of_window_transaction_fill_rows: int
+    excluded_out_of_window_lifecycle_events: int
+    excluded_out_of_window_lifecycle_event_legs: int
     excluded_post_evaluation_order_rows: int
     excluded_post_evaluation_transaction_rows: int
     excluded_post_evaluation_lifecycle_events: int
+    excluded_post_evaluation_lifecycle_event_legs: int
     deduplicated_order_rows: int
     deduplicated_transaction_rows: int
     deduplicated_lifecycle_events: int
@@ -219,10 +224,35 @@ class AssembledLifecycleCoverage:
             "position_count": len(self.positions),
             "position_status_counts": dict(sorted(statuses.items())),
             "position_reason_counts": dict(sorted(reasons.items())),
+            "excluded_out_of_window_order_fill_rows": (
+                self.excluded_out_of_window_order_fill_rows
+            ),
+            "excluded_out_of_window_transaction_fill_rows": (
+                self.excluded_out_of_window_transaction_fill_rows
+            ),
+            "excluded_out_of_window_lifecycle_events": (
+                self.excluded_out_of_window_lifecycle_events
+            ),
+            "excluded_out_of_window_lifecycle_event_legs": (
+                self.excluded_out_of_window_lifecycle_event_legs
+            ),
+            "excluded_post_evaluation_order_rows": (
+                self.excluded_post_evaluation_order_rows
+            ),
+            "excluded_post_evaluation_transaction_rows": (
+                self.excluded_post_evaluation_transaction_rows
+            ),
+            "excluded_post_evaluation_lifecycle_events": (
+                self.excluded_post_evaluation_lifecycle_events
+            ),
+            "excluded_post_evaluation_lifecycle_event_legs": (
+                self.excluded_post_evaluation_lifecycle_event_legs
+            ),
             "excluded_post_evaluation_rows": (
                 self.excluded_post_evaluation_order_rows
                 + self.excluded_post_evaluation_transaction_rows
                 + self.excluded_post_evaluation_lifecycle_events
+                + self.excluded_post_evaluation_lifecycle_event_legs
             ),
             "deduplicated_rows": (
                 self.deduplicated_order_rows
@@ -421,6 +451,18 @@ def assemble_current_position_lifecycle_coverage(
     raw_transactions = [row for window in ordered for row in window.transaction_rows]
     raw_events = [row for window in ordered for row in window.lifecycle_events]
     raw_legs = [row for window in ordered for row in window.lifecycle_event_legs]
+    excluded_out_of_window_order_fill_rows = sum(
+        window.excluded_out_of_window_order_fill_rows for window in ordered
+    )
+    excluded_out_of_window_transaction_fill_rows = sum(
+        window.excluded_out_of_window_transaction_fill_rows for window in ordered
+    )
+    excluded_out_of_window_lifecycle_events = sum(
+        window.excluded_out_of_window_lifecycle_events for window in ordered
+    )
+    excluded_out_of_window_lifecycle_event_legs = sum(
+        window.excluded_out_of_window_lifecycle_event_legs for window in ordered
+    )
 
     included_orders = []
     excluded_orders = 0
@@ -446,6 +488,7 @@ def assemble_current_position_lifecycle_coverage(
     included_legs = [
         row for row in raw_legs if row.get("event_uid", "") not in excluded_event_uids
     ]
+    excluded_event_legs = len(raw_legs) - len(included_legs)
 
     order_rows, duplicate_orders = _deduplicate(
         included_orders, identity_field="source_fill_id", label="order rows"
@@ -512,6 +555,22 @@ def assemble_current_position_lifecycle_coverage(
             sha256(_canonical_row(row)).hexdigest()
             for row in lifecycle_event_legs
         ],
+        "excluded_out_of_window_order_fill_rows": (
+            excluded_out_of_window_order_fill_rows
+        ),
+        "excluded_out_of_window_transaction_fill_rows": (
+            excluded_out_of_window_transaction_fill_rows
+        ),
+        "excluded_out_of_window_lifecycle_events": (
+            excluded_out_of_window_lifecycle_events
+        ),
+        "excluded_out_of_window_lifecycle_event_legs": (
+            excluded_out_of_window_lifecycle_event_legs
+        ),
+        "excluded_post_evaluation_order_rows": excluded_orders,
+        "excluded_post_evaluation_transaction_rows": excluded_transactions,
+        "excluded_post_evaluation_lifecycle_events": len(excluded_event_uids),
+        "excluded_post_evaluation_lifecycle_event_legs": excluded_event_legs,
         "positions": [
             {
                 "source_instrument_id_sha256": item.source_instrument_id_sha256,
@@ -545,9 +604,22 @@ def assemble_current_position_lifecycle_coverage(
         transaction_rows=transaction_rows,
         lifecycle_events=lifecycle_events,
         lifecycle_event_legs=lifecycle_event_legs,
+        excluded_out_of_window_order_fill_rows=(
+            excluded_out_of_window_order_fill_rows
+        ),
+        excluded_out_of_window_transaction_fill_rows=(
+            excluded_out_of_window_transaction_fill_rows
+        ),
+        excluded_out_of_window_lifecycle_events=(
+            excluded_out_of_window_lifecycle_events
+        ),
+        excluded_out_of_window_lifecycle_event_legs=(
+            excluded_out_of_window_lifecycle_event_legs
+        ),
         excluded_post_evaluation_order_rows=excluded_orders,
         excluded_post_evaluation_transaction_rows=excluded_transactions,
         excluded_post_evaluation_lifecycle_events=len(excluded_event_uids),
+        excluded_post_evaluation_lifecycle_event_legs=excluded_event_legs,
         deduplicated_order_rows=duplicate_orders,
         deduplicated_transaction_rows=duplicate_transactions,
         deduplicated_lifecycle_events=duplicate_events,

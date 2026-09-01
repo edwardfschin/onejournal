@@ -405,6 +405,89 @@ class ExternalSchwabLifecycleAcquisitionTests(unittest.TestCase):
         )
         self.assertEqual(first.transaction_rows[0]["multiplier"], "100")
         self.assertEqual(first.transaction_rows[0]["currency"], "USD")
+        self.assertEqual(first.excluded_out_of_window_order_fill_rows, 0)
+        self.assertEqual(first.excluded_out_of_window_transaction_fill_rows, 0)
+        self.assertEqual(first.excluded_out_of_window_lifecycle_events, 0)
+        self.assertEqual(first.excluded_out_of_window_lifecycle_event_legs, 0)
+
+    def test_record_membership_and_exact_row_timestamps_are_distinct(self) -> None:
+        execution_inside = order_document()[0]
+        execution_inside["enteredTime"] = "2026-08-30T13:00:00Z"
+
+        old_child = order_document()[0]
+        old_child["orderId"] = 12346
+        old_child["enteredTime"] = "2024-08-30T13:00:00Z"
+        old_child["orderActivityCollection"][0]["activityId"] = 988
+        old_child["orderActivityCollection"][0]["executionLegs"][0]["time"] = (
+            "2024-08-30T13:01:00Z"
+        )
+        close_inside_parent = {
+            "accountNumber": PROVIDER_ACCOUNT_NUMBER,
+            "orderId": 12347,
+            "enteredTime": "2024-08-30T13:00:00Z",
+            "closeTime": "2026-08-31T14:00:00Z",
+            "orderStrategyType": "OCO",
+            "childOrderStrategies": [old_child],
+        }
+        orders = [execution_inside, close_inside_parent]
+
+        outside_event = {
+            "accountNumber": PROVIDER_ACCOUNT_NUMBER,
+            "activityId": 989,
+            "orderId": 12348,
+            "positionId": 557,
+            "type": "TRADE",
+            "status": "VALID",
+            "activityType": "EXPIRATION",
+            "tradeDate": "2026-09-01T00:01:00Z",
+            "time": "2026-08-31T23:59:00Z",
+            "transferItems": [
+                {
+                    "amount": -1,
+                    "positionEffect": "CLOSING",
+                    "instrument": {
+                        "assetType": "OPTION",
+                        "symbol": OPTION_SYMBOL,
+                        "underlyingSymbol": "AAPL",
+                        "putCall": "CALL",
+                        "optionPremiumMultiplier": 100,
+                    },
+                }
+            ],
+        }
+        transactions = [*transaction_document(), outside_event]
+        order_body = canonical_json_bytes(orders)
+        transaction_body = canonical_json_bytes(transactions)
+        order_request = replace(
+            self.order_request,
+            response_byte_count=len(order_body),
+            response_sha256=sha256(order_body).hexdigest(),
+        )
+        transaction_request = replace(
+            self.transaction_request,
+            response_byte_count=len(transaction_body),
+            response_sha256=sha256(transaction_body).hexdigest(),
+        )
+        acquisition = self.load(
+            manifest=self.make_manifest(
+                order_request=order_request,
+                transaction_request=transaction_request,
+            ),
+            order_body=order_body,
+            transaction_body=transaction_body,
+        )
+
+        converted = self.convert(acquisition)
+
+        self.assertEqual(len(converted.order_rows), 1)
+        self.assertEqual(len(converted.transaction_rows), 1)
+        self.assertEqual(converted.reconciliation.matched_rows, 1)
+        self.assertEqual(converted.excluded_out_of_window_order_fill_rows, 1)
+        self.assertEqual(converted.excluded_out_of_window_transaction_fill_rows, 0)
+        self.assertEqual(converted.excluded_out_of_window_lifecycle_events, 1)
+        self.assertEqual(converted.excluded_out_of_window_lifecycle_event_legs, 1)
+        self.assertEqual(converted.order_stats.fill_rows, 1)
+        self.assertEqual(converted.transaction_stats.fill_rows, 1)
 
     def test_provider_currency_consensus_resolves_one_missing_trade_currency(self) -> None:
         transactions = transaction_document()
@@ -550,6 +633,9 @@ class ExternalSchwabLifecycleAcquisitionTests(unittest.TestCase):
 
         outside_orders = order_document()
         outside_orders[0]["enteredTime"] = "2026-08-30T13:00:00Z"
+        outside_orders[0]["orderActivityCollection"][0]["executionLegs"][0][
+            "time"
+        ] = "2026-08-30T13:01:00Z"
         outside_body = canonical_json_bytes(outside_orders)
         outside_request = replace(
             self.order_request,
@@ -675,6 +761,14 @@ class ExternalSchwabLifecycleAcquisitionTests(unittest.TestCase):
             self.assertEqual(audit["currency_consensus_code"], "USD")
             self.assertEqual(audit["currency_consensus_evidence_item_count"], 1)
             self.assertEqual(audit["currency_consensus_resolved_records"], 0)
+            self.assertEqual(audit["excluded_out_of_window_order_fill_rows"], 0)
+            self.assertEqual(
+                audit["excluded_out_of_window_transaction_fill_rows"], 0
+            )
+            self.assertEqual(audit["excluded_out_of_window_lifecycle_events"], 0)
+            self.assertEqual(
+                audit["excluded_out_of_window_lifecycle_event_legs"], 0
+            )
             self.assertEqual({item.name for item in root.iterdir()}, before)
             self.assertNotIn(PROVIDER_ACCOUNT_HASH, output.getvalue())
             self.assertNotIn(PROVIDER_ACCOUNT_NUMBER, output.getvalue())
