@@ -194,7 +194,11 @@ same token lifecycle.
 - NormalizedTransaction
 - NormalizedQuote
 - BrokerPositionSnapshot (PNL-03 implemented as a credential-free complete
-  account envelope; no provider adapter or real evidence accepted yet)
+  account envelope; one bounded real Schwab snapshot is validated but remains
+  unmaterialized and financially unaccepted)
+- PositionLifecycleCoverage (PNL-03N implemented as contiguous cross-window
+  fill/reconciliation coverage with explicit extension and review-required
+  states; it is not a canonical position or financial result)
 - CanonicalOpenPosition (PNL-03 implemented as a cumulative FIFO/lifecycle
   result in the isolated service boundary)
 - ValuationMarkAssessment (PNL-03 implemented as a quote-bound selected mark

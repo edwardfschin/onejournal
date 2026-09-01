@@ -118,6 +118,16 @@ from .external_acquisition import (
     convert_external_schwab_quotes,
     external_provider_acquisition_manifest_bytes,
     load_external_provider_acquisition,
+    lifecycle_fill_reconciliation_key,
+    reconcile_lifecycle_rows,
+)
+from .lifecycle_coverage import (
+    LIFECYCLE_COVERAGE_CONTRACT_VERSION,
+    AssembledLifecycleCoverage,
+    CurrentPositionCoverageTarget,
+    LifecycleCoverageError,
+    PositionLifecycleCoverage,
+    assemble_current_position_lifecycle_coverage,
 )
 
 __all__ = [
@@ -224,4 +234,12 @@ __all__ = [
     "convert_external_schwab_quotes",
     "external_provider_acquisition_manifest_bytes",
     "load_external_provider_acquisition",
+    "lifecycle_fill_reconciliation_key",
+    "reconcile_lifecycle_rows",
+    "LIFECYCLE_COVERAGE_CONTRACT_VERSION",
+    "AssembledLifecycleCoverage",
+    "CurrentPositionCoverageTarget",
+    "LifecycleCoverageError",
+    "PositionLifecycleCoverage",
+    "assemble_current_position_lifecycle_coverage",
 ]

@@ -312,6 +312,9 @@ class ConvertedExternalLifecycleEvidence:
     """In-memory order/transaction evidence for one exact account window."""
 
     external_manifest_sha256: str
+    source_broker: str
+    connection_uid: str
+    source_account_id: str
     window_start_date: date
     window_end_date: date
     raw_response_bytes: Mapping[str, bytes]
@@ -1296,7 +1299,10 @@ def _exact_decimal_text(value: str) -> str:
     return "0" if text in {"", "-0"} else text
 
 
-def _lifecycle_fill_key(row: Mapping[str, str]) -> tuple[str, ...]:
+def lifecycle_fill_reconciliation_key(
+    row: Mapping[str, str],
+) -> tuple[str, ...]:
+    """Return the exact provider-independent order/transaction match key."""
     asset_class = row.get("asset_class", "").strip().lower()
     identity = (
         "".join(row.get("option_symbol", "").upper().split())
@@ -1319,13 +1325,15 @@ def _lifecycle_fill_key(row: Mapping[str, str]) -> tuple[str, ...]:
     )
 
 
-def _reconcile_lifecycle_rows(
+def reconcile_lifecycle_rows(
     order_rows: tuple[Mapping[str, str], ...],
     transaction_rows: tuple[Mapping[str, str], ...],
 ) -> ExternalLifecycleReconciliation:
-    order_counter = Counter(_lifecycle_fill_key(row) for row in order_rows)
+    order_counter = Counter(
+        lifecycle_fill_reconciliation_key(row) for row in order_rows
+    )
     transaction_counter = Counter(
-        _lifecycle_fill_key(row) for row in transaction_rows
+        lifecycle_fill_reconciliation_key(row) for row in transaction_rows
     )
     matched = sum(
         min(order_counter.get(key, 0), transaction_counter.get(key, 0))
@@ -1418,6 +1426,9 @@ def convert_external_schwab_lifecycle(
     lifecycle_event_legs = tuple(MappingProxyType(dict(row)) for row in raw_event_legs)
     return ConvertedExternalLifecycleEvidence(
         external_manifest_sha256=acquisition.manifest_sha256,
+        source_broker="schwab",
+        connection_uid=acquisition.manifest.connection_uid,
+        source_account_id=checked_source_account,
         window_start_date=window_start,
         window_end_date=window_end,
         raw_response_bytes=acquisition.response_bytes,
@@ -1427,7 +1438,7 @@ def convert_external_schwab_lifecycle(
         lifecycle_event_legs=lifecycle_event_legs,
         order_stats=order_stats,
         transaction_stats=transaction_stats,
-        reconciliation=_reconcile_lifecycle_rows(order_rows, transaction_rows),
+        reconciliation=reconcile_lifecycle_rows(order_rows, transaction_rows),
     )
 
 

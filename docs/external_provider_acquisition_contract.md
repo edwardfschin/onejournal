@@ -120,6 +120,23 @@ are accounting authority; order rows are independent execution evidence.
 Privacy-safe exact-identity reconciliation reports matched and unmatched rows
 without persisting or accepting financial state.
 
+PNL-03N adds the pure
+`onejournal.current-position-lifecycle-coverage.v1` boundary. It assembles
+multiple already verified lifecycle windows only when their provider,
+connection, opaque account, and contiguous non-overlapping dates agree. Exact
+stable-identity replay deduplicates; conflicting replay fails closed. Order and
+transaction rows reconcile across the assembled set, and rows later than the
+broker snapshot instant are excluded and counted.
+
+For each private current-position target, transaction evidence supplies the
+canonical currency and instrument terms. Exact signed fill net against the
+complete broker quantity can prove a bounded fill-flat start; missing or
+mismatched history requires earlier contiguous evidence. Missing order IDs,
+unmatched execution/accounting rows, and applicable lifecycle evidence remain
+review-required. The result is unmaterialized coverage evidence, not a private
+binding, FIFO position, valuation, or PNL-03 acceptance. The detailed contract
+is `docs/current_position_lifecycle_coverage_contract.md`.
+
 After the account/window gate, lifecycle conversion derives a currency
 consensus only from explicit CURRENCY legs on eligible valid trade records with
 supported security legs. It may use that consensus for an otherwise eligible
@@ -164,6 +181,10 @@ the active acknowledgement, and the owner-private account binding. It emits
 only secret-safe digests, dates, counts, reconciliation status, and validation
 status. Its exact contract is documented in
 `docs/schwab_lifecycle_evidence_intake_operator.md`.
+
+PNL-03N does not add another filesystem operator. The cross-window assembler
+accepts only existing verified in-memory conversions and private current-
+position targets. Its privacy-safe audit contains counts and digests only.
 
 The operator has no provider, credential, refresh, account, order, migration,
 database, scheduling, listener, synchronization, or deployment capability. Its

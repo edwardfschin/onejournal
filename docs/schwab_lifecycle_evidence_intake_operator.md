@@ -66,5 +66,8 @@ sync, or deployment capability. It cannot create the private account binding or
 evidence bundle.
 
 Provider capture, private binding creation, transfer, append-only
-materialization, cross-window assembly, journal import, and owner financial
-acceptance remain separate explicit approvals.
+materialization, journal import, and owner financial acceptance remain separate
+explicit approvals. PNL-03N implements cross-window assembly as a pure,
+credential-free, non-writing boundary documented in
+`docs/current_position_lifecycle_coverage_contract.md`; using additional real
+windows still requires separately approved acquisition and transfer.
