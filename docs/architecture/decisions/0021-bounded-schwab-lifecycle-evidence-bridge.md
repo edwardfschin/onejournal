@@ -87,6 +87,18 @@ Undated, malformed, or account-mismatched records still reject the complete
 conversion. This is a source-boundary rule, not permission to infer or move a
 fill between windows.
 
+PNL-03Q extended the accepted contiguous evidence through 2026-06-03 with one
+refresh and the same two read-only GETs. It produced 123 order fills and 123
+transaction fills, with 121 exact matches, two order-only rows, two
+transaction-only rows, and one lifecycle event/leg. Two valid non-intersecting
+top-level order records were preserved but excluded before normalization. The
+four-window, snapshot-cutoff assembly now proves 46 of 53 current positions
+fill-flat at the assembled start, leaves five requiring earlier history, and
+leaves two review-required because transaction evidence lacks provider order
+IDs; the newly surfaced case has no exact execution-signature order candidate.
+This evidence remains unmaterialized and does not constitute FIFO, valuation, or
+financial acceptance.
+
 ### OneJournal conversion and reconciliation
 
 After canonical manifest, owner, acknowledgement, source, checksum, byte-count,
