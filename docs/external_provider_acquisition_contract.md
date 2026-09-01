@@ -119,14 +119,19 @@ provider-returned order record belongs to the approved window only when its
 entry time, close time, or execution evidence anywhere in its recursive child
 order tree intersects that window. This keeps a pre-window order whose actual
 execution or closure occurred inside the requested period without treating
-the order's entry date as the fill date.
+the order's entry date as the fill date. Schwab may replay an otherwise valid
+OCO parent outside a requested window. Conversion validates the account and
+timestamp syntax of every raw order record, preserves the response unchanged,
+and excludes and counts a non-intersecting top-level record before order
+normalization. A missing timestamp, malformed timestamp, or account mismatch
+still rejects the complete conversion.
 
 Every normalized order and transaction fill is then admitted only when its
 exact execution timestamp is inside the window. Every lifecycle event is
 admitted only when its exact event timestamp is inside the window, and its
 legs are admitted only with that event. Out-of-window fill, event, and leg
-counts remain explicit in the privacy-safe validation audit; raw provider
-bytes are never altered.
+counts and the raw-order exclusion count remain explicit in the privacy-safe
+validation audit; raw provider bytes are never altered.
 
 Normalized rows contain only the opaque OneJournal account ID. Transaction rows
 are accounting authority; order rows are independent execution evidence.

@@ -79,6 +79,14 @@ observed provider time or trade date in the window. Empty paired responses
 remain valid evidence of an empty window; they do not prove complete account
 history or a flat position.
 
+PNL-03P established that Schwab can replay an exact OCO parent from a later
+window even when none of that parent tree's timestamps intersects the current
+request. After account and timestamp validation of every raw order, conversion
+preserves but excludes and counts such a top-level record before normalization.
+Undated, malformed, or account-mismatched records still reject the complete
+conversion. This is a source-boundary rule, not permission to infer or move a
+fill between windows.
+
 ### OneJournal conversion and reconciliation
 
 After canonical manifest, owner, acknowledgement, source, checksum, byte-count,
@@ -92,7 +100,8 @@ Normalized order and transaction fills are admitted only by exact execution
 timestamp. Lifecycle events are admitted only by exact event timestamp, and
 their legs only with the admitted event. The converter and cross-window audit
 expose each out-of-window fill, event, and leg count, and the assembly digest
-binds those counts. Provider bytes remain immutable.
+binds those counts plus the raw-order exclusion count. Provider bytes remain
+immutable.
 
 Transaction rows remain accounting authority for currency, fees, option
 multiplier, and provider-observed lifecycle evidence. Order rows remain

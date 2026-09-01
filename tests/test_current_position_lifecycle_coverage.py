@@ -116,6 +116,7 @@ def window(
     events: tuple[dict[str, str], ...] = (),
     legs: tuple[dict[str, str], ...] = (),
     connection_uid: str = "connection:schwab:test-0001",
+    excluded_order_records: int = 0,
     excluded_order_rows: int = 0,
     excluded_transaction_rows: int = 0,
     excluded_events: int = 0,
@@ -136,6 +137,7 @@ def window(
         order_stats=SchwabOrdersJsonStats(fill_rows=len(orders)),
         transaction_stats=SchwabTransactionsJsonStats(fill_rows=len(transactions)),
         reconciliation=ExternalLifecycleReconciliation(0, len(orders), len(transactions)),
+        excluded_out_of_window_order_records=excluded_order_records,
         excluded_out_of_window_order_fill_rows=excluded_order_rows,
         excluded_out_of_window_transaction_fill_rows=excluded_transaction_rows,
         excluded_out_of_window_lifecycle_events=excluded_events,
@@ -399,6 +401,7 @@ class CurrentPositionLifecycleCoverageTests(unittest.TestCase):
             digest_char="a",
             start=date(2026, 1, 1),
             end=date(2026, 2, 1),
+            excluded_order_records=5,
             excluded_order_rows=1,
             excluded_transaction_rows=2,
             excluded_events=3,
@@ -412,6 +415,7 @@ class CurrentPositionLifecycleCoverageTests(unittest.TestCase):
         )
 
         audit = result.privacy_safe_audit()
+        self.assertEqual(audit["excluded_out_of_window_order_records"], 5)
         self.assertEqual(audit["excluded_out_of_window_order_fill_rows"], 1)
         self.assertEqual(audit["excluded_out_of_window_transaction_fill_rows"], 2)
         self.assertEqual(audit["excluded_out_of_window_lifecycle_events"], 3)

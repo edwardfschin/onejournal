@@ -34,8 +34,9 @@ stable source identities. Exact replays deduplicate; the same stable identity
 with different normalized content fails closed. Each source window already
 admits fills by exact execution time and lifecycle events/legs by exact event
 time. The assembler preserves and reports those source-window exclusion counts
-separately. Rows after the broker snapshot cutoff are also excluded and counted
-so later activity cannot alter an earlier position.
+separately, including valid non-intersecting raw order records excluded before
+normalization. Rows after the broker snapshot cutoff are also excluded and
+counted so later activity cannot alter an earlier position.
 
 Order and transaction fills reconcile across the complete assembled set using
 exact date, provider order reference, asset class, instrument identity, side,

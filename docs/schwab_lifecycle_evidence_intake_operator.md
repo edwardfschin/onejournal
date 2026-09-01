@@ -43,12 +43,16 @@ PYTHONPATH=.:src .venv/bin/python \
 The single JSON audit contains only acquisition and binding digests, provider
 and opaque connection identity, a digest of the opaque OneJournal account ID,
 window dates, order/transaction/fill/lifecycle counts, every out-of-window
-fill/event/leg exclusion count, currency-consensus code and provenance counts,
-reconciliation counts, and final validation status. It
+raw-order/fill/event/leg exclusion count, currency-consensus code and
+provenance counts, reconciliation counts, and final validation status. It
 never prints provider account identifiers, symbols, quantities, prices, raw
 response content, credentials, or paths.
 
 Top-level order membership uses entry, close, and recursive execution evidence.
+Every raw order record first passes exact account and timestamp validation.
+Valid non-intersecting top-level records are preserved in raw evidence but
+excluded and counted before normalization; malformed, undated, or
+account-mismatched records remain fail-closed.
 After conversion, order and transaction fills use only their exact execution
 timestamps; lifecycle events and their corresponding legs use only the exact
 event timestamp. A record-level query match therefore cannot admit a row from

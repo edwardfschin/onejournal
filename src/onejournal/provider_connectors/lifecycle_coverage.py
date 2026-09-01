@@ -183,6 +183,7 @@ class AssembledLifecycleCoverage:
     transaction_rows: tuple[Mapping[str, str], ...]
     lifecycle_events: tuple[Mapping[str, str], ...]
     lifecycle_event_legs: tuple[Mapping[str, str], ...]
+    excluded_out_of_window_order_records: int
     excluded_out_of_window_order_fill_rows: int
     excluded_out_of_window_transaction_fill_rows: int
     excluded_out_of_window_lifecycle_events: int
@@ -224,6 +225,9 @@ class AssembledLifecycleCoverage:
             "position_count": len(self.positions),
             "position_status_counts": dict(sorted(statuses.items())),
             "position_reason_counts": dict(sorted(reasons.items())),
+            "excluded_out_of_window_order_records": (
+                self.excluded_out_of_window_order_records
+            ),
             "excluded_out_of_window_order_fill_rows": (
                 self.excluded_out_of_window_order_fill_rows
             ),
@@ -451,6 +455,9 @@ def assemble_current_position_lifecycle_coverage(
     raw_transactions = [row for window in ordered for row in window.transaction_rows]
     raw_events = [row for window in ordered for row in window.lifecycle_events]
     raw_legs = [row for window in ordered for row in window.lifecycle_event_legs]
+    excluded_out_of_window_order_records = sum(
+        window.excluded_out_of_window_order_records for window in ordered
+    )
     excluded_out_of_window_order_fill_rows = sum(
         window.excluded_out_of_window_order_fill_rows for window in ordered
     )
@@ -555,6 +562,9 @@ def assemble_current_position_lifecycle_coverage(
             sha256(_canonical_row(row)).hexdigest()
             for row in lifecycle_event_legs
         ],
+        "excluded_out_of_window_order_records": (
+            excluded_out_of_window_order_records
+        ),
         "excluded_out_of_window_order_fill_rows": (
             excluded_out_of_window_order_fill_rows
         ),
@@ -604,6 +614,9 @@ def assemble_current_position_lifecycle_coverage(
         transaction_rows=transaction_rows,
         lifecycle_events=lifecycle_events,
         lifecycle_event_legs=lifecycle_event_legs,
+        excluded_out_of_window_order_records=(
+            excluded_out_of_window_order_records
+        ),
         excluded_out_of_window_order_fill_rows=(
             excluded_out_of_window_order_fill_rows
         ),

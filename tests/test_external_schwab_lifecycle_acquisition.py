@@ -405,6 +405,7 @@ class ExternalSchwabLifecycleAcquisitionTests(unittest.TestCase):
         )
         self.assertEqual(first.transaction_rows[0]["multiplier"], "100")
         self.assertEqual(first.transaction_rows[0]["currency"], "USD")
+        self.assertEqual(first.excluded_out_of_window_order_records, 0)
         self.assertEqual(first.excluded_out_of_window_order_fill_rows, 0)
         self.assertEqual(first.excluded_out_of_window_transaction_fill_rows, 0)
         self.assertEqual(first.excluded_out_of_window_lifecycle_events, 0)
@@ -429,7 +430,12 @@ class ExternalSchwabLifecycleAcquisitionTests(unittest.TestCase):
             "orderStrategyType": "OCO",
             "childOrderStrategies": [old_child],
         }
-        orders = [execution_inside, close_inside_parent]
+        repeated_outside_parent = {
+            **close_inside_parent,
+            "orderId": 12349,
+            "closeTime": "2026-09-01T14:00:00Z",
+        }
+        orders = [execution_inside, close_inside_parent, repeated_outside_parent]
 
         outside_event = {
             "accountNumber": PROVIDER_ACCOUNT_NUMBER,
@@ -482,6 +488,7 @@ class ExternalSchwabLifecycleAcquisitionTests(unittest.TestCase):
         self.assertEqual(len(converted.order_rows), 1)
         self.assertEqual(len(converted.transaction_rows), 1)
         self.assertEqual(converted.reconciliation.matched_rows, 1)
+        self.assertEqual(converted.excluded_out_of_window_order_records, 1)
         self.assertEqual(converted.excluded_out_of_window_order_fill_rows, 1)
         self.assertEqual(converted.excluded_out_of_window_transaction_fill_rows, 0)
         self.assertEqual(converted.excluded_out_of_window_lifecycle_events, 1)
@@ -646,8 +653,10 @@ class ExternalSchwabLifecycleAcquisitionTests(unittest.TestCase):
             manifest=self.make_manifest(order_request=outside_request),
             order_body=outside_body,
         )
-        with self.assertRaisesRegex(ExternalProviderAcquisitionError, "outside"):
-            self.convert(acquisition)
+        converted = self.convert(acquisition)
+        self.assertEqual(converted.excluded_out_of_window_order_records, 1)
+        self.assertEqual(converted.order_rows, ())
+        self.assertEqual(len(converted.transaction_rows), 1)
 
         truncated_body = canonical_json_bytes(
             order_document() * SCHWAB_LIFECYCLE_MAX_RESULTS
@@ -761,6 +770,7 @@ class ExternalSchwabLifecycleAcquisitionTests(unittest.TestCase):
             self.assertEqual(audit["currency_consensus_code"], "USD")
             self.assertEqual(audit["currency_consensus_evidence_item_count"], 1)
             self.assertEqual(audit["currency_consensus_resolved_records"], 0)
+            self.assertEqual(audit["excluded_out_of_window_order_records"], 0)
             self.assertEqual(audit["excluded_out_of_window_order_fill_rows"], 0)
             self.assertEqual(
                 audit["excluded_out_of_window_transaction_fill_rows"], 0

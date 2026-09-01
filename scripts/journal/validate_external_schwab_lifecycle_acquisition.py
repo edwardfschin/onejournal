@@ -215,6 +215,9 @@ def main(argv: Sequence[str] | None = None) -> int:
                 "transaction_fill_rows": len(converted.transaction_rows),
                 "lifecycle_event_rows": len(converted.lifecycle_events),
                 "lifecycle_event_leg_rows": len(converted.lifecycle_event_legs),
+                "excluded_out_of_window_order_records": (
+                    converted.excluded_out_of_window_order_records
+                ),
                 "excluded_out_of_window_order_fill_rows": (
                     converted.excluded_out_of_window_order_fill_rows
                 ),

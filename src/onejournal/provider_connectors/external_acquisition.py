@@ -325,6 +325,7 @@ class ConvertedExternalLifecycleEvidence:
     order_stats: SchwabOrdersJsonStats
     transaction_stats: SchwabTransactionsJsonStats
     reconciliation: ExternalLifecycleReconciliation
+    excluded_out_of_window_order_records: int = 0
     excluded_out_of_window_order_fill_rows: int = 0
     excluded_out_of_window_transaction_fill_rows: int = 0
     excluded_out_of_window_lifecycle_events: int = 0
@@ -1302,7 +1303,9 @@ def _validate_lifecycle_records(
     window_start: date,
     window_end: date,
     kind: Literal["orders", "transactions"],
-) -> None:
+) -> tuple[list[dict[str, object]], int]:
+    admitted: list[dict[str, object]] = []
+    excluded = 0
     for index, record in enumerate(records):
         if str(record.get("accountNumber", "")).strip() != provider_account_number:
             raise ExternalProviderAcquisitionError(
@@ -1313,12 +1316,18 @@ def _validate_lifecycle_records(
             if kind == "orders"
             else _provider_record_dates(record, ("time", "tradeDate"))
         )
-        if not observed_dates or not any(
+        intersects_window = bool(observed_dates) and any(
             window_start <= observed <= window_end for observed in observed_dates
-        ):
+        )
+        if not intersects_window:
+            if kind == "orders" and observed_dates:
+                excluded += 1
+                continue
             raise ExternalProviderAcquisitionError(
                 f"Schwab lifecycle {kind}[{index}] falls outside the approved window"
             )
+        admitted.append(record)
+    return admitted, excluded
 
 
 def _privacy_map_rows(
@@ -1440,29 +1449,37 @@ def convert_external_schwab_lifecycle(
         raise ExternalProviderAcquisitionError(
             "Schwab lifecycle order response may be truncated at maxResults"
         )
-    _validate_lifecycle_records(
+    admitted_orders, excluded_order_records = _validate_lifecycle_records(
         orders,
         provider_account_number=checked_account_number,
         window_start=window_start,
         window_end=window_end,
         kind="orders",
     )
-    _validate_lifecycle_records(
+    admitted_transactions, excluded_transaction_records = _validate_lifecycle_records(
         transactions,
         provider_account_number=checked_account_number,
         window_start=window_start,
         window_end=window_end,
         kind="transactions",
     )
+    if excluded_transaction_records:
+        raise ExternalProviderAcquisitionError(
+            "Schwab lifecycle transaction exclusion invariant failed"
+        )
     try:
-        raw_order_rows, order_stats = normalized_rows_from_orders(orders)
-        currency_consensus = schwab_transaction_currency_consensus(transactions)
+        raw_order_rows, order_stats = normalized_rows_from_orders(admitted_orders)
+        currency_consensus = schwab_transaction_currency_consensus(
+            admitted_transactions
+        )
         raw_transaction_rows, transaction_stats = normalized_rows_from_transactions(
-            transactions,
+            admitted_transactions,
             currency_consensus=currency_consensus,
         )
-        raw_events = extract_lifecycle_events_from_transactions(transactions)
-        raw_event_legs = extract_lifecycle_event_legs_from_transactions(transactions)
+        raw_events = extract_lifecycle_events_from_transactions(admitted_transactions)
+        raw_event_legs = extract_lifecycle_event_legs_from_transactions(
+            admitted_transactions
+        )
     except (InvalidOperation, ValueError) as exc:
         raise ExternalProviderAcquisitionError(
             "Schwab lifecycle evidence failed the OneJournal adapter contract"
@@ -1511,7 +1528,11 @@ def convert_external_schwab_lifecycle(
     lifecycle_event_legs = tuple(
         MappingProxyType(dict(row)) for row in admitted_event_legs
     )
-    order_stats = replace(order_stats, fill_rows=len(order_rows))
+    order_stats = replace(
+        order_stats,
+        top_level_orders=len(orders),
+        fill_rows=len(order_rows),
+    )
     transaction_stats = replace(transaction_stats, fill_rows=len(transaction_rows))
     return ConvertedExternalLifecycleEvidence(
         external_manifest_sha256=acquisition.manifest_sha256,
@@ -1528,6 +1549,7 @@ def convert_external_schwab_lifecycle(
         order_stats=order_stats,
         transaction_stats=transaction_stats,
         reconciliation=reconcile_lifecycle_rows(order_rows, transaction_rows),
+        excluded_out_of_window_order_records=excluded_order_records,
         excluded_out_of_window_order_fill_rows=(
             len(raw_order_rows) - len(admitted_order_rows)
         ),
