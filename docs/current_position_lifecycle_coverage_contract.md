@@ -77,6 +77,26 @@ binding, accepted lifecycle conversion, FIFO calculation, exact broker
 reconciliation, a valid valuation mark, persistence/migration approval, and
 owner acceptance.
 
+## Bounded fail-closed continuation
+
+ADR-0022 freezes assembly
+`7454c4543439dd6fc49d3e2089ed326ebe6eac0a3cdf8a32a82765d19c041fe6`
+for the 2026-08-31 complete 53-position snapshot as the initial bounded PNL-03
+coverage baseline: 46 `fill_flat_start_proven`, four
+`history_extension_required`, and three `review_required`.
+
+Only the 46 eligible positions may proceed to later FIFO, reconciliation, mark,
+persistence, API, and owner-acceptance gates. The other seven remain present in
+the complete position scope with explicit unavailable reasons and cannot enter
+cost basis, valuation, P&L, strategy totals, account totals, portfolio totals,
+or performance metrics. Results over the eligible positions are an eligible
+subtotal, never the portfolio total. Missing values remain unavailable, not
+zero.
+
+Additional contiguous history may create a new versioned assembly and coverage
+assessment. It cannot overwrite this baseline or silently widen an accepted
+scope.
+
 ## Privacy-safe audit
 
 The audit includes only the contract and assembly digests, opaque connection,

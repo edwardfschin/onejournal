@@ -107,3 +107,4 @@ policy.
 | [ADR-0019](decisions/0019-canonical-position-reconciliation-and-valuation-mark-authority.md) | Accepted | Use cumulative FIFO lots reconciled to independent broker positions and provider-bound liquidation-side marks for authoritative current valuation |
 | [ADR-0020](decisions/0020-bounded-schwab-position-evidence-bridge.md) | Accepted | Permit one privacy-preserving, credential-free Schwab position-evidence acquisition profile without changing provider credential ownership |
 | [ADR-0021](decisions/0021-bounded-schwab-lifecycle-evidence-bridge.md) | Accepted | Permit paired, bounded, credential-free Schwab order and transaction evidence windows without guessing current position identity facts |
+| [ADR-0022](decisions/0022-bounded-fail-closed-pnl-03-completion-route.md) | Accepted | Advance the 46 fill-flat-proven positions while keeping seven unresolved positions visible, financially unavailable, and excluded from complete totals |
