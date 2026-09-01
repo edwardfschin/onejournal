@@ -99,6 +99,17 @@ IDs; the newly surfaced case has no exact execution-signature order candidate.
 This evidence remains unmaterialized and does not constitute FIFO, valuation, or
 financial acceptance.
 
+PNL-03R extended the accepted contiguous evidence through 2026-05-04 with one
+refresh and the same two read-only GETs. It produced 72 order fills and 74
+transaction fills, with 72 exact matches, two transaction-only rows, and six
+lifecycle events/legs. Two valid non-intersecting top-level order records were
+preserved but excluded before normalization. The five-window, snapshot-cutoff
+assembly now proves 46 of 53 current positions fill-flat at the assembled start,
+leaves four requiring earlier history, and leaves three review-required because
+transaction evidence lacks provider order IDs; the newly surfaced case also has
+no exact execution-signature order candidate. This evidence remains
+unmaterialized and does not constitute FIFO, valuation, or financial acceptance.
+
 ### OneJournal conversion and reconciliation
 
 After canonical manifest, owner, acknowledgement, source, checksum, byte-count,
