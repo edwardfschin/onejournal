@@ -2,8 +2,10 @@
 # Activate the canonical machine-local OneJournal Python environment.
 # Source this file from a shell; it intentionally changes to the repository root.
 
-if [[ "${BASH_SOURCE[0]}" != "$0" ]]; then
+if [[ -n "${BASH_VERSION:-}" && -n "${BASH_SOURCE:-}" ]]; then
   SCRIPT_PATH="${BASH_SOURCE[0]}"
+elif [[ -n "${ZSH_VERSION:-}" ]]; then
+  SCRIPT_PATH="${(%):-%N}"
 else
   SCRIPT_PATH="$0"
 fi
