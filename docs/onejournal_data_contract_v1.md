@@ -200,6 +200,11 @@ same token lifecycle.
   fill/reconciliation coverage with exact raw-order, source-window, and
   evaluation-cutoff exclusion counts plus explicit extension and
   review-required states; it is not a canonical position or financial result)
+- BoundedPnl03FifoReconciliationRun (repository-side PNL-03T pure boundary that
+  binds an approved private-binding digest, complete snapshot UID, exact
+  lifecycle assembly, approved eligible-fill fingerprint, FIFO, broker
+  reconciliation, unavailable-position counts, and eligible-subtotal status;
+  no real private run or financial acceptance is established)
 - CanonicalOpenPosition (PNL-03 implemented as a cumulative FIFO/lifecycle
   result in the isolated service boundary)
 - ValuationMarkAssessment (PNL-03 implemented as a quote-bound selected mark
@@ -255,6 +260,16 @@ and one currency. The same rule applies to a same-currency account subtotal.
 Missing, unavailable, unreconciled, mixed-currency, or empty scopes preserve
 counts and reason codes while returning no financial total; no partial subtotal
 may be labelled as a strategy or portfolio total.
+
+`onejournal.bounded-pnl03-fifo-reconciliation.v1` now provides the additive
+repository-side gate from exact lifecycle eligibility to FIFO and complete-
+snapshot broker reconciliation. Its initial-route constructor locks the public
+ADR-0022 assembly digest and `46/4/3` counts while requiring the approved
+private-binding digest and snapshot UID at runtime. It returns only an eligible
+cost-basis subtotal when every eligible quantity reconciles; complete portfolio
+cost basis remains unavailable while the seven unresolved positions remain in
+scope. This repository slice does not materialize or accept a real private
+binding, 53-position input, or eligible-46 result.
 
 ## Dashboard Payload v1
 

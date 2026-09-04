@@ -128,6 +128,7 @@ from .lifecycle_coverage import (
     LifecycleCoverageError,
     PositionLifecycleCoverage,
     assemble_current_position_lifecycle_coverage,
+    calculate_lifecycle_coverage_sha256,
 )
 
 __all__ = [
@@ -242,4 +243,5 @@ __all__ = [
     "LifecycleCoverageError",
     "PositionLifecycleCoverage",
     "assemble_current_position_lifecycle_coverage",
+    "calculate_lifecycle_coverage_sha256",
 ]

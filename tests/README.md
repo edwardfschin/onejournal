@@ -18,7 +18,10 @@ foundation simple and dependency-free.
   lineage, quantities, multipliers, commission/fee allocation, realized P&L,
   open cost basis, marks, assignment/exercise/expiration transformations,
   input fingerprints, durable allocation lineage, and fail-closed incomplete
-  evidence.
+  evidence. The bounded PNL-03 FIFO/reconciliation tests additionally bind an
+  approved private-binding digest, complete snapshot UID, lifecycle assembly,
+  exact eligible normalized-fill scope, unavailable-position membership, and
+  eligible-subtotal labeling without private evidence or a database.
 - Adapter contract: deterministic Schwab orders/transactions normalization,
   including lifecycle event headers, decimal-safe transfer-item evidence legs,
   missing-evidence markers, and no inferred lifecycle P&L.

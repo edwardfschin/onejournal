@@ -8,7 +8,7 @@ keeps unresolved execution, accounting, and lifecycle evidence fail-closed.
 from __future__ import annotations
 
 from collections import Counter
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal, InvalidOperation
 from hashlib import sha256
@@ -268,6 +268,82 @@ class AssembledLifecycleCoverage:
             "financial_acceptance": False,
             "final_status": "coverage_assessed_unmaterialized",
         }
+
+
+def calculate_lifecycle_coverage_sha256(
+    coverage: AssembledLifecycleCoverage,
+) -> str:
+    """Recalculate the v1 assembly digest from all authoritative members."""
+
+    fingerprint_document = {
+        "contract_version": coverage.contract_version,
+        "source_broker": coverage.source_broker,
+        "connection_uid": coverage.connection_uid,
+        "source_account_id": coverage.source_account_id,
+        "window_start_date": coverage.window_start_date.isoformat(),
+        "window_end_date": coverage.window_end_date.isoformat(),
+        "evaluated_at": coverage.evaluated_at.isoformat(),
+        "external_manifest_sha256s": list(coverage.external_manifest_sha256s),
+        "order_rows": [
+            sha256(_canonical_row(row)).hexdigest() for row in coverage.order_rows
+        ],
+        "transaction_rows": [
+            sha256(_canonical_row(row)).hexdigest()
+            for row in coverage.transaction_rows
+        ],
+        "lifecycle_events": [
+            sha256(_canonical_row(row)).hexdigest()
+            for row in coverage.lifecycle_events
+        ],
+        "lifecycle_event_legs": [
+            sha256(_canonical_row(row)).hexdigest()
+            for row in coverage.lifecycle_event_legs
+        ],
+        "excluded_out_of_window_order_records": (
+            coverage.excluded_out_of_window_order_records
+        ),
+        "excluded_out_of_window_order_fill_rows": (
+            coverage.excluded_out_of_window_order_fill_rows
+        ),
+        "excluded_out_of_window_transaction_fill_rows": (
+            coverage.excluded_out_of_window_transaction_fill_rows
+        ),
+        "excluded_out_of_window_lifecycle_events": (
+            coverage.excluded_out_of_window_lifecycle_events
+        ),
+        "excluded_out_of_window_lifecycle_event_legs": (
+            coverage.excluded_out_of_window_lifecycle_event_legs
+        ),
+        "excluded_post_evaluation_order_rows": (
+            coverage.excluded_post_evaluation_order_rows
+        ),
+        "excluded_post_evaluation_transaction_rows": (
+            coverage.excluded_post_evaluation_transaction_rows
+        ),
+        "excluded_post_evaluation_lifecycle_events": (
+            coverage.excluded_post_evaluation_lifecycle_events
+        ),
+        "excluded_post_evaluation_lifecycle_event_legs": (
+            coverage.excluded_post_evaluation_lifecycle_event_legs
+        ),
+        "positions": [
+            {
+                "source_instrument_id_sha256": item.source_instrument_id_sha256,
+                "broker_quantity": format(item.broker_quantity, "f"),
+                "transaction_net_quantity": format(
+                    item.transaction_net_quantity, "f"
+                ),
+                "status": item.status,
+                "reason_codes": list(item.reason_codes),
+            }
+            for item in coverage.positions
+        ],
+    }
+    return sha256(
+        json.dumps(
+            fingerprint_document, sort_keys=True, separators=(",", ":")
+        ).encode("utf-8")
+    ).hexdigest()
 
 
 def _provider_instrument_id(row: Mapping[str, str]) -> str:
@@ -540,66 +616,7 @@ def assemble_current_position_lifecycle_coverage(
         )
     )
     source_broker, connection_uid, source_account_id = next(iter(scopes))
-    fingerprint_document = {
-        "contract_version": LIFECYCLE_COVERAGE_CONTRACT_VERSION,
-        "source_broker": source_broker,
-        "connection_uid": connection_uid,
-        "source_account_id": source_account_id,
-        "window_start_date": ordered[0].window_start_date.isoformat(),
-        "window_end_date": ordered[-1].window_end_date.isoformat(),
-        "evaluated_at": cutoff.isoformat(),
-        "external_manifest_sha256s": [
-            item.external_manifest_sha256 for item in ordered
-        ],
-        "order_rows": [sha256(_canonical_row(row)).hexdigest() for row in order_rows],
-        "transaction_rows": [
-            sha256(_canonical_row(row)).hexdigest() for row in transaction_rows
-        ],
-        "lifecycle_events": [
-            sha256(_canonical_row(row)).hexdigest() for row in lifecycle_events
-        ],
-        "lifecycle_event_legs": [
-            sha256(_canonical_row(row)).hexdigest()
-            for row in lifecycle_event_legs
-        ],
-        "excluded_out_of_window_order_records": (
-            excluded_out_of_window_order_records
-        ),
-        "excluded_out_of_window_order_fill_rows": (
-            excluded_out_of_window_order_fill_rows
-        ),
-        "excluded_out_of_window_transaction_fill_rows": (
-            excluded_out_of_window_transaction_fill_rows
-        ),
-        "excluded_out_of_window_lifecycle_events": (
-            excluded_out_of_window_lifecycle_events
-        ),
-        "excluded_out_of_window_lifecycle_event_legs": (
-            excluded_out_of_window_lifecycle_event_legs
-        ),
-        "excluded_post_evaluation_order_rows": excluded_orders,
-        "excluded_post_evaluation_transaction_rows": excluded_transactions,
-        "excluded_post_evaluation_lifecycle_events": len(excluded_event_uids),
-        "excluded_post_evaluation_lifecycle_event_legs": excluded_event_legs,
-        "positions": [
-            {
-                "source_instrument_id_sha256": item.source_instrument_id_sha256,
-                "broker_quantity": format(item.broker_quantity, "f"),
-                "transaction_net_quantity": format(
-                    item.transaction_net_quantity, "f"
-                ),
-                "status": item.status,
-                "reason_codes": list(item.reason_codes),
-            }
-            for item in position_results
-        ],
-    }
-    assembly_sha256 = sha256(
-        json.dumps(
-            fingerprint_document, sort_keys=True, separators=(",", ":")
-        ).encode("utf-8")
-    ).hexdigest()
-    return AssembledLifecycleCoverage(
+    assembled = AssembledLifecycleCoverage(
         contract_version=LIFECYCLE_COVERAGE_CONTRACT_VERSION,
         source_broker=source_broker,
         connection_uid=connection_uid,
@@ -641,5 +658,9 @@ def assemble_current_position_lifecycle_coverage(
         only_order_rows=only_orders,
         only_transaction_rows=only_transactions,
         positions=position_results,
-        assembly_sha256=assembly_sha256,
+        assembly_sha256="",
+    )
+    return replace(
+        assembled,
+        assembly_sha256=calculate_lifecycle_coverage_sha256(assembled),
     )

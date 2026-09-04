@@ -97,6 +97,15 @@ Additional contiguous history may create a new versioned assembly and coverage
 assessment. It cannot overwrite this baseline or silently widen an accepted
 scope.
 
+The additive repository-side boundary documented in
+`docs/bounded_pnl03_fifo_reconciliation_contract.md` consumes an exact approved
+coverage result, complete broker snapshot, canonical private binding bytes, and
+separately converted transaction-authoritative fills. It proves the binding,
+eligible FIFO, exact broker reconciliation, unavailable-position preservation,
+and eligible-subtotal invariants without provider, filesystem, database, mark,
+or presentation capability. Synthetic success is not real 46-position or
+financial acceptance.
+
 ## Privacy-safe audit
 
 The audit includes only the contract and assembly digests, opaque connection,
