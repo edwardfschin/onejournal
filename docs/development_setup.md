@@ -32,6 +32,18 @@ python -m pip check
 python -c "import duckdb, streamlit, yaml; import onejournal; print(onejournal.__version__)"
 ```
 
+For the normal workstation workflow, source the repository helper, which
+resolves the canonical machine-local environment and returns to the project
+root:
+
+```bash
+source bin/activate_onejournal.sh
+```
+
+The default environment is `/Users/edward/python-envs/onejournal-env`.
+Override it only for an intentional alternate environment with
+`ONEJOURNAL_VENV_DIR`.
+
 Why the editable install uses `--no-deps --no-build-isolation`:
 
 - `requirements.lock` has already installed the exact application and build

@@ -8,9 +8,15 @@ OneJournal is read-only. It does not place orders, cancel orders, replace orders
 
 ## Activate OneJournal
 
-Run: actoj
+Run from the repository root:
 
-This activates the OneJournal Python environment and moves into the project folder.
+```bash
+source bin/activate_onejournal.sh
+```
+
+This activates the canonical machine-local OneJournal Python environment and
+moves into the project folder. A shell alias may wrap this command, but the
+repository helper is the authoritative activation path.
 
 ## Baseline Check
 
