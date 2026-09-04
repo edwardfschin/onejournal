@@ -103,6 +103,35 @@ subtotal status, and final status. It emits no provider symbol, canonical
 instrument identity, account identifier, quantity, price, cost basis, private
 path, raw evidence, or credential.
 
+## Owner-private v2 replay evidence
+
+Owner-private route `pnl-03t-replacement-2026-09-04.v2` completed this gate on
+2026-09-04 without moving private identifiers or financial values into Git.
+Its permanent opaque account scope produces replacement assembly
+`8e88ab2f3db3555b6b111e45b0308e2029748187258cccbdbcb7156a8ce892a0`
+with the same 53-position `46/4/3` state. The historical
+`7454c4543439dd6fc49d3e2089ed326ebe6eac0a3cdf8a32a82765d19c041fe6`
+baseline remains immutable rather than being relabelled or overwritten.
+
+The complete private binding contains 50 transaction-authoritative identities.
+For the three unresolved positions that have no transaction fill identity, two
+equities use the complete broker snapshot's explicit asset identity plus the
+already accepted same-account transaction currency consensus. The remaining
+option uses the snapshot's exact option terms, one exact private Schwab chain
+contract match for its explicit multiplier, and that same transaction currency
+consensus. This supplemental reference evidence is binding-only: it does not
+widen lifecycle eligibility or make any unresolved position financial.
+
+Binding digest
+`5eefa7ec4c059d2b78db3f7f968407b711dbde63a1a04e749b598f426ee00295`
+and eligible fill fingerprint
+`1465070d22c6c2e07e22d28a81bebdd250c2aa5607bb20eb3ff3c5c1b28eb4a1`
+replay deterministically. All 46 eligible positions pass FIFO and exact broker
+quantity reconciliation, none is reconciliation-pending, and seven remain
+present and unavailable. The result exposes only an eligible subtotal. It does
+not establish valuation marks, database persistence, a portfolio total,
+presentation readiness, or owner financial acceptance.
+
 ## Validation and rollback
 
 Synthetic tests prove deterministic replay, exact binding/snapshot/assembly
