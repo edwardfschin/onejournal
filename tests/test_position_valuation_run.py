@@ -217,3 +217,19 @@ class PositionValuationRunTests(unittest.TestCase):
                 persist_position_valuation_run(
                     db_path, run=run, broker_snapshot=conflicting,
                 )
+
+    def test_generic_snapshot_writer_remains_compatible_with_migration_0013(self) -> None:
+        snapshot = self.snapshot()
+        run = build_position_valuation_run(
+            fills=(self.fill(),), lifecycle_events=(), broker_snapshot=snapshot,
+            quotes={self.identity: self.quote()}, source_broker="schwab",
+            connection_uid="conn", source_account_id="acct", asof=self.asof,
+            evaluated_at=self.evaluated_at, max_snapshot_age_seconds=60,
+        )
+        with tempfile.TemporaryDirectory() as tmp:
+            db_path = Path(tmp) / "migration-0013.duckdb"
+            apply_schema_migrations(db_path, target_version="0013")
+            result = persist_position_valuation_run(
+                db_path, run=run, broker_snapshot=snapshot,
+            )
+            self.assertTrue(result.created)

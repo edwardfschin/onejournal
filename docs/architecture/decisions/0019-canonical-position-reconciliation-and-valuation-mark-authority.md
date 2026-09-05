@@ -8,6 +8,8 @@
   ADR-0016, `docs/onejournal_data_contract_v1.md`,
   `docs/normalized_fills_odfs_contract.md`
 - Supersedes: None
+- Partially superseded by: ADR-0023 for separately labelled
+  broker-reconciled current-position basis and unrealized P&L only
 - Superseded by: None
 
 ## Context
@@ -78,6 +80,11 @@ Broker-reported average cost, market value, unrealized P&L, and realized P&L
 are reconciliation evidence. They must be preserved when supplied, compared
 with the OneJournal calculation where the comparison is meaningful, and never
 override FIFO lots or silently repair a discrepancy.
+
+ADR-0023 adds a distinct broker-reconciled current-position view. It may use
+the direction-specific broker tax-lot aggregate, market value, and open P&L
+from one complete fresh position snapshot. It never overrides or masquerades
+as the FIFO book result.
 
 ### Valuation-mark authority
 

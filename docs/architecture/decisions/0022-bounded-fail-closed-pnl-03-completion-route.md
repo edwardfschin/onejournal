@@ -8,6 +8,8 @@
 - Related contracts: `docs/current_position_lifecycle_coverage_contract.md`
 - Supersedes: None
 - Superseded by: None
+- Amended by: ADR-0023 for a separate broker-reconciled current-position
+  valuation route
 
 ## Context
 
@@ -94,6 +96,47 @@ broker reconciliation, approved valuation marks, additive persistence and
 migration, versioned API and fail-closed presentation, regression validation,
 and explicit owner financial acceptance. The seven unavailable positions must
 also pass their visibility and exclusion tests.
+
+### Later versioned implementation evidence
+
+The frozen five-window `7454c454...` 53-position `46/4/3` result remains the
+historical baseline. A later complete 58-position snapshot was recorded as a
+separate version rather than rewriting that evidence. The durable private
+binding has digest
+`0e1000853e056a5a6079494f6b92c2d8eb802ad562476de8025ef0a5c2e7894d`.
+
+Replacement route `pnl-03v-58-position-2026-09-04.v4` independently selected
+six contiguous lifecycle windows, explicitly excluding the superseded
+September 2-4 capture, and produced assembly
+`6e3787b92892fba4c536c5bd88dfcc57b22e985f8ee80e5663629cac6202115f`.
+It proves 48 fill-flat starts and exact FIFO/broker-quantity reconciliation,
+with zero pending; six positions require history extension and four require
+review. All ten remain visible in scope and financially unavailable.
+
+A separately bounded 48-symbol quote capture plus same-provider September 4
+session evidence produced 48 valid `market_closed_last` marks and zero missing
+marks after the 16:00 New York option close. The resulting private valuation
+provides eligible subtotals only and retains `financial_acceptance=false`.
+Additive migration 0014 and its exact-replay repository now preserve that
+bounded meaning separately from the generic 0013 valuation tables. The
+unregistered private API serializer keeps all 58 positions visible, releases
+values only under a matching explicit owner-acceptance authorization, keeps the
+ten unresolved positions null, and always returns null portfolio totals. No
+actual journal migration, active private route, authentication implementation,
+presentation activation, or owner acceptance is claimed; therefore this
+evidence does not by itself close PNL-03.
+
+Append-only private replacement package
+`PNL-03V-VALUATION-GATE-20260904-02` binds the persisted result fingerprint and
+the historical `-01` manifest digest, and replays migration-0014 persistence in
+a disposable database without retaining that database. It does not change the
+route, `48/6/4` lifecycle coverage, `48/10` financial availability, source
+evidence, or owner-acceptance state.
+
+ADR-0023 later approved a separate source-labelled current-position route
+using complete broker snapshot basis/value evidence. It does not rewrite this
+FIFO route or its unavailable counts. Any application to the private snapshot
+must create a new versioned result and receive separate financial acceptance.
 
 ## Alternatives considered
 

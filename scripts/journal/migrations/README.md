@@ -3,7 +3,7 @@
 This directory is reserved for ordered DuckDB migration artifacts governed by
 `docs/database_migrations.md`.
 
-There are currently twelve migration files:
+There are currently fifteen migration files:
 
 - `0001_establish_schema_version.sql`:
   create the migration ledger (`schema_migrations`) with run metadata and audit
@@ -54,6 +54,16 @@ There are currently twelve migration files:
   plus versioned PNL-03 reconciliation and valuation results with quote,
   freshness, mark-policy, calculation, and input-fingerprint lineage. Legacy
   `normalized_positions` remain unchanged and non-authoritative.
+- `0014_add_bounded_pnl03_valuations.sql`:
+  add route-, binding-, assembly-, snapshot-, quote-, calculation-, and
+  acceptance-lineage storage for the fail-closed ADR-0022 bounded valuation,
+  its complete position scope, and explicitly eligible-only subtotals. Generic
+  migration-0013 rows remain unchanged.
+- `0015_add_broker_current_position_valuations.sql`:
+  preserve direction-specific broker tax-lot aggregate basis on complete
+  snapshot rows and add separate ADR-0023 broker-current valuation runs,
+  per-position metric/reconciliation state, explicit currency quantum, and
+  complete portfolio totals. FIFO and bounded valuation rows remain unchanged.
 
 The existing DuckDB schema is a prototype bootstrap baseline created (and now
 versioned) by `scripts/journal/init_journal_db.py`.

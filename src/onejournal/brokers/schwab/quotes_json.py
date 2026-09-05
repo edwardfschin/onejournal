@@ -75,9 +75,15 @@ class SchwabQuoteRequest:
             raise SchwabQuoteAdapterError(
                 "asset_class must be an explicitly mapped stock or option"
             )
-        if not instrument_key.startswith(asset_class + "|"):
+        permitted_prefixes = (
+            ("stock|", "instrument.v1|equity|")
+            if asset_class == "stock"
+            else ("option|", "instrument.v1|option|")
+        )
+        if not instrument_key.startswith(permitted_prefixes):
             raise SchwabQuoteAdapterError(
-                f"instrument_key must use the {asset_class}| prefix"
+                "instrument_key must use the matching legacy or canonical "
+                f"{asset_class} identity prefix"
             )
         if not re.fullmatch(r"[A-Z]{3}", currency):
             raise SchwabQuoteAdapterError(

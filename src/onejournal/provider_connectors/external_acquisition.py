@@ -76,6 +76,10 @@ from onejournal.pnl.position_reconciliation import BrokerPositionSnapshot
 EXTERNAL_PROVIDER_ACQUISITION_SCHEMA = "onejournal.external-provider-acquisition.v1"
 EXTERNAL_PROVIDER_ACQUISITION_MANIFEST_FILENAME = "acquisition-manifest.json"
 SCHWAB_EXTERNAL_ACQUISITION_PROFILE = "schwab-read-only-quotes-and-market-hours.v1"
+SCHWAB_BATCH_QUOTES_EXTERNAL_ACQUISITION_PROFILE = (
+    "schwab-read-only-bounded-batch-quotes-and-market-hours.v1"
+)
+SCHWAB_BATCH_QUOTES_MAX_SYMBOLS = 50
 SCHWAB_POSITION_EXTERNAL_ACQUISITION_PROFILE = (
     "schwab-read-only-single-account-positions.v1"
 )
@@ -117,6 +121,7 @@ _LIFECYCLE_OPERATIONS = ("orders", "transactions")
 _SUPPORTED_PROFILES = frozenset(
     {
         SCHWAB_EXTERNAL_ACQUISITION_PROFILE,
+        SCHWAB_BATCH_QUOTES_EXTERNAL_ACQUISITION_PROFILE,
         SCHWAB_POSITION_EXTERNAL_ACQUISITION_PROFILE,
         SCHWAB_LIFECYCLE_EXTERNAL_ACQUISITION_PROFILE,
     }
@@ -271,6 +276,14 @@ class ExternalSchwabQuoteMapping:
 
     request_uid: str
     instrument: QuoteInstrumentRequest
+
+
+@dataclass(frozen=True)
+class ExternalSchwabBatchQuoteMapping:
+    """OneJournal-owned mappings for one bounded batch quote request."""
+
+    request_uid: str
+    instruments: tuple[QuoteInstrumentRequest, ...]
 
 
 @dataclass(frozen=True)
@@ -577,9 +590,27 @@ def _validate_schwab_request(
             raise ExternalProviderAcquisitionError(f"{field} quote endpoint scope is invalid")
         if query[0][0] != "symbols" or query[1] != ("fields", "quote,reference"):
             raise ExternalProviderAcquisitionError(f"{field} quote query scope is invalid")
-        symbol = query[0][1]
-        if not re.fullmatch(r"[^,\x00-\x1f\x7f]{1,64}", symbol):
-            raise ExternalProviderAcquisitionError(f"{field} must request exactly one safe symbol")
+        symbols = tuple(query[0][1].split(","))
+        if profile == SCHWAB_BATCH_QUOTES_EXTERNAL_ACQUISITION_PROFILE:
+            if (
+                not 1 <= len(symbols) <= SCHWAB_BATCH_QUOTES_MAX_SYMBOLS
+                or len({symbol.upper() for symbol in symbols}) != len(symbols)
+                or tuple(sorted(symbols, key=str.upper)) != symbols
+                or any(
+                    symbol != symbol.strip().upper()
+                    or not re.fullmatch(r"[^,\x00-\x1f\x7f]{1,64}", symbol)
+                    for symbol in symbols
+                )
+            ):
+                raise ExternalProviderAcquisitionError(
+                    f"{field} bounded batch symbols are invalid"
+                )
+        elif len(symbols) != 1 or not re.fullmatch(
+            r"[^,\x00-\x1f\x7f]{1,64}", symbols[0]
+        ):
+            raise ExternalProviderAcquisitionError(
+                f"{field} must request exactly one safe symbol"
+            )
     else:
         expected = (
             ("markets", "equity"),
@@ -733,14 +764,20 @@ def _parse_manifest(document: object) -> ExternalProviderAcquisitionManifest:
         schedule_requests = tuple(
             item for item in requests if item.operation == "market_hours"
         )
-        if not 1 <= len(quote_requests) <= 2 or not 1 <= len(schedule_requests) <= 3:
-            raise ExternalProviderAcquisitionError(
-                "Schwab scope requires one or two quotes and one through three schedules"
-            )
-        if len({item.query[0].value.upper() for item in quote_requests}) != len(
-            quote_requests
-        ):
-            raise ExternalProviderAcquisitionError("quote provider symbols must be unique")
+        if profile == SCHWAB_BATCH_QUOTES_EXTERNAL_ACQUISITION_PROFILE:
+            if len(quote_requests) != 1 or not 1 <= len(schedule_requests) <= 3:
+                raise ExternalProviderAcquisitionError(
+                    "Schwab batch scope requires one quote and one through three schedules"
+                )
+        else:
+            if not 1 <= len(quote_requests) <= 2 or not 1 <= len(schedule_requests) <= 3:
+                raise ExternalProviderAcquisitionError(
+                    "Schwab scope requires one or two quotes and one through three schedules"
+                )
+            if len({item.query[0].value.upper() for item in quote_requests}) != len(
+                quote_requests
+            ):
+                raise ExternalProviderAcquisitionError("quote provider symbols must be unique")
         if len({item.approved_market_date for item in schedule_requests}) != len(
             schedule_requests
         ):
@@ -1158,6 +1195,133 @@ def convert_external_schwab_quotes(
             )
         )
     return tuple(results)
+
+
+def convert_external_schwab_batch_quotes(
+    acquisition: VerifiedExternalProviderAcquisition,
+    *,
+    mapping: ExternalSchwabBatchQuoteMapping,
+    evaluated_at_utc: datetime,
+    freshness_policy: QuoteFreshnessPolicy,
+) -> ConvertedExternalQuoteCapture:
+    """Convert one exact bounded batch response to one private capture in memory."""
+
+    if (
+        acquisition.manifest.profile
+        != SCHWAB_BATCH_QUOTES_EXTERNAL_ACQUISITION_PROFILE
+    ):
+        raise ExternalProviderAcquisitionError(
+            "batch quote conversion requires the bounded batch acquisition profile"
+        )
+    evaluated = (
+        evaluated_at_utc.astimezone(UTC)
+        if evaluated_at_utc.tzinfo is not None
+        else None
+    )
+    if evaluated is None or evaluated_at_utc.utcoffset() is None:
+        raise ExternalProviderAcquisitionError(
+            "evaluated_at_utc must include a timezone"
+        )
+    quote_requests = tuple(
+        item for item in acquisition.manifest.requests if item.operation == "quote"
+    )
+    if len(quote_requests) != 1:
+        raise ExternalProviderAcquisitionError(
+            "bounded batch acquisition must contain exactly one quote request"
+        )
+    (request,) = quote_requests
+    if mapping.request_uid != request.request_uid:
+        raise ExternalProviderAcquisitionError(
+            "OneJournal batch mapping does not match the quote request"
+        )
+    if not mapping.instruments:
+        raise ExternalProviderAcquisitionError(
+            "OneJournal batch mapping must contain instruments"
+        )
+    approved_symbols = tuple(request.query[0].value.split(","))
+    mapped_symbols = tuple(
+        instrument.provider_instrument_id for instrument in mapping.instruments
+    )
+    if mapped_symbols != approved_symbols:
+        raise ExternalProviderAcquisitionError(
+            "OneJournal batch mappings differ from the ordered approved provider symbols"
+        )
+
+    raw_body = acquisition.response_bytes[request.response_filename]
+    raw_digest = request.response_sha256
+    quote_run_uid = _quote_run_uid(acquisition.manifest_sha256, request)
+    source = QuoteEvidenceSource(
+        storage_kind="external_private_vault",
+        locator=(
+            f"schwab/{request.approved_market_date.isoformat()}/quote-captures/"
+            f"{quote_run_uid}/quote-response.json"
+        ),
+        raw_sha256=raw_digest,
+    )
+    adapter_requests = tuple(
+        SchwabQuoteRequest(
+            provider_symbol=instrument.provider_instrument_id,
+            instrument_key=instrument.instrument_key,
+            asset_class=instrument.asset_class,
+            currency=instrument.currency,
+        )
+        for instrument in mapping.instruments
+    )
+    quotes = normalized_quotes_from_payload(
+        load_quotes_json_bytes(raw_body),
+        requests=adapter_requests,
+        connection_uid=acquisition.manifest.connection_uid,
+        asof=request.approved_market_date,
+        received_at=request.received_at_utc,
+        raw_path=(
+            f"data/raw/schwab/external/{acquisition.manifest.acquisition_run_uid}/"
+            f"{request.response_filename}"
+        ),
+        raw_sha256=raw_digest,
+    )
+    capture = QuoteCaptureEnvelope(
+        quote_run_uid=quote_run_uid,
+        provider="schwab",
+        connection_uid=acquisition.manifest.connection_uid,
+        asof=request.approved_market_date,
+        started_at=request.requested_at_utc,
+        received_at=request.received_at_utc,
+        evaluated_at=evaluated,
+        requests=mapping.instruments,
+        source=source,
+        adapter_version=quotes[0].adapter_version,
+        quotes=quotes,
+    )
+    validate_quote_capture(capture, policy=freshness_policy)
+    capture_bytes = quote_capture_artifact_bytes(capture)
+    private_manifest = PrivateRawCaptureManifest(
+        schema=PRIVATE_CAPTURE_MANIFEST_SCHEMA,
+        provider="schwab",
+        quote_run_uid=quote_run_uid,
+        connection_uid=acquisition.manifest.connection_uid,
+        approval_id=acquisition.manifest.acquisition_approval_id,
+        acknowledgement_uid=acquisition.manifest.acknowledgement_uid,
+        asof=request.approved_market_date,
+        request_scope_sha256=sha256(
+            request_scope_json(capture).encode("utf-8")
+        ).hexdigest(),
+        started_at=request.requested_at_utc,
+        received_at=request.received_at_utc,
+        completed_at=evaluated,
+        raw_sha256=raw_digest,
+        raw_byte_count=len(raw_body),
+        capture_envelope_sha256=sha256(capture_bytes).hexdigest(),
+        final_status="captured_private_uningested",
+    )
+    return ConvertedExternalQuoteCapture(
+        external_manifest_sha256=acquisition.manifest_sha256,
+        external_request_uid=request.request_uid,
+        source=source,
+        raw_response_bytes=raw_body,
+        capture=capture,
+        private_manifest=private_manifest,
+        capture_artifact_bytes=capture_bytes,
+    )
 
 
 def convert_external_schwab_positions(

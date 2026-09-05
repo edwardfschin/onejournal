@@ -6,6 +6,10 @@
 intake and in-memory conversion boundary approved by ADR-0015 and ADR-0016. The
 first profile is `schwab-read-only-quotes-and-market-hours.v1` for explicitly
 bounded evidence produced inside the sole OneBot credential-owner boundary.
+PNL-03V additively defines
+`schwab-read-only-bounded-batch-quotes-and-market-hours.v1` for one exact,
+ordered quote batch of at most 50 symbols plus one through three matching
+schedule responses. It does not widen the original single-symbol profile.
 ADR-0020 additively defines
 `schwab-read-only-single-account-positions.v1` for one separately approved,
 complete account-position response under the same sole-owner boundary.
@@ -39,6 +43,9 @@ Quote conversion returns, in memory, the exact response bytes, an existing
 bytes. It does not materialize them. The capture run UID is deterministically
 derived from the external manifest digest, request UID, and response digest,
 so identical replay is stable and changed lineage cannot reuse the identity.
+The batch converter returns the same contracts as one complete capture and
+requires OneJournal-owned canonical mappings to match the provider-symbol
+order exactly.
 
 Market-hours conversion returns parsed schedule evidence whose combined
 lineage binds the external manifest digest and every response digest. An
@@ -61,8 +68,8 @@ path, raw account identifier, normalized value, or derived financial result.
 
 ## Schwab allowlist
 
-The v1 Schwab profile requires both operation types and permits two through
-five total responses:
+The original Schwab quote profile requires both operation types and permits two
+through five total responses:
 
 - one or two exact single-symbol `GET` requests to
   `https://api.schwabapi.com/marketdata/v1/quotes`, with ordered `symbols` and
@@ -78,6 +85,16 @@ Account, position, transaction, order, request-body, and database counts must
 be zero. An owner-side OAuth refresh count may be zero or one; one requires its
 own explicit approval ID and is evidence only, never a OneJournal action.
 
+The additive bounded-batch profile requires exactly one quotes GET containing
+one through 50 unique, uppercase, sorted, comma-separated provider symbols and
+the same `fields=quote,reference` parameter. It also requires one through three
+unique-date market-hours GETs under the same rules. The returned JSON object
+must exactly match the approved provider-symbol set. Missing, unexpected,
+duplicate, reordered, oversized, or unsafe symbols reject the complete batch.
+All existing manifest, acknowledgement, owner-epoch, request-count, response,
+checksum, no-retry, no-redirect, and forbidden-activity controls remain in
+force.
+
 The separate `schwab-read-only-single-account-positions.v1` profile permits
 exactly one response from one redirect-free GET represented by
 `https://api.schwabapi.com/trader/v1/accounts/{accountHash}` with exactly
@@ -90,10 +107,12 @@ enter Git or ordinary audit output.
 
 Position conversion verifies that private account hash against the manifest,
 binds the exact response account number and checksum, and invokes only
-`schwab-position-json-v2` with an explicit complete provider-symbol mapping.
+`schwab-position-json-v3` with an explicit complete provider-symbol mapping.
 It returns an in-memory `BrokerPositionSnapshot`; it does not create canonical
 lots, reconcile quantities, select a mark, calculate P&L, persist data, or
-establish PNL-03 acceptance.
+establish PNL-03 acceptance. Version 3 preserves the direction-appropriate
+broker tax-lot average separately so ADR-0023's credential-free current-
+position validator can consume it without substituting generic average price.
 
 The separate `schwab-read-only-single-account-lifecycle.v1` profile permits
 exactly one ordered pair of successful redirect-free account-scoped GETs for
@@ -205,6 +224,12 @@ PNL-03N does not add another filesystem operator. The cross-window assembler
 accepts only existing verified in-memory conversions and private current-
 position targets. Its privacy-safe audit contains counts and digests only.
 
+PNL-03V likewise adds no credentialed OneJournal operator. Its batch converter
+accepts only already acquired exact bytes. The separately approved OneBot-side
+capture remained the sole credentialed boundary; OneJournal performed mapping,
+capture-envelope validation, session authority, freshness, and bounded
+valuation offline.
+
 The operator has no provider, credential, refresh, account, order, migration,
 database, scheduling, listener, synchronization, or deployment capability. Its
 secret-free stdout audit supplies the exact capture identities needed by the
@@ -236,7 +261,9 @@ arbitrary endpoint/method/query rejection, forbidden activity counts,
 incomplete manifests, tampering, mapping mismatches, validation-only behavior,
 explicit append-only materialization, permission enforcement, overwrite
 rejection, and the absence of network, credential, database, and subprocess
-capability.
+capability. Additive batch tests cover the 50-symbol ceiling, exact ordered
+scope, duplicate and legacy-profile rejection, canonical instrument identities,
+complete multi-symbol response matching, and deterministic conversion.
 
 Before materialization, rollback is a focused code reversion; no private or
 database state exists. After any separately approved materialization, immutable

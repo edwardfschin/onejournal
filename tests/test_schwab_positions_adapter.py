@@ -41,6 +41,7 @@ class SchwabPositionsAdapterTests(unittest.TestCase):
                     {
                         "shortQuantity": 0,
                         "averagePrice": Decimal("100.25"),
+                        "taxLotAverageLongPrice": Decimal("101.125"),
                         "currentDayProfitLoss": Decimal("1.25"),
                         "currentDayProfitLossPercentage": Decimal("0.10"),
                         "longQuantity": Decimal("10"),
@@ -103,6 +104,10 @@ class SchwabPositionsAdapterTests(unittest.TestCase):
         self.assertEqual(position.identity, self.identity)
         self.assertEqual(position.quantity, Decimal("10"))
         self.assertEqual(position.broker_average_cost, Decimal("100.25"))
+        self.assertEqual(
+            position.broker_tax_lot_average_price,
+            Decimal("101.125"),
+        )
         self.assertEqual(position.broker_market_value, Decimal("1100"))
         self.assertEqual(position.broker_unrealized_pnl, Decimal("97.50"))
 
@@ -131,6 +136,7 @@ class SchwabPositionsAdapterTests(unittest.TestCase):
                     "longQuantity": 0,
                     "shortQuantity": Decimal("2"),
                     "averagePrice": Decimal("3.5"),
+                    "taxLotAverageShortPrice": Decimal("3.45"),
                     "marketValue": Decimal("-640"),
                     "longOpenProfitLoss": 0,
                     "shortOpenProfitLoss": Decimal("60"),
@@ -149,6 +155,43 @@ class SchwabPositionsAdapterTests(unittest.TestCase):
         self.assertEqual(position.identity, identity)
         self.assertEqual(position.quantity, Decimal("-2"))
         self.assertEqual(position.broker_unrealized_pnl, Decimal("60"))
+        self.assertEqual(
+            position.broker_tax_lot_average_price,
+            Decimal("3.45"),
+        )
+
+    def test_directional_tax_lot_average_is_explicit_and_never_inferred(self) -> None:
+        payload = json.loads(self.body(), parse_float=Decimal)
+        position = payload["securitiesAccount"]["positions"][0]
+        position["averagePrice"] = Decimal("12.3456")
+        position["averageLongPrice"] = Decimal("6.75")
+        position["taxLotAverageLongPrice"] = Decimal("12.3456")
+        snapshot = self.snapshot(payload=payload)
+        self.assertEqual(
+            snapshot.positions[0].broker_average_cost,
+            Decimal("12.3456"),
+        )
+        self.assertEqual(
+            snapshot.positions[0].broker_tax_lot_average_price,
+            Decimal("12.3456"),
+        )
+
+        position.pop("taxLotAverageLongPrice")
+        snapshot = self.snapshot(payload=payload)
+        self.assertIsNone(
+            snapshot.positions[0].broker_tax_lot_average_price
+        )
+
+    def test_nonzero_opposite_direction_tax_lot_average_fails_closed(self) -> None:
+        payload = json.loads(self.body(), parse_float=Decimal)
+        payload["securitiesAccount"]["positions"][0][
+            "taxLotAverageShortPrice"
+        ] = Decimal("1")
+        with self.assertRaisesRegex(
+            SchwabPositionAdapterError,
+            "opposite-direction tax-lot average",
+        ):
+            self.snapshot(payload=payload)
 
     def test_collective_investment_etf_maps_only_to_explicit_equity_identity(self) -> None:
         payload = json.loads(self.body(), parse_float=Decimal)

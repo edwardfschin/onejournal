@@ -2,7 +2,7 @@
 
 ## Scope
 
-`schwab-position-json-v2` is the credential-free PNL-03 intake boundary for an
+`schwab-position-json-v3` is the credential-free PNL-03 intake boundary for an
 already captured Schwab single-account response. It cannot call Schwab, access
 or refresh credentials, discover accounts, place orders, write private
 evidence, or write a database.
@@ -32,16 +32,22 @@ mapping fields; OCC parsing verifies the mapping and never creates it.
 
 Signed quantity is exact `longQuantity - shortQuantity`. Missing, float,
 negative, simultaneous non-zero long/short, or zero position rows fail closed.
-Broker average price, market value, and direction-appropriate open P&L are
-preserved as reconciliation evidence and never override OneJournal FIFO cost
-basis or valuation.
+Broker average price, direction-appropriate tax-lot average price, market
+value, and direction-appropriate open P&L are preserved as distinct evidence.
+The adapter never fills a missing tax-lot average from generic
+`averagePrice`. A non-zero opposite-direction tax-lot average or open-P&L
+value fails closed.
 
 ## Output and limitations
 
 The result is one deterministic, complete-account `BrokerPositionSnapshot`
 with exact raw lineage and zero or more broker position records. The adapter
 does not calculate cost basis, select a mark, reconcile fills, or establish
-financial acceptance. Real provider evidence acquisition, private
+financial acceptance. ADR-0023 and
+`onejournal.broker-current-position-valuation.v1` separately decide whether
+the preserved directional tax-lot aggregate, market value, and open P&L
+reconcile for a current-position metric. They do not fabricate individual lots
+or replace OneJournal FIFO. Real provider evidence acquisition, private
 materialization, production migration, and owner acceptance remain separate
 approval gates.
 
@@ -55,10 +61,11 @@ only those field-shape facts. Unsupported collective types, malformed OCC
 symbols, mismatched explicit mappings, and conflicting optional fields fail
 closed.
 
-Version 2 supersedes the synthetic-only v1 option-field assumption. The
-version change preserves deterministic replay lineage because a payload that
-v1 rejected can now be accepted only under these stricter explicit-mapping and
-OCC-verification rules.
+Version 2 superseded the synthetic-only v1 option-field assumption. Version 3
+preserves Schwab's explicit direction-specific `taxLotAverageLongPrice` or
+`taxLotAverageShortPrice` as a separate field. Historical v2 snapshot and
+FIFO evidence remains immutable; a v3 conversion creates new versioned
+lineage.
 
 ADR-0020 and `schwab-read-only-single-account-positions.v1` now provide the
 offline external-acquisition boundary needed to carry one exact private

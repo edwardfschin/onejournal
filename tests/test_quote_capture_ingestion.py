@@ -161,6 +161,15 @@ class QuoteCaptureIngestionTests(unittest.TestCase):
 
         validate_quote_capture(capture, policy=self.policy.freshness)
 
+    def test_canonical_instrument_identity_prefix_is_accepted(self) -> None:
+        quote = self.quote(
+            instrument_key="instrument.v1|equity|US|USD|AAPL"
+        )
+
+        validate_quote_capture(
+            self.capture(quote=quote), policy=self.policy.freshness
+        )
+
     def test_migration_0012_preserves_legacy_0011_quote_evidence(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             db_path = Path(tmp) / "onejournal.duckdb"

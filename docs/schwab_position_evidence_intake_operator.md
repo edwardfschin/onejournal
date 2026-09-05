@@ -43,8 +43,9 @@ The operator verifies, in order:
 3. canonical private binding and connection equality;
 4. manifest account-hash digest against the in-memory private hash;
 5. exact response account number, complete `positions` member, explicit
-   mappings, identity terms, and decimal quantity semantics through
-   `schwab-position-json-v2`.
+   mappings, identity terms, decimal quantity semantics, and preserved
+   direction-specific tax-lot aggregate fields through
+   `schwab-position-json-v3`.
 
 Any failure stops before an audit result. The operator never treats a missing
 positions member as an empty account and never infers an identity or mapping.

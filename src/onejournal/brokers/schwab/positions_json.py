@@ -26,7 +26,7 @@ from onejournal.pnl.position_reconciliation import (
 )
 
 
-ADAPTER_VERSION = "schwab-position-json-v2"
+ADAPTER_VERSION = "schwab-position-json-v3"
 SCHWAB_TRADER_HOST = "api.schwabapi.com"
 _ACCOUNT_PATH_RE = re.compile(r"/trader/v1/accounts/([A-Za-z0-9._~-]{1,512})")
 _DIGEST_RE = re.compile(r"[0-9a-f]{64}")
@@ -361,6 +361,16 @@ def _position_record(
     average_cost = _decimal(
         item.get("averagePrice"), f"{field}.averagePrice", non_negative=True
     )
+    tax_lot_average_long_price = _decimal(
+        item.get("taxLotAverageLongPrice"),
+        f"{field}.taxLotAverageLongPrice",
+        non_negative=True,
+    )
+    tax_lot_average_short_price = _decimal(
+        item.get("taxLotAverageShortPrice"),
+        f"{field}.taxLotAverageShortPrice",
+        non_negative=True,
+    )
     market_value = _decimal(item.get("marketValue"), f"{field}.marketValue")
     generic_open_pnl = _decimal(item.get("openProfitLoss"), f"{field}.openProfitLoss")
     long_open_pnl = _decimal(
@@ -372,9 +382,13 @@ def _position_record(
     if quantity > 0:
         open_pnl = long_open_pnl if long_open_pnl is not None else generic_open_pnl
         opposite_pnl = short_open_pnl
+        tax_lot_average_price = tax_lot_average_long_price
+        opposite_tax_lot_average_price = tax_lot_average_short_price
     else:
         open_pnl = short_open_pnl if short_open_pnl is not None else generic_open_pnl
         opposite_pnl = long_open_pnl
+        tax_lot_average_price = tax_lot_average_short_price
+        opposite_tax_lot_average_price = tax_lot_average_long_price
     direction_pnl = long_open_pnl if quantity > 0 else short_open_pnl
     if (
         direction_pnl is not None
@@ -388,6 +402,10 @@ def _position_record(
         raise SchwabPositionAdapterError(
             f"{field} contains non-zero opposite-direction profit/loss"
         )
+    if opposite_tax_lot_average_price not in {None, Decimal("0")}:
+        raise SchwabPositionAdapterError(
+            f"{field} contains non-zero opposite-direction tax-lot average price"
+        )
 
     return BrokerPositionRecord(
         identity=mapping.identity,
@@ -395,6 +413,7 @@ def _position_record(
         broker_average_cost=average_cost,
         broker_market_value=market_value,
         broker_unrealized_pnl=open_pnl,
+        broker_tax_lot_average_price=tax_lot_average_price,
     )
 
 

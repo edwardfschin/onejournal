@@ -112,9 +112,15 @@ def _validate_request(request: QuoteInstrumentRequest) -> None:
     asset_class = _required(request.asset_class, "request.asset_class")
     if asset_class not in {"stock", "option"}:
         raise QuoteCaptureContractError("request.asset_class must be stock or option")
-    if not request.instrument_key.startswith(asset_class + "|"):
+    permitted_prefixes = (
+        ("stock|", "instrument.v1|equity|")
+        if asset_class == "stock"
+        else ("option|", "instrument.v1|option|")
+    )
+    if not request.instrument_key.startswith(permitted_prefixes):
         raise QuoteCaptureContractError(
-            f"request.instrument_key must use the {asset_class}| prefix"
+            "request.instrument_key must use the matching legacy or canonical "
+            f"{asset_class} identity prefix"
         )
     if not re.fullmatch(r"[A-Z]{3}", request.currency):
         raise QuoteCaptureContractError("request.currency must be an uppercase ISO code")

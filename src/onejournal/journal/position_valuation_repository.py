@@ -118,6 +118,15 @@ def persist_position_valuation_run(
         missing = REQUIRED_TABLES - _table_names(con)
         if missing:
             raise RuntimeError(f"database lacks PNL-03 migration 0013 tables: {sorted(missing)}")
+        snapshot_columns = {
+            row[1]
+            for row in con.execute(
+                "PRAGMA table_info(broker_position_snapshot_records)"
+            ).fetchall()
+        }
+        stores_tax_lot_average = (
+            "broker_tax_lot_average_price" in snapshot_columns
+        )
         con.execute("BEGIN TRANSACTION")
         try:
             prior_snapshot = con.execute(
@@ -138,13 +147,40 @@ def persist_position_valuation_run(
                      snapshot_fingerprint, len(broker_snapshot.positions), "accepted"),
                 )
                 for item in sorted(broker_snapshot.positions, key=lambda row: row.identity.key):
-                    con.execute(
-                        """INSERT INTO broker_position_snapshot_records VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-                        (broker_snapshot.snapshot_uid, *_identity_values(item.identity),
-                         item.provider_position_id, item.quantity,
-                         item.broker_average_cost, item.broker_market_value,
-                         item.broker_unrealized_pnl),
+                    values = (
+                        broker_snapshot.snapshot_uid,
+                        *_identity_values(item.identity),
+                        item.provider_position_id,
+                        item.quantity,
+                        item.broker_average_cost,
+                        item.broker_market_value,
+                        item.broker_unrealized_pnl,
                     )
+                    if stores_tax_lot_average:
+                        con.execute(
+                            """INSERT INTO broker_position_snapshot_records (
+                                   snapshot_uid, instrument_key, asset_class,
+                                   market_scope, currency, symbol,
+                                   underlying_symbol, expiry, option_right,
+                                   strike, multiplier, provider_position_id,
+                                   quantity, broker_average_cost,
+                                   broker_market_value, broker_unrealized_pnl,
+                                   broker_tax_lot_average_price
+                               ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                            (*values, item.broker_tax_lot_average_price),
+                        )
+                    else:
+                        con.execute(
+                            """INSERT INTO broker_position_snapshot_records (
+                                   snapshot_uid, instrument_key, asset_class,
+                                   market_scope, currency, symbol,
+                                   underlying_symbol, expiry, option_right,
+                                   strike, multiplier, provider_position_id,
+                                   quantity, broker_average_cost,
+                                   broker_market_value, broker_unrealized_pnl
+                               ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                            values,
+                        )
 
             prior_run = con.execute(
                 "SELECT result_fingerprint FROM pnl_position_valuation_runs WHERE valuation_run_uid = ?",

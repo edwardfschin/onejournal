@@ -59,6 +59,12 @@ class JournalMigrationTests(unittest.TestCase):
             self.assertIn("broker_position_snapshot_records", tables)
             self.assertIn("pnl_position_valuation_runs", tables)
             self.assertIn("pnl_canonical_position_valuations", tables)
+            self.assertIn("pnl_bounded_valuation_runs", tables)
+            self.assertIn("pnl_bounded_position_valuations", tables)
+            self.assertIn("pnl_bounded_valuation_subtotals", tables)
+            self.assertIn("pnl_broker_current_valuation_runs", tables)
+            self.assertIn("pnl_broker_current_position_valuations", tables)
+            self.assertIn("pnl_broker_current_portfolio_totals", tables)
             self.assertIn("journal_entries", tables)
             self.assertIn("journal_entry_revisions", tables)
             self.assertIn("journal_reviews", tables)
@@ -100,6 +106,10 @@ class JournalMigrationTests(unittest.TestCase):
             self.assertEqual(rows[11][1], "applied")
             self.assertEqual(rows[12][0], "0013")
             self.assertEqual(rows[12][1], "applied")
+            self.assertEqual(rows[13][0], "0014")
+            self.assertEqual(rows[13][1], "applied")
+            self.assertEqual(rows[14][0], "0015")
+            self.assertEqual(rows[14][1], "applied")
 
             fill_columns = {
                 row[1]: row[2]
@@ -122,6 +132,16 @@ class JournalMigrationTests(unittest.TestCase):
             }
             self.assertEqual(quote_run_columns["ingestion_contract_version"], "VARCHAR")
             self.assertEqual(quote_run_columns["source_locator"], "VARCHAR")
+            position_columns = {
+                row[1]: row[2]
+                for row in con.execute(
+                    "PRAGMA table_info(broker_position_snapshot_records)"
+                ).fetchall()
+            }
+            self.assertEqual(
+                position_columns["broker_tax_lot_average_price"],
+                "DECIMAL(38,10)",
+            )
 
     def test_released_migration_0002_checksum_is_immutable(self) -> None:
         migration_path = (
@@ -139,7 +159,7 @@ class JournalMigrationTests(unittest.TestCase):
 
         with duckdb.connect(str(self.db_path), read_only=True) as con:
             count = con.execute("SELECT COUNT(*) FROM schema_migrations").fetchone()[0]
-            self.assertEqual(count, 13)
+            self.assertEqual(count, 15)
 
     def test_migration_0005_backfills_existing_reviews_from_version_0002(self) -> None:
         apply_schema_migrations(
@@ -176,7 +196,7 @@ class JournalMigrationTests(unittest.TestCase):
             self.db_path,
             migrations_dir=MIGRATIONS_DIR,
         )
-        self.assertEqual(resulting_version, 13)
+        self.assertEqual(resulting_version, 15)
 
         with duckdb.connect(str(self.db_path), read_only=True) as con:
             rows = con.execute(

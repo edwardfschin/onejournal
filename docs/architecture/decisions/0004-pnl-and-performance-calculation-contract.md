@@ -8,6 +8,8 @@
 - Related contracts: ADR-0003, `docs/onejournal_data_contract_v1.md`,
   `docs/normalized_fills_odfs_contract.md`
 - Supersedes: None
+- Partially superseded by: ADR-0023 for separately labelled
+  broker-reconciled current-position basis and unrealized P&L only
 - Superseded by: None
 
 ## Context
@@ -130,8 +132,11 @@ treatment, dividends, corporate actions, FX rate timing, market-data provider,
 or performance-return denominator. Those need separate lifecycle, market-data,
 tax, and return-policy decisions.
 
-Broker-reported P&L is reconciliation evidence, not an override of the
-canonical calculation without an approved discrepancy workflow.
+Broker-reported P&L remains reconciliation evidence for the OneJournal FIFO
+book calculation and never overrides it. ADR-0023 separately authorizes a
+broker-reconciled current-position valuation from a complete direct broker
+snapshot. That metric does not become FIFO, realized P&L, tax reporting, or
+individual-lot history.
 
 ## Alternatives considered
 

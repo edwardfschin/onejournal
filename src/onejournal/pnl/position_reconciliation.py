@@ -57,12 +57,17 @@ class BrokerPositionRecord:
     broker_average_cost: Decimal | None = None
     broker_market_value: Decimal | None = None
     broker_unrealized_pnl: Decimal | None = None
+    broker_tax_lot_average_price: Decimal | None = None
 
     def __post_init__(self) -> None:
         _finite(self.quantity, "broker quantity")
         _finite(self.broker_average_cost, "broker_average_cost")
         _finite(self.broker_market_value, "broker_market_value")
         _finite(self.broker_unrealized_pnl, "broker_unrealized_pnl")
+        _finite(
+            self.broker_tax_lot_average_price,
+            "broker_tax_lot_average_price",
+        )
 
 
 @dataclass(frozen=True)

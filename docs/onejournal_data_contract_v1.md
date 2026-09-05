@@ -194,8 +194,9 @@ same token lifecycle.
 - NormalizedTransaction
 - NormalizedQuote
 - BrokerPositionSnapshot (PNL-03 implemented as a credential-free complete
-  account envelope; one bounded real Schwab snapshot is validated but remains
-  unmaterialized and financially unaccepted)
+  account envelope; one owner-private Schwab snapshot is accepted for the
+  separately labelled broker-current result but remains outside Git and the
+  live journal)
 - PositionLifecycleCoverage (PNL-03N/O implemented as contiguous cross-window
   fill/reconciliation coverage with exact raw-order, source-window, and
   evaluation-cutoff exclusion counts plus explicit extension and
@@ -220,12 +221,28 @@ All normalized records should include source_broker, source_account_id, source_r
 ### PNL-03 authority boundary
 
 ADR-0019 is accepted policy for canonical position and valuation authority.
-Migration 0013 and its repository are implemented and validated only against
-temporary DuckDB databases; no actual journal migration or dashboard/API
-contract change is accepted. The existing
+Migration 0013 and its generic repository remain unchanged. Additive migration
+0014 and the bounded repository are implemented and validated only against
+temporary DuckDB databases; no actual journal migration is accepted. The
+unregistered `onejournal.api.pnl03-position-valuation.v1` private serializer
+consumes only an exact bounded repository read-back. It withholds quantities,
+mark lineage, and financial values unless supplied a matching explicit owner-
+acceptance authorization; unavailable positions remain visible and null, and
+portfolio totals remain null in every response. It is not an active route or
+an authentication implementation. The existing
 `NormalizedPosition` and `normalized_positions` records are prototype/import
 diagnostic rows and cannot establish PNL-03 current position, cost basis,
 market value, unrealized P&L, or portfolio totals.
+
+Additive migration 0015 and the broker-current repository preserve the exact
+currency quantum and direction-specific aggregate tax-lot basis, rebuild every
+run from its complete snapshot before an atomic append, and expose only an
+explicitly named read-back. The separate unregistered
+`onejournal.api.broker-current-position-valuation.v1` serializer withholds
+quantities and values until an owner authorization matches both run UID and
+result fingerprint. Temporary-database proof and the accepted private evidence
+do not mean migration 0015 has been applied to an actual journal or that an
+authenticated route exists.
 
 The isolated PNL-03 service now binds every supported current valuation
 to all of the following: one `onejournal.instrument-identity.v1`, cumulative
@@ -238,17 +255,18 @@ unavailable. Active-session marks use long bid/short ask; eligible
 unreconciled evidence is unavailable, never zero. A multi-leg strategy total
 requires every included leg to satisfy the same boundary.
 
-`schwab-position-json-v2` now supplies the isolated credential-free Schwab
+`schwab-position-json-v3` now supplies the isolated credential-free Schwab
 position intake. It accepts only exact, checksum-bound single-account
 `fields=positions` evidence with explicit account and canonical instrument
-mappings. It preserves broker figures as reconciliation evidence and makes no
-provider call or database write. Synthetic compatibility tests pass; bounded
-real evidence is still required before operational or financial acceptance.
+mappings. It preserves generic average price, direction-specific broker
+tax-lot average, market value, and direction-specific open P&L as distinct
+evidence and makes no provider call or database write. Historical v2 evidence
+remains immutable.
 
 PNL-03G adds the separate
 `schwab-read-only-single-account-positions.v1` external-acquisition profile.
 It permits only one privacy-preserving, checksum-bound position response and
-converts it in memory through `schwab-position-json-v2`. The raw account hash,
+converts it in memory through `schwab-position-json-v3`. The raw account hash,
 provider account number, response bytes, and mappings remain private; only the
 account-hash digest is canonical acquisition metadata. Offline success does not
 establish provider compatibility, reconciliation, valuation, or acceptance.
@@ -268,8 +286,35 @@ ADR-0022 assembly digest and `46/4/3` counts while requiring the approved
 private-binding digest and snapshot UID at runtime. It returns only an eligible
 cost-basis subtotal when every eligible quantity reconciles; complete portfolio
 cost basis remains unavailable while the seven unresolved positions remain in
-scope. This repository slice does not materialize or accept a real private
-binding, 53-position input, or eligible-46 result.
+scope. Historical private evidence now records that 53-position route without
+placing its binding, positions, or values in Git.
+
+`onejournal.bounded-pnl03-valuation.v1` additively consumes any internally
+consistent completed bounded FIFO/reconciliation route, including the later
+58-position `48 eligible / 10 unavailable` route. It requires the exact eligible
+canonical identity set, quote-evidence digest, same-provider connection,
+freshness assessment, evaluation instant, and an explicit reconciliation-age
+limit. Missing or invalid marks make the entire eligible valuation subtotal
+unavailable. A successful run exposes only eligible cost-basis, market-value,
+and unrealized-P&L subtotals by native currency; complete account and portfolio
+totals remain unavailable. Its ordinary audit contains counts and digests only.
+The detailed boundary is `docs/bounded_pnl03_valuation_contract.md`.
+
+`onejournal.broker-current-position-valuation.v1` is an additive,
+source-labelled alternative for current open-position metrics only. It consumes
+one complete fresh broker snapshot, uses the explicit direction-appropriate
+broker tax-lot average rather than generic average price, calculates signed
+open basis and broker-snapshot unrealized P&L, and requires reconciliation to
+the broker's reported open P&L at an explicit currency quantum. Cost basis,
+market value, and unrealized P&L have independent availability, and each
+complete portfolio total exists only when every snapshot member has that
+metric. It does not create individual lots, realized P&L, tax reporting, or
+OneJournal FIFO history. Historical bounded FIFO results remain immutable.
+The exact currency quantum is retained as calculation lineage. Migration 0015
+stores this result separately, and its unregistered private serializer requires
+an exact owner authorization before releasing quantities or financial values.
+The detailed boundary is
+`docs/broker_current_position_valuation_contract.md`.
 
 ## Dashboard Payload v1
 

@@ -39,6 +39,8 @@ from onejournal.market_data.runtime import persist_durable_quote_capture
 from onejournal.provider_connectors import LocalPrivateRawCaptureStore
 from onejournal.provider_connectors.external_acquisition import (
     EXTERNAL_PROVIDER_ACQUISITION_SCHEMA,
+    SCHWAB_BATCH_QUOTES_EXTERNAL_ACQUISITION_PROFILE,
+    SCHWAB_BATCH_QUOTES_MAX_SYMBOLS,
     SCHWAB_EXTERNAL_ACQUISITION_PROFILE,
     SCHWAB_MARKET_HOURS_URL,
     SCHWAB_QUOTES_URL,
@@ -50,8 +52,10 @@ from onejournal.provider_connectors.external_acquisition import (
     ExternalAcquisitionSourceOwner,
     ExternalProviderAcquisitionError,
     ExternalProviderAcquisitionManifest,
+    ExternalSchwabBatchQuoteMapping,
     ExternalSchwabQuoteMapping,
     build_external_schwab_schedule_evidence,
+    convert_external_schwab_batch_quotes,
     convert_external_schwab_quotes,
     external_provider_acquisition_manifest_bytes,
     load_external_provider_acquisition,
@@ -110,6 +114,34 @@ def quote_body() -> bytes:
             separators=(",", ":"),
         )
         + "\n"
+    ).encode("utf-8")
+
+
+def batch_quote_body() -> bytes:
+    quote_time = int(
+        datetime(2026, 8, 31, 14, 0, tzinfo=UTC).timestamp() * 1000
+    )
+    payload = {
+        symbol: {
+            "assetMainType": "EQUITY",
+            "quote": {
+                "askPrice": ask,
+                "bidPrice": bid,
+                "lastPrice": last,
+                "marketSession": "REGULAR",
+                "quoteTime": quote_time,
+                "securityStatus": "Normal",
+            },
+            "realtime": True,
+            "symbol": symbol,
+        }
+        for symbol, bid, ask, last in (
+            ("AAPL", 199.90, 200.10, 200.00),
+            ("MSFT", 499.90, 500.10, 500.00),
+        )
+    }
+    return (
+        json.dumps(payload, sort_keys=True, separators=(",", ":")) + "\n"
     ).encode("utf-8")
 
 
@@ -384,6 +416,146 @@ class ExternalProviderAcquisitionTests(unittest.TestCase):
             expected_owner_uid=OWNER_UID,
             expected_owner_epoch_uid=OWNER_EPOCH_UID,
         )
+
+    def batch_manifest(self) -> tuple[ExternalProviderAcquisitionManifest, bytes]:
+        body = batch_quote_body()
+        batch_request = replace(
+            self.manifest.requests[0],
+            query=(
+                ExternalAcquisitionQueryParameter("symbols", "AAPL,MSFT"),
+                ExternalAcquisitionQueryParameter("fields", "quote,reference"),
+            ),
+            response_filename="quote-batch.json",
+            response_byte_count=len(body),
+            response_sha256=sha256(body).hexdigest(),
+        )
+        return (
+            replace(
+                self.manifest,
+                profile=SCHWAB_BATCH_QUOTES_EXTERNAL_ACQUISITION_PROFILE,
+                requests=(batch_request, self.manifest.requests[1]),
+            ),
+            body,
+        )
+
+    def test_bounded_batch_profile_converts_one_exact_multi_quote_capture(self) -> None:
+        manifest, body = self.batch_manifest()
+        acquisition = self.load(
+            manifest=manifest,
+            responses={
+                "quote-batch.json": body,
+                "market-hours-2026-08-31.json": self.schedule,
+            },
+        )
+        mapping = ExternalSchwabBatchQuoteMapping(
+            request_uid=QUOTE_REQUEST_UID,
+            instruments=(
+                QuoteInstrumentRequest("stock|AAPL", "AAPL", "stock", "USD"),
+                QuoteInstrumentRequest("stock|MSFT", "MSFT", "stock", "USD"),
+            ),
+        )
+        first = convert_external_schwab_batch_quotes(
+            acquisition,
+            mapping=mapping,
+            evaluated_at_utc=self.evaluated_at,
+            freshness_policy=self.freshness_policy,
+        )
+        replay = convert_external_schwab_batch_quotes(
+            acquisition,
+            mapping=mapping,
+            evaluated_at_utc=self.evaluated_at,
+            freshness_policy=self.freshness_policy,
+        )
+
+        self.assertEqual(first, replay)
+        self.assertEqual(len(first.capture.quotes), 2)
+        self.assertEqual(
+            tuple(item.provider_instrument_id for item in first.capture.requests),
+            ("AAPL", "MSFT"),
+        )
+        self.assertEqual(first.raw_response_bytes, body)
+        self.assertEqual(first.private_manifest.raw_byte_count, len(body))
+
+    def test_bounded_batch_profile_rejects_scope_and_mapping_mismatch(self) -> None:
+        manifest, body = self.batch_manifest()
+        duplicate = replace(
+            manifest.requests[0],
+            query=(
+                ExternalAcquisitionQueryParameter("symbols", "AAPL,AAPL"),
+                ExternalAcquisitionQueryParameter("fields", "quote,reference"),
+            ),
+        )
+        with self.assertRaisesRegex(ExternalProviderAcquisitionError, "batch symbols"):
+            self.load(
+                manifest=replace(manifest, requests=(duplicate, manifest.requests[1])),
+                responses={
+                    "quote-batch.json": body,
+                    "market-hours-2026-08-31.json": self.schedule,
+                },
+            )
+
+        acquisition = self.load(
+            manifest=manifest,
+            responses={
+                "quote-batch.json": body,
+                "market-hours-2026-08-31.json": self.schedule,
+            },
+        )
+        reversed_mapping = ExternalSchwabBatchQuoteMapping(
+            request_uid=QUOTE_REQUEST_UID,
+            instruments=(
+                QuoteInstrumentRequest("stock|MSFT", "MSFT", "stock", "USD"),
+                QuoteInstrumentRequest("stock|AAPL", "AAPL", "stock", "USD"),
+            ),
+        )
+        with self.assertRaisesRegex(
+            ExternalProviderAcquisitionError, "ordered approved provider symbols"
+        ):
+            convert_external_schwab_batch_quotes(
+                acquisition,
+                mapping=reversed_mapping,
+                evaluated_at_utc=self.evaluated_at,
+                freshness_policy=self.freshness_policy,
+            )
+
+    def test_batch_profile_has_a_strict_symbol_cap_and_legacy_stays_single(self) -> None:
+        manifest, body = self.batch_manifest()
+        too_many = ",".join(
+            f"S{index:02d}" for index in range(SCHWAB_BATCH_QUOTES_MAX_SYMBOLS + 1)
+        )
+        oversized_request = replace(
+            manifest.requests[0],
+            query=(
+                ExternalAcquisitionQueryParameter("symbols", too_many),
+                ExternalAcquisitionQueryParameter("fields", "quote,reference"),
+            ),
+        )
+        with self.assertRaisesRegex(ExternalProviderAcquisitionError, "batch symbols"):
+            self.load(
+                manifest=replace(
+                    manifest,
+                    requests=(oversized_request, manifest.requests[1]),
+                ),
+                responses={
+                    "quote-batch.json": body,
+                    "market-hours-2026-08-31.json": self.schedule,
+                },
+            )
+
+        legacy_request = replace(
+            self.manifest.requests[0],
+            query=(
+                ExternalAcquisitionQueryParameter("symbols", "AAPL,MSFT"),
+                ExternalAcquisitionQueryParameter("fields", "quote,reference"),
+            ),
+        )
+        with self.assertRaisesRegex(ExternalProviderAcquisitionError, "one safe symbol"):
+            self.load(
+                manifest=replace(
+                    self.manifest,
+                    requests=(legacy_request, self.manifest.requests[1]),
+                ),
+            )
 
     def test_exact_bundle_converts_deterministically_without_side_effects(self) -> None:
         acquisition = self.load()

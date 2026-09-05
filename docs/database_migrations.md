@@ -38,6 +38,16 @@ through the journal migration runner and the migration artifact set:
 - `journal_habit_events`
 - `journal_review_period_events`
 - `schema_migrations`
+- `broker_position_snapshot_runs`
+- `broker_position_snapshot_records`
+- `pnl_position_valuation_runs`
+- `pnl_canonical_position_valuations`
+- `pnl_bounded_valuation_runs`
+- `pnl_bounded_position_valuations`
+- `pnl_bounded_valuation_subtotals`
+- `pnl_broker_current_valuation_runs`
+- `pnl_broker_current_position_valuations`
+- `pnl_broker_current_portfolio_totals`
 
 The baseline is now versioned at `0001_establish_schema_version`.
 
@@ -75,6 +85,8 @@ Examples:
 0011_add_normalized_market_quotes.sql
 0012_add_quote_capture_envelope.sql
 0013_add_canonical_position_valuations.sql
+0014_add_bounded_pnl03_valuations.sql
+0015_add_broker_current_position_valuations.sql
 ```
 
 Migration 0009 adds explicit canonical UTC evidence fields without
@@ -104,6 +116,28 @@ Migration 0013 additively introduces PNL-03 broker-position snapshot and
 canonical valuation result tables. It does not copy or reinterpret legacy
 `normalized_positions`. Repository validation uses temporary DuckDB databases
 only; applying 0013 to an actual journal remains separately approval-gated.
+
+Migration 0014 separately persists the bounded ADR-0022 route rather than
+forcing route, binding, assembly, complete-scope, and eligible-subtotal meaning
+into the generic 0013 tables. Its repository requires an existing migrated
+database, validates exact snapshot identity and quantity scope, writes
+transactionally, accepts only an identical replay, and reads one explicitly
+named run without a latest-run fallback. Validation remains limited to
+temporary DuckDB databases; applying 0014 to an actual journal remains a
+separate approval gate.
+
+Migration 0015 additively preserves the direction-specific broker tax-lot
+average on snapshot records and persists the separate ADR-0023 broker-current
+run, position, currency-quantum, metric-availability, reconciliation, and
+complete-total lineage. The repository requires an existing migrated database,
+rebuilds the run from the supplied snapshot before writing, accepts only an
+identical replay, and reads one explicitly named run. Validation uses temporary
+DuckDB databases only; applying 0015 to an actual journal remains a separate
+approval gate. Existing generic and bounded snapshot writers retain explicit
+0013/0014 compatibility and populate the added tax-lot field whenever 0015 is
+present. A pre-0015 snapshot row lacking that field cannot be silently upgraded
+into broker-current authority; it must fail closed and be re-materialized under
+versioned evidence.
 
 Rules:
 

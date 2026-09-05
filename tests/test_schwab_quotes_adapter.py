@@ -84,6 +84,32 @@ class SchwabQuotesAdapterTests(unittest.TestCase):
         self.assertEqual(quote.bid, Decimal("199.90"))
         self.assertEqual(quote.ask, Decimal("200.10"))
 
+    def test_canonical_pnl03_identity_prefixes_are_accepted(self) -> None:
+        equity_request = SchwabQuoteRequest(
+            provider_symbol="AAPL",
+            instrument_key="instrument.v1|equity|US|USD|AAPL",
+            asset_class="stock",
+            currency="USD",
+        )
+        (equity,) = self.normalize(request=equity_request)
+        self.assertEqual(equity.instrument_key, equity_request.instrument_key)
+
+        provider_symbol = "AAPL  260116C00200000"
+        payload = load_quotes_json(FIXTURE)
+        payload[provider_symbol] = payload.pop("AAPL")
+        payload[provider_symbol]["symbol"] = provider_symbol
+        payload[provider_symbol]["assetMainType"] = "OPTION"
+        option_request = SchwabQuoteRequest(
+            provider_symbol=provider_symbol,
+            instrument_key=(
+                "instrument.v1|option|US|USD|AAPL|2026-01-16|CALL|200|100"
+            ),
+            asset_class="option",
+            currency="USD",
+        )
+        (option,) = self.normalize(payload=payload, request=option_request)
+        self.assertEqual(option.instrument_key, option_request.instrument_key)
+
     def test_missing_all_prices_fails_closed(self) -> None:
         payload = load_quotes_json(FIXTURE)
         payload["AAPL"]["quote"]["bidPrice"] = None
@@ -112,7 +138,7 @@ class SchwabQuotesAdapterTests(unittest.TestCase):
         with self.assertRaisesRegex(SchwabQuoteAdapterError, "mapping mismatch"):
             self.normalize(request=request)
 
-        with self.assertRaisesRegex(SchwabQuoteAdapterError, "stock[|] prefix"):
+        with self.assertRaisesRegex(SchwabQuoteAdapterError, "stock identity prefix"):
             SchwabQuoteRequest(
                 provider_symbol="AAPL",
                 instrument_key="option|AAPL|example",
