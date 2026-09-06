@@ -28,6 +28,7 @@ from onejournal.brokers.schwab.transactions_json import (
 from onejournal.instruments import InstrumentIdentity
 from onejournal.journal.migrations import apply_schema_migrations
 from onejournal.journal.schwab_evidence_assembly import (
+    SCHWAB_PHASE1_EVIDENCE_ASSEMBLY_V2,
     SchwabEvidenceAssemblyError,
     build_schwab_phase1_evidence_assembly,
     load_schwab_phase1_evidence_assembly_bytes,
@@ -142,6 +143,8 @@ def synthetic_assembly(
     cash_review_required: bool = False,
     include_unquoted_position: bool = False,
     repeated_order_observation: bool = False,
+    lifecycle_expiration: bool = False,
+    assembly_version: str | None = None,
 ):
     identity = InstrumentIdentity(
         asset_class="equity", market_scope="US", currency="USD", symbol="AAPL"
@@ -209,7 +212,7 @@ def synthetic_assembly(
         "asof": ASOF.isoformat(),
         "source_broker": "schwab",
         "source_account_id": ACCOUNT_UID,
-        "source_fill_id": "transaction-fill-1",
+        "source_fill_id": "schwab_txn:txn-1:order:order-1:position:1:item:0",
         "source_order_id": "order-1",
         "filled_at": "2026-09-04T14:00:00+00:00",
         "asset_class": "stock",
@@ -231,6 +234,7 @@ def synthetic_assembly(
         "liquidity_flag": "",
         "episode_group_id": "",
     }
+    lifecycle_event_uid = "schwab_txn:expiration-1:event:RECEIVE_AND_DELIVER"
     lifecycle = ConvertedExternalLifecycleEvidence(
         external_manifest_sha256="b" * 64,
         source_broker="schwab",
@@ -241,8 +245,50 @@ def synthetic_assembly(
         raw_response_bytes={"orders.json": b"orders", "transactions.json": b"transactions"},
         order_rows=(MappingProxyType({**fill, "source_fill_id": "order-fill-1"}),),
         transaction_rows=(MappingProxyType(fill),),
-        lifecycle_events=(),
-        lifecycle_event_legs=(),
+        lifecycle_events=(
+            MappingProxyType(
+                {
+                    "event_uid": lifecycle_event_uid,
+                    "source_broker": "schwab",
+                    "source_account_id": ACCOUNT_UID,
+                    "source_activity_id": "expiration-1",
+                    "source_order_id": "",
+                    "source_position_id": "position-1",
+                    "event_class": "TRANSACTION_LIFECYCLE",
+                    "event_type": "description_hint:EXPIRATION",
+                    "asof": ASOF.isoformat(),
+                    "event_at": "2026-09-04T14:05:00+00:00",
+                    "event_name": "description_hint:EXPIRATION",
+                }
+            ),
+        ) if lifecycle_expiration else (),
+        lifecycle_event_legs=(
+            MappingProxyType(
+                {
+                    "event_leg_uid": f"{lifecycle_event_uid}:item:0",
+                    "event_uid": lifecycle_event_uid,
+                    "leg_index": "0",
+                    "leg_kind": "security",
+                    "asset_class": "option",
+                    "symbol": "AAPL",
+                    "option_symbol": "AAPL  260904C00200000",
+                    "underlying_symbol": "AAPL",
+                    "option_type": "CALL",
+                    "expiry": ASOF.isoformat(),
+                    "strike": "200",
+                    "multiplier": "100",
+                    "signed_quantity": "-2",
+                    "price": "0",
+                    "cash_amount": "0",
+                    "position_effect": "CLOSING",
+                    "fee_type": "",
+                    "currency": "USD",
+                    "deliverable_json": "",
+                    "evidence_status": "review_required",
+                    "evidence_notes": "unconfirmed_description_hint",
+                }
+            ),
+        ) if lifecycle_expiration else (),
         order_stats=SchwabOrdersJsonStats(top_level_orders=1, fill_rows=1),
         transaction_stats=SchwabTransactionsJsonStats(
             transactions=1,
@@ -273,6 +319,7 @@ def synthetic_assembly(
                     "source_transaction_id": "txn-1",
                     "transaction_at_utc": "2026-09-04T14:00:00+00:00",
                     "currency": "USD",
+                    "net_amount": "-200",
                     "items": ({"provider_symbol": "AAPL", "cost": "-200"},),
                 }
             ),
@@ -364,6 +411,9 @@ def synthetic_assembly(
         )
         later = replace(lifecycle, window_start_date=ASOF)
         lifecycle_windows = (earlier, later)
+    kwargs = {}
+    if assembly_version is not None:
+        kwargs["contract_version"] = assembly_version
     return build_schwab_phase1_evidence_assembly(
         position=position,
         lifecycle_windows=lifecycle_windows,
@@ -371,6 +421,7 @@ def synthetic_assembly(
         session_authorities=(_authority(normalized_quote),),
         assembled_at_utc=EVALUATED_AT + timedelta(seconds=1),
         freshness_policy=QuoteFreshnessPolicy(),
+        **kwargs,
     )
 
 
@@ -500,6 +551,38 @@ class SchwabPhase1EvidenceImportTests(unittest.TestCase):
         self.assertEqual(audit["family_counts"]["positions"], 1)
         self.assertNotIn("AAPL", json.dumps(dict(audit)))
         self.assertNotIn(ACCOUNT_UID, json.dumps(dict(audit)))
+
+    def test_v2_preserves_terminal_lifecycle_evidence_without_changing_v1(self) -> None:
+        v1 = synthetic_assembly(lifecycle_expiration=True)
+        v2 = synthetic_assembly(
+            lifecycle_expiration=True,
+            assembly_version=SCHWAB_PHASE1_EVIDENCE_ASSEMBLY_V2,
+        )
+        replay = load_schwab_phase1_evidence_assembly_bytes(
+            schwab_phase1_evidence_assembly_bytes(v2)
+        )
+
+        self.assertEqual(replay, v2)
+        self.assertEqual(len(v1.families), 8)
+        self.assertEqual(len(v2.families), 10)
+        self.assertEqual(
+            tuple(family.family for family in v2.families)[4:6],
+            ("lifecycle_events", "lifecycle_event_legs"),
+        )
+        events = next(
+            family.records
+            for family in v2.families
+            if family.family == "lifecycle_events"
+        )
+        legs = next(
+            family.records
+            for family in v2.families
+            if family.family == "lifecycle_event_legs"
+        )
+        self.assertEqual(len(events), 1)
+        self.assertEqual(len(legs), 1)
+        self.assertEqual(legs[0]["position_effect"], "CLOSING")
+        self.assertEqual(v2.final_status, "review_required")
 
     def test_artifact_rejects_tampered_family_content(self) -> None:
         assembly = synthetic_assembly()

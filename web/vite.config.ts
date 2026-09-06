@@ -11,6 +11,7 @@ const { d1, r2 } = hostingConfig;
 
 // macOS Seatbelt blocks FSEvents, so Codex previews need polling for HMR.
 const isCodexSeatbeltSandbox = process.env.CODEX_SANDBOX === 'seatbelt';
+const localOwnerApiTarget = process.env.ONEJOURNAL_LOCAL_API_URL;
 
 const localBindingConfig = {
   main: 'vinext/server/fetch-handler',
@@ -46,15 +47,29 @@ export default defineConfig(async () => {
 
   return {
     css: { postcss: { plugins: [tailwindcss()] } },
-    server: isCodexSeatbeltSandbox
-      ? { watch: { useFsEvents: false, usePolling: true } }
-      : undefined,
+    server: {
+      host: '127.0.0.1',
+      ...(isCodexSeatbeltSandbox
+        ? { watch: { useFsEvents: false, usePolling: true } }
+        : {}),
+      ...(localOwnerApiTarget
+        ? {
+            proxy: {
+              '/api/v5/local-owner': {
+                target: localOwnerApiTarget,
+                changeOrigin: false,
+              },
+            },
+          }
+        : {}),
+    },
     plugins: [
       vinext(),
       sites(),
       cloudflare({
         viteEnvironment: { name: 'rsc', childEnvironments: ['ssr'] },
         config: localBindingConfig,
+        inspectorPort: false,
       }),
     ],
   };

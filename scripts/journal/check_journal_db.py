@@ -46,6 +46,18 @@ REQUIRED_TABLES = [
     "journal_habits",
     "journal_habit_events",
     "journal_review_period_events",
+    "phase1_journal_materialization_runs",
+    "phase1_journal_materialized_fills",
+    "phase1_journal_materialized_episodes",
+    "phase1_journal_materialized_episode_fills",
+    "phase1_journal_execution_projection_runs",
+    "phase1_journal_projected_episodes",
+    "phase1_journal_projected_instruments",
+    "phase1_journal_projected_executions",
+    "phase1_schwab_evidence_v2_import_runs",
+    "phase1_schwab_evidence_v2_import_families",
+    "phase1_journal_lifecycle_reconciliation_runs",
+    "phase1_journal_episode_lifecycle_states",
 ]
 
 
@@ -83,16 +95,78 @@ def main() -> int:
             counts[table] = con.execute(f"SELECT COUNT(*) FROM {table}").fetchone()[0]
             print(f"{table}: {counts[table]}")
 
+        history_revision_tables = {
+            "phase1_journal_history_revisions",
+            "phase1_journal_history_revision_episodes",
+            "phase1_journal_history_revision_episode_fills",
+            "phase1_journal_history_revision_instruments",
+            "phase1_journal_history_revision_executions",
+            "phase1_journal_history_revision_activations",
+            "journal_current_trade_episodes",
+            "journal_current_projected_executions",
+        }
+        history_revisions_available = history_revision_tables.issubset(tables)
+        invalid_history_revision_counts = 0
+        duplicate_current_revision_fills = 0
+        invalid_current_revision_selection = 0
+        if history_revisions_available:
+            for table in sorted(history_revision_tables):
+                value = con.execute(f"SELECT COUNT(*) FROM {table}").fetchone()[0]
+                print(f"{table}: {value}")
+            invalid_history_revision_counts = con.execute(
+                """
+                SELECT COUNT(*) FROM phase1_journal_history_revisions r
+                WHERE r.episode_count <> (
+                    SELECT COUNT(*) FROM phase1_journal_history_revision_episodes e
+                    WHERE e.revision_uid = r.revision_uid
+                ) OR r.fill_count <> (
+                    SELECT COUNT(*) FROM phase1_journal_history_revision_episode_fills f
+                    WHERE f.revision_uid = r.revision_uid
+                ) OR r.instrument_count <> (
+                    SELECT COUNT(*) FROM phase1_journal_history_revision_instruments i
+                    WHERE i.revision_uid = r.revision_uid
+                ) OR r.execution_count <> (
+                    SELECT COUNT(*) FROM phase1_journal_history_revision_executions x
+                    WHERE x.revision_uid = r.revision_uid
+                )
+                """
+            ).fetchone()[0]
+            duplicate_current_revision_fills = con.execute(
+                """
+                SELECT COUNT(*) FROM (
+                    SELECT fill_uid FROM journal_current_projected_executions
+                    GROUP BY fill_uid HAVING COUNT(*) > 1
+                )
+                """
+            ).fetchone()[0]
+            invalid_current_revision_selection = con.execute(
+                """
+                SELECT COUNT(*) FROM (
+                    SELECT source_broker, source_account_id
+                    FROM phase1_journal_current_revision_ids
+                    GROUP BY source_broker, source_account_id
+                    HAVING COUNT(*) <> 1
+                )
+                """
+            ).fetchone()[0]
+
         if counts["normalized_fills"] <= 0:
             fail("normalized_fills has no rows")
-        if counts["normalized_accounts"] <= 0:
-            fail("normalized_accounts has no rows")
-        if counts["normalized_orders"] <= 0:
-            fail("normalized_orders has no rows")
-        if counts["normalized_positions"] <= 0:
-            fail("normalized_positions has no rows")
-        if counts["normalized_transactions"] <= 0:
-            fail("normalized_transactions has no rows")
+        phase1_materialized = counts["phase1_journal_materialization_runs"] > 0
+        if not phase1_materialized:
+            if counts["normalized_accounts"] <= 0:
+                fail("normalized_accounts has no rows")
+            if counts["normalized_orders"] <= 0:
+                fail("normalized_orders has no rows")
+            if counts["normalized_positions"] <= 0:
+                fail("normalized_positions has no rows")
+            if counts["normalized_transactions"] <= 0:
+                fail("normalized_transactions has no rows")
+        else:
+            print(
+                "NOTE exact Phase 1 evidence families replace legacy fill-derived "
+                "placeholder account/order/position/transaction rows"
+            )
         if counts["trade_episodes"] <= 0:
             fail("trade_episodes has no rows")
         if counts["manual_reviews"] <= 0:
@@ -275,6 +349,180 @@ def main() -> int:
             )
             """
         ).fetchone()[0]
+        phase1_run_count_mismatches = con.execute(
+            """
+            SELECT COUNT(*)
+            FROM phase1_journal_materialization_runs r
+            WHERE r.fill_count <> (
+                    SELECT COUNT(*) FROM phase1_journal_materialized_fills f
+                    WHERE f.materialization_uid = r.materialization_uid
+                  )
+               OR r.episode_count <> (
+                    SELECT COUNT(*) FROM phase1_journal_materialized_episodes e
+                    WHERE e.materialization_uid = r.materialization_uid
+                  )
+               OR r.fill_count <> (
+                    SELECT COUNT(*) FROM phase1_journal_materialized_episode_fills l
+                    WHERE l.materialization_uid = r.materialization_uid
+                  )
+            """
+        ).fetchone()[0]
+        orphaned_phase1_materialization_links = con.execute(
+            """
+            SELECT
+                (SELECT COUNT(*)
+                 FROM phase1_journal_materialized_fills m
+                 LEFT JOIN normalized_fills f ON f.fill_uid = m.fill_uid
+                 WHERE f.fill_uid IS NULL)
+              + (SELECT COUNT(*)
+                 FROM phase1_journal_materialized_episodes m
+                 LEFT JOIN trade_episodes e ON e.episode_uid = m.episode_uid
+                 WHERE e.episode_uid IS NULL)
+              + (SELECT COUNT(*)
+                 FROM phase1_journal_materialized_episode_fills l
+                 LEFT JOIN trade_episode_legs e
+                   ON e.episode_uid = l.episode_uid AND e.leg_index = l.leg_index
+                 WHERE e.episode_uid IS NULL)
+            """
+        ).fetchone()[0]
+        unsafe_review_required_aggregates = con.execute(
+            """
+            SELECT COUNT(*)
+            FROM phase1_journal_materialized_episodes m
+            JOIN trade_episodes e ON e.episode_uid = m.episode_uid
+            WHERE m.lifecycle_quality = 'review_required'
+              AND (e.net_quantity IS NOT NULL OR e.gross_cashflow IS NOT NULL
+                   OR e.commission IS NOT NULL OR e.fees IS NOT NULL)
+            """
+        ).fetchone()[0]
+        phase1_projection_run_count_mismatches = con.execute(
+            """
+            SELECT COUNT(*)
+            FROM phase1_journal_execution_projection_runs r
+            WHERE r.episode_count <> (
+                    SELECT COUNT(*) FROM phase1_journal_projected_episodes e
+                    WHERE e.projection_uid = r.projection_uid
+                  )
+               OR r.instrument_count <> (
+                    SELECT COUNT(*) FROM phase1_journal_projected_instruments i
+                    WHERE i.projection_uid = r.projection_uid
+                  )
+               OR r.execution_count <> (
+                    SELECT COUNT(*) FROM phase1_journal_projected_executions x
+                    WHERE x.projection_uid = r.projection_uid
+                  )
+               OR r.execution_count <> r.schwab_net_amount_match_count
+               OR r.schwab_net_amount_mismatch_count <> 0
+            """
+        ).fetchone()[0]
+        orphaned_phase1_projection_links = con.execute(
+            """
+            SELECT
+                (SELECT COUNT(*)
+                 FROM phase1_journal_projected_episodes p
+                 LEFT JOIN phase1_journal_materialized_episodes m
+                   ON m.episode_uid = p.episode_uid
+                 WHERE m.episode_uid IS NULL)
+              + (SELECT COUNT(*)
+                 FROM phase1_journal_projected_instruments i
+                 LEFT JOIN phase1_journal_projected_episodes p
+                   ON p.projection_uid = i.projection_uid
+                  AND p.episode_uid = i.episode_uid
+                 WHERE p.episode_uid IS NULL)
+              + (SELECT COUNT(*)
+                 FROM phase1_journal_projected_executions x
+                 LEFT JOIN normalized_fills f ON f.fill_uid = x.fill_uid
+                 WHERE f.fill_uid IS NULL)
+              + (SELECT COUNT(*)
+                 FROM phase1_journal_projected_executions x
+                 LEFT JOIN phase1_journal_projected_instruments i
+                   ON i.projection_uid = x.projection_uid
+                  AND i.episode_uid = x.episode_uid
+                  AND i.instrument_uid = x.instrument_uid
+                 WHERE i.instrument_uid IS NULL)
+            """
+        ).fetchone()[0]
+        unprojected_phase1_episodes = con.execute(
+            """
+            SELECT COUNT(*)
+            FROM phase1_journal_materialized_episodes m
+            LEFT JOIN phase1_journal_projected_episodes p
+              ON p.episode_uid = m.episode_uid
+            WHERE p.episode_uid IS NULL
+            """
+        ).fetchone()[0]
+        unreconciled_projected_executions = con.execute(
+            """
+            SELECT COUNT(*) FROM phase1_journal_projected_executions
+            WHERE NOT net_amount_reconciled
+               OR schwab_net_cash_movement <> calculated_net_cash_movement
+            """
+        ).fetchone()[0]
+        unsafe_single_instrument_strategies = con.execute(
+            """
+            SELECT COUNT(*) FROM phase1_journal_projected_episodes
+            WHERE instrument_count = 1
+              AND strategy_type IN (
+                'put_credit_vertical', 'put_debit_vertical',
+                'call_credit_vertical', 'call_debit_vertical',
+                'multi_leg_option', 'multi_instrument_unclassified'
+              )
+            """
+        ).fetchone()[0]
+        phase1_v2_family_count_mismatches = con.execute(
+            """
+            SELECT COUNT(*)
+            FROM phase1_schwab_evidence_v2_import_runs r
+            WHERE 10 <> (
+                SELECT COUNT(*)
+                FROM phase1_schwab_evidence_v2_import_families f
+                WHERE f.assembly_uid = r.assembly_uid
+            )
+            """
+        ).fetchone()[0]
+        phase1_lifecycle_run_count_mismatches = con.execute(
+            """
+            SELECT COUNT(*)
+            FROM phase1_journal_lifecycle_reconciliation_runs r
+            WHERE r.episode_count <> (
+                    SELECT COUNT(*)
+                    FROM phase1_journal_episode_lifecycle_states s
+                    WHERE s.reconciliation_uid = r.reconciliation_uid
+                  )
+               OR r.episode_count <>
+                    r.closed_count + r.open_count + r.review_required_count
+               OR r.matched_terminal_event_leg_count > r.terminal_event_leg_count
+               OR (
+                    r.final_status = 'reconciled'
+                    AND EXISTS (
+                        SELECT 1
+                        FROM phase1_journal_episode_lifecycle_states s
+                        WHERE s.reconciliation_uid = r.reconciliation_uid
+                          AND (s.reconciled_status = 'review_required'
+                               OR s.lifecycle_quality = 'review_required')
+                    )
+                  )
+            """
+        ).fetchone()[0]
+        orphaned_phase1_lifecycle_links = con.execute(
+            """
+            SELECT COUNT(*)
+            FROM phase1_journal_episode_lifecycle_states s
+            LEFT JOIN phase1_journal_lifecycle_reconciliation_runs r
+              ON r.reconciliation_uid = s.reconciliation_uid
+            LEFT JOIN trade_episodes e ON e.episode_uid = s.episode_uid
+            WHERE r.reconciliation_uid IS NULL OR e.episode_uid IS NULL
+            """
+        ).fetchone()[0]
+        unreconciled_phase1_episodes = con.execute(
+            """
+            SELECT COUNT(*)
+            FROM phase1_journal_materialized_episodes m
+            LEFT JOIN phase1_journal_episode_lifecycle_states s
+              ON s.episode_uid = m.episode_uid
+            WHERE s.episode_uid IS NULL
+            """
+        ).fetchone()[0]
 
         print(f"duplicate_fill_uid: {duplicate_fills}")
         print(f"duplicate_account_uid: {duplicate_accounts}")
@@ -299,6 +547,18 @@ def main() -> int:
         print(f"orphaned_journal_review_links: {orphaned_review_links}")
         print(f"cross_episode_review_supersession: {cross_episode_review_links}")
         print(f"missing_journal_review_heads: {missing_review_heads}")
+        print(f"phase1_run_count_mismatches: {phase1_run_count_mismatches}")
+        print(f"orphaned_phase1_materialization_links: {orphaned_phase1_materialization_links}")
+        print(f"unsafe_review_required_aggregates: {unsafe_review_required_aggregates}")
+        print(f"phase1_projection_run_count_mismatches: {phase1_projection_run_count_mismatches}")
+        print(f"orphaned_phase1_projection_links: {orphaned_phase1_projection_links}")
+        print(f"unprojected_phase1_episodes: {unprojected_phase1_episodes}")
+        print(f"unreconciled_projected_executions: {unreconciled_projected_executions}")
+        print(f"unsafe_single_instrument_strategies: {unsafe_single_instrument_strategies}")
+        print(f"phase1_v2_family_count_mismatches: {phase1_v2_family_count_mismatches}")
+        print(f"phase1_lifecycle_run_count_mismatches: {phase1_lifecycle_run_count_mismatches}")
+        print(f"orphaned_phase1_lifecycle_links: {orphaned_phase1_lifecycle_links}")
+        print(f"unreconciled_phase1_episodes: {unreconciled_phase1_episodes}")
 
         if duplicate_fills:
             fail("duplicate fill_uid found")
@@ -346,6 +606,40 @@ def main() -> int:
             fail("cross-episode journal review supersession found")
         if missing_review_heads:
             fail("journal review chain without a current head found")
+        if phase1_run_count_mismatches:
+            fail("Phase 1 materialization run counts do not match lineage rows")
+        if orphaned_phase1_materialization_links:
+            fail("orphaned Phase 1 materialization lineage found")
+        if unsafe_review_required_aggregates:
+            fail("review-required lifecycle has financial aggregates")
+        if phase1_materialized and not counts["phase1_journal_execution_projection_runs"]:
+            fail("Phase 1 materialization lacks an execution-first projection")
+        if phase1_projection_run_count_mismatches:
+            fail("Phase 1 execution projection counts do not match projected rows")
+        if orphaned_phase1_projection_links:
+            fail("orphaned Phase 1 execution projection lineage found")
+        if unprojected_phase1_episodes:
+            fail("Phase 1 materialized episodes lack corrected projections")
+        if unreconciled_projected_executions:
+            fail("projected execution cash movement does not match Schwab")
+        if unsafe_single_instrument_strategies:
+            fail("single-instrument episode is labelled as a multi-leg strategy")
+        if phase1_v2_family_count_mismatches:
+            fail("Phase 1 assembly v2 does not contain exactly ten families")
+        if phase1_materialized and not counts["phase1_journal_lifecycle_reconciliation_runs"]:
+            fail("Phase 1 materialization lacks lifecycle reconciliation")
+        if phase1_lifecycle_run_count_mismatches:
+            fail("Phase 1 lifecycle reconciliation counts do not match states")
+        if orphaned_phase1_lifecycle_links:
+            fail("orphaned Phase 1 lifecycle reconciliation lineage found")
+        if unreconciled_phase1_episodes:
+            fail("Phase 1 materialized episodes lack lifecycle reconciliation")
+        if invalid_history_revision_counts:
+            fail("history revision counts do not match immutable snapshot rows")
+        if duplicate_current_revision_fills:
+            fail("current history revision contains duplicate fill identities")
+        if invalid_current_revision_selection:
+            fail("history revision activation does not select exactly one current revision")
 
     finally:
         con.close()

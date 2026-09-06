@@ -31,8 +31,14 @@ from onejournal.provider_connectors.external_acquisition import (
 SCHWAB_PHASE1_EVIDENCE_ASSEMBLY_VERSION = (
     "onejournal.schwab-phase1-evidence-assembly.v1"
 )
+SCHWAB_PHASE1_EVIDENCE_ASSEMBLY_V2 = (
+    "onejournal.schwab-phase1-evidence-assembly.v2"
+)
 SCHWAB_PHASE1_EVIDENCE_ARTIFACT_VERSION = (
     "onejournal.schwab-phase1-evidence-artifact.v1"
+)
+SCHWAB_PHASE1_EVIDENCE_ARTIFACT_V2 = (
+    "onejournal.schwab-phase1-evidence-artifact.v2"
 )
 FAMILY_ORDER = (
     "account",
@@ -44,11 +50,25 @@ FAMILY_ORDER = (
     "quotes",
     "sessions",
 )
+FAMILY_ORDER_V2 = (
+    "account",
+    "positions",
+    "orders",
+    "transactions",
+    "lifecycle_events",
+    "lifecycle_event_legs",
+    "fills",
+    "cash",
+    "quotes",
+    "sessions",
+)
 FamilyName = Literal[
     "account",
     "positions",
     "orders",
     "transactions",
+    "lifecycle_events",
+    "lifecycle_event_legs",
     "fills",
     "cash",
     "quotes",
@@ -218,7 +238,7 @@ def _family(
 
 
 def validate_schwab_evidence_family(family: SchwabEvidenceFamily) -> None:
-    if family.family not in FAMILY_ORDER:
+    if family.family not in FAMILY_ORDER_V2:
         raise SchwabEvidenceAssemblyError("unsupported evidence family")
     if family.source_record_count < 0 or family.normalized_record_count < 0:
         raise SchwabEvidenceAssemblyError("family counts must not be negative")
@@ -327,7 +347,10 @@ def calculate_schwab_evidence_assembly_fingerprint(
 def validate_schwab_phase1_evidence_assembly(
     assembly: SchwabPhase1EvidenceAssembly,
 ) -> None:
-    if assembly.contract_version != SCHWAB_PHASE1_EVIDENCE_ASSEMBLY_VERSION:
+    if assembly.contract_version not in {
+        SCHWAB_PHASE1_EVIDENCE_ASSEMBLY_VERSION,
+        SCHWAB_PHASE1_EVIDENCE_ASSEMBLY_V2,
+    }:
         raise SchwabEvidenceAssemblyError("unsupported assembly contract version")
     if assembly.provider != "schwab":
         raise SchwabEvidenceAssemblyError("Phase 1 assembly provider must be schwab")
@@ -338,7 +361,12 @@ def validate_schwab_phase1_evidence_assembly(
         raise SchwabEvidenceAssemblyError("lifecycle window is inverted")
     if assembly.lifecycle_window_end > assembly.asof:
         raise SchwabEvidenceAssemblyError("lifecycle evidence extends beyond asof")
-    if tuple(family.family for family in assembly.families) != FAMILY_ORDER:
+    expected_family_order = (
+        FAMILY_ORDER_V2
+        if assembly.contract_version == SCHWAB_PHASE1_EVIDENCE_ASSEMBLY_V2
+        else FAMILY_ORDER
+    )
+    if tuple(family.family for family in assembly.families) != expected_family_order:
         raise SchwabEvidenceAssemblyError("assembly must contain every family once")
     for family in assembly.families:
         validate_schwab_evidence_family(family)
@@ -354,6 +382,29 @@ def validate_schwab_phase1_evidence_assembly(
         field="transaction_observation_uid",
         family="transactions",
     )
+    if assembly.contract_version == SCHWAB_PHASE1_EVIDENCE_ASSEMBLY_V2:
+        _ensure_unique(
+            by_name["lifecycle_events"].records,
+            field="event_observation_uid",
+            family="lifecycle_events",
+        )
+        _ensure_unique(
+            by_name["lifecycle_event_legs"].records,
+            field="event_leg_observation_uid",
+            family="lifecycle_event_legs",
+        )
+        event_uids = {
+            _record_id(record, "event_uid", "lifecycle_events")
+            for record in by_name["lifecycle_events"].records
+        }
+        leg_event_uids = {
+            _record_id(record, "event_uid", "lifecycle_event_legs")
+            for record in by_name["lifecycle_event_legs"].records
+        }
+        if not leg_event_uids.issubset(event_uids):
+            raise SchwabEvidenceAssemblyError(
+                "lifecycle event legs contain an unknown event"
+            )
     _ensure_unique(by_name["fills"].records, field="source_fill_id", family="fills")
     _ensure_unique(
         by_name["cash"].records,
@@ -466,6 +517,17 @@ def validate_schwab_phase1_evidence_assembly(
         and assembly.reconciliation.transaction_only_fill_rows == 0
         and by_name["fills"].excluded_record_count == 0
         and assembly.reconciliation.cash_review_required_rows == 0
+        and (
+            assembly.contract_version == SCHWAB_PHASE1_EVIDENCE_ASSEMBLY_VERSION
+            or (
+                by_name["lifecycle_events"].excluded_record_count == 0
+                and by_name["lifecycle_event_legs"].excluded_record_count == 0
+                and all(
+                    record.get("evidence_status") == "observed"
+                    for record in by_name["lifecycle_event_legs"].records
+                )
+            )
+        )
         else "review_required"
     )
     if assembly.final_status != expected_status:
@@ -486,9 +548,15 @@ def build_schwab_phase1_evidence_assembly(
     session_authorities: tuple[ProviderMarketSessionAuthority, ...],
     assembled_at_utc: datetime,
     freshness_policy: QuoteFreshnessPolicy,
+    contract_version: str = SCHWAB_PHASE1_EVIDENCE_ASSEMBLY_VERSION,
 ) -> SchwabPhase1EvidenceAssembly:
     """Assemble all required Phase 1 families from accepted in-memory evidence."""
 
+    if contract_version not in {
+        SCHWAB_PHASE1_EVIDENCE_ASSEMBLY_VERSION,
+        SCHWAB_PHASE1_EVIDENCE_ASSEMBLY_V2,
+    }:
+        raise SchwabEvidenceAssemblyError("unsupported requested assembly version")
     snapshot = position.snapshot
     capture = quote.capture
     assembled_at = _utc(assembled_at_utc, "assembled_at_utc")
@@ -598,6 +666,26 @@ def build_schwab_phase1_evidence_assembly(
         for window in windows
         for record in window.transaction_records
     )
+    lifecycle_event_records = tuple(
+        _window_observation_record(
+            record,
+            window=window,
+            identity_field="event_uid",
+            observation_field="event_observation_uid",
+        )
+        for window in windows
+        for record in window.lifecycle_events
+    )
+    lifecycle_event_leg_records = tuple(
+        _window_observation_record(
+            record,
+            window=window,
+            identity_field="event_leg_uid",
+            observation_field="event_leg_observation_uid",
+        )
+        for window in windows
+        for record in window.lifecycle_event_legs
+    )
     fill_records = tuple(record for window in windows for record in window.transaction_rows)
     cash_records = tuple(
         _window_observation_record(
@@ -639,7 +727,13 @@ def build_schwab_phase1_evidence_assembly(
         + window.excluded_out_of_window_transaction_fill_rows
         for window in windows
     )
-    families = (
+    lifecycle_event_excluded = sum(
+        window.excluded_out_of_window_lifecycle_events for window in windows
+    )
+    lifecycle_event_leg_excluded = sum(
+        window.excluded_out_of_window_lifecycle_event_legs for window in windows
+    )
+    base_families = (
         _family(
             "account",
             source_manifest_sha256s=position_manifest,
@@ -677,6 +771,38 @@ def build_schwab_phase1_evidence_assembly(
             source_record_count=sum(window.transaction_stats.transactions for window in windows),
             records=transaction_records,
         ),
+    )
+    lifecycle_families = (
+        _family(
+            "lifecycle_events",
+            source_manifest_sha256s=lifecycle_manifests,
+            source_raw_sha256s=lifecycle_raw,
+            source_record_count=(
+                len(lifecycle_event_records) + lifecycle_event_excluded
+            ),
+            records=lifecycle_event_records,
+            excluded_record_count=lifecycle_event_excluded,
+            exclusion_reasons=(
+                ("outside_approved_window",) if lifecycle_event_excluded else ()
+            ),
+        ),
+        _family(
+            "lifecycle_event_legs",
+            source_manifest_sha256s=lifecycle_manifests,
+            source_raw_sha256s=lifecycle_raw,
+            source_record_count=(
+                len(lifecycle_event_leg_records) + lifecycle_event_leg_excluded
+            ),
+            records=lifecycle_event_leg_records,
+            excluded_record_count=lifecycle_event_leg_excluded,
+            exclusion_reasons=(
+                ("outside_approved_window",)
+                if lifecycle_event_leg_excluded
+                else ()
+            ),
+        ),
+    )
+    remaining_families = (
         _family(
             "fills",
             source_manifest_sha256s=lifecycle_manifests,
@@ -708,6 +834,11 @@ def build_schwab_phase1_evidence_assembly(
             records=tuple(asdict(item) for item in session_authorities),
         ),
     )
+    families = (
+        base_families
+        + (lifecycle_families if contract_version == SCHWAB_PHASE1_EVIDENCE_ASSEMBLY_V2 else ())
+        + remaining_families
+    )
     matched = sum(window.reconciliation.matched_rows for window in windows)
     order_only = sum(window.reconciliation.only_order_rows for window in windows)
     transaction_only = sum(
@@ -732,7 +863,7 @@ def build_schwab_phase1_evidence_assembly(
     )
     candidate = SchwabPhase1EvidenceAssembly(
         assembly_uid="pending",
-        contract_version=SCHWAB_PHASE1_EVIDENCE_ASSEMBLY_VERSION,
+        contract_version=contract_version,
         provider="schwab",
         connection_uid=snapshot.connection_uid,
         source_account_id=snapshot.source_account_id,
@@ -746,6 +877,17 @@ def build_schwab_phase1_evidence_assembly(
             "ready"
             if order_only == 0 and transaction_only == 0 and fill_excluded == 0
             and cash_review_required == 0
+            and (
+                contract_version == SCHWAB_PHASE1_EVIDENCE_ASSEMBLY_VERSION
+                or (
+                    lifecycle_event_excluded == 0
+                    and lifecycle_event_leg_excluded == 0
+                    and all(
+                        record.get("evidence_status") == "observed"
+                        for record in lifecycle_event_leg_records
+                    )
+                )
+            )
             else "review_required"
         ),
         result_fingerprint="pending",
@@ -765,7 +907,11 @@ def schwab_phase1_evidence_assembly_bytes(
 ) -> bytes:
     validate_schwab_phase1_evidence_assembly(assembly)
     document = {
-        "artifact_version": SCHWAB_PHASE1_EVIDENCE_ARTIFACT_VERSION,
+        "artifact_version": (
+            SCHWAB_PHASE1_EVIDENCE_ARTIFACT_V2
+            if assembly.contract_version == SCHWAB_PHASE1_EVIDENCE_ASSEMBLY_V2
+            else SCHWAB_PHASE1_EVIDENCE_ARTIFACT_VERSION
+        ),
         "assembly_uid": assembly.assembly_uid,
         "result_fingerprint": assembly.result_fingerprint,
         **_assembly_payload(assembly),
@@ -782,7 +928,11 @@ def load_schwab_phase1_evidence_assembly_bytes(
         raise SchwabEvidenceAssemblyError("assembly artifact is invalid JSON") from exc
     if not isinstance(document, dict):
         raise SchwabEvidenceAssemblyError("assembly artifact must be an object")
-    if document.get("artifact_version") != SCHWAB_PHASE1_EVIDENCE_ARTIFACT_VERSION:
+    artifact_version = document.get("artifact_version")
+    if artifact_version not in {
+        SCHWAB_PHASE1_EVIDENCE_ARTIFACT_VERSION,
+        SCHWAB_PHASE1_EVIDENCE_ARTIFACT_V2,
+    }:
         raise SchwabEvidenceAssemblyError("unsupported assembly artifact version")
     try:
         families = tuple(
@@ -823,8 +973,26 @@ def load_schwab_phase1_evidence_assembly_bytes(
         raise SchwabEvidenceAssemblyError(
             "assembly artifact fields do not match the contract"
         ) from exc
+    expected_artifact = (
+        SCHWAB_PHASE1_EVIDENCE_ARTIFACT_V2
+        if assembly.contract_version == SCHWAB_PHASE1_EVIDENCE_ASSEMBLY_V2
+        else SCHWAB_PHASE1_EVIDENCE_ARTIFACT_VERSION
+    )
+    if artifact_version != expected_artifact:
+        raise SchwabEvidenceAssemblyError(
+            "assembly artifact and contract versions do not match"
+        )
     validate_schwab_phase1_evidence_assembly(assembly)
     return assembly
+
+
+def build_schwab_phase1_evidence_assembly_v2(**kwargs: Any) -> SchwabPhase1EvidenceAssembly:
+    """Build the additive lifecycle-complete replacement assembly."""
+
+    return build_schwab_phase1_evidence_assembly(
+        **kwargs,
+        contract_version=SCHWAB_PHASE1_EVIDENCE_ASSEMBLY_V2,
+    )
 
 
 def privacy_safe_schwab_evidence_audit(

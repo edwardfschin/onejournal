@@ -171,6 +171,70 @@ class LifecycleEpisodePreviewTests(unittest.TestCase):
         self.assertEqual(previews[0].status, "open")
         self.assertEqual(previews[0].fill_count, 2)
 
+    def test_explicit_open_then_full_close_is_closed(self) -> None:
+        fills = [
+            self._fill(
+                fill_uid="explicit-open",
+                side="BUY",
+                quantity="10",
+                fill_price="10",
+                source_order_id="ord-explicit-open",
+                open_close="OPEN",
+            ),
+            self._fill(
+                fill_uid="explicit-close",
+                side="SELL",
+                quantity="10",
+                fill_price="11",
+                source_order_id="ord-explicit-close",
+                open_close="CLOSE",
+            ),
+        ]
+        previews = build_episode_previews_from_fills(fills)
+        self.assertEqual(len(previews), 1)
+        self.assertEqual(previews[0].status, "closed")
+
+    def test_single_option_open_and_close_is_not_misclassified_as_vertical(self) -> None:
+        fills = [
+            self._fill(
+                fill_uid="call-open",
+                side="BUY",
+                quantity="1",
+                fill_price="12.60",
+                source_order_id="ord-call-open",
+                open_close="OPEN",
+                asset_class="option",
+                symbol="ETR 2026-09-18 105C",
+                option_symbol="ETR 2026-09-18 105C",
+                underlying_symbol="ETR",
+                option_type="CALL",
+                expiry=datetime(2026, 9, 18).date(),
+                strike=Decimal("105"),
+            ),
+            self._fill(
+                fill_uid="call-close",
+                side="SELL",
+                quantity="1",
+                fill_price="12.65",
+                source_order_id="ord-call-close",
+                open_close="CLOSE",
+                asset_class="option",
+                symbol="ETR 2026-09-18 105C",
+                option_symbol="ETR 2026-09-18 105C",
+                underlying_symbol="ETR",
+                option_type="CALL",
+                expiry=datetime(2026, 9, 18).date(),
+                strike=Decimal("105"),
+            ),
+        ]
+
+        previews = build_episode_previews_from_fills(fills)
+
+        self.assertEqual(len(previews), 1)
+        self.assertEqual(previews[0].status, "closed")
+        self.assertEqual(previews[0].strategy_type, "buy_call")
+        self.assertEqual(previews[0].strategy_label, "Buy Call")
+
     def test_multi_leg_vertical_open_and_full_close_stays_in_single_episode(self) -> None:
         fills = [
             self._fill(

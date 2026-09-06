@@ -104,7 +104,7 @@ def _build_previews_from_lifecycle_bucket(
     open_short = Decimal("0")
     episode_index = 1
 
-    def flush_episode() -> None:
+    def flush_episode(*, status: str) -> None:
         nonlocal episode_fills, open_long, open_short, episode_index
         if not episode_fills:
             return
@@ -120,11 +120,6 @@ def _build_previews_from_lifecycle_bucket(
         total_commission = sum((fill.commission for fill in sorted_group), Decimal("0"))
         total_fees = sum((fill.fees for fill in sorted_group), Decimal("0"))
 
-        open_status = _episode_status(
-            sorted_group,
-            net_quantity,
-            "open" if (open_long or open_short) else "closed",
-        )
         strategy_type, strategy_label = _classify_strategy(sorted_group)
         primary_symbol = _primary_symbol_for_episode(sorted_group, episode_key)
 
@@ -142,7 +137,7 @@ def _build_previews_from_lifecycle_bucket(
                 primary_symbol=primary_symbol,
                 asset_class=asset_class,
                 opened_at=opened_at,
-                status=open_status,
+                status=status,
                 fill_count=len(sorted_group),
                 net_quantity=net_quantity,
                 gross_cashflow=gross_cashflow,
@@ -184,10 +179,10 @@ def _build_previews_from_lifecycle_bucket(
 
         episode_fills.append(fill)
         if open_long == 0 and open_short == 0:
-            flush_episode()
+            flush_episode(status="closed")
 
     if episode_fills:
-        flush_episode()
+        flush_episode(status="open")
 
     return previews
 
@@ -281,6 +276,7 @@ def _cashflow_label(value: Decimal) -> str:
 def _leg_to_payload(fill: NormalizedFill) -> dict[str, Any]:
     cashflow = _cashflow(fill)
     return {
+        "fill_uid": fill.fill_uid,
         "side": (fill.side or "").strip().upper(),
         "symbol": (fill.symbol or "").strip(),
         "option_symbol": (fill.option_symbol or "").strip(),
@@ -296,25 +292,6 @@ def _leg_to_payload(fill: NormalizedFill) -> dict[str, Any]:
     }
 
 
-def _episode_status(
-    fills: list[NormalizedFill],
-    net_quantity: Decimal,
-    fallback_status: str,
-) -> str:
-    """Classify simple preview status.
-
-    Single-leg trades can use net quantity.
-    Multi-leg opening spreads may net to zero but are still open.
-    """
-
-    open_close_values = {(fill.open_close or "").strip().upper() for fill in fills}
-    if "OPEN" in open_close_values:
-        return "open"
-    if net_quantity == 0:
-        return "closed"
-    return fallback_status
-
-
 def _classify_strategy(fills: list[NormalizedFill]) -> tuple[str, str]:
     """Classify a simple strategy from grouped fills.
 
@@ -328,7 +305,8 @@ def _classify_strategy(fills: list[NormalizedFill]) -> tuple[str, str]:
 
     option_fills = [fill for fill in fills if fill.asset_class.lower() == "option"]
 
-    if len(option_fills) == 2:
+    option_contracts = {build_instrument_key(fill) for fill in option_fills}
+    if len(option_fills) == 2 and len(option_contracts) == 2:
         underlyings = {(fill.underlying_symbol or "").upper() for fill in option_fills}
         expiries = {fill.expiry for fill in option_fills}
         option_types = {(fill.option_type or "").upper() for fill in option_fills}

@@ -11,7 +11,7 @@ from typing import Any
 
 import duckdb
 
-from .domain import table_exists
+from .domain import current_journal_relation, table_exists
 
 
 REVIEW_QUEUE_NAMES = (
@@ -35,22 +35,101 @@ def build_review_queues(
     evidence without exposing their private narrative.
     """
 
+    episode_relation = current_journal_relation(con, "trade_episodes")
+    materialized_relation = current_journal_relation(
+        con, "phase1_journal_materialized_episodes"
+    )
+    projected_relation = current_journal_relation(
+        con, "phase1_journal_projected_episodes"
+    )
+    lifecycle_state_relation = current_journal_relation(
+        con, "phase1_journal_episode_lifecycle_states"
+    )
+    lifecycle_run_relation = current_journal_relation(
+        con, "phase1_journal_lifecycle_reconciliation_runs"
+    )
     params: list[Any] = []
     where = ""
     if asof is not None:
         where = "WHERE CAST(e.opened_at AS DATE) <= ?"
         params.append(asof)
+    if table_exists(con, "phase1_journal_materialized_episodes"):
+        materialization_fields = """
+            COALESCE(m.lifecycle_quality, 'legacy_unverified') AS lifecycle_quality,
+            COALESCE(m.reason_code, CASE WHEN m.episode_uid IS NULL
+              THEN 'legacy_episode_unverified' ELSE NULL END) AS lifecycle_reason
+        """
+        materialization_join = f"""
+            LEFT JOIN {materialized_relation} m
+              ON m.episode_uid = e.episode_uid
+        """
+        base_lifecycle_quality = "COALESCE(m.lifecycle_quality, 'legacy_unverified')"
+        base_lifecycle_reason = (
+            "COALESCE(m.reason_code, CASE WHEN m.episode_uid IS NULL "
+            "THEN 'legacy_episode_unverified' ELSE NULL END)"
+        )
+    else:
+        materialization_fields = """
+            'legacy_unverified' AS lifecycle_quality,
+            'legacy_episode_unverified' AS lifecycle_reason
+        """
+        materialization_join = ""
+        base_lifecycle_quality = "'legacy_unverified'"
+        base_lifecycle_reason = "'legacy_episode_unverified'"
+    if table_exists(con, "phase1_journal_episode_lifecycle_states"):
+        lifecycle_state_fields = f"""
+            COALESCE(ls.reconciled_status, e.status) AS episode_status,
+            COALESCE(ls.lifecycle_quality, {base_lifecycle_quality}) AS effective_lifecycle_quality,
+            COALESCE(ls.reason_code, {base_lifecycle_reason}) AS effective_lifecycle_reason
+        """
+        lifecycle_state_join = f"""
+            LEFT JOIN (
+                SELECT states.*, ROW_NUMBER() OVER (
+                    PARTITION BY states.episode_uid
+                    ORDER BY runs.asof_date DESC, runs.reconciled_at DESC,
+                             states.reconciliation_uid DESC
+                ) AS rn
+                FROM {lifecycle_state_relation} states
+                JOIN {lifecycle_run_relation} runs
+                  ON runs.reconciliation_uid = states.reconciliation_uid
+            ) ls ON ls.episode_uid = e.episode_uid AND ls.rn = 1
+        """
+    else:
+        lifecycle_state_fields = f"""
+            e.status AS episode_status,
+            {base_lifecycle_quality} AS effective_lifecycle_quality,
+            {base_lifecycle_reason} AS effective_lifecycle_reason
+        """
+        lifecycle_state_join = ""
+    if table_exists(con, "phase1_journal_projected_episodes"):
+        projection_fields = """
+            COALESCE(p.instrument_summary, 'Unverified legacy grouping')
+              AS instrument_summary
+        """
+        projection_join = f"""
+            LEFT JOIN {projected_relation} p
+              ON p.episode_uid = e.episode_uid
+        """
+    else:
+        projection_fields = "'Unverified legacy grouping' AS instrument_summary"
+        projection_join = ""
     rows = _rows(
         con,
         f"""
         SELECT
             e.episode_uid, e.source_broker, e.source_account_id,
-            e.primary_symbol, e.opened_at, e.status,
+            e.primary_symbol, e.asset_class, e.opened_at,
             COALESCE(r.review_status, 'unreviewed') AS review_status,
             COALESCE(r.setup_quality, 'unknown') AS setup_quality,
-            CASE WHEN r.episode_uid IS NULL THEN FALSE ELSE TRUE END AS has_review
-        FROM trade_episodes e
+            CASE WHEN r.episode_uid IS NULL THEN FALSE ELSE TRUE END AS has_review,
+            {materialization_fields},
+            {lifecycle_state_fields},
+            {projection_fields}
+        FROM {episode_relation} e
         LEFT JOIN manual_reviews r ON r.episode_uid = e.episode_uid
+        {materialization_join}
+        {lifecycle_state_join}
+        {projection_join}
         {where}
         ORDER BY e.opened_at DESC, e.episode_uid
         """,
@@ -73,10 +152,18 @@ def build_review_queues(
             "source_broker": str(row["source_broker"]),
             "source_account_id": str(row["source_account_id"]),
             "primary_symbol": str(row["primary_symbol"]),
+            "asset_class": str(row["asset_class"]),
+            "instrument_summary": str(row["instrument_summary"]),
             "opened_at": _iso(row["opened_at"]),
-            "episode_status": str(row["status"]),
+            "episode_status": str(row["episode_status"]),
             "review_status": str(row["review_status"]),
             "setup_quality": str(row["setup_quality"]),
+            "lifecycle_quality": str(row["effective_lifecycle_quality"]),
+            "lifecycle_reason": (
+                str(row["effective_lifecycle_reason"])
+                if row["effective_lifecycle_reason"] is not None
+                else None
+            ),
         }
 
         unreviewed_reasons: list[str] = []
@@ -89,6 +176,8 @@ def build_review_queues(
         incomplete_reasons: list[str] = []
         if row["review_status"] == "needs_review":
             incomplete_reasons.append("needs_review_status")
+        if row["effective_lifecycle_quality"] == "review_required":
+            incomplete_reasons.append(str(row["effective_lifecycle_reason"]))
         _append_queue_item(queues["incomplete"], common, incomplete_reasons)
 
         risk_reasons: list[str] = []

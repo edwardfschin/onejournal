@@ -2,7 +2,7 @@
 
 ## Scope
 
-P1-05 introduces an additive, credential-free import boundary for exact Schwab
+P1-05 introduced the immutable v1, additive, credential-free import boundary for exact Schwab
 evidence already converted by OneJournal. It supports one opaque account per
 assembly and repeated assemblies for multiple owner-controlled accounts. It has
 no provider, token, refresh, order, deployment, website, or automatic migration
@@ -17,6 +17,11 @@ Authoritative implementation:
 
 ## Source-to-family mapping
 
+Assembly v1 contains the original eight families below. Assembly v2 preserves
+those families in meaning and adds `lifecycle_events` and
+`lifecycle_event_legs` from the already converted Schwab transactions. V2 is an
+additive P1-06 correction; it does not supersede or rewrite the accepted v1 run.
+
 | Family | Authoritative source | Rule |
 |---|---|---|
 | account | exact Schwab account-position response | Preserve observed account type and mapped current-balance fields; never invent labels, types, currency, or zero balances. |
@@ -27,6 +32,8 @@ Authoritative implementation:
 | cash | exact Schwab transaction and transfer-item fields | Preserve each source-window observation plus `netAmount`, security `cost`, and currency/fee evidence as distinct source roles; do not aggregate them or call them P&L. |
 | quotes | accepted normalized quote capture | Require its instruments to be a subset of the complete current-position set, preserve exact covered/uncovered counts, and retain immutable raw lineage. |
 | sessions | same-provider session authority | Require exact quote binding, evaluation time, validity, and provider raw lineage. |
+| lifecycle_events (v2) | normalized Schwab transaction lifecycle headers | Preserve stable event identity, event type/time, evidence status, source observation identity, and raw lineage. |
+| lifecycle_event_legs (v2) | normalized Schwab transaction transfer-item legs | Preserve event relationship, canonical instrument fields, signed quantity, position effect, evidence status, and raw lineage. |
 
 Provider account numbers and account hashes are in-memory binding inputs only.
 They are not assembly fields, database values, or audit output. The opaque
@@ -81,6 +88,10 @@ exist, checks migration 0016, and writes the run and all families in one
 transaction. A failure rolls back. Identical replay creates no rows. Exact
 read-back reconstructs and revalidates the assembly; callers cannot silently
 fall back to another run.
+
+Migration 0020 separately stores the ten-family assembly v2. Its exact event and
+leg families support the lifecycle reconciliation contract without modifying
+the v1 tables or acceptance evidence.
 
 These private tables may contain holdings, symbols, balances, and transaction
 evidence. They must never be committed, logged, returned by a public endpoint,

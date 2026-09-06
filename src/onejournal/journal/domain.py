@@ -96,6 +96,28 @@ def table_exists(con: duckdb.DuckDBPyConnection, table_name: str) -> bool:
     )
 
 
+def current_journal_relation(
+    con: duckdb.DuckDBPyConnection,
+    legacy_name: str,
+) -> str:
+    """Resolve an append-only current-revision view with legacy fallback."""
+
+    current_names = {
+        "trade_episodes": "journal_current_trade_episodes",
+        "phase1_journal_materialized_episodes": "journal_current_materialized_episodes",
+        "phase1_journal_materialized_episode_fills": "journal_current_materialized_episode_fills",
+        "phase1_journal_projected_episodes": "journal_current_projected_episodes",
+        "phase1_journal_projected_instruments": "journal_current_projected_instruments",
+        "phase1_journal_projected_executions": "journal_current_projected_executions",
+        "phase1_journal_lifecycle_reconciliation_runs": "journal_current_lifecycle_reconciliation_runs",
+        "phase1_journal_episode_lifecycle_states": "journal_current_episode_lifecycle_states",
+    }
+    current_name = current_names.get(legacy_name)
+    if current_name is not None and table_exists(con, current_name):
+        return current_name
+    return legacy_name
+
+
 def save_review(
     con: duckdb.DuckDBPyConnection,
     *,
@@ -359,6 +381,7 @@ def revise_entry(
     occurred_at: datetime | None = None,
     entry_status: str | None = None,
     created_at: datetime | None = None,
+    manage_transaction: bool = True,
 ) -> EntryRevision:
     """Append a revision, inheriting fields not explicitly replaced.
 
@@ -379,6 +402,7 @@ def revise_entry(
         entry_status=entry_status if entry_status is not None else current.entry_status,
         change_reason=_required_text(change_reason, "change_reason"),
         created_at=created_at,
+        manage_transaction=manage_transaction,
     )
 
 
@@ -583,7 +607,10 @@ def _insert_revision(con: duckdb.DuckDBPyConnection, revision: EntryRevision) ->
 
 
 def _require_episode(con: duckdb.DuckDBPyConnection, episode_uid: str) -> None:
-    if con.execute("SELECT COUNT(*) FROM trade_episodes WHERE episode_uid = ?", [episode_uid]).fetchone()[0] != 1:
+    relation = current_journal_relation(con, "trade_episodes")
+    if con.execute(
+        f"SELECT COUNT(*) FROM {relation} WHERE episode_uid = ?", [episode_uid]
+    ).fetchone()[0] != 1:
         raise JournalValidationError(f"episode_uid not found: {episode_uid}")
 
 

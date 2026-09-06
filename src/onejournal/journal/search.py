@@ -19,6 +19,7 @@ from .domain import (
     REVIEW_STATUSES,
     JournalPolicyError,
     JournalValidationError,
+    current_journal_relation,
     normalize_catalog_name,
     table_exists,
     utc_now_naive,
@@ -196,6 +197,71 @@ def _search_episodes(
     queue_episode_uids: set[str] | None,
     limit: int,
 ) -> list[dict[str, Any]]:
+    episode_relation = current_journal_relation(con, "trade_episodes")
+    materialized_relation = current_journal_relation(
+        con, "phase1_journal_materialized_episodes"
+    )
+    projected_relation = current_journal_relation(
+        con, "phase1_journal_projected_episodes"
+    )
+    lifecycle_state_relation = current_journal_relation(
+        con, "phase1_journal_episode_lifecycle_states"
+    )
+    lifecycle_run_relation = current_journal_relation(
+        con, "phase1_journal_lifecycle_reconciliation_runs"
+    )
+    if table_exists(con, "phase1_journal_episode_lifecycle_states"):
+        lifecycle_fields = """
+               COALESCE(ls.reconciled_status, e.status) AS episode_status,
+               COALESCE(ls.lifecycle_quality, m.lifecycle_quality, 'legacy_unverified') AS lifecycle_quality,
+               COALESCE(ls.reason_code, m.reason_code, CASE WHEN m.episode_uid IS NULL
+                 THEN 'legacy_episode_unverified' ELSE NULL END) AS lifecycle_reason,
+               COALESCE(ls.position_reconciliation_status, 'not_applicable')
+                 AS position_reconciliation_status
+        """
+        lifecycle_join = f"""
+        LEFT JOIN (
+            SELECT states.*, ROW_NUMBER() OVER (
+                PARTITION BY states.episode_uid
+                ORDER BY runs.asof_date DESC, runs.reconciled_at DESC,
+                         states.reconciliation_uid DESC
+            ) AS rn
+            FROM {lifecycle_state_relation} states
+            JOIN {lifecycle_run_relation} runs
+              ON runs.reconciliation_uid = states.reconciliation_uid
+        ) ls ON ls.episode_uid = e.episode_uid AND ls.rn = 1
+        """
+    else:
+        lifecycle_fields = """
+               e.status AS episode_status,
+               COALESCE(m.lifecycle_quality, 'legacy_unverified') AS lifecycle_quality,
+               COALESCE(m.reason_code, CASE WHEN m.episode_uid IS NULL
+                 THEN 'legacy_episode_unverified' ELSE NULL END) AS lifecycle_reason,
+               'not_applicable' AS position_reconciliation_status
+        """
+        lifecycle_join = ""
+    if table_exists(con, "phase1_journal_projected_episodes"):
+        projection_fields = """
+               COALESCE(p.strategy_type, e.strategy_type) AS strategy_type,
+               COALESCE(p.strategy_label, e.strategy_label) AS strategy_label,
+               COALESCE(p.instrument_count, 1) AS instrument_count,
+               COALESCE(p.execution_count, e.fill_count) AS execution_count,
+               COALESCE(p.lifecycle_sequence, 1) AS lifecycle_sequence,
+               COALESCE(p.lifecycle_count, 1) AS lifecycle_count,
+               COALESCE(p.instrument_summary, 'Unverified legacy grouping') AS instrument_summary,
+        """
+        projection_join = f"""
+        LEFT JOIN {projected_relation} p
+          ON p.episode_uid = e.episode_uid
+        """
+    else:
+        projection_fields = """
+               e.strategy_type, e.strategy_label,
+               1 AS instrument_count, e.fill_count AS execution_count,
+               1 AS lifecycle_sequence, 1 AS lifecycle_count,
+               'Unverified legacy grouping' AS instrument_summary,
+        """
+        projection_join = ""
     clauses: list[str] = []
     params: list[Any] = []
     _episode_common_clauses(filters, clauses, params)
@@ -250,12 +316,17 @@ def _search_episodes(
             FROM journal_entry_revisions
         )
         SELECT e.episode_uid, e.source_broker, e.source_account_id,
-               e.primary_symbol, e.strategy_type, e.strategy_label,
-               e.opened_at, e.status AS episode_status,
+               e.primary_symbol, e.asset_class,
+               {projection_fields}
+               e.opened_at, {lifecycle_fields},
                COALESCE(r.review_status, 'unreviewed') AS review_status,
                COALESCE(r.setup_quality, 'unknown') AS setup_quality
-        FROM trade_episodes e
+        FROM {episode_relation} e
         LEFT JOIN manual_reviews r ON r.episode_uid = e.episode_uid
+        LEFT JOIN {materialized_relation} m
+          ON m.episode_uid = e.episode_uid
+        {projection_join}
+        {lifecycle_join}
         {where}
         ORDER BY e.opened_at DESC, e.episode_uid
         LIMIT ?
@@ -270,7 +341,12 @@ def _search_entries(
     queue_episode_uids: set[str] | None,
     limit: int,
 ) -> list[dict[str, Any]]:
-    clauses = ["cr.rn = 1", "cr.entry_status = 'active'"]
+    episode_relation = current_journal_relation(con, "trade_episodes")
+    clauses = [
+        "cr.rn = 1",
+        "cr.entry_status = 'active'",
+        "(cr.episode_uid IS NULL OR e.episode_uid IS NOT NULL)",
+    ]
     params: list[Any] = []
     if filters.symbol:
         clauses.append("upper(e.primary_symbol) = upper(?)")
@@ -322,12 +398,12 @@ def _search_entries(
         )
         SELECT cr.entry_uid, cr.revision_no, cr.episode_uid, cr.entry_type,
                cr.strategy_uid, s.name AS journal_strategy_name, cr.title,
-               cr.body, cr.occurred_at, cr.created_at,
+               cr.body, cr.occurred_at, cr.created_at, cr.entry_status,
                e.primary_symbol, e.source_broker, e.source_account_id,
                e.strategy_type AS episode_strategy_type,
                COALESCE(r.review_status, 'unreviewed') AS review_status
         FROM current_revisions cr
-        LEFT JOIN trade_episodes e ON e.episode_uid = cr.episode_uid
+        LEFT JOIN {episode_relation} e ON e.episode_uid = cr.episode_uid
         LEFT JOIN manual_reviews r ON r.episode_uid = cr.episode_uid
         LEFT JOIN journal_strategies s ON s.strategy_uid = cr.strategy_uid
         WHERE {' AND '.join(clauses)}

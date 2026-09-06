@@ -3,7 +3,7 @@
 This directory is reserved for ordered DuckDB migration artifacts governed by
 `docs/database_migrations.md`.
 
-There are currently sixteen migration files:
+There are currently twenty-one migration files:
 
 - `0001_establish_schema_version.sql`:
   create the migration ledger (`schema_migrations`) with run metadata and audit
@@ -69,6 +69,25 @@ There are currently sixteen migration files:
   versioned normalized family payloads with exact source hashes, counts,
   exclusions, reconciliation, fingerprints, and replay-safe lineage. Legacy
   fill-derived tables, PNL-03 results, and quote captures remain unchanged.
+- `0017_add_local_owner_api_audit.sql`:
+  add privacy-safe loopback API audit events and replay receipts for WEB-W06.
+- `0018_add_phase1_journal_materialization.sql`:
+  add exact evidence-to-journal materialization runs plus assembly-to-fill,
+  assembly-to-episode, and episode-to-fill lineage with explicit lifecycle
+  quality and incomplete-history reasons.
+- `0019_add_phase1_execution_projection.sql`:
+  add a versioned execution-first read model that keeps exact Schwab activities
+  separate from instruments and strategy, reconciles every calculated net cash
+  movement to the source transaction, and prevents fill count from becoming a
+  false multi-leg classification.
+- `0020_add_phase1_lifecycle_reconciliation.sql`:
+  add immutable ten-family Schwab assembly-v2 storage plus terminal-event and
+  complete-current-position lifecycle reconciliation states without rewriting
+  historical episodes or promoting financial authority.
+- `0021_add_append_only_history_revisions.sql`:
+  add immutable complete materialization revision snapshots, an append-only
+  activation ledger, exact normalized-fill lineage, and current-read views that
+  prevent prior and reconstructed episodes from appearing together.
 
 The existing DuckDB schema is a prototype bootstrap baseline created (and now
 versioned) by `scripts/journal/init_journal_db.py`.

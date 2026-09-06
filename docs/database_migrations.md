@@ -48,6 +48,18 @@ through the journal migration runner and the migration artifact set:
 - `pnl_broker_current_valuation_runs`
 - `pnl_broker_current_position_valuations`
 - `pnl_broker_current_portfolio_totals`
+- `phase1_schwab_evidence_import_runs`
+- `phase1_schwab_evidence_import_families`
+- `local_owner_api_audit_events`
+- `local_owner_api_operation_receipts`
+- `phase1_journal_materialization_runs`
+- `phase1_journal_materialized_fills`
+- `phase1_journal_materialized_episodes`
+- `phase1_journal_materialized_episode_fills`
+- `phase1_journal_execution_projection_runs`
+- `phase1_journal_projected_episodes`
+- `phase1_journal_projected_instruments`
+- `phase1_journal_projected_executions`
 
 The baseline is now versioned at `0001_establish_schema_version`.
 
@@ -87,6 +99,11 @@ Examples:
 0013_add_canonical_position_valuations.sql
 0014_add_bounded_pnl03_valuations.sql
 0015_add_broker_current_position_valuations.sql
+0016_add_phase1_schwab_evidence_assemblies.sql
+0017_add_local_owner_api_audit.sql
+0018_add_phase1_journal_materialization.sql
+0019_add_phase1_execution_projection.sql
+0020_add_phase1_lifecycle_reconciliation.sql
 ```
 
 Migration 0009 adds explicit canonical UTC evidence fields without
@@ -151,6 +168,50 @@ validation and the owner-approved bounded private isolated acceptance run
 `ONEJOURNAL-P1-05-SCHWAB-20260906-01` are complete. Applying 0016 to an actual
 journal remains a separate inspection, backup, migration, and approval gate.
 
+Migration 0017 additively stores privacy-safe local-owner API audit events and
+idempotency receipts. It stores operation and stable resource identities,
+actions, outcomes, timestamps, and SHA-256 request fingerprints; it does not
+store journal narrative, account identifiers, broker payloads, credentials, or
+raw-evidence paths. The loopback application serializes access and uses these
+receipts to accept an identical retry without duplicating an append-only review
+or entry. It is applied to the approved isolated private local-owner database;
+hosted access and production authentication remain outside this scope.
+
+Migration 0018 additively records deterministic projection of one exact
+persisted Phase 1 evidence assembly into canonical fills and conservative
+journal episodes. It preserves assembly-to-fill, assembly-to-episode, and
+episode-to-fill lineage with fingerprints and explicit lifecycle quality. A
+scope whose captured history begins with an unmatched close remains visible as
+`history_extension_required`; its financial aggregates remain unavailable.
+The operator requires a pre-existing mode-`0600` migration-0018 database and
+accepts only an exact replay. The approved isolated private local-owner database
+contains the exact 430-fill/217-episode materialization; migration 0018 remains
+historical evidence and is not rewritten by later presentation corrections.
+
+Migration 0019 adds the execution-first projection defined in
+`docs/schwab_phase1_execution_projection_contract.md`. It keeps every Schwab
+activity as a distinct execution, groups executions by canonical instrument,
+and classifies a lifecycle from its instruments and opening direction rather
+than its fill count. Every calculated net cash movement must exactly equal the
+source Schwab transaction `net_amount`; any mismatch aborts the entire write.
+The approved operational application followed a checksum-identical `0600`
+backup and disposable-copy rehearsal, then produced 217 projected episodes,
+217 instruments, 430 executions, 430 exact cash matches, zero mismatches, and
+zero single-instrument multi-leg labels. Identical replay and full database
+integrity checks pass. This projection is cash-movement evidence, not P&L.
+
+Migration 0020 additively stores
+`onejournal.schwab-phase1-evidence-assembly.v2`, including the normalized Schwab
+lifecycle event and leg families that v1 omitted, plus the deterministic journal
+lifecycle state projection defined in
+`docs/schwab_phase1_journal_lifecycle_reconciliation_contract.md`. Terminal
+events are applied by exact canonical instrument and FIFO quantity; remaining
+instrument quantity must reconcile to the complete current-position snapshot.
+An absent position without closure evidence becomes `review_required`, never a
+false `open` or an invented `closed`. Lifecycle status remains separate from
+financial authority. Validation and disposable-copy rehearsal do not authorize
+application of 0020 to the owner operational journal.
+
 Rules:
 
 - A version number is unique and never reused.
@@ -201,6 +262,12 @@ Each migration must document:
 
 Breaking changes require compatibility handling, producer/consumer updates,
 examples, and contract tests in the same controlled change.
+
+Migration 0021 adds the ADR-0028 append-only history-revision snapshots and
+activation ledger. Applying the schema alone changes no current journal rows;
+current-read views retain legacy fallback until an explicitly validated
+revision is activated. Revision rollback is a later activation of a preserved
+snapshot, while migration rollback remains restoration of the verified backup.
 
 ## Safe execution workflow
 
