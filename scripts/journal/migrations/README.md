@@ -3,7 +3,7 @@
 This directory is reserved for ordered DuckDB migration artifacts governed by
 `docs/database_migrations.md`.
 
-There are currently fifteen migration files:
+There are currently sixteen migration files:
 
 - `0001_establish_schema_version.sql`:
   create the migration ledger (`schema_migrations`) with run metadata and audit
@@ -64,6 +64,11 @@ There are currently fifteen migration files:
   snapshot rows and add separate ADR-0023 broker-current valuation runs,
   per-position metric/reconciliation state, explicit currency quantum, and
   complete portfolio totals. FIFO and bounded valuation rows remain unchanged.
+- `0016_add_phase1_schwab_evidence_assemblies.sql`:
+  add an immutable account-scoped Phase 1 Schwab assembly run plus eight
+  versioned normalized family payloads with exact source hashes, counts,
+  exclusions, reconciliation, fingerprints, and replay-safe lineage. Legacy
+  fill-derived tables, PNL-03 results, and quote captures remain unchanged.
 
 The existing DuckDB schema is a prototype bootstrap baseline created (and now
 versioned) by `scripts/journal/init_journal_db.py`.

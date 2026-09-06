@@ -65,6 +65,8 @@ class JournalMigrationTests(unittest.TestCase):
             self.assertIn("pnl_broker_current_valuation_runs", tables)
             self.assertIn("pnl_broker_current_position_valuations", tables)
             self.assertIn("pnl_broker_current_portfolio_totals", tables)
+            self.assertIn("phase1_schwab_evidence_import_runs", tables)
+            self.assertIn("phase1_schwab_evidence_import_families", tables)
             self.assertIn("journal_entries", tables)
             self.assertIn("journal_entry_revisions", tables)
             self.assertIn("journal_reviews", tables)
@@ -110,6 +112,8 @@ class JournalMigrationTests(unittest.TestCase):
             self.assertEqual(rows[13][1], "applied")
             self.assertEqual(rows[14][0], "0015")
             self.assertEqual(rows[14][1], "applied")
+            self.assertEqual(rows[15][0], "0016")
+            self.assertEqual(rows[15][1], "applied")
 
             fill_columns = {
                 row[1]: row[2]
@@ -159,7 +163,7 @@ class JournalMigrationTests(unittest.TestCase):
 
         with duckdb.connect(str(self.db_path), read_only=True) as con:
             count = con.execute("SELECT COUNT(*) FROM schema_migrations").fetchone()[0]
-            self.assertEqual(count, 15)
+            self.assertEqual(count, 16)
 
     def test_migration_0005_backfills_existing_reviews_from_version_0002(self) -> None:
         apply_schema_migrations(
@@ -196,7 +200,7 @@ class JournalMigrationTests(unittest.TestCase):
             self.db_path,
             migrations_dir=MIGRATIONS_DIR,
         )
-        self.assertEqual(resulting_version, 15)
+        self.assertEqual(resulting_version, 16)
 
         with duckdb.connect(str(self.db_path), read_only=True) as con:
             rows = con.execute(

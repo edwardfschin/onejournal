@@ -4,7 +4,7 @@ import csv
 import json
 import re
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import UTC, datetime
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
 from typing import Any, Iterable
@@ -92,6 +92,161 @@ def flatten_orders(orders: Iterable[dict[str, Any]]) -> list[dict[str, Any]]:
         else:
             flat.append(order)
     return flat
+
+
+def _required_identifier(value: Any, field_name: str) -> str:
+    if isinstance(value, bool) or value is None:
+        raise ValueError(f"Missing Schwab order field: {field_name}")
+    text = str(value).strip()
+    if not text or any(ord(character) < 32 for character in text):
+        raise ValueError(f"Invalid Schwab order field: {field_name}")
+    return text
+
+
+def _optional_decimal_text(value: Any, field_name: str) -> str:
+    if value in (None, ""):
+        return ""
+    return _decimal_text(_decimal_value(value, field_name=field_name))
+
+
+def _optional_utc_text(value: Any, field_name: str) -> str:
+    if value in (None, ""):
+        return ""
+    if not isinstance(value, str):
+        raise ValueError(f"Schwab order field {field_name} must be a timestamp string")
+    try:
+        parsed = datetime.fromisoformat(value.strip().replace("Z", "+00:00"))
+    except ValueError as exc:
+        raise ValueError(f"Schwab order field {field_name} is not ISO-8601") from exc
+    if parsed.tzinfo is None or parsed.utcoffset() is None:
+        raise ValueError(f"Schwab order field {field_name} must include a timezone")
+    return parsed.astimezone(UTC).isoformat()
+
+
+def normalized_order_evidence_from_orders(
+    orders: list[dict[str, Any]],
+    *,
+    provider_account_number: str,
+    source_account_id: str,
+) -> list[dict[str, Any]]:
+    """Normalize every source order without retaining the provider account number.
+
+    Parent strategy rows and actionable child rows remain separate. Execution
+    legs continue to be normalized by ``normalized_rows_from_orders``; this
+    function preserves the order-family state that a fill-only adapter loses.
+    """
+
+    provider_account = _required_identifier(
+        provider_account_number, "provider_account_number"
+    )
+    opaque_account = _required_identifier(source_account_id, "source_account_id")
+    records: list[dict[str, Any]] = []
+    seen_order_ids: set[str] = set()
+
+    def visit(
+        order: dict[str, Any],
+        *,
+        inherited_account: str | None,
+        inherited_parent_order_id: str | None,
+    ) -> None:
+        account_value = order.get("accountNumber", inherited_account)
+        observed_account = _required_identifier(account_value, "accountNumber")
+        if observed_account != provider_account:
+            raise ValueError("Schwab order account binding failed")
+        source_order_id = _required_identifier(order.get("orderId"), "orderId")
+        if source_order_id in seen_order_ids:
+            raise ValueError(f"Duplicate Schwab orderId: {source_order_id}")
+        seen_order_ids.add(source_order_id)
+        parent_order_id = str(
+            order.get("parentOrderId") or inherited_parent_order_id or ""
+        ).strip()
+        legs = order.get("orderLegCollection")
+        if legs is None:
+            legs = []
+        if not isinstance(legs, list) or any(not isinstance(item, dict) for item in legs):
+            raise ValueError("Schwab orderLegCollection must be an array of objects")
+        children = order.get("childOrderStrategies")
+        if children is None:
+            children = []
+        if not isinstance(children, list) or any(
+            not isinstance(item, dict) for item in children
+        ):
+            raise ValueError("Schwab childOrderStrategies must be an array of objects")
+        normalized_legs: list[dict[str, str]] = []
+        for index, leg in enumerate(legs):
+            instrument = leg.get("instrument")
+            if not isinstance(instrument, dict):
+                raise ValueError("Schwab order leg instrument must be an object")
+            normalized_legs.append(
+                {
+                    "leg_uid": (
+                        f"schwab:{opaque_account}:order:{source_order_id}:leg:{index}"
+                    ),
+                    "source_leg_id": str(leg.get("orderLegId", "")).strip(),
+                    "instruction": str(leg.get("instruction", "")).strip().upper(),
+                    "position_effect": str(
+                        leg.get("positionEffect", "")
+                    ).strip().upper(),
+                    "quantity": _optional_decimal_text(
+                        leg.get("quantity"), f"orderLegCollection[{index}].quantity"
+                    ),
+                    "provider_asset_type": str(
+                        instrument.get("assetType", "")
+                    ).strip().upper(),
+                    "provider_symbol": str(instrument.get("symbol", "")).strip(),
+                }
+            )
+        records.append(
+            {
+                "order_uid": f"schwab:{opaque_account}:order:{source_order_id}",
+                "source_broker": "schwab",
+                "source_account_id": opaque_account,
+                "source_order_id": source_order_id,
+                "parent_order_id": parent_order_id,
+                "status": str(order.get("status", "")).strip().upper(),
+                "order_type": str(order.get("orderType", "")).strip().upper(),
+                "time_in_force": str(order.get("duration", "")).strip().upper(),
+                "session": str(order.get("session", "")).strip().upper(),
+                "strategy_type": str(order.get("orderStrategyType", "")).strip().upper(),
+                "complex_strategy_type": str(
+                    order.get("complexOrderStrategyType", "")
+                ).strip().upper(),
+                "requested_quantity": _optional_decimal_text(
+                    order.get("quantity"), "quantity"
+                ),
+                "filled_quantity": _optional_decimal_text(
+                    order.get("filledQuantity"), "filledQuantity"
+                ),
+                "remaining_quantity": _optional_decimal_text(
+                    order.get("remainingQuantity"), "remainingQuantity"
+                ),
+                "limit_price": _optional_decimal_text(order.get("price"), "price"),
+                "stop_price": _optional_decimal_text(
+                    order.get("stopPrice"), "stopPrice"
+                ),
+                "entered_at_utc": _optional_utc_text(
+                    order.get("enteredTime"), "enteredTime"
+                ),
+                "closed_at_utc": _optional_utc_text(
+                    order.get("closeTime"), "closeTime"
+                ),
+                "leg_count": str(len(legs)),
+                "child_order_count": str(len(children)),
+                "legs": normalized_legs,
+            }
+        )
+        for child in children:
+            visit(
+                child,
+                inherited_account=observed_account,
+                inherited_parent_order_id=source_order_id,
+            )
+
+    for order in orders:
+        if not isinstance(order, dict):
+            raise ValueError("Schwab order evidence must contain objects")
+        visit(order, inherited_account=None, inherited_parent_order_id=None)
+    return records
 
 
 def _date_part(value: str) -> str:

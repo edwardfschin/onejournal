@@ -292,7 +292,7 @@ if a switch is recommended.
 | WEB-W04 | WEB-04 | COMPLETE | High-fidelity responsive Today, Portfolio, Trades, Journal, Reports and Settings screens | Navigate realistic synthetic workflows across desktop and mobile | Seven synthetic routes return HTTP 200; demo/unavailable states are explicit; controls are focusable with visible focus styling; responsive checks pass at 1440x900 and 360x800; no provider or private-data access | Terra Medium; Sol High only for critical design review |
 | WEB-W05 | WEB-05 | COMPLETE | Versioned read-only FastAPI foundation and typed frontend compatibility boundary | Use the web shell against safe deterministic API fixtures | `GET /api/v1/preview` publishes `onejournal.web-fixture.v1`; OpenAPI, decimal strings, UTC instants, explicit demo/unavailable quality, privacy-safe shape, focused API tests, full clean CI, frontend build, and loopback HTTP smoke pass. No direct DB/raw access | Terra Medium |
 | WEB-W06 | WEB-07 | QUEUED | Local-owner journal vertical slice | Browse real local trades and journal state through loopback API; create an approved append-only review without Streamlit | Existing domain services remain authoritative; read/write audit and replay tests pass; no broker call or public listener | Terra Medium; Sol High for financial/privacy review |
-| WEB-W07 | PNL-03, WEB-07 | BLOCKED | Canonical positions, approved marks, market value and unrealized P&L vertical slice | View a real portfolio with explicit as-of and evidence state | PNL-03 policy, implementation, broker reconciliation, mark selection and fail-closed acceptance pass before authoritative UI enablement | Sol High for PNL contract/review; Terra Medium for implementation |
+| WEB-W07 | PNL-03, WEB-07 | QUEUED | Canonical positions, approved marks, market value and unrealized P&L vertical slice | View a real portfolio with explicit as-of and evidence state | Consume only the PNL-03-accepted broker-current service/repository result; preserve exact as-of, lineage, per-metric availability and fail-closed totals through API and UI; no raw evidence or direct database access from the frontend | Sol High for financial review; Terra Medium for implementation |
 | WEB-W08 | Bounded PNL-06 through PNL-08 slices, WEB-07 | BLOCKED | Phase 1 account/symbol breakdown, date-filtered P&L history, export and quality-conformant views | Explore the accepted current portfolio and export the same bounded records and values | Every displayed metric reconciles, export matches the view, and ADR-0007 states are complete; broader advanced analytics remain later | Sol High for financial contracts; Terra Medium for implementation |
 | WEB-W09 | UXJ-05, UXJ-06, WEB-07 | LATER | Post-Phase 1 attachments, goals, habits and recurring review experience | Complete the private review workflow beyond Phase 1 entries and reviews | Attachment privacy/retention/recovery and financial-evaluation dependencies pass | Sol High for privacy policy; Terra Medium for implementation |
 | WEB-W10 | WEB-06 | BLOCKED | Authentication, authorization, secure sessions, recovery and audit | Sign in to an isolated environment and verify owner-only navigation | Security design accepted; negative authorization/session/recovery tests and review pass | Sol High |
@@ -308,13 +308,13 @@ The near-term sequence is intentionally vertical:
 2. Build WEB-W03 and WEB-W04 as a local, synthetic, browser-visible product
    preview.
 3. Define the WEB-W05 API contracts against safe fixtures.
-4. Complete the PNL-03 authority decision and implementation needed by
-   WEB-W07. PNL-03 may proceed while visual feedback from the preview is being
-   resolved, but it may not be bypassed.
+4. PNL-03 authority, implementation, reconciliation, and bounded owner-private
+   financial acceptance are complete; preserve that exact boundary in WEB-W07.
 5. Deliver WEB-W06 so existing accepted journal capability is usable through
    the new application boundary.
-6. Enable WEB-W07 only after PNL-03 acceptance, then deliver the bounded
-   Phase 1 WEB-W08 breakdown, history, export, and displayed-quality scope.
+6. Deliver the now-queued WEB-W07 against the accepted PNL-03 boundary, then
+   deliver the bounded Phase 1 WEB-W08 breakdown, history, export, and
+   displayed-quality scope.
    Broader PNL-04 through PNL-08 completion remains later work where its full
    item gate is not already met.
 7. Complete private-data security, hosted operations, staging, recovery, and

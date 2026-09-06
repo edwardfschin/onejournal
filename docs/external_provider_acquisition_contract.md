@@ -185,6 +185,24 @@ conflicting eligible currency codes remain fail-closed. This is provider-byte
 lineage, not a Schwab-wide or account-configuration USD default. Any unmatched
 transaction remains pending and unavailable for accepted P&L.
 
+P1-05 extends the converted position and lifecycle values without changing the
+external acquisition profiles. Position conversion now also returns direct,
+privacy-safe account evidence from the same exact account-position response;
+provider-supplied account type and supported current-balance fields remain
+absent when omitted and are never reconstructed from fills. Lifecycle
+conversion now retains every admitted parent/child order and its legs, every
+transaction and its transfer items, and separately labelled transaction-net,
+security-cost, and currency/fee cash evidence. The provider account number is
+used only for the in-memory binding check and is replaced by the stable opaque
+OneJournal account identity before any converted record leaves the boundary.
+
+ADR-0024 assembles those direct families with the existing complete position,
+transaction-authoritative fill, quote, and same-provider session-authority
+contracts. Its additive persistence and operator behavior are documented in
+`docs/schwab_phase1_evidence_import_contract.md` and
+`docs/schwab_phase1_evidence_import_operator.md`. This does not turn OneBot
+state into financial evidence or add a provider/credential path.
+
 ## Credential-free intake operator
 
 `scripts/journal/materialize_external_provider_acquisition.py` is the guarded

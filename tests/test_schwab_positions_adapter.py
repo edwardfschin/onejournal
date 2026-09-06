@@ -15,6 +15,7 @@ from onejournal.brokers.schwab.positions_json import (
     SchwabPositionCaptureContext,
     SchwabPositionMapping,
     broker_position_snapshot_from_bytes,
+    normalized_account_evidence_from_position_bytes,
 )
 from onejournal.instruments import InstrumentIdentity
 from onejournal.pnl.position_reconciliation import (
@@ -121,6 +122,31 @@ class SchwabPositionsAdapterTests(unittest.TestCase):
             max_snapshot_age_seconds=0,
         )
         self.assertEqual(reconciliation.status, "valid")
+
+    def test_direct_account_evidence_preserves_balances_without_placeholders(self) -> None:
+        payload = json.loads(self.body(), parse_float=Decimal)
+        account = payload["securitiesAccount"]
+        account["type"] = "MARGIN"
+        account["currentBalances"] = {
+            "cashBalance": Decimal("2500.50"),
+            "liquidationValue": Decimal("10250.75"),
+        }
+        body = self.body(payload)
+
+        record = normalized_account_evidence_from_position_bytes(
+            body,
+            provider_account_number="SYNTHETIC-ACCOUNT",
+            connection_uid="local-schwab-primary",
+            source_account_id="onejournal-account-1",
+            asof=date(2026, 8, 31),
+            retrieved_at=self.retrieved_at,
+        )
+
+        self.assertEqual(record["account_type"], "MARGIN")
+        self.assertEqual(record["cash_balance"], Decimal("2500.5"))
+        self.assertEqual(record["net_liquidation_value"], Decimal("10250.75"))
+        self.assertIsNone(record["buying_power"])
+        self.assertNotIn("SYNTHETIC-ACCOUNT", repr(record))
 
     def test_short_option_requires_and_preserves_explicit_contract_identity(self) -> None:
         provider_symbol = "AAPL  260918P00200000"

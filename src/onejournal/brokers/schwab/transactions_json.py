@@ -4,7 +4,7 @@ import csv
 import json
 import re
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import UTC, datetime
 from decimal import ROUND_DOWN, Decimal, InvalidOperation
 from pathlib import Path
 from typing import Any
@@ -636,6 +636,264 @@ def schwab_transaction_currency_consensus(
         currency_code=next(iter(currency_codes)),
         evidence_item_count=evidence_item_count,
     )
+
+
+def _transaction_evidence_currency(
+    transaction: dict[str, Any],
+    *,
+    currency_consensus: SchwabTransactionCurrencyConsensus | None,
+) -> str:
+    items = transaction.get("transferItems")
+    if not isinstance(items, list):
+        return ""
+    currencies: set[str] = set()
+    for item in items:
+        if not isinstance(item, dict):
+            continue
+        instrument = item.get("instrument")
+        if not isinstance(instrument, dict):
+            continue
+        if str(instrument.get("assetType", "")).strip().upper() == "CURRENCY":
+            currencies.add(_currency_code(instrument))
+    if len(currencies) > 1:
+        raise ValueError("Mixed Schwab transaction currencies are not supported")
+    if currencies:
+        currency = next(iter(currencies))
+        if (
+            currency_consensus is not None
+            and currency != currency_consensus.currency_code
+        ):
+            raise ValueError("Schwab transaction currency conflicts with scope consensus")
+        return currency
+    if (
+        currency_consensus is not None
+        and str(transaction.get("type", "")).strip().upper() == "TRADE"
+        and str(transaction.get("status", "")).strip().upper() == "VALID"
+    ):
+        return currency_consensus.currency_code
+    return ""
+
+
+def _transaction_evidence_time(transaction: dict[str, Any]) -> str:
+    raw = transaction.get("tradeDate") or transaction.get("time")
+    if not isinstance(raw, str) or not raw.strip():
+        raise ValueError("Schwab transaction time or tradeDate is required")
+    try:
+        parsed = datetime.fromisoformat(raw.strip().replace("Z", "+00:00"))
+    except ValueError as exc:
+        raise ValueError("Schwab transaction time is not ISO-8601") from exc
+    if parsed.tzinfo is None or parsed.utcoffset() is None:
+        raise ValueError("Schwab transaction time must include a timezone")
+    return parsed.astimezone(UTC).isoformat()
+
+
+def normalized_transaction_evidence_from_transactions(
+    transactions: list[dict[str, Any]],
+    *,
+    provider_account_number: str,
+    source_account_id: str,
+    currency_consensus: SchwabTransactionCurrencyConsensus | None = None,
+) -> list[dict[str, Any]]:
+    """Preserve one privacy-safe record per exact Schwab transaction."""
+
+    provider_account = str(provider_account_number).strip()
+    opaque_account = str(source_account_id).strip()
+    if not provider_account or not opaque_account:
+        raise ValueError("provider and opaque account identities are required")
+    records: list[dict[str, Any]] = []
+    seen: set[str] = set()
+    for transaction in transactions:
+        observed_account = str(transaction.get("accountNumber", "")).strip()
+        if observed_account != provider_account:
+            raise ValueError("Schwab transaction account binding failed")
+        source_transaction_id = str(transaction.get("activityId", "")).strip()
+        if not source_transaction_id:
+            raise ValueError("Schwab transaction activityId is required")
+        if source_transaction_id in seen:
+            raise ValueError(f"Duplicate Schwab transaction activityId: {source_transaction_id}")
+        seen.add(source_transaction_id)
+        items = transaction.get("transferItems")
+        if not isinstance(items, list):
+            raise ValueError("Schwab transaction transferItems must be an array")
+        net_amount = transaction.get("netAmount")
+        normalized_items: list[dict[str, str]] = []
+        for index, item in enumerate(items):
+            if not isinstance(item, dict):
+                raise ValueError("Schwab transaction transfer item must be an object")
+            instrument = item.get("instrument")
+            if not isinstance(instrument, dict):
+                raise ValueError("Schwab transaction item instrument must be an object")
+            normalized_items.append(
+                {
+                    "item_uid": (
+                        f"schwab:{opaque_account}:transaction:"
+                        f"{source_transaction_id}:item:{index}"
+                    ),
+                    "provider_asset_type": str(
+                        instrument.get("assetType", "")
+                    ).strip().upper(),
+                    "provider_symbol": str(instrument.get("symbol", "")).strip(),
+                    "amount": (
+                        ""
+                        if item.get("amount") in (None, "")
+                        else _decimal_text(
+                            _decimal_value(item.get("amount"), field_name="amount")
+                        )
+                    ),
+                    "price": (
+                        ""
+                        if item.get("price") in (None, "")
+                        else _decimal_text(
+                            _decimal_value(item.get("price"), field_name="price")
+                        )
+                    ),
+                    "cost": (
+                        ""
+                        if item.get("cost") in (None, "")
+                        else _decimal_text(
+                            _decimal_value(item.get("cost"), field_name="cost")
+                        )
+                    ),
+                    "position_effect": str(
+                        item.get("positionEffect", "")
+                    ).strip().upper(),
+                    "fee_type": str(item.get("feeType", "")).strip().upper(),
+                }
+            )
+        records.append(
+            {
+                "transaction_uid": (
+                    f"schwab:{opaque_account}:transaction:{source_transaction_id}"
+                ),
+                "source_broker": "schwab",
+                "source_account_id": opaque_account,
+                "source_transaction_id": source_transaction_id,
+                "transaction_at_utc": _transaction_evidence_time(transaction),
+                "transaction_type": str(transaction.get("type", "")).strip().upper(),
+                "transaction_status": str(transaction.get("status", "")).strip().upper(),
+                "currency": _transaction_evidence_currency(
+                    transaction, currency_consensus=currency_consensus
+                ),
+                "net_amount": (
+                    ""
+                    if net_amount in (None, "")
+                    else _decimal_text(
+                        _decimal_value(net_amount, field_name="netAmount")
+                    )
+                ),
+                "source_order_id": str(transaction.get("orderId", "")).strip(),
+                "source_position_id": str(transaction.get("positionId", "")).strip(),
+                "transfer_item_count": str(len(items)),
+                "items": normalized_items,
+            }
+        )
+    return records
+
+
+def normalized_cash_evidence_from_transactions(
+    transactions: list[dict[str, Any]],
+    *,
+    provider_account_number: str,
+    source_account_id: str,
+    currency_consensus: SchwabTransactionCurrencyConsensus | None = None,
+) -> list[dict[str, str]]:
+    """Preserve exact Schwab cash evidence without aggregating or relabelling it."""
+
+    transaction_records = normalized_transaction_evidence_from_transactions(
+        transactions,
+        provider_account_number=provider_account_number,
+        source_account_id=source_account_id,
+        currency_consensus=currency_consensus,
+    )
+    records_by_id = {
+        record["source_transaction_id"]: record for record in transaction_records
+    }
+    opaque_account = (
+        transaction_records[0]["source_account_id"]
+        if transaction_records
+        else str(source_account_id).strip()
+    )
+    cash_records: list[dict[str, str]] = []
+    for transaction in transactions:
+        source_transaction_id = str(transaction.get("activityId", "")).strip()
+        transaction_record = records_by_id[source_transaction_id]
+        currency = transaction_record["currency"]
+        net_amount = transaction.get("netAmount")
+        if net_amount not in (None, ""):
+            cash_records.append(
+                {
+                    "cash_uid": (
+                        f"schwab:{opaque_account}:transaction:"
+                        f"{source_transaction_id}:net"
+                    ),
+                    "source_broker": "schwab",
+                    "source_account_id": opaque_account,
+                    "source_transaction_id": source_transaction_id,
+                    "transaction_at_utc": transaction_record["transaction_at_utc"],
+                    "currency": currency,
+                    "cash_role": "transaction_net",
+                    "cash_amount": _decimal_text(
+                        _decimal_value(net_amount, field_name="netAmount")
+                    ),
+                    "source_field": "netAmount",
+                    "fee_type": "",
+                    "source_order_id": transaction_record["source_order_id"],
+                    "transfer_item_index": "",
+                    "evidence_status": (
+                        "observed" if currency else "review_required"
+                    ),
+                    "evidence_reason": "" if currency else "missing_currency",
+                }
+            )
+        items = transaction.get("transferItems")
+        assert isinstance(items, list)
+        for index, item in enumerate(items):
+            if not isinstance(item, dict):
+                continue
+            instrument = item.get("instrument")
+            if not isinstance(instrument, dict):
+                continue
+            asset_type = str(instrument.get("assetType", "")).strip().upper()
+            raw_value = item.get("cost")
+            source_field = "cost"
+            if raw_value in (None, "") and asset_type == "CURRENCY":
+                raw_value = item.get("amount")
+                source_field = "amount"
+            if raw_value in (None, ""):
+                continue
+            item_currency = (
+                _currency_code(instrument) if asset_type == "CURRENCY" else currency
+            )
+            cash_records.append(
+                {
+                    "cash_uid": (
+                        f"schwab:{opaque_account}:transaction:"
+                        f"{source_transaction_id}:item:{index}:{source_field}"
+                    ),
+                    "source_broker": "schwab",
+                    "source_account_id": opaque_account,
+                    "source_transaction_id": source_transaction_id,
+                    "transaction_at_utc": transaction_record["transaction_at_utc"],
+                    "currency": item_currency,
+                    "cash_role": (
+                        "fee" if asset_type == "CURRENCY" else "security_cost"
+                    ),
+                    "cash_amount": _decimal_text(
+                        _decimal_value(raw_value, field_name=source_field)
+                    ),
+                    "source_field": source_field,
+                    "fee_type": str(item.get("feeType", "")).strip().upper(),
+                    "source_order_id": transaction_record["source_order_id"],
+                    "transfer_item_index": str(index),
+                    "evidence_status": (
+                        "observed" if item_currency else "review_required"
+                    ),
+                    "evidence_reason": (
+                        "" if item_currency else "missing_currency"
+                    ),
+                }
+            )
+    return cash_records
 
 
 def _fee_value(item: dict[str, Any], *, fee_type: str) -> Decimal:

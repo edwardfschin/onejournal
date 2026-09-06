@@ -25,10 +25,12 @@ from onejournal.brokers.schwab.positions_json import (
     SchwabPositionCaptureContext,
     SchwabPositionMapping,
     broker_position_snapshot_from_bytes,
+    normalized_account_evidence_from_position_bytes,
 )
 from onejournal.brokers.schwab.orders_json import (
     SchwabOrdersJsonStats,
     load_orders_json_bytes,
+    normalized_order_evidence_from_orders,
     normalized_rows_from_orders,
 )
 from onejournal.brokers.schwab.transactions_json import (
@@ -36,7 +38,9 @@ from onejournal.brokers.schwab.transactions_json import (
     extract_lifecycle_event_legs_from_transactions,
     extract_lifecycle_events_from_transactions,
     load_transactions_json_bytes,
+    normalized_cash_evidence_from_transactions,
     normalized_rows_from_transactions,
+    normalized_transaction_evidence_from_transactions,
     schwab_transaction_currency_consensus,
 )
 from onejournal.brokers.schwab.market_hours_json import (
@@ -307,6 +311,7 @@ class ConvertedExternalPositionSnapshot:
     external_request_uid: str
     raw_response_bytes: bytes
     snapshot: BrokerPositionSnapshot
+    account_record: Mapping[str, object] | None = None
 
 
 @dataclass(frozen=True)
@@ -343,6 +348,9 @@ class ConvertedExternalLifecycleEvidence:
     excluded_out_of_window_transaction_fill_rows: int = 0
     excluded_out_of_window_lifecycle_events: int = 0
     excluded_out_of_window_lifecycle_event_legs: int = 0
+    order_records: tuple[Mapping[str, object], ...] = ()
+    transaction_records: tuple[Mapping[str, object], ...] = ()
+    cash_rows: tuple[Mapping[str, str], ...] = ()
 
 
 def _mapping(value: object, field: str) -> Mapping[str, object]:
@@ -1385,6 +1393,14 @@ def convert_external_schwab_positions(
             ),
             mappings=mappings,
         )
+        account_record = normalized_account_evidence_from_position_bytes(
+            raw_body,
+            provider_account_number=provider_account_number,
+            connection_uid=acquisition.manifest.connection_uid,
+            source_account_id=source_account,
+            asof=request.approved_market_date,
+            retrieved_at=request.received_at_utc,
+        )
     except SchwabPositionAdapterError as exc:
         raise ExternalProviderAcquisitionError(
             "Schwab position evidence failed the OneJournal adapter contract"
@@ -1394,6 +1410,7 @@ def convert_external_schwab_positions(
         external_request_uid=request.request_uid,
         raw_response_bytes=raw_body,
         snapshot=snapshot,
+        account_record=MappingProxyType(account_record),
     )
 
 
@@ -1636,6 +1653,23 @@ def convert_external_schwab_lifecycle(
         currency_consensus = schwab_transaction_currency_consensus(
             admitted_transactions
         )
+        raw_order_records = normalized_order_evidence_from_orders(
+            admitted_orders,
+            provider_account_number=checked_account_number,
+            source_account_id=checked_source_account,
+        )
+        raw_transaction_records = normalized_transaction_evidence_from_transactions(
+            admitted_transactions,
+            provider_account_number=checked_account_number,
+            source_account_id=checked_source_account,
+            currency_consensus=currency_consensus,
+        )
+        raw_cash_rows = normalized_cash_evidence_from_transactions(
+            admitted_transactions,
+            provider_account_number=checked_account_number,
+            source_account_id=checked_source_account,
+            currency_consensus=currency_consensus,
+        )
         raw_transaction_rows, transaction_stats = normalized_rows_from_transactions(
             admitted_transactions,
             currency_consensus=currency_consensus,
@@ -1726,6 +1760,11 @@ def convert_external_schwab_lifecycle(
         excluded_out_of_window_lifecycle_event_legs=(
             len(raw_event_legs) - len(admitted_event_legs)
         ),
+        order_records=tuple(MappingProxyType(row) for row in raw_order_records),
+        transaction_records=tuple(
+            MappingProxyType(row) for row in raw_transaction_records
+        ),
+        cash_rows=tuple(MappingProxyType(row) for row in raw_cash_rows),
     )
 
 

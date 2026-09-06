@@ -102,9 +102,9 @@ is not complete merely because its required Phase 1 slice is complete.
 | P1-02 | COMPLETE | Approve the open-source web foundation, portable topology, information architecture, user journeys, and vertical-delivery policy. | Accepted ADR-0017 and `docs/production_web_delivery_contract.md`; corresponds to WEB-W01 and WEB-W02. |
 | P1-03 | COMPLETE | Render and approve the distinctive OneJournal design system, responsive shell, and high-fidelity synthetic routes. | `web/` synthetic preview implemented across Today, Portfolio, Trades, Journal, Reports, Data, and Settings. Build passes; all routes return HTTP 200; desktop/mobile viewport checks show no horizontal overflow; demo/unavailable states and focus-visible controls are present; owner approved the consolidated visual direction. No private data or provider calls. |
 | P1-04 | COMPLETE | Implement the versioned FastAPI/frontend application boundary against safe fixtures. | `onejournal.api` exposes the deterministic `onejournal.web-fixture.v1` contract at `/api/v1/preview`; OpenAPI, decimal-string, UTC-instant, quality/unavailable, privacy, focused API, full clean-CI, frontend build, and loopback HTTP checks pass. No DuckDB, raw file, provider, credential, or private-data access. |
-| P1-05 | BLOCKED | Implement and accept a repeatable read-only Schwab evidence/import route for required account, position, order, transaction, fill, cash, quote, and session families. | Original evidence and exact lineage feed OneJournal-owned normalization, reconciliation, replay-safe persistence, and audit. Manual or credential-free external acquisition is allowed; OneJournal token ownership, continuous polling, T15, and OneBot-derived state are not required or accepted. Provider access and evidence use remain separately approval-gated. |
+| P1-05 | COMPLETE | Implement and accept a repeatable read-only Schwab evidence/import route for required account, position, order, transaction, fill, cash, quote, and session families. | Implemented and owner-accepted on 2026-09-06 under ADR-0024 for the bounded isolated single-account import scope. The versioned assembly uses direct Schwab-derived account/order/transaction observations, transaction-authoritative reconciled fills, explicit cash-source roles, complete positions, and explicitly reconciled quote/session coverage; migration 0016 adds atomic replay-safe persistence and exact read-back; the validation-default operator enforces private permissions and emits a value-free audit. `ONEJOURNAL-P1-05-SCHWAB-20260906-01` preserved all eight families and exact source lineage for 58 positions, 48 quotes, 10 unquoted positions, 984 admitted plus 8 excluded order observations, 509 transactions, 430 fills, and 3,142 cash observations. Its 423/3/7 fill reconciliation exactly matches the accepted PNL-03 coverage audit; all 48 quotes have Schwab equity-option session authority. The assembly correctly remains `review_required` for the already known 3 order-only fills, 7 transaction-only fills, and 54 cash observations lacking explicit currency; those conditions do not invalidate the import foundation or alter accepted bounded PNL-03 results. First write, identical replay, exact read-back, 0700/0600 permissions, manifest checksums, the focused suite, and all 462 offline tests pass. Owner acceptance `ONEJOURNAL-P1-05-OWNER-ACCEPTANCE-20260906-01` is bound to the exact run manifest, audit, assembly UID, and result fingerprint. No provider, credential, actual journal, production migration, authenticated route, deployment, commit, or push was used or accepted. |
 | P1-06 | QUEUED | Deliver the private local-owner trade and journal vertical slice through the new application boundary. | WEB-W06 proves search, review queues, lifecycle inspection, append-only entries/reviews, audit, replay, and privacy against approved local state without Streamlit or broker calls. |
-| P1-07 | BLOCKED | Approve and deliver canonical current positions, cost basis, marks, market value, and unrealized P&L. | PNL-03 and WEB-W07 pass cumulative position authority, broker reconciliation, mark selection, instrument/spread, exact as-of, and fail-closed financial acceptance. |
+| P1-07 | QUEUED | Approve and deliver canonical current positions, cost basis, marks, market value, and unrealized P&L. | PNL-03 is complete and owner-accepted for the bounded private broker-current scope. WEB-W07 must now connect that accepted service/repository boundary to the local-owner web application with explicit as-of, lineage, availability, and fail-closed behavior; no production migration or route activation is yet accepted. |
 | P1-08 | BLOCKED | Deliver the bounded Phase 1 current portfolio, account/symbol breakdown, date-filtered P&L history, CSV export, and complete quality states for displayed metrics. | WEB-W08 and the required bounded PNL-06 through PNL-08 slices reconcile every displayed/exported value and preserve processed/unavailable counts and reasons. Advanced returns, drawdown, exposure, portfolio-history series, and broader analytics remain later. |
 | P1-09 | BLOCKED | Implement and accept owner authentication, authorization, secure sessions, recovery, and audit. | WEB-W10 security decision and negative route/service/record/session/recovery tests pass with no critical finding. |
 | P1-10 | BLOCKED | Establish approved environments, private HTTPS hosting, production state, deployment/rollback, observability, encrypted backup, and tested restoration. | WEB-W12 and required OPS gates prove environment identity, migration/reconciliation where needed, release/rollback, monitoring, recovery, and privacy without provider or order-safety drift. |
@@ -271,12 +271,13 @@ whenever a task changes state. Baseline verified on 2026-08-28 at commit
 
 **Status: reopened after source-level audit (2026-08-09).** PNL-01 returned to
 `COMPLETE` on 2026-08-27 after bounded owner acceptance of five real-broker,
-broker-reconciled lifecycle scopes. PNL-02, PNL-03, PNL-04, PNL-05, PNL-06,
-PNL-07, and PNL-08 remain open. Earlier
+broker-reconciled lifecycle scopes. PNL-02 completed on 2026-08-31 and PNL-03
+completed on 2026-09-05 for their explicitly bounded accepted scopes. PNL-04,
+PNL-05, PNL-06, PNL-07, and PNL-08 remain open. Earlier
 completion labels for PNL-03 through PNL-06 and PNL-08 described useful
-prototype scaffolding, but their acceptance criteria are not yet satisfied.
-The source-level reasons are recorded in the queue rows above so no placeholder
-or unavailable value is mistaken for completed financial behavior.
+prototype scaffolding rather than the gates now required here. Current row
+statuses and evidence control; no placeholder or unavailable value is treated
+as completed financial behavior.
 
 ### Queue 3 financial exit gate (not yet satisfied)
 
@@ -305,11 +306,12 @@ The remaining closure conditions are:
   DuckDB 0012 persistence, exact replay, and negative fail-closed cases. This
   completion does not establish continuous acquisition, production journal
   migration, a public/hosted service, OneJournal credential ownership, IBKR or
-  Moomoo integration, or PNL-03 valuation marks. T15 remains later target-
-  architecture work; automatic raw-evidence deletion remains disabled.
-- PNL-03/04: canonical cumulative positions and portfolio snapshots must be
-  derived from lifecycle lots, then reconciled to actual broker position
-  snapshots; per-import fill aggregation is not a substitute.
+  Moomoo integration, or independently establish PNL-03 valuation marks. T15
+  remains later target-architecture work; automatic raw-evidence deletion
+  remains disabled.
+- PNL-04: historical canonical portfolio snapshots still require cumulative
+  lifecycle-derived state reconciled to actual broker snapshots; the accepted
+  PNL-03 broker-current view and per-import fill aggregation are not substitutes.
 - PNL-05/06: complete metrics and breakdown reconciliation follow canonical
   realized/unrealized P&L and position state. Returns and drawdown remain
   unavailable until their denominator/equity-curve policies are approved.
@@ -353,7 +355,7 @@ the new website reaches parity.
 | WEB-04 | COMPLETE | Design high-fidelity responsive screens and validate them before full implementation. | Desktop, tablet, and mobile designs cover loading, empty, demo, stale, partial, unavailable, and error states for all initial routes. |
 | WEB-05 | COMPLETE | Build the application/API layer so the frontend never reads raw broker data, generated payloads, or database files directly. | Versioned OpenAPI fixture contract and typed frontend compatibility seam pass decimal/time/quality, privacy-safe failure, focused API, full clean-CI, frontend build, and loopback HTTP tests. |
 | WEB-06 | BLOCKED | Implement authentication, authorization, secure sessions, account recovery, and audit logging. | Security review and negative authorization tests pass. |
-| WEB-07 | BLOCKED | Implement local-owner journal, portfolio, P&L, trade, report, data-health, and settings vertical slices. | Each slice uses authoritative Python services through the API, reaches its financial dependency gate, and passes functional and visual acceptance. PNL-03 blocks authoritative position/valuation views but not the synthetic preview or accepted journal slice. |
+| WEB-07 | QUEUED | Implement local-owner journal, portfolio, P&L, trade, report, data-health, and settings vertical slices. | Each slice uses authoritative Python services through the API, reaches its financial dependency gate, and passes functional and visual acceptance. PNL-03 no longer blocks the position/valuation slice; the local-owner journal and portfolio integrations remain to be implemented and accepted. |
 | WEB-08 | BLOCKED | Add accessibility, performance, browser, device, and end-to-end testing. | Agreed accessibility and performance targets pass in supported browsers. |
 | WEB-09 | BLOCKED | Migrate operator workflows away from Streamlit only after verified parity. | Production website is authoritative; Streamlit retirement/retention is documented. |
 
@@ -372,7 +374,7 @@ whenever a package changes state.
 | WEB-W04 | COMPLETE | Produce and validate high-fidelity responsive synthetic workflows. |
 | WEB-W05 | COMPLETE | Establish the versioned FastAPI and frontend contract boundary. |
 | WEB-W06 | QUEUED | Deliver the existing journal capability through a local-owner web vertical slice. |
-| WEB-W07 | BLOCKED | Deliver authoritative current positions and unrealized P&L after PNL-03 acceptance. |
+| WEB-W07 | QUEUED | Deliver the PNL-03-accepted broker-current positions and unrealized P&L through the local-owner application boundary. |
 | WEB-W08 | BLOCKED | Deliver the bounded Phase 1 account/symbol breakdown, date-filtered P&L history, CSV export, and complete quality states for displayed metrics. |
 | WEB-W09 | LATER | Deliver post-Phase 1 attachments and recurring review workflows after UXJ-05 and UXJ-06 privacy/dependency gates. |
 | WEB-W10 | BLOCKED | Implement and accept production authentication, authorization, sessions, recovery, and audit. |
@@ -442,38 +444,28 @@ approval and successful completion of every prior safety gate.
 
 CON-02's seven owner decisions are resolved in accepted ADR-0003. CON-07 and
 JRN-08 remain separate future provenance/correction work. PNL-02 is complete
-only for the bounded local bridge scope; that completion does not authorize a
-live provider service, production migration, or PNL-03 valuation. ADR-0017 now
-permits a clearly labelled synthetic web preview before PNL-03 while preserving
-PNL-03 as the authority gate for real positions and unrealized P&L.
+only for the bounded local bridge scope, and PNL-03 is complete only for the
+accepted private broker-current scope. Neither completion authorizes a live
+provider service, production migration, authenticated route, or deployment.
 
 The current actionable sequence is:
 
-1. `WEB-W03` and `WEB-W04` - render the design system, application shell, and
-   high-fidelity initial routes locally with synthetic data only. This is the
-   first browser-visible checkpoint and grants no financial or runtime
-   acceptance.
-2. `WEB-W05` - establish versioned FastAPI/frontend contracts against safe
-   deterministic fixtures; keep raw evidence and databases out of the browser.
-3. `P1-05` and `PNL-03` - establish the approved read-only Schwab evidence
-   route, then approve and implement cumulative broker-position authority and
-   reconciliation, cost-basis scope, mark-selection and spread/instrument
-   policy, and fail-closed unavailable behavior. Do not treat PNL-02 evidence
-   as a valuation mark before this gate is accepted.
-4. `WEB-W06` - expose already accepted journal capabilities through the local
-   API/application boundary, then `WEB-W07` may expose real portfolio
-   valuation only after PNL-03 acceptance.
-5. `P1-08` and `WEB-W08` - deliver only the bounded Phase 1 account/symbol
+1. `WEB-W06` - expose already accepted journal capabilities through the local
+   API/application boundary without Streamlit or a broker call.
+2. `WEB-W07` - expose the PNL-03-accepted private broker-current portfolio
+   result through the local-owner API/application boundary with explicit as-of,
+   lineage, availability, and fail-closed behavior.
+3. `P1-08` and `WEB-W08` - deliver only the bounded Phase 1 account/symbol
    breakdown, date-filtered P&L history, export, and complete quality states
    for displayed metrics. Broader PNL-04 through PNL-08 work remains later
    where its full gate is not met.
-6. `WEB-W10` and `WEB-W11` - complete authentication/security plus
+4. `WEB-W10` and `WEB-W11` - complete authentication/security plus
    accessibility, performance, browser/device, and end-to-end acceptance.
-7. `WEB-W12` - approve and prove environment, host, PostgreSQL migration,
+5. `WEB-W12` - approve and prove environment, host, PostgreSQL migration,
    deployment, monitoring, backup, restoration, rollback, and private staging.
-8. `WEB-W13` and `P1-12` - obtain explicit Phase 1 private production
+6. `WEB-W13` and `P1-12` - obtain explicit Phase 1 private production
    acceptance and retire or retain Streamlit only after verified parity.
-9. After Phase 1, continue broader PNL-04 through PNL-08, UXJ-05/06 and
+7. After Phase 1, continue broader PNL-04 through PNL-08, UXJ-05/06 and
    WEB-W09, additional brokers, continuous connector ownership, and other
    explicitly deferred capabilities in approved dependency order.
 

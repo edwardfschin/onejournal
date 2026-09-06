@@ -139,6 +139,18 @@ present. A pre-0015 snapshot row lacking that field cannot be silently upgraded
 into broker-current authority; it must fail closed and be re-materialized under
 versioned evidence.
 
+Migration 0016 additively stores one immutable, account-scoped ADR-0024 Schwab
+evidence assembly and its exact account, position, order, transaction, fill,
+cash, quote, and session family payloads. It preserves per-family source
+digests, counts, exclusions, fingerprints, cross-family reconciliation, and
+final status. The repository requires an existing migrated database, writes all
+families in one transaction, accepts only identical replay, and revalidates an
+explicitly named assembly on read-back. It does not rewrite legacy normalized
+tables, quote ingestion, or PNL-03 persistence. Synthetic temporary-DuckDB
+validation and the owner-approved bounded private isolated acceptance run
+`ONEJOURNAL-P1-05-SCHWAB-20260906-01` are complete. Applying 0016 to an actual
+journal remains a separate inspection, backup, migration, and approval gate.
+
 Rules:
 
 - A version number is unique and never reused.

@@ -222,6 +222,68 @@ def load_positions_json_bytes(body: bytes) -> dict[str, Any]:
     return payload
 
 
+def normalized_account_evidence_from_position_bytes(
+    body: bytes,
+    *,
+    provider_account_number: str,
+    connection_uid: str,
+    source_account_id: str,
+    asof: date,
+    retrieved_at: datetime,
+) -> dict[str, Any]:
+    """Normalize direct account fields without retaining the account number.
+
+    Missing provider fields remain absent. No label, currency, balance, or
+    account type is inferred from positions or fills.
+    """
+
+    payload = load_positions_json_bytes(body)
+    securities_account = payload.get("securitiesAccount")
+    if not isinstance(securities_account, Mapping):
+        raise SchwabPositionAdapterError("securitiesAccount object is required")
+    expected_account = _account_number(provider_account_number)
+    if _account_number(securities_account.get("accountNumber")) != expected_account:
+        raise SchwabPositionAdapterError("position response account binding failed")
+    account_type = securities_account.get("type")
+    if account_type is not None:
+        account_type = _safe_value(account_type, "securitiesAccount.type").upper()
+    checked_connection = _safe_value(connection_uid, "connection_uid")
+    checked_source_account = _safe_value(source_account_id, "source_account_id")
+    if retrieved_at.tzinfo is None or retrieved_at.utcoffset() is None:
+        raise SchwabPositionAdapterError("retrieved_at must include a timezone")
+    balances = securities_account.get("currentBalances")
+    if balances is None:
+        balances = {}
+    if not isinstance(balances, Mapping):
+        raise SchwabPositionAdapterError(
+            "securitiesAccount.currentBalances must be an object when supplied"
+        )
+    balance_fields = {
+        "buying_power": "buyingPower",
+        "cash_balance": "cashBalance",
+        "net_liquidation_value": "liquidationValue",
+        "maintenance_requirement": "maintenanceRequirement",
+        "initial_requirement": "initialRequirement",
+        "day_trade_buying_power": "dayTradingBuyingPower",
+    }
+    record: dict[str, Any] = {
+        "account_uid": f"schwab:{checked_source_account}",
+        "source_broker": "schwab",
+        "connection_uid": checked_connection,
+        "source_account_id": checked_source_account,
+        "asof": asof,
+        "retrieved_at_utc": retrieved_at.astimezone(UTC),
+        "account_type": account_type,
+    }
+    for normalized_name, provider_name in balance_fields.items():
+        raw_value = balances.get(provider_name)
+        record[normalized_name] = _decimal(
+            raw_value,
+            f"securitiesAccount.currentBalances.{provider_name}",
+        )
+    return record
+
+
 def _option_identity_matches(
     instrument: Mapping[str, Any], identity: InstrumentIdentity, field_name: str
 ) -> None:

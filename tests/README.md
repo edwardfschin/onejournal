@@ -25,6 +25,14 @@ foundation simple and dependency-free.
 - Adapter contract: deterministic Schwab orders/transactions normalization,
   including lifecycle event headers, decimal-safe transfer-item evidence legs,
   missing-evidence markers, and no inferred lifecycle P&L.
+- Phase 1 Schwab import contract: direct provider-derived account balances,
+  parent/child orders and legs, transactions and transfer items, separately
+  labelled cash evidence, transaction-authoritative fills, complete positions,
+  quotes, and same-provider sessions assemble under one opaque account and
+  deterministic fingerprint. Synthetic/private-permission fixtures and
+  temporary migration-0016 databases prove tamper rejection, atomic first
+  write, exact replay/read-back, privacy-safe audit, and refusal to create or
+  migrate a database implicitly. No private evidence or provider is used.
 - Market-data contract: provider-independent quote identity, private raw lineage,
   entitlement/delay/session state, deterministic freshness eligibility, and
   atomic/idempotent temporary-DuckDB persistence. The provider-neutral capture
