@@ -143,6 +143,86 @@ class BrokerCurrentPositionPersistenceTests(unittest.TestCase):
                     2,
                 )
 
+    def test_persists_thirteen_decimal_places_without_rounding(self) -> None:
+        precise_position = replace(
+            self.snapshot.positions[0],
+            quantity=Decimal("1"),
+            broker_average_cost=Decimal("12.1234567890123"),
+            broker_market_value=Decimal("20"),
+            broker_unrealized_pnl=Decimal("7.8765432109878"),
+            broker_tax_lot_average_price=Decimal("12.1234567890123"),
+        )
+        snapshot = replace(self.snapshot, positions=(precise_position,))
+        run = build_broker_current_position_valuation(
+            broker_snapshot=snapshot,
+            evaluated_at=self.evaluated_at,
+            max_snapshot_age_seconds=0,
+            currency_quantum_by_currency={"USD": Decimal("0.01")},
+        )
+
+        with tempfile.TemporaryDirectory() as tmp:
+            db_path = Path(tmp) / "broker-current-precision.duckdb"
+            apply_schema_migrations(db_path)
+            persist_broker_current_position_valuation_run(
+                db_path, run=run, broker_snapshot=snapshot
+            )
+            read_back = load_broker_current_position_valuation_run(
+                db_path, valuation_run_uid=run.run_uid
+            )
+            assert read_back is not None
+            (position,) = read_back.positions
+            self.assertEqual(
+                position["tax_lot_average_price"],
+                Decimal("12.1234567890123"),
+            )
+            self.assertEqual(
+                position["open_cost_basis"],
+                Decimal("12.1234567890123"),
+            )
+            self.assertEqual(
+                position["broker_reported_unrealized_pnl"],
+                Decimal("7.8765432109878"),
+            )
+            self.assertEqual(
+                position["unrealized_pnl"],
+                Decimal("7.8765432109877"),
+            )
+            self.assertEqual(
+                position["unrealized_reconciliation_difference"],
+                Decimal("0.0000000000001"),
+            )
+            with duckdb.connect(str(db_path), read_only=True) as con:
+                stored_snapshot = con.execute(
+                    """SELECT broker_average_cost, broker_unrealized_pnl,
+                              broker_tax_lot_average_price
+                       FROM broker_position_snapshot_records"""
+                ).fetchone()
+            self.assertEqual(
+                stored_snapshot,
+                (
+                    Decimal("12.1234567890123"),
+                    Decimal("7.8765432109878"),
+                    Decimal("12.1234567890123"),
+                ),
+            )
+            authorization = BrokerCurrentFinancialReleaseAuthorization(
+                owner_acceptance_uid="owner-acceptance:precision-synthetic",
+                valuation_run_uid=read_back.valuation_run_uid,
+                result_fingerprint=read_back.result_fingerprint,
+                accepted_at=self.evaluated_at,
+            )
+            released = build_broker_current_position_valuation_response(
+                read_back, authorization=authorization
+            )
+            self.assertEqual(
+                released.positions[0].open_cost_basis,
+                "12.1234567890123",
+            )
+            self.assertEqual(
+                released.positions[0].unrealized_reconciliation_difference,
+                "0.0000000000001",
+            )
+
     def test_persistence_rejects_run_that_does_not_replay(self) -> None:
         drifted = replace(self.run, cost_basis_available_count=1)
         with tempfile.TemporaryDirectory() as tmp:

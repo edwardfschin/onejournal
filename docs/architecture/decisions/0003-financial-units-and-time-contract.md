@@ -2,7 +2,7 @@
 
 - Status: Accepted
 - Date: 2026-08-08
-- Last reviewed: 2026-08-21
+- Last reviewed: 2026-09-07
 - Accepted date: 2026-08-21
 - Decision owners: OneJournal project owner
 - Related roadmap items: CON-02, CON-03 through CON-06, JRN-01 through JRN-05,
@@ -23,8 +23,10 @@ another currency. A trustworthy consolidated result must not silently treat
 native-currency values as USD.
 
 The implementation uses `Decimal` for reusable normalized domain records, P&L
-calculations, DuckDB `DECIMAL(38,10)` financial columns, and the hardened Schwab
-orders and transactions adapter boundary. That remains partial conformance:
+calculations, DuckDB decimal financial columns, and the hardened Schwab orders
+and transactions adapter boundary. Most existing columns remain
+`DECIMAL(38,10)`; migration 0023 widens only the broker-current fields proven to
+require exact 13-place storage. That remains partial conformance:
 presentation paths still contain numeric fallbacks and the time-boundary gaps
 below remain open.
 
@@ -87,9 +89,10 @@ adapter, timestamp, database row, or presentation path conforms.
 - Domain calculations and persisted financial values use decimal arithmetic;
   binary floating point is prohibited for financial calculation, allocation,
   reconciliation, serialization, and persistence.
-- Existing `DECIMAL(38,10)` storage remains unchanged by this ADR proposal.
-  It is the minimum current storage precision for fills, prices, quantities,
-  commissions, fees, strikes, multipliers, and calculated monetary values.
+- `DECIMAL(38,10)` remains the minimum current storage precision for fills,
+  prices, quantities, commissions, fees, strikes, multipliers, and calculated
+  monetary values. Migration 0023 uses `DECIMAL(38,13)` only for affected
+  broker-current values whose accepted evidence requires the additional scale.
 - Source precision is preserved through normalization and intermediate
   calculations. Rounding occurs only at a documented settlement, allocation,
   export, or display boundary.

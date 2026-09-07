@@ -195,9 +195,17 @@ replayed all 58 positions through `schwab-position-json-v3` and produced
 complete cost-basis, market-value, and reconciled unrealized-P&L availability.
 Separate package `PNL-03X-BROKER-CURRENT-ACCEPTANCE-20260905-01` records the
 project owner's explicit acceptance of that exact broker-current result. The
-earlier `-01` package and all FIFO evidence remain immutable. This evidence does
-not apply migration 0015 to an actual journal, activate a route, or approve a
-production release.
+earlier `-01` package and all FIFO evidence remain immutable.
+
+Separate operational gates subsequently applied the database changes through
+migration 0023, persisted that exact result, activated its process-authorized
+loopback route, and verified the real portfolio experience, now canonical at
+`/local/portfolio`. On
+2026-09-07 the project owner accepted WEB-W07 for that demonstrated private
+single-owner local-only scope. This later acceptance does not change the
+decision's financial semantics or authorize continuous provider acquisition,
+credentials, authentication, hosting, deployment, broader or realized P&L,
+trading, commit, or push.
 
 ## Rollback or supersession
 

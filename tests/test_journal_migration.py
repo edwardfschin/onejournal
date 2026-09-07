@@ -4,6 +4,7 @@ import shutil
 import tempfile
 import unittest
 from datetime import datetime
+from decimal import Decimal
 from hashlib import sha256
 from pathlib import Path
 
@@ -145,6 +146,8 @@ class JournalMigrationTests(unittest.TestCase):
             self.assertEqual(rows[20][1], "applied")
             self.assertEqual(rows[21][0], "0022")
             self.assertEqual(rows[21][1], "applied")
+            self.assertEqual(rows[22][0], "0023")
+            self.assertEqual(rows[22][1], "applied")
 
             fill_columns = {
                 row[1]: row[2]
@@ -175,7 +178,7 @@ class JournalMigrationTests(unittest.TestCase):
             }
             self.assertEqual(
                 position_columns["broker_tax_lot_average_price"],
-                "DECIMAL(38,10)",
+                "DECIMAL(38,13)",
             )
 
     def test_released_migration_0002_checksum_is_immutable(self) -> None:
@@ -188,13 +191,100 @@ class JournalMigrationTests(unittest.TestCase):
             MIGRATION_0002_RELEASED_CHECKSUM,
         )
 
+    def test_migration_0023_preserves_existing_broker_current_values(self) -> None:
+        apply_schema_migrations(
+            self.db_path,
+            target_version="0022",
+            migrations_dir=MIGRATIONS_DIR,
+        )
+        with duckdb.connect(str(self.db_path)) as con:
+            con.execute(
+                """INSERT INTO broker_position_snapshot_records (
+                       snapshot_uid, instrument_key, asset_class, market_scope,
+                       currency, symbol, quantity, broker_average_cost,
+                       broker_unrealized_pnl, broker_tax_lot_average_price
+                   ) VALUES (
+                       'snapshot-1', 'instrument-1', 'equity', 'US', 'USD',
+                       'TEST', 1, 12.3456789012, 3.4567890123, 12.3456789012
+                   )"""
+            )
+            con.execute(
+                """INSERT INTO pnl_broker_current_position_valuations (
+                       valuation_run_uid, instrument_key, asset_class,
+                       market_scope, currency, symbol, quantity,
+                       tax_lot_average_price, open_cost_basis,
+                       broker_reported_unrealized_pnl, unrealized_pnl,
+                       unrealized_reconciliation_difference, cost_basis_status,
+                       market_value_status, unrealized_pnl_status,
+                       position_status, reason_codes_json
+                   ) VALUES (
+                       'run-1', 'instrument-1', 'equity', 'US', 'USD', 'TEST',
+                       1, 12.3456789012, 12.3456789012, 3.4567890123,
+                       3.4567890123, 0.0000000001, 'available', 'available',
+                       'available', 'available', '[]'
+                   )"""
+            )
+            con.execute(
+                """INSERT INTO pnl_broker_current_portfolio_totals
+                   VALUES ('run-1', 'USD', 12.3456789012, 15.80, 3.4567890123)"""
+            )
+
+        resulting_version = apply_schema_migrations(
+            self.db_path,
+            migrations_dir=MIGRATIONS_DIR,
+        )
+        self.assertEqual(resulting_version, 23)
+        with duckdb.connect(str(self.db_path), read_only=True) as con:
+            snapshot_columns = {
+                row[1]: row[2]
+                for row in con.execute(
+                    "PRAGMA table_info(broker_position_snapshot_records)"
+                ).fetchall()
+            }
+            valuation_columns = {
+                row[1]: row[2]
+                for row in con.execute(
+                    "PRAGMA table_info(pnl_broker_current_position_valuations)"
+                ).fetchall()
+            }
+            total_columns = {
+                row[1]: row[2]
+                for row in con.execute(
+                    "PRAGMA table_info(pnl_broker_current_portfolio_totals)"
+                ).fetchall()
+            }
+            self.assertEqual(
+                snapshot_columns["broker_tax_lot_average_price"],
+                "DECIMAL(38,13)",
+            )
+            self.assertEqual(
+                valuation_columns["unrealized_reconciliation_difference"],
+                "DECIMAL(38,13)",
+            )
+            self.assertEqual(
+                total_columns["portfolio_unrealized_pnl"],
+                "DECIMAL(38,13)",
+            )
+            self.assertEqual(
+                con.execute(
+                    """SELECT broker_average_cost, broker_unrealized_pnl,
+                              broker_tax_lot_average_price
+                       FROM broker_position_snapshot_records"""
+                ).fetchone(),
+                (
+                    Decimal("12.3456789012000"),
+                    Decimal("3.4567890123000"),
+                    Decimal("12.3456789012000"),
+                ),
+            )
+
     def test_init_schema_is_idempotent(self) -> None:
         init_schema(self.db_path)
         init_schema(self.db_path)
 
         with duckdb.connect(str(self.db_path), read_only=True) as con:
             count = con.execute("SELECT COUNT(*) FROM schema_migrations").fetchone()[0]
-            self.assertEqual(count, 22)
+            self.assertEqual(count, 23)
 
     def test_migration_0005_backfills_existing_reviews_from_version_0002(self) -> None:
         apply_schema_migrations(
@@ -231,7 +321,7 @@ class JournalMigrationTests(unittest.TestCase):
             self.db_path,
             migrations_dir=MIGRATIONS_DIR,
         )
-        self.assertEqual(resulting_version, 22)
+        self.assertEqual(resulting_version, 23)
 
         with duckdb.connect(str(self.db_path), read_only=True) as con:
             rows = con.execute(

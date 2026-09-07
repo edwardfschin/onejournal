@@ -3,10 +3,11 @@ import {
   Clock3, Database, FileChartColumn, LayoutDashboard, Menu, NotebookPen, Search,
   Settings, Sparkles, Target, TextQuote,
 } from 'lucide-react';
+import { DEMO_ROUTES } from '@/lib/routes';
 
 const navItems = [
-  ['Today', LayoutDashboard, '/'], ['Portfolio', BriefcaseBusiness, '/portfolio'], ['Trades', Activity, '/trades'],
-  ['Journal', BookOpenText, '/journal'], ['Reports', FileChartColumn, '/reports'], ['Data', Database, '/data'],
+  ['Today', LayoutDashboard, DEMO_ROUTES.today], ['Portfolio', BriefcaseBusiness, DEMO_ROUTES.portfolio], ['Trades', Activity, DEMO_ROUTES.trades],
+  ['Journal', BookOpenText, DEMO_ROUTES.journal], ['Reports', FileChartColumn, DEMO_ROUTES.reports], ['Data', Database, DEMO_ROUTES.data],
 ] as const;
 
 const prompts = [
@@ -18,7 +19,7 @@ const prompts = [
 export default function JournalPreview() {
   return (
     <main className="app-shell journal-route">
-      <aside className="desktop-rail" aria-label="Primary navigation"><div className="brand-mark"><span className="brand-glyph">1</span><span className="brand-wordmark">OneJournal</span></div><nav className="nav-stack">{navItems.map(([label, Icon, href]) => <a className={`nav-item ${label === 'Journal' ? 'is-active' : ''}`} href={href} key={label} aria-current={label === 'Journal' ? 'page' : undefined}><Icon aria-hidden="true" /><span>{label}</span>{label === 'Journal' ? <span className="nav-count">3</span> : null}</a>)}</nav><div className="rail-footer"><a className="nav-item" href="#settings"><Settings aria-hidden="true" /><span>Settings</span></a><div className="owner-chip"><span className="owner-avatar">ES</span><span><strong>Private owner</strong><small>Demo workspace</small></span></div></div></aside>
+      <aside className="desktop-rail" aria-label="Primary navigation"><div className="brand-mark"><span className="brand-glyph">1</span><span className="brand-wordmark">OneJournal</span></div><nav className="nav-stack">{navItems.map(([label, Icon, href]) => <a className={`nav-item ${label === 'Journal' ? 'is-active' : ''}`} href={href} key={label} aria-current={label === 'Journal' ? 'page' : undefined}><Icon aria-hidden="true" /><span>{label}</span>{label === 'Journal' ? <span className="nav-count">3</span> : null}</a>)}</nav><div className="rail-footer"><a className="nav-item" href={DEMO_ROUTES.settings}><Settings aria-hidden="true" /><span>Settings</span></a><div className="owner-chip"><span className="owner-avatar">ES</span><span><strong>Private owner</strong><small>Demo workspace</small></span></div></div></aside>
       <section className="workspace">
         <header className="topbar"><button className="icon-button mobile-menu" type="button" aria-label="Open navigation"><Menu aria-hidden="true" /></button><label className="search-box"><Search aria-hidden="true" /><span className="sr-only">Search OneJournal</span><input placeholder="Search trades, symbols, notes…" type="search" /><kbd>⌘ K</kbd></label><div className="topbar-actions"><span className="demo-pill"><Sparkles aria-hidden="true" /> Synthetic data</span></div></header>
         <output className="mode-banner"><span><NotebookPen aria-hidden="true" /> Journal preview</span><p>No notes are saved here. Private append-only authoring is a later approved application slice.</p></output>

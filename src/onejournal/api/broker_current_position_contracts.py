@@ -210,7 +210,14 @@ def _utc_instant(value: str) -> datetime:
 
 
 def _decimal_text(value: Decimal | None, *, release: bool) -> str | None:
-    return format(value, "f") if release and value is not None else None
+    if not release or value is None:
+        return None
+    integer, separator, fraction = format(value, "f").partition(".")
+    if not separator:
+        return integer
+    significant_fraction = fraction.rstrip("0")
+    compatible_fraction = significant_fraction.ljust(10, "0")
+    return f"{integer}.{compatible_fraction}"
 
 
 def load_broker_current_financial_release_authorization(

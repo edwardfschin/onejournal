@@ -104,6 +104,9 @@ Examples:
 0018_add_phase1_journal_materialization.sql
 0019_add_phase1_execution_projection.sql
 0020_add_phase1_lifecycle_reconciliation.sql
+0021_add_append_only_history_revisions.sql
+0022_add_local_owner_financial_api_audit.sql
+0023_widen_broker_current_decimal_precision.sql
 ```
 
 Migration 0009 adds explicit canonical UTC evidence fields without
@@ -211,6 +214,15 @@ An absent position without closure evidence becomes `review_required`, never a
 false `open` or an invented `closed`. Lifecycle status remains separate from
 financial authority. Validation and disposable-copy rehearsal do not authorize
 application of 0020 to the owner operational journal.
+
+Migration 0023 changes only the broker-current decimal fields proven to require
+more than 10 fractional digits. It widens those columns to `DECIMAL(38,13)` so
+the accepted WEB-W07 result can be stored and read back without rounding. After
+a checksum-identical mode-`0600` backup and successful disposable-copy
+rehearsal, the separately approved migration was applied to the private
+operational journal on 2026-09-07. Exact persistence/read-back, journal
+integrity, one privacy-safe accepted-read audit, and rollback evidence were
+verified; this is not authority to migrate any other database.
 
 Rules:
 

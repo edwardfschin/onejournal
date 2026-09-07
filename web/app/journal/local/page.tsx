@@ -8,13 +8,14 @@ import {
   ChevronDown, ChevronRight, Database, FileChartColumn, LayoutDashboard, LoaderCircle,
   LockKeyhole, Menu, NotebookPen, RefreshCw, Search, Settings, ShieldCheck,
 } from 'lucide-react';
+import { LOCAL_ROUTES } from '@/lib/routes';
 
 const API_ROOT = '/api/v5/local-owner/journal';
 const CONTRACT_VERSION = 'onejournal.local-owner-journal.v5';
 
 const navItems = [
-  ['Today', LayoutDashboard, null], ['Portfolio', BriefcaseBusiness, '/portfolio/local'],
-  ['Trades', Activity, '/journal/local'], ['Journal', BookOpenText, '/journal/local'],
+  ['Today', LayoutDashboard, null], ['Portfolio', BriefcaseBusiness, LOCAL_ROUTES.portfolio],
+  ['Trades', Activity, LOCAL_ROUTES.trades], ['Journal', BookOpenText, LOCAL_ROUTES.journal],
   ['Reports', FileChartColumn, null], ['Data', Database, null],
 ] as const;
 
@@ -308,7 +309,11 @@ function stockSettlementLabel(value: string, settlementKind: 'assignment' | 'exe
   return settlementKind === 'assignment' ? 'Stock called away' : 'Stock delivered';
 }
 
-export default function LocalOwnerJournalPage() {
+type LocalOwnerJournalPageProps = {
+  activeSection?: 'Trades' | 'Journal';
+};
+
+export default function LocalOwnerJournalPage({ activeSection = 'Journal' }: LocalOwnerJournalPageProps) {
   const [query, setQuery] = useState('');
   const [searchResult, setSearchResult] = useState<SearchResponse | null>(null);
   const [queues, setQueues] = useState<QueueResponse | null>(null);
@@ -568,7 +573,7 @@ export default function LocalOwnerJournalPage() {
     <main className="app-shell local-journal-route">
       <aside className="desktop-rail" aria-label="Primary navigation">
         <div className="brand-mark"><span className="brand-glyph">1</span><span className="brand-wordmark">OneJournal</span></div>
-        <nav className="nav-stack">{navItems.map(([itemLabel, Icon, href]) => href ? <Link className={`nav-item ${itemLabel === 'Journal' ? 'is-active' : ''}`} href={href} key={itemLabel} aria-current={itemLabel === 'Journal' ? 'page' : undefined}><Icon aria-hidden="true" /><span>{itemLabel}</span></Link> : <span className="nav-item is-disabled" key={itemLabel} aria-disabled="true" title="Not connected to private journal data yet"><Icon aria-hidden="true" /><span>{itemLabel}</span></span>)}</nav>
+        <nav className="nav-stack">{navItems.map(([itemLabel, Icon, href]) => href ? <Link className={`nav-item ${itemLabel === activeSection ? 'is-active' : ''}`} href={href} key={itemLabel} aria-current={itemLabel === activeSection ? 'page' : undefined}><Icon aria-hidden="true" /><span>{itemLabel}</span></Link> : <span className="nav-item is-disabled" key={itemLabel} aria-disabled="true" title="Not connected to private journal data yet"><Icon aria-hidden="true" /><span>{itemLabel}</span></span>)}</nav>
         <div className="rail-footer"><span className="nav-item is-disabled" aria-disabled="true" title="Not connected to private journal data yet"><Settings aria-hidden="true" /><span>Settings</span></span><div className="owner-chip"><span className="owner-avatar">LO</span><span><strong>Private owner</strong><small>Local journal</small></span></div></div>
       </aside>
       <section className="workspace">
@@ -579,7 +584,7 @@ export default function LocalOwnerJournalPage() {
         </header>
         <output className="mode-banner"><span><ShieldCheck aria-hidden="true" /> Private historical journal</span><p>This is trade history, not a list of current holdings. Lifecycle status comes from Schwab fills, terminal events, and the reconciled position snapshot. No demo fallback.</p></output>
         <div className="content-frame">
-          <div className="page-heading"><div><p className="eyebrow">Journal · local owner</p><h1>Review historical trades and their decisions.</h1><p className="heading-copy">Closed trades remain here as history. Search durable journal state, inspect its reconciled lifecycle status, then append a review or reflection without changing financial evidence.</p></div><button className="outline-action" type="button" onClick={() => void loadInitial()} disabled={loading}><RefreshCw aria-hidden="true" /> Refresh</button></div>
+          <div className="page-heading"><div><p className="eyebrow">{activeSection} · local owner</p><h1>{activeSection === 'Trades' ? 'Inspect historical trades and their evidence.' : 'Review historical trades and their decisions.'}</h1><p className="heading-copy">Closed trades remain here as history. Search durable journal state, inspect its reconciled lifecycle status, then append a review or reflection without changing financial evidence.</p></div><button className="outline-action" type="button" onClick={() => void loadInitial()} disabled={loading}><RefreshCw aria-hidden="true" /> Refresh</button></div>
 
           {serviceError ? <section className="panel local-state local-state-error" role="alert"><LockKeyhole aria-hidden="true" /><div><strong>Local journal unavailable</strong><p>{serviceError}</p></div><button className="quiet-button" type="button" onClick={() => void loadInitial()}>Try again</button></section> : null}
 
@@ -698,7 +703,7 @@ export default function LocalOwnerJournalPage() {
           <section className="panel journal-boundary"><LockKeyhole aria-hidden="true" /><p><strong>Private narrative is never audit content.</strong> Audit records contain stable identities, outcomes, timestamps, and request fingerprints—not notes, account identifiers, raw evidence, or credentials.</p></section>
         </div>
       </section>
-      <nav className="mobile-nav" aria-label="Mobile navigation">{navItems.slice(0, 4).map(([itemLabel, Icon, href]) => href ? <Link className={itemLabel === 'Journal' ? 'is-active' : ''} href={href} key={itemLabel}><Icon aria-hidden="true" /><span>{itemLabel}</span></Link> : <span className="is-disabled" key={itemLabel} aria-disabled="true"><Icon aria-hidden="true" /><span>{itemLabel}</span></span>)}</nav>
+      <nav className="mobile-nav" aria-label="Mobile navigation">{navItems.slice(0, 4).map(([itemLabel, Icon, href]) => href ? <Link className={itemLabel === activeSection ? 'is-active' : ''} href={href} key={itemLabel}><Icon aria-hidden="true" /><span>{itemLabel}</span></Link> : <span className="is-disabled" key={itemLabel} aria-disabled="true"><Icon aria-hidden="true" /><span>{itemLabel}</span></span>)}</nav>
     </main>
   );
 }

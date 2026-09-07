@@ -3,10 +3,11 @@ import {
   CalendarDays, ChevronRight, CircleAlert, CircleCheck, Command, Database,
   FileChartColumn, Fingerprint, LayoutDashboard, Menu, Search, Settings, Sparkles,
 } from 'lucide-react';
+import { DEMO_ROUTES } from '@/lib/routes';
 
 const navItems = [
-  ['Today', LayoutDashboard, '/'], ['Portfolio', BriefcaseBusiness, '/portfolio'], ['Trades', Activity, '/trades'],
-  ['Journal', BookOpenText, '/journal'], ['Reports', FileChartColumn, '/reports'], ['Data', Database, '/data'],
+  ['Today', LayoutDashboard, DEMO_ROUTES.today], ['Portfolio', BriefcaseBusiness, DEMO_ROUTES.portfolio], ['Trades', Activity, DEMO_ROUTES.trades],
+  ['Journal', BookOpenText, DEMO_ROUTES.journal], ['Reports', FileChartColumn, DEMO_ROUTES.reports], ['Data', Database, DEMO_ROUTES.data],
 ] as const;
 
 const positions = [
@@ -36,7 +37,7 @@ export default function Home() {
           ))}
         </nav>
         <div className="rail-footer">
-          <a className="nav-item" href="#preview"><Settings aria-hidden="true" /><span>Settings</span></a>
+          <a className="nav-item" href={DEMO_ROUTES.settings}><Settings aria-hidden="true" /><span>Settings</span></a>
           <div className="owner-chip"><span className="owner-avatar">ES</span><span><strong>Private owner</strong><small>Demo workspace</small></span></div>
         </div>
       </aside>

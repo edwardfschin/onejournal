@@ -130,25 +130,29 @@ requires a regular, non-symlink mode-`0600` migration-0020-or-later database wit
 complete execution-first projection and lifecycle reconciliation, binds `127.0.0.1` only,
 does not apply migrations, and does not reveal the database path in an API
 response. The local process serializes database access so simultaneous reads,
-writes, and retries cannot race its audit and receipt transactions. Migrations
-`0017` through `0022` are tested on disposable databases; they must not be
-applied to a runtime journal merely by starting this worktree.
+writes, and retries cannot race its audit and receipt transactions. The
+launcher never applies migrations. For the owner-accepted WEB-W07 local scope,
+the separately approved backup, rehearsal, and migration workflow advanced the
+mode-`0600` operational journal through migration 0023 before the launcher was
+started. Starting this worktree or launcher must not migrate any other journal.
 
 Add `--broker-current-authorization <private-authorization.json>` only after
-migration 0022 and the exact accepted broker-current result have been
+migration 0023 and the exact accepted broker-current result have been
 separately approved and persisted in that database. Omitting the option keeps
 the portfolio route unavailable while leaving the accepted WEB-W06 journal
 boundary unchanged. The launcher reads no provider credential or raw evidence.
 
 For the browser checkpoint, start the API and web development server in two
 separate local terminals. Set `ONEJOURNAL_LOCAL_API_URL=http://127.0.0.1:8765`
-only for the web process, then open `/journal/local`. Vite proxies only the
+only for the web process, then open `/local/journal`. Vite proxies only the
 `/api/v5/local-owner` and `/api/v1/local-owner` paths and binds its own
 development server to `127.0.0.1`.
 If that explicit target is absent or the API is unavailable, the page shows an
 unavailable state and never substitutes synthetic journal or portfolio data.
-The journal slice is at `/journal/local`; the broker-current portfolio slice is
-at `/portfolio/local`.
+The journal and trade entry points are `/local/journal` and `/local/trades`;
+the broker-current portfolio slice is `/local/portfolio`. The former
+`/journal/local` and `/portfolio/local` paths redirect to their canonical local
+routes and must not appear in navigation or operator instructions.
 
 When migration 0021 has an activation for an account, all journal search,
 queues, trade inspection, execution details, vertical groups, and lifecycle
@@ -159,3 +163,24 @@ a changed identity does not silently inherit them.
 
 Hosted access, authentication, CORS/origin policy, session controls, and
 multi-owner authorization remain blocked on WEB-W10 and OPS-06.
+
+## WEB-W07 operational acceptance
+
+The project owner accepted the demonstrated private single-owner local-only
+WEB-W07 scope on 2026-09-07. The exact authorized run
+`broker-current-position-valuation:e628da6f62242a46239171ba359c0798b66ec3f783fa81c6137f132cb44a3266`
+and result fingerprint
+`4993902f4bb9aa6e6324948c956cb1f28f367b7bcab97d616c6d990d1456e3e3`
+are persisted through migration 0023 as one run, 58 position snapshots, 58
+valuations, and one complete-total row. One successful real loopback read wrote
+exactly one value-free accepted audit row. Desktop, tablet, and mobile browser
+checks passed without horizontal overflow, and the stopped-API check displayed
+the explicit unavailable state without cached, synthetic, or FIFO fallback.
+The later owner-directed route correction established `/local/portfolio`,
+`/local/trades`, and `/local/journal` as the canonical entry points, verified
+legacy redirects, and kept the API stopped so no additional read audit was
+created.
+
+This acceptance does not authorize or claim continuous provider acquisition,
+credential ownership, authentication, hosted access, VPS work, deployment,
+broader or realized P&L, trading, commit, or push.

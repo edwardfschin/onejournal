@@ -4,10 +4,11 @@ import {
   Menu, Search, Settings, Sparkles, WalletCards,
 } from 'lucide-react';
 import Link from 'next/link';
+import { DEMO_ROUTES } from '@/lib/routes';
 
 const navItems = [
-  ['Today', LayoutDashboard, '/'], ['Portfolio', BriefcaseBusiness, '/portfolio'], ['Trades', Activity, '/trades'],
-  ['Journal', BookOpenText, '/journal'], ['Reports', FileChartColumn, '/reports'], ['Data', Database, '/data'],
+  ['Today', LayoutDashboard, DEMO_ROUTES.today], ['Portfolio', BriefcaseBusiness, DEMO_ROUTES.portfolio], ['Trades', Activity, DEMO_ROUTES.trades],
+  ['Journal', BookOpenText, DEMO_ROUTES.journal], ['Reports', FileChartColumn, DEMO_ROUTES.reports], ['Data', Database, DEMO_ROUTES.data],
 ] as const;
 
 const holdings = [
@@ -25,7 +26,7 @@ export default function PortfolioPreview() {
         <nav className="nav-stack">
           {navItems.map(([label, Icon, href]) => <a className={`nav-item ${label === 'Portfolio' ? 'is-active' : ''}`} href={href} key={label} aria-current={label === 'Portfolio' ? 'page' : undefined}><Icon aria-hidden="true" /><span>{label}</span>{label === 'Journal' ? <span className="nav-count">3</span> : null}</a>)}
         </nav>
-        <div className="rail-footer"><a className="nav-item" href="#settings"><Settings aria-hidden="true" /><span>Settings</span></a><div className="owner-chip"><span className="owner-avatar">ES</span><span><strong>Private owner</strong><small>Demo workspace</small></span></div></div>
+        <div className="rail-footer"><a className="nav-item" href={DEMO_ROUTES.settings}><Settings aria-hidden="true" /><span>Settings</span></a><div className="owner-chip"><span className="owner-avatar">ES</span><span><strong>Private owner</strong><small>Demo workspace</small></span></div></div>
       </aside>
 
       <section className="workspace">
@@ -45,7 +46,7 @@ export default function PortfolioPreview() {
           <section className="authority-callout" aria-label="Portfolio authority status">
             <span className="authority-icon"><CircleAlert aria-hidden="true" /></span>
             <div><strong>Authoritative portfolio is unavailable</strong><p>This local preview has no approved position authority, cost basis, or valuation marks. The samples below exist only to review the interface.</p></div>
-            <Link href="/" className="callout-link">View data health <ChevronRight aria-hidden="true" /></Link>
+            <Link href={DEMO_ROUTES.data} className="callout-link">View data health <ChevronRight aria-hidden="true" /></Link>
           </section>
 
           <section className="portfolio-summary-grid" aria-label="Illustrative portfolio summary">

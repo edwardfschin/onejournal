@@ -3,10 +3,11 @@ import {
   ChevronRight, CircleAlert, Clock3, Database, FileChartColumn, LayoutDashboard,
   Menu, Search, Settings, Sparkles, Tag, TextQuote, WalletCards,
 } from 'lucide-react';
+import { DEMO_ROUTES } from '@/lib/routes';
 
 const navItems = [
-  ['Today', LayoutDashboard, '/'], ['Portfolio', BriefcaseBusiness, '/portfolio'], ['Trades', Activity, '/trades'],
-  ['Journal', BookOpenText, '/journal'], ['Reports', FileChartColumn, '/reports'], ['Data', Database, '/data'],
+  ['Today', LayoutDashboard, DEMO_ROUTES.today], ['Portfolio', BriefcaseBusiness, DEMO_ROUTES.portfolio], ['Trades', Activity, DEMO_ROUTES.trades],
+  ['Journal', BookOpenText, DEMO_ROUTES.journal], ['Reports', FileChartColumn, DEMO_ROUTES.reports], ['Data', Database, DEMO_ROUTES.data],
 ] as const;
 
 const reviewQueue = [
@@ -21,7 +22,7 @@ export default function TradesPreview() {
       <aside className="desktop-rail" aria-label="Primary navigation">
         <div className="brand-mark"><span className="brand-glyph">1</span><span className="brand-wordmark">OneJournal</span></div>
         <nav className="nav-stack">{navItems.map(([label, Icon, href]) => <a className={`nav-item ${label === 'Trades' ? 'is-active' : ''}`} href={href} key={label} aria-current={label === 'Trades' ? 'page' : undefined}><Icon aria-hidden="true" /><span>{label}</span>{label === 'Journal' ? <span className="nav-count">3</span> : null}</a>)}</nav>
-        <div className="rail-footer"><a className="nav-item" href="#settings"><Settings aria-hidden="true" /><span>Settings</span></a><div className="owner-chip"><span className="owner-avatar">ES</span><span><strong>Private owner</strong><small>Demo workspace</small></span></div></div>
+        <div className="rail-footer"><a className="nav-item" href={DEMO_ROUTES.settings}><Settings aria-hidden="true" /><span>Settings</span></a><div className="owner-chip"><span className="owner-avatar">ES</span><span><strong>Private owner</strong><small>Demo workspace</small></span></div></div>
       </aside>
 
       <section className="workspace">

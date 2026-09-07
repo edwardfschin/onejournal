@@ -13,12 +13,13 @@ import {
   type BrokerCurrentPortfolio,
   type BrokerCurrentPosition,
 } from '@/lib/local-owner-portfolio';
+import { LOCAL_ROUTES } from '@/lib/routes';
 
 const navItems = [
   ['Today', LayoutDashboard, null],
-  ['Portfolio', BriefcaseBusiness, '/portfolio/local'],
-  ['Trades', Activity, '/journal/local'],
-  ['Journal', BookOpenText, '/journal/local'],
+  ['Portfolio', BriefcaseBusiness, LOCAL_ROUTES.portfolio],
+  ['Trades', Activity, LOCAL_ROUTES.trades],
+  ['Journal', BookOpenText, LOCAL_ROUTES.journal],
   ['Reports', FileChartColumn, null],
   ['Data', Database, null],
 ] as const;

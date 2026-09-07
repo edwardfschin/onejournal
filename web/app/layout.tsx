@@ -7,7 +7,7 @@ const geistMono = Geist_Mono({ variable: '--font-geist-mono', subsets: ['latin']
 
 export const metadata: Metadata = {
   title: 'OneJournal — Private trading workspace',
-  description: 'A synthetic preview of the OneJournal private trading journal and portfolio workspace.',
+  description: 'OneJournal private trading journal and portfolio workspace.',
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {

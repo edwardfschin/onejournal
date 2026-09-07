@@ -3,7 +3,7 @@
 This directory is reserved for ordered DuckDB migration artifacts governed by
 `docs/database_migrations.md`.
 
-There are currently twenty-two migration files:
+There are currently twenty-three migration files:
 
 - `0001_establish_schema_version.sql`:
   create the migration ledger (`schema_migrations`) with run metadata and audit
@@ -93,6 +93,10 @@ There are currently twenty-two migration files:
   portfolio reads without widening the released WEB-W06 journal-action
   constraint or storing account, instrument, financial-value, or raw-evidence
   content.
+- `0023_widen_broker_current_decimal_precision.sql`:
+  widen only the broker-current snapshot, valuation, and total fields that need
+  up to 13 fractional digits, preventing silent rounding of the accepted
+  WEB-W07 result while preserving 25 integer digits.
 
 The existing DuckDB schema is a prototype bootstrap baseline created (and now
 versioned) by `scripts/journal/init_journal_db.py`.

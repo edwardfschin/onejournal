@@ -170,6 +170,30 @@ Demo and real operating modes must not share a route, database, storage root,
 or visual state in a way that can cause synthetic values to be mistaken for
 real values. Screenshots and tests must not contain private financial data.
 
+### Canonical browser routes
+
+The browser URL places the data mode before the product area. This makes the
+authority boundary visible and gives every page one predictable address:
+
+| Mode | Canonical pattern | Examples |
+|---|---|---|
+| Demo | `/demo/<area>` | `/demo`, `/demo/portfolio`, `/demo/trades`, `/demo/journal`, `/demo/reports`, `/demo/data`, `/demo/settings` |
+| Private local owner | `/local/<area>` | `/local/portfolio`, `/local/trades`, `/local/journal` |
+| Future authenticated production | `/<area>` | Reserved until authentication, hosting, and production acceptance are complete |
+
+Browser paths must come from one shared route registry. During the unlaunched
+transition, earlier preview paths redirect to their canonical demo or local
+path; they are compatibility aliases, not additional websites. API paths keep
+their independently versioned contracts because an API version identifies a
+data contract, not a browser site or release mode.
+
+The owner approved this mode-first route correction on 2026-09-07. Runtime
+checks proved every canonical route returns HTTP 200, the former root and local
+suffix paths return HTTP 307 to their canonical destinations, demo navigation
+stays under `/demo`, and private navigation stays under `/local`. The private
+API remained stopped during this verification, so the local pages proved their
+unavailable behavior without creating another financial-read audit row.
+
 ## API and application boundary
 
 ### Required API behavior
@@ -292,7 +316,7 @@ if a switch is recommended.
 | WEB-W04 | WEB-04 | COMPLETE | High-fidelity responsive Today, Portfolio, Trades, Journal, Reports and Settings screens | Navigate realistic synthetic workflows across desktop and mobile | Seven synthetic routes return HTTP 200; demo/unavailable states are explicit; controls are focusable with visible focus styling; responsive checks pass at 1440x900 and 360x800; no provider or private-data access | Terra Medium; Sol High only for critical design review |
 | WEB-W05 | WEB-05 | COMPLETE | Versioned read-only FastAPI foundation and typed frontend compatibility boundary | Use the web shell against safe deterministic API fixtures | `GET /api/v1/preview` publishes `onejournal.web-fixture.v1`; OpenAPI, decimal strings, UTC instants, explicit demo/unavailable quality, privacy-safe shape, focused API tests, full clean CI, frontend build, and loopback HTTP smoke pass. No direct DB/raw access | Terra Medium |
 | WEB-W06 | WEB-07 | COMPLETE | Local-owner journal vertical slice | Browse real historical trades and journal state through loopback API; create an approved append-only review without Streamlit | Completed and owner-accepted on 2026-09-07 for the current local release scope. The v5 loopback API/UI uses the server-selected `0600` operational journal at migration 0021, passes read-only integrity, and exposes the active 267-lifecycle/539-execution history revision while retaining the prior 217-lifecycle/430-execution revision as append-only rollback evidence. ADR-0026 preserves 63 privacy-safe vertical presentation pairs. ADR-0027 preserves source-derived opening/closing phases, exact unique option-to-stock settlement links, and reason-coded expiration stories without changing review or P&L authority. Reviews and entries remain append-only; linked stock cards are only presentation-de-duplicated; ambiguous candidates fail closed; no provider order/account/transaction identity is exposed. The owner accepts the current experience for this release scope. Further visual refinement remains non-blocking enhancement backlog | Sol High for financial lifecycle review; Terra Medium for later bounded UI work |
-| WEB-W07 | PNL-03, WEB-07 | IN PROGRESS | Canonical positions, approved marks, market value and unrealized P&L vertical slice | View a real portfolio with explicit as-of and evidence state | The additive loopback route and `/portfolio/local` consume one process-start-selected repository run only after an exact mode-`0600` owner authorization matches its UID and fingerprint. API/UI preserve as-of, source/run/snapshot/fingerprint/acceptance lineage, currency quantum, 58/58/58 per-metric availability where present, and independently gated complete totals; missing authority is HTTP/UI unavailable with no synthetic, cached, or historical 48/10 FIFO substitution. Migration 0022 records a value-free release audit. Focused 58-position temporary-DuckDB tests, strict private-authorization parsing, all 514 clean-CI tests, frontend focused lint, and the production build pass. Operational migration, accepted-result persistence, route activation, real loopback verification, and owner acceptance remain separate gates | Sol High for financial review; Terra Medium for implementation |
+| WEB-W07 | PNL-03, WEB-07 | COMPLETE | Canonical positions, approved marks, market value and unrealized P&L vertical slice | View a real portfolio with explicit as-of and evidence state | Completed and owner-accepted on 2026-09-07 for the demonstrated private single-owner local-only scope. The exact accepted 58-position result is stored in the mode-`0600` operational journal through migration 0023 as one run, 58 snapshots, 58 valuations, and one complete-total row. The process-start-authorized loopback API and canonical `/local/portfolio` route preserve as-of, source/run/snapshot/fingerprint/acceptance lineage, currency quantum, 58/58/58 independent metric availability, and complete totals. Exactly one value-free accepted-read audit row was written. Desktop, tablet, and mobile browser checks passed without horizontal overflow, and the stopped-API state failed closed with no synthetic, cached, or historical 48/10 FIFO substitution. The mode-first URL correction, focused frontend lint, the production build, authorization, journal-integrity, automatic-trading-disabled checks, and all 525 tests passed. Continuous acquisition, credential ownership, authentication, hosting, VPS work, deployment, broader or realized P&L, and trading remain outside this acceptance; no commit or push is included | Sol High for financial review; Terra Medium for implementation |
 | WEB-W08 | Bounded PNL-06 through PNL-08 slices, WEB-07 | BLOCKED | Phase 1 account/symbol breakdown, date-filtered P&L history, export and quality-conformant views | Explore the accepted current portfolio and export the same bounded records and values | Every displayed metric reconciles, export matches the view, and ADR-0007 states are complete; broader advanced analytics remain later | Sol High for financial contracts; Terra Medium for implementation |
 | WEB-W09 | UXJ-05, UXJ-06, WEB-07 | LATER | Post-Phase 1 attachments, goals, habits and recurring review experience | Complete the private review workflow beyond Phase 1 entries and reviews | Attachment privacy/retention/recovery and financial-evaluation dependencies pass | Sol High for privacy policy; Terra Medium for implementation |
 | WEB-W10 | WEB-06 | BLOCKED | Authentication, authorization, secure sessions, recovery and audit | Sign in to an isolated environment and verify owner-only navigation | Security design accepted; negative authorization/session/recovery tests and review pass | Sol High |

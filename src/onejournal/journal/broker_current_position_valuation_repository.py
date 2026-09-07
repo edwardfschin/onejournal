@@ -8,7 +8,7 @@ from decimal import Decimal
 from hashlib import sha256
 import json
 from pathlib import Path
-from typing import Any, Mapping
+from typing import Any, Mapping, cast
 
 import duckdb
 
@@ -112,6 +112,22 @@ def calculate_broker_current_position_result_fingerprint(
     return _fingerprint(run)
 
 
+def broker_current_position_valuation_run_document(
+    run: BrokerCurrentPositionValuationRun,
+) -> dict[str, Any]:
+    """Return the canonical private-package document for one validated run."""
+
+    return cast(dict[str, Any], _json_value(run))
+
+
+def calculate_broker_position_snapshot_fingerprint(
+    broker_snapshot: BrokerPositionSnapshot,
+) -> str:
+    """Return the exact digest used to bind a persisted broker snapshot."""
+
+    return _fingerprint(broker_snapshot)
+
+
 def _identity_values(identity: InstrumentIdentity) -> tuple[Any, ...]:
     return (
         identity.key,
@@ -175,7 +191,9 @@ def persist_broker_current_position_valuation_run(
             "database does not exist; broker-current persistence never creates or migrates it"
         )
     _validate_run(run, broker_snapshot)
-    snapshot_fingerprint = _fingerprint(broker_snapshot)
+    snapshot_fingerprint = calculate_broker_position_snapshot_fingerprint(
+        broker_snapshot
+    )
     result_fingerprint = calculate_broker_current_position_result_fingerprint(run)
     con = duckdb.connect(str(db_path))
     try:
