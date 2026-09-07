@@ -187,6 +187,24 @@ class BrokerCurrentPositionPersistenceTests(unittest.TestCase):
             self.assertFalse(
                 read_back.complete_portfolio_unrealized_pnl_available
             )
+            authorization = BrokerCurrentFinancialReleaseAuthorization(
+                owner_acceptance_uid="owner-acceptance:partial-synthetic",
+                valuation_run_uid=read_back.valuation_run_uid,
+                result_fingerprint=read_back.result_fingerprint,
+                accepted_at=self.evaluated_at,
+            )
+            released = build_broker_current_position_valuation_response(
+                read_back, authorization=authorization
+            )
+            self.assertEqual(released.final_status, "partial")
+            self.assertFalse(released.complete_portfolio_cost_basis_available)
+            self.assertTrue(released.complete_portfolio_market_value_available)
+            self.assertFalse(released.complete_portfolio_unrealized_pnl_available)
+            self.assertIsNone(released.portfolio_totals[0].portfolio_cost_basis)
+            self.assertEqual(
+                released.portfolio_totals[0].portfolio_market_value,
+                "2000.0000000000",
+            )
 
     def test_private_api_withholds_values_until_exact_owner_acceptance(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -202,6 +220,7 @@ class BrokerCurrentPositionPersistenceTests(unittest.TestCase):
 
             withheld = build_broker_current_position_valuation_response(read_back)
             self.assertEqual(withheld.metadata.release_status, "withheld")
+            self.assertIsNone(withheld.metadata.owner_accepted_at)
             self.assertTrue(
                 all(item.open_cost_basis is None for item in withheld.positions)
             )
@@ -225,6 +244,19 @@ class BrokerCurrentPositionPersistenceTests(unittest.TestCase):
                     read_back, authorization=wrong
                 )
 
+            premature = BrokerCurrentFinancialReleaseAuthorization(
+                owner_acceptance_uid="owner-acceptance:synthetic",
+                valuation_run_uid=self.run.run_uid,
+                result_fingerprint=read_back.result_fingerprint,
+                accepted_at=self.evaluated_at.replace(year=2025),
+            )
+            with self.assertRaisesRegex(
+                BrokerCurrentApiContractError, "predates"
+            ):
+                build_broker_current_position_valuation_response(
+                    read_back, authorization=premature
+                )
+
             accepted = BrokerCurrentFinancialReleaseAuthorization(
                 owner_acceptance_uid="owner-acceptance:synthetic",
                 valuation_run_uid=self.run.run_uid,
@@ -235,6 +267,7 @@ class BrokerCurrentPositionPersistenceTests(unittest.TestCase):
                 read_back, authorization=accepted
             )
             self.assertEqual(released.metadata.release_status, "owner_accepted")
+            self.assertEqual(released.metadata.owner_accepted_at, self.evaluated_at)
             self.assertEqual(released.positions[0].open_cost_basis, "1543.2000000000")
             self.assertEqual(
                 released.portfolio_totals[0].portfolio_market_value,

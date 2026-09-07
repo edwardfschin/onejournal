@@ -3,7 +3,7 @@
 This directory is reserved for ordered DuckDB migration artifacts governed by
 `docs/database_migrations.md`.
 
-There are currently twenty-one migration files:
+There are currently twenty-two migration files:
 
 - `0001_establish_schema_version.sql`:
   create the migration ledger (`schema_migrations`) with run metadata and audit
@@ -88,6 +88,11 @@ There are currently twenty-one migration files:
   add immutable complete materialization revision snapshots, an append-only
   activation ledger, exact normalized-fill lineage, and current-read views that
   prevent prior and reconstructed episodes from appearing together.
+- `0022_add_local_owner_financial_api_audit.sql`:
+  add a privacy-safe audit boundary for exact owner-authorized broker-current
+  portfolio reads without widening the released WEB-W06 journal-action
+  constraint or storing account, instrument, financial-value, or raw-evidence
+  content.
 
 The existing DuckDB schema is a prototype bootstrap baseline created (and now
 versioned) by `scripts/journal/init_journal_db.py`.

@@ -77,13 +77,31 @@ run. It never selects an implicit latest result. If the shared snapshot already
 exists, its complete identity set and stored tax-lot averages must match; a
 legacy null is not silently backfilled into current financial authority.
 
-`onejournal.api.broker-current-position-valuation.v1` is a serialization
-contract, not an active route. It labels the view
+`onejournal.api.broker-current-position-valuation.v1` is the serialization
+contract for the additive loopback-only
+`GET /api/v1/local-owner/portfolio/current` route. It labels the view
 `broker_reconciled_current_position` and withholds quantities and financial
 values until supplied an exact
 `onejournal.broker-current-financial-release-authorization.v1` matching both
 the valuation run UID and result fingerprint. The calculation's
 `financial_acceptance=false` cannot impersonate that separate owner decision.
+
+The local-owner launcher accepts that authorization only from an explicit
+server-side mode-`0600` file in a mode-`0700` directory. The document must
+preserve the accepted broker-current scope, explicit project-owner approval,
+and `fifo_history_reinterpreted=false`. The response preserves both the owner
+acceptance identity and its explicit UTC acceptance time. A missing
+authorization keeps the route
+at HTTP 503. A missing exact persisted run, authorization mismatch, invalid
+document, or unsafe permission prevents authorized application startup. The
+browser cannot select a database, valuation run, acceptance, provider, or
+evidence path.
+
+Migration 0022 adds a dedicated privacy-safe audit for successful portfolio
+reads. It stores only the route action, exact valuation/fingerprint/acceptance
+identities, outcome, request fingerprint, and time; it stores no account,
+instrument, financial value, raw path, credential, or provider payload. The
+existing WEB-W06 journal action constraint remains unchanged.
 
 The owner-private 58-position replay is versioned as
 `PNL-03X-BROKER-CURRENT-20260905-02`; it supersedes but does not overwrite
@@ -115,6 +133,9 @@ required before multi-user release.
 
 ## Boundaries
 
-This contract has no provider, credential, database, process, API-route, or
-order capability. It does not modify the historical bounded FIFO route and
-does not establish financial or operational acceptance.
+This contract and route have no provider, credential, raw-evidence, migration,
+or order capability. The route reads one process-start-selected persisted
+result and records only its privacy-safe release audit. It does not modify the
+historical bounded FIFO route. Route implementation and temporary-database
+validation do not apply migration 0022, persist the accepted private result,
+activate the operational route, or establish broader production acceptance.

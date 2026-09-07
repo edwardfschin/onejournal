@@ -13,7 +13,7 @@ const API_ROOT = '/api/v5/local-owner/journal';
 const CONTRACT_VERSION = 'onejournal.local-owner-journal.v5';
 
 const navItems = [
-  ['Today', LayoutDashboard, null], ['Portfolio', BriefcaseBusiness, null],
+  ['Today', LayoutDashboard, null], ['Portfolio', BriefcaseBusiness, '/portfolio/local'],
   ['Trades', Activity, '/journal/local'], ['Journal', BookOpenText, '/journal/local'],
   ['Reports', FileChartColumn, null], ['Data', Database, null],
 ] as const;

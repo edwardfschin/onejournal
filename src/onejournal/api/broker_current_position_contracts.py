@@ -8,9 +8,11 @@ from __future__ import annotations
 from datetime import date, datetime, timezone
 from decimal import Decimal
 import json
+from pathlib import Path
+import stat
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator
 
 from onejournal.api.contracts import DECIMAL_STRING
 from onejournal.journal.broker_current_position_valuation_repository import (
@@ -53,6 +55,16 @@ class BrokerCurrentFinancialReleaseAuthorization(BrokerCurrentApiModel):
         return value
 
 
+class BrokerCurrentFinancialReleaseAuthorizationDocument(
+    BrokerCurrentFinancialReleaseAuthorization
+):
+    """Exact owner-private acceptance document consumed at process start."""
+
+    accepted_scope: Literal["broker_reconciled_current_position"]
+    approval_source: Literal["project_owner_explicit_proceed"]
+    fifo_history_reinterpreted: Literal[False]
+
+
 class BrokerCurrentResponseMetadata(BrokerCurrentApiModel):
     contract_version: Literal[
         "onejournal.api.broker-current-position-valuation.v1"
@@ -74,10 +86,13 @@ class BrokerCurrentResponseMetadata(BrokerCurrentApiModel):
     currency_quantum_by_currency: dict[str, str]
     release_status: Literal["withheld", "owner_accepted"]
     owner_acceptance_uid: str | None = None
+    owner_accepted_at: datetime | None = None
 
-    @field_validator("retrieved_at", "evaluated_at")
+    @field_validator("retrieved_at", "evaluated_at", "owner_accepted_at")
     @classmethod
-    def require_utc_instant(cls, value: datetime) -> datetime:
+    def require_utc_instant(cls, value: datetime | None) -> datetime | None:
+        if value is None:
+            return None
         if value.tzinfo is None or value.utcoffset() != timezone.utc.utcoffset(value):
             raise ValueError("timestamps must be UTC instants")
         return value
@@ -85,7 +100,7 @@ class BrokerCurrentResponseMetadata(BrokerCurrentApiModel):
     @field_validator("snapshot_age_seconds")
     @classmethod
     def validate_snapshot_age(cls, value: str) -> str:
-        if DECIMAL_STRING.fullmatch(value) is None:
+        if DECIMAL_STRING.fullmatch(value) is None or Decimal(value) < 0:
             raise ValueError("snapshot age must be a decimal string")
         return value
 
@@ -196,6 +211,51 @@ def _utc_instant(value: str) -> datetime:
 
 def _decimal_text(value: Decimal | None, *, release: bool) -> str | None:
     return format(value, "f") if release and value is not None else None
+
+
+def load_broker_current_financial_release_authorization(
+    path: str | Path,
+) -> BrokerCurrentFinancialReleaseAuthorization:
+    """Load one exact owner-only authorization without exposing its contents."""
+
+    supplied_path = Path(path).expanduser()
+    if supplied_path.is_symlink():
+        raise BrokerCurrentApiContractError(
+            "broker-current authorization must not be a symlink"
+        )
+    resolved_path = supplied_path.resolve()
+    if not resolved_path.is_file():
+        raise BrokerCurrentApiContractError(
+            "broker-current authorization file does not exist"
+        )
+    if stat.S_IMODE(resolved_path.stat().st_mode) != 0o600:
+        raise BrokerCurrentApiContractError(
+            "broker-current authorization file must use mode 0600"
+        )
+    if stat.S_IMODE(resolved_path.parent.stat().st_mode) != 0o700:
+        raise BrokerCurrentApiContractError(
+            "broker-current authorization directory must use mode 0700"
+        )
+    try:
+        document = BrokerCurrentFinancialReleaseAuthorizationDocument.model_validate_json(
+            resolved_path.read_text(encoding="utf-8")
+        )
+    except (OSError, UnicodeError, ValidationError) as exc:
+        raise BrokerCurrentApiContractError(
+            "broker-current authorization document is invalid"
+        ) from exc
+    return BrokerCurrentFinancialReleaseAuthorization.model_validate(
+        document.model_dump(
+            include={
+                "contract_version",
+                "owner_acceptance_uid",
+                "valuation_run_uid",
+                "result_fingerprint",
+                "accepted_at",
+                "decision",
+            }
+        )
+    )
 
 
 def build_broker_current_position_valuation_response(
@@ -317,6 +377,7 @@ def build_broker_current_position_valuation_response(
             owner_acceptance_uid=(
                 authorization.owner_acceptance_uid if authorization else None
             ),
+            owner_accepted_at=(authorization.accepted_at if authorization else None),
         ),
         counts=BrokerCurrentCoverageCounts(
             position_count=read_back.position_count,

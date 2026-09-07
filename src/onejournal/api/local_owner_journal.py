@@ -21,6 +21,12 @@ import duckdb
 from fastapi import FastAPI, Header, HTTPException, Query
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
+from onejournal.api.broker_current_position_contracts import (
+    BrokerCurrentApiContractError,
+    BrokerCurrentFinancialReleaseAuthorization,
+    BrokerCurrentPositionValuationResponse,
+    build_broker_current_position_valuation_response,
+)
 from onejournal.journal.domain import (
     ENTRY_TYPES,
     REVIEW_STATUSES,
@@ -33,6 +39,9 @@ from onejournal.journal.domain import (
     revise_entry,
     save_review,
     utc_now_naive,
+)
+from onejournal.journal.broker_current_position_valuation_repository import (
+    load_broker_current_position_valuation_run,
 )
 from onejournal.journal.search import JournalSearchFilters, search_journal
 from onejournal.journal.schwab_lifecycle_presentation import (
@@ -50,6 +59,7 @@ from onejournal.journal.workflows import REVIEW_QUEUE_NAMES, build_review_queues
 
 LOCAL_OWNER_JOURNAL_CONTRACT_VERSION = "onejournal.local-owner-journal.v5"
 LOCAL_OWNER_JOURNAL_API_PREFIX = "/api/v5/local-owner/journal"
+LOCAL_OWNER_CURRENT_PORTFOLIO_API_PATH = "/api/v1/local-owner/portfolio/current"
 
 
 class LocalOwnerModel(BaseModel):
@@ -344,7 +354,13 @@ class WriteReceipt(LocalOwnerModel):
     replayed: bool
 
 
-def create_local_owner_journal_app(*, journal_db_path: str | Path) -> FastAPI:
+def create_local_owner_journal_app(
+    *,
+    journal_db_path: str | Path,
+    broker_current_authorization: (
+        BrokerCurrentFinancialReleaseAuthorization | None
+    ) = None,
+) -> FastAPI:
     """Build the private app with a server-selected, existing journal database.
 
     Binding happens at process start.  No API request has a path, connection,
@@ -376,6 +392,8 @@ def create_local_owner_journal_app(*, journal_db_path: str | Path) -> FastAPI:
         "phase1_journal_lifecycle_reconciliation_runs",
         "phase1_journal_episode_lifecycle_states",
     }
+    if broker_current_authorization is not None:
+        required_tables.add("local_owner_financial_api_audit_events")
     missing_tables = required_tables - tables
     if missing_tables:
         raise ValueError(
@@ -478,12 +496,40 @@ def create_local_owner_journal_app(*, journal_db_path: str | Path) -> FastAPI:
             "for every Phase 1 episode"
         )
 
+    broker_current_response: BrokerCurrentPositionValuationResponse | None = None
+    if broker_current_authorization is not None:
+        read_back = load_broker_current_position_valuation_run(
+            db_path,
+            valuation_run_uid=broker_current_authorization.valuation_run_uid,
+        )
+        if read_back is None:
+            raise ValueError(
+                "configured broker-current valuation run is unavailable"
+            )
+        try:
+            broker_current_response = build_broker_current_position_valuation_response(
+                read_back,
+                authorization=broker_current_authorization,
+            )
+            if (
+                not broker_current_response.metadata.owner_acceptance_uid
+                or broker_current_response.metadata.owner_accepted_at is None
+            ):
+                raise ValueError(
+                    "broker-current API release is unavailable because owner acceptance lineage is missing"
+                )
+        except BrokerCurrentApiContractError as exc:
+            raise ValueError(
+                "configured broker-current authorization does not match persisted state"
+            ) from exc
+
     app = FastAPI(
-        title="OneJournal Local Owner Journal API",
+        title="OneJournal Local Owner API",
         version="0.1.0",
         description=(
-            "Private local-owner journal boundary. Run only through the loopback "
-            "launcher; it does not access brokers or raw evidence."
+            "Private local-owner journal and accepted current-portfolio boundary. "
+            "Run only through the loopback launcher; it does not access brokers "
+            "or raw evidence."
         ),
     )
     vertical_groups = load_schwab_vertical_presentation_groups(db_path)
@@ -519,6 +565,33 @@ def create_local_owner_journal_app(*, journal_db_path: str | Path) -> FastAPI:
         return duckdb.connect(str(db_path), read_only=read_only)
 
     db_lock = Lock()
+
+    @app.get(
+        LOCAL_OWNER_CURRENT_PORTFOLIO_API_PATH,
+        response_model=BrokerCurrentPositionValuationResponse,
+        tags=["local-owner-portfolio"],
+    )
+    def current_portfolio() -> BrokerCurrentPositionValuationResponse:
+        if broker_current_response is None:
+            raise HTTPException(
+                status_code=503,
+                detail="broker-current portfolio is unavailable",
+            )
+        with db_lock:
+            with open_db(read_only=False) as con:
+                _audit_broker_current_portfolio_read(
+                    con,
+                    valuation_run_uid=(
+                        broker_current_response.metadata.valuation_run_uid
+                    ),
+                    result_fingerprint=(
+                        broker_current_response.metadata.result_fingerprint
+                    ),
+                    owner_acceptance_uid=(
+                        broker_current_response.metadata.owner_acceptance_uid
+                    ),
+                )
+        return broker_current_response
 
     @app.get(f"{LOCAL_OWNER_JOURNAL_API_PREFIX}/search", response_model=SearchResponse, tags=["local-owner-journal"])
     def journal_search(
@@ -852,6 +925,40 @@ def _request_sha(value: object) -> str:
 
 def _audit_read(con: duckdb.DuckDBPyConnection, *, action: str, request: object, resource_uid: str | None = None) -> None:
     _audit(con, None, action, "journal", resource_uid, "accepted", _request_sha(request))
+
+
+def _audit_broker_current_portfolio_read(
+    con: duckdb.DuckDBPyConnection,
+    *,
+    valuation_run_uid: str,
+    result_fingerprint: str,
+    owner_acceptance_uid: str,
+) -> None:
+    request_sha = _request_sha(
+        {
+            "valuation_run_uid": valuation_run_uid,
+            "result_fingerprint": result_fingerprint,
+            "owner_acceptance_uid": owner_acceptance_uid,
+        }
+    )
+    con.execute(
+        """
+        INSERT INTO local_owner_financial_api_audit_events (
+            audit_event_uid, action, valuation_run_uid, result_fingerprint,
+            owner_acceptance_uid, outcome, request_sha256, occurred_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        """,
+        [
+            str(uuid4()),
+            "broker_current_portfolio_read",
+            valuation_run_uid,
+            result_fingerprint,
+            owner_acceptance_uid,
+            "accepted",
+            request_sha,
+            utc_now_naive(),
+        ],
+    )
 
 
 def _audit(con: duckdb.DuckDBPyConnection, operation_uid: str | None, action: str, resource_type: str, resource_uid: str | None, outcome: str, request_sha: str) -> None:

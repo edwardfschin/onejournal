@@ -59,6 +59,10 @@ export default defineConfig(async () => {
                 target: localOwnerApiTarget,
                 changeOrigin: false,
               },
+              '/api/v1/local-owner': {
+                target: localOwnerApiTarget,
+                changeOrigin: false,
+              },
             },
           }
         : {}),

@@ -2,11 +2,12 @@
 
 ## Scope
 
-`onejournal.local-owner-journal.v5` is the WEB-W06 application boundary for a
+`onejournal.local-owner-journal.v5` is the WEB-W06 journal boundary for a
 private local owner. It exposes existing journal domain behavior through a
-server-selected DuckDB database and a loopback-only launcher. It is not a
-hosted service, authentication design, broker connector, raw-evidence browser,
-or financial/P&L API.
+server-selected DuckDB database and a loopback-only launcher. WEB-W07
+additively registers the separately versioned broker-current portfolio route
+described below. Neither boundary is a hosted service, authentication design,
+broker connector, or raw-evidence browser.
 
 ## Routes
 
@@ -27,6 +28,23 @@ or financial/P&L API.
 Every response declares `contract_version: onejournal.local-owner-journal.v5`
 and `mode: local_owner`. No local-owner route is registered by the demo fixture
 application.
+
+## Broker-current portfolio route
+
+- `GET /api/v1/local-owner/portfolio/current` returns
+  `onejournal.api.broker-current-position-valuation.v1` only when the process
+  starts with an exact owner financial-release authorization and its named run
+  exists in the server-selected database.
+- No authorization returns HTTP 503 with no positions or values. A malformed,
+  unsafe-permission, missing-run, or fingerprint-mismatched authorization
+  prevents authorized startup.
+- The response preserves explicit as-of, retrieval/evaluation times, source
+  contract, basis method, snapshot/run/fingerprint/acceptance identity and UTC
+  acceptance-time lineage, currency quantum, per-metric availability counts,
+  position states, and independently gated complete totals.
+- It never reads or reinterprets the historical bounded FIFO `48 eligible / 10
+  unavailable` evidence as a current portfolio total. It never fabricates lots,
+  realized P&L, holding periods, or tax treatment.
 
 ## Privacy and authority rules
 
@@ -99,6 +117,10 @@ application.
 - The API delegates validation, append-only behavior, and compatibility writes
   to the existing journal domain services. It introduces no P&L calculation,
   broker operation, or order capability.
+- The broker-current route delegates exact-run read-back and serialization to
+  the accepted repository/API contracts. A successful read writes one
+  privacy-safe migration-0022 release audit containing no account, instrument,
+  financial value, raw path, credential, or provider payload.
 
 ## Operation and migration boundary
 
@@ -109,15 +131,24 @@ complete execution-first projection and lifecycle reconciliation, binds `127.0.0
 does not apply migrations, and does not reveal the database path in an API
 response. The local process serializes database access so simultaneous reads,
 writes, and retries cannot race its audit and receipt transactions. Migrations
-`0017` through `0021` are tested on disposable databases; they must not be
+`0017` through `0022` are tested on disposable databases; they must not be
 applied to a runtime journal merely by starting this worktree.
+
+Add `--broker-current-authorization <private-authorization.json>` only after
+migration 0022 and the exact accepted broker-current result have been
+separately approved and persisted in that database. Omitting the option keeps
+the portfolio route unavailable while leaving the accepted WEB-W06 journal
+boundary unchanged. The launcher reads no provider credential or raw evidence.
 
 For the browser checkpoint, start the API and web development server in two
 separate local terminals. Set `ONEJOURNAL_LOCAL_API_URL=http://127.0.0.1:8765`
 only for the web process, then open `/journal/local`. Vite proxies only the
-`/api/v5/local-owner` path and binds its own development server to `127.0.0.1`.
+`/api/v5/local-owner` and `/api/v1/local-owner` paths and binds its own
+development server to `127.0.0.1`.
 If that explicit target is absent or the API is unavailable, the page shows an
-  unavailable state and never substitutes synthetic journal data.
+unavailable state and never substitutes synthetic journal or portfolio data.
+The journal slice is at `/journal/local`; the broker-current portfolio slice is
+at `/portfolio/local`.
 
 When migration 0021 has an activation for an account, all journal search,
 queues, trade inspection, execution details, vertical groups, and lifecycle

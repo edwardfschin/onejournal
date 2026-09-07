@@ -82,6 +82,7 @@ class JournalMigrationTests(unittest.TestCase):
             self.assertIn("journal_review_period_events", tables)
             self.assertIn("local_owner_api_audit_events", tables)
             self.assertIn("local_owner_api_operation_receipts", tables)
+            self.assertIn("local_owner_financial_api_audit_events", tables)
             self.assertIn("phase1_journal_materialization_runs", tables)
             self.assertIn("phase1_journal_materialized_fills", tables)
             self.assertIn("phase1_journal_materialized_episodes", tables)
@@ -142,6 +143,8 @@ class JournalMigrationTests(unittest.TestCase):
             self.assertEqual(rows[19][1], "applied")
             self.assertEqual(rows[20][0], "0021")
             self.assertEqual(rows[20][1], "applied")
+            self.assertEqual(rows[21][0], "0022")
+            self.assertEqual(rows[21][1], "applied")
 
             fill_columns = {
                 row[1]: row[2]
@@ -191,7 +194,7 @@ class JournalMigrationTests(unittest.TestCase):
 
         with duckdb.connect(str(self.db_path), read_only=True) as con:
             count = con.execute("SELECT COUNT(*) FROM schema_migrations").fetchone()[0]
-            self.assertEqual(count, 21)
+            self.assertEqual(count, 22)
 
     def test_migration_0005_backfills_existing_reviews_from_version_0002(self) -> None:
         apply_schema_migrations(
@@ -228,7 +231,7 @@ class JournalMigrationTests(unittest.TestCase):
             self.db_path,
             migrations_dir=MIGRATIONS_DIR,
         )
-        self.assertEqual(resulting_version, 21)
+        self.assertEqual(resulting_version, 22)
 
         with duckdb.connect(str(self.db_path), read_only=True) as con:
             rows = con.execute(

@@ -121,6 +121,9 @@ git status --short
 Direct runtime dependencies:
 
 - `duckdb` - DuckDB journal reads, writes, contracts, and validation
+- `fastapi` - versioned fixture and private local-owner application boundaries
+- `httpx` - FastAPI/Starlette application-boundary contract testing
+- `pydantic` - strict request, response, decimal-string, time, and authorization contracts
 - `pyyaml` - safe YAML configuration support
 - `streamlit` - current internal prototype UI
 
