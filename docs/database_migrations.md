@@ -107,6 +107,7 @@ Examples:
 0021_add_append_only_history_revisions.sql
 0022_add_local_owner_financial_api_audit.sql
 0023_widen_broker_current_decimal_precision.sql
+0024_add_phase1_reporting_releases.sql
 ```
 
 Migration 0009 adds explicit canonical UTC evidence fields without
@@ -158,6 +159,13 @@ approval gate. Existing generic and bounded snapshot writers retain explicit
 present. A pre-0015 snapshot row lacking that field cannot be silently upgraded
 into broker-current authority; it must fail closed and be re-materialized under
 versioned evidence.
+
+Migration 0024 additively introduces an immutable Phase 1 reporting-release
+boundary. It binds owner-accepted current valuation and realized-history
+fingerprints, private aliases, date-scoped realized items, date-scoped
+omissions, and value-free report-read audit rows. Repository tests use temporary
+DuckDB databases only; applying 0024 to the operational journal remains a
+separate explicit approval gate.
 
 Migration 0016 additively stores one immutable, account-scoped ADR-0024 Schwab
 evidence assembly and its exact account, position, order, transaction, fill,

@@ -114,3 +114,4 @@ policy.
 | [ADR-0026](decisions/0026-source-declared-vertical-presentation-groups.md) | Accepted | Present exact source-declared filled Schwab vertical pairs without merging their instrument lifecycles or P&L |
 | [ADR-0027](decisions/0027-source-derived-lifecycle-phase-and-option-settlement-links.md) | Accepted | Present exact opening/closing phases and uniquely matched Schwab option-to-stock settlements without merging lifecycles or P&L |
 | [ADR-0028](decisions/0028-append-only-history-materialization-revisions.md) | Accepted | Preserve every journal reconstruction as an immutable revision and select current state through append-only activation events |
+| [ADR-0029](decisions/0029-bounded-phase1-reporting-authority.md) | Accepted | Bind Phase 1 breakdowns, bounded realized history, and CSV exports to one exact accepted report release without implying portfolio-wide P&L |

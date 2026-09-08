@@ -12,6 +12,7 @@ export const LOCAL_ROUTES = {
   portfolio: '/local/portfolio',
   trades: '/local/trades',
   journal: '/local/journal',
+  reports: '/local/reports',
 } as const;
 
 export const LEGACY_ROUTE_REDIRECTS = [
@@ -24,4 +25,5 @@ export const LEGACY_ROUTE_REDIRECTS = [
   { source: '/settings', destination: DEMO_ROUTES.settings },
   { source: '/portfolio/local', destination: LOCAL_ROUTES.portfolio },
   { source: '/journal/local', destination: LOCAL_ROUTES.journal },
+  { source: '/reports/local', destination: LOCAL_ROUTES.reports },
 ] as const;

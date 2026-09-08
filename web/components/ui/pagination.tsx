@@ -57,6 +57,7 @@ function PaginationLink({
       render={
         <a
           aria-current={isActive ? 'page' : undefined}
+          aria-label={props['aria-label'] ?? (isActive ? 'Current page' : 'Page')}
           data-slot="pagination-link"
           data-active={isActive}
           {...props}
