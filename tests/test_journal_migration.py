@@ -100,6 +100,11 @@ class JournalMigrationTests(unittest.TestCase):
             self.assertIn("phase1_journal_history_revision_episodes", tables)
             self.assertIn("phase1_journal_history_revision_activations", tables)
             self.assertIn("journal_current_trade_episodes", tables)
+            self.assertIn("phase1_reporting_releases", tables)
+            self.assertIn("phase1_reporting_release_accounts", tables)
+            self.assertIn("phase1_reporting_release_realized_items", tables)
+            self.assertIn("phase1_reporting_release_omissions", tables)
+            self.assertIn("phase1_reporting_api_audit_events", tables)
 
             rows = con.execute("SELECT version, status FROM schema_migrations ORDER BY version").fetchall()
             self.assertEqual(rows[0][0], "0001")
@@ -148,6 +153,8 @@ class JournalMigrationTests(unittest.TestCase):
             self.assertEqual(rows[21][1], "applied")
             self.assertEqual(rows[22][0], "0023")
             self.assertEqual(rows[22][1], "applied")
+            self.assertEqual(rows[23][0], "0024")
+            self.assertEqual(rows[23][1], "applied")
 
             fill_columns = {
                 row[1]: row[2]
@@ -233,7 +240,7 @@ class JournalMigrationTests(unittest.TestCase):
             self.db_path,
             migrations_dir=MIGRATIONS_DIR,
         )
-        self.assertEqual(resulting_version, 23)
+        self.assertEqual(resulting_version, 24)
         with duckdb.connect(str(self.db_path), read_only=True) as con:
             snapshot_columns = {
                 row[1]: row[2]
@@ -284,7 +291,7 @@ class JournalMigrationTests(unittest.TestCase):
 
         with duckdb.connect(str(self.db_path), read_only=True) as con:
             count = con.execute("SELECT COUNT(*) FROM schema_migrations").fetchone()[0]
-            self.assertEqual(count, 23)
+            self.assertEqual(count, 24)
 
     def test_migration_0005_backfills_existing_reviews_from_version_0002(self) -> None:
         apply_schema_migrations(
@@ -321,7 +328,7 @@ class JournalMigrationTests(unittest.TestCase):
             self.db_path,
             migrations_dir=MIGRATIONS_DIR,
         )
-        self.assertEqual(resulting_version, 23)
+        self.assertEqual(resulting_version, 24)
 
         with duckdb.connect(str(self.db_path), read_only=True) as con:
             rows = con.execute(

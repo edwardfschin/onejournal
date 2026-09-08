@@ -3,7 +3,7 @@
 This directory is reserved for ordered DuckDB migration artifacts governed by
 `docs/database_migrations.md`.
 
-There are currently twenty-three migration files:
+There are currently twenty-four migration files:
 
 - `0001_establish_schema_version.sql`:
   create the migration ledger (`schema_migrations`) with run metadata and audit
@@ -97,6 +97,10 @@ There are currently twenty-three migration files:
   widen only the broker-current snapshot, valuation, and total fields that need
   up to 13 fractional digits, preventing silent rounding of the accepted
   WEB-W07 result while preserving 25 integer digits.
+- `0024_add_phase1_reporting_releases.sql`:
+  add immutable, owner-accepted bounded report releases, alias-scoped realized
+  items and dated omissions, plus value-free API read auditing. Applying this
+  migration to an operational journal remains separately approval-gated.
 
 The existing DuckDB schema is a prototype bootstrap baseline created (and now
 versioned) by `scripts/journal/init_journal_db.py`.
