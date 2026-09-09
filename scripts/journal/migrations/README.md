@@ -3,7 +3,7 @@
 This directory is reserved for ordered DuckDB migration artifacts governed by
 `docs/database_migrations.md`.
 
-There are currently twenty-four migration files:
+There are currently twenty-five migration files:
 
 - `0001_establish_schema_version.sql`:
   create the migration ledger (`schema_migrations`) with run metadata and audit
@@ -99,8 +99,18 @@ There are currently twenty-four migration files:
   WEB-W07 result while preserving 25 integer digits.
 - `0024_add_phase1_reporting_releases.sql`:
   add immutable, owner-accepted bounded report releases, alias-scoped realized
-  items and dated omissions, plus value-free API read auditing. Applying this
-  migration to an operational journal remains separately approval-gated.
+  items and dated omissions, plus value-free API read auditing. Its application
+  to an operational journal remains separately approval-gated; the approved
+  private application on 2026-09-08 followed a verified backup and disposable-
+  copy rehearsal and did not populate the new tables.
+- `0025_add_phase1_reporting_acceptance_lineage.sql`:
+  correct the still-empty reporting-release schema so each current-valuation
+  and realized-result fingerprint retains its own owner-acceptance identity and
+  UTC instant. DuckDB requires the four related empty tables to be recreated;
+  the migration aborts if any release row exists and leaves the independent
+  value-free audit table unchanged. After a fresh checksum-matched backup, the
+  separately approved private application on 2026-09-09 preserved all compared
+  row counts and left every reporting table empty.
 
 The existing DuckDB schema is a prototype bootstrap baseline created (and now
 versioned) by `scripts/journal/init_journal_db.py`.

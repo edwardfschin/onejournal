@@ -9,6 +9,7 @@ from hashlib import sha256
 import json
 from pathlib import Path
 import re
+import stat
 from typing import Any, Iterable, Literal
 
 import duckdb
@@ -20,6 +21,9 @@ from onejournal.journal.broker_current_position_valuation_repository import (
 
 
 REPORTING_CONTRACT_VERSION = "onejournal.phase1-report-release.v1"
+REPORTING_RELEASE_AUTHORIZATION_VERSION = (
+    "onejournal.phase1-report-release-authorization.v1"
+)
 Quality = Literal["valid", "stale", "incomplete", "reconciliation_pending", "unavailable", "failed"]
 
 
@@ -32,6 +36,63 @@ class ReportingReleaseAuthorization:
     report_release_uid: str
     report_release_fingerprint: str
     owner_acceptance_uid: str
+
+
+def load_reporting_release_authorization(
+    path: str | Path,
+) -> ReportingReleaseAuthorization:
+    """Load one exact owner-only report authorization at process start."""
+
+    supplied_path = Path(path).expanduser()
+    if supplied_path.is_symlink():
+        raise Phase1ReportingError("report authorization must not be a symlink")
+    resolved_path = supplied_path.resolve()
+    if not resolved_path.is_file():
+        raise Phase1ReportingError("report authorization file does not exist")
+    if stat.S_IMODE(resolved_path.stat().st_mode) != 0o600:
+        raise Phase1ReportingError("report authorization file must use mode 0600")
+    if stat.S_IMODE(resolved_path.parent.stat().st_mode) != 0o700:
+        raise Phase1ReportingError(
+            "report authorization directory must use mode 0700"
+        )
+    try:
+        document = json.loads(resolved_path.read_text(encoding="utf-8"))
+    except (OSError, UnicodeError, json.JSONDecodeError) as exc:
+        raise Phase1ReportingError("report authorization document is invalid") from exc
+    required = {
+        "contract_version",
+        "report_release_uid",
+        "report_release_fingerprint",
+        "owner_acceptance_uid",
+        "decision",
+        "accepted_scope",
+        "approval_source",
+    }
+    if not isinstance(document, dict) or set(document) != required:
+        raise Phase1ReportingError("report authorization document is invalid")
+    if (
+        document["contract_version"] != REPORTING_RELEASE_AUTHORIZATION_VERSION
+        or document["decision"] != "accepted"
+        or document["accepted_scope"] != "bounded_phase1_reporting"
+        or document["approval_source"] != "project_owner_explicit_proceed"
+        or not isinstance(document["report_release_uid"], str)
+        or not document["report_release_uid"]
+        or len(document["report_release_uid"]) > 256
+        or not isinstance(document["owner_acceptance_uid"], str)
+        or not document["owner_acceptance_uid"]
+        or len(document["owner_acceptance_uid"]) > 256
+        or not isinstance(document["report_release_fingerprint"], str)
+        or re.fullmatch(
+            r"[0-9a-f]{64}", document["report_release_fingerprint"]
+        )
+        is None
+    ):
+        raise Phase1ReportingError("report authorization document is invalid")
+    return ReportingReleaseAuthorization(
+        report_release_uid=document["report_release_uid"],
+        report_release_fingerprint=document["report_release_fingerprint"],
+        owner_acceptance_uid=document["owner_acceptance_uid"],
+    )
 
 
 @dataclass(frozen=True)
@@ -72,8 +133,12 @@ class ReportingRelease:
     report_release_uid: str
     current_valuation_run_uid: str
     current_result_fingerprint: str
+    current_owner_acceptance_uid: str
+    current_owner_accepted_at_utc: datetime
     realized_calculation_run_id: str
     realized_result_fingerprint: str
+    realized_owner_acceptance_uid: str
+    realized_owner_accepted_at_utc: datetime
     history_revision_uid: str
     coverage_start_date: date
     coverage_end_date: date
@@ -113,8 +178,16 @@ def calculate_report_release_fingerprint(
         "report_release_uid": release.report_release_uid,
         "current_valuation_run_uid": release.current_valuation_run_uid,
         "current_result_fingerprint": release.current_result_fingerprint,
+        "current_owner_acceptance_uid": release.current_owner_acceptance_uid,
+        "current_owner_accepted_at_utc": _utc_text(
+            release.current_owner_accepted_at_utc
+        ),
         "realized_calculation_run_id": release.realized_calculation_run_id,
         "realized_result_fingerprint": release.realized_result_fingerprint,
+        "realized_owner_acceptance_uid": release.realized_owner_acceptance_uid,
+        "realized_owner_accepted_at_utc": _utc_text(
+            release.realized_owner_accepted_at_utc
+        ),
         "history_revision_uid": release.history_revision_uid,
         "coverage_start_date": release.coverage_start_date.isoformat(),
         "coverage_end_date": release.coverage_end_date.isoformat(),
@@ -144,6 +217,16 @@ def calculate_report_release_fingerprint(
 def _validate_release(release: ReportingRelease) -> None:
     if release.coverage_start_date > release.coverage_end_date:
         raise Phase1ReportingError("coverage dates are invalid")
+    branch_acceptance_uids = (
+        release.current_owner_acceptance_uid,
+        release.realized_owner_acceptance_uid,
+    )
+    if any(not value or len(value) > 256 for value in branch_acceptance_uids):
+        raise Phase1ReportingError(
+            "financial inputs require separate owner acceptance identities"
+        )
+    _utc_text(release.current_owner_accepted_at_utc)
+    _utc_text(release.realized_owner_accepted_at_utc)
     if release.release_status == "owner_accepted":
         if not release.owner_acceptance_uid or not release.owner_accepted_at_utc:
             raise Phase1ReportingError("accepted release requires owner acceptance")
@@ -202,7 +285,53 @@ def persist_reporting_release(con: duckdb.DuckDBPyConnection, release: Reporting
         reason_counts[omission.reason_code] = reason_counts.get(omission.reason_code, 0) + 1
     con.execute("BEGIN TRANSACTION")
     try:
-        con.execute("""INSERT INTO phase1_reporting_releases VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""", [release.report_release_uid, REPORTING_CONTRACT_VERSION, release.report_release_fingerprint, release.current_valuation_run_uid, release.current_result_fingerprint, release.realized_calculation_run_id, release.realized_result_fingerprint, release.history_revision_uid, release.coverage_start_date, release.coverage_end_date, release.calculation_version, _utc_text(release.generated_at_utc), release.release_status, release.owner_acceptance_uid, _utc_text(release.owner_accepted_at_utc) if release.owner_accepted_at_utc else None, processed, available, unavailable + incomplete, pending, json.dumps(reason_counts, sort_keys=True)])
+        con.execute(
+            """INSERT INTO phase1_reporting_releases (
+                   report_release_uid, contract_version,
+                   report_release_fingerprint, current_valuation_run_uid,
+                   current_result_fingerprint, realized_calculation_run_id,
+                   realized_result_fingerprint, history_revision_uid,
+                   coverage_start_date, coverage_end_date, calculation_version,
+                   generated_at_utc, release_status, owner_acceptance_uid,
+                   owner_accepted_at_utc, processed_count, available_count,
+                   unavailable_count, reconciliation_pending_count,
+                   reason_counts_json, current_owner_acceptance_uid,
+                   current_owner_accepted_at_utc,
+                   realized_owner_acceptance_uid,
+                   realized_owner_accepted_at_utc
+               ) VALUES (
+                   ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+                   ?, ?, ?, ?
+               )""",
+            [
+                release.report_release_uid,
+                REPORTING_CONTRACT_VERSION,
+                release.report_release_fingerprint,
+                release.current_valuation_run_uid,
+                release.current_result_fingerprint,
+                release.realized_calculation_run_id,
+                release.realized_result_fingerprint,
+                release.history_revision_uid,
+                release.coverage_start_date,
+                release.coverage_end_date,
+                release.calculation_version,
+                _utc_text(release.generated_at_utc),
+                release.release_status,
+                release.owner_acceptance_uid,
+                _utc_text(release.owner_accepted_at_utc)
+                if release.owner_accepted_at_utc
+                else None,
+                processed,
+                available,
+                unavailable + incomplete,
+                pending,
+                json.dumps(reason_counts, sort_keys=True),
+                release.current_owner_acceptance_uid,
+                _utc_text(release.current_owner_accepted_at_utc),
+                release.realized_owner_acceptance_uid,
+                _utc_text(release.realized_owner_accepted_at_utc),
+            ],
+        )
         con.executemany("INSERT INTO phase1_reporting_release_accounts VALUES (?, ?, ?, ?)", [(release.report_release_uid, x.source_broker, x.source_account_id, x.account_alias) for x in release.accounts])
         if release.items:
             con.executemany(
@@ -221,13 +350,47 @@ def persist_reporting_release(con: duckdb.DuckDBPyConnection, release: Reporting
 
 
 def load_reporting_release(con: duckdb.DuckDBPyConnection, *, report_release_uid: str) -> ReportingRelease:
-    row = con.execute("SELECT * FROM phase1_reporting_releases WHERE report_release_uid = ?", [report_release_uid]).fetchone()
+    row = con.execute(
+        """SELECT report_release_uid, current_valuation_run_uid,
+                  current_result_fingerprint, current_owner_acceptance_uid,
+                  current_owner_accepted_at_utc, realized_calculation_run_id,
+                  realized_result_fingerprint, realized_owner_acceptance_uid,
+                  realized_owner_accepted_at_utc, history_revision_uid,
+                  coverage_start_date, coverage_end_date, calculation_version,
+                  generated_at_utc, release_status, owner_acceptance_uid,
+                  owner_accepted_at_utc, report_release_fingerprint
+           FROM phase1_reporting_releases
+           WHERE report_release_uid = ?""",
+        [report_release_uid],
+    ).fetchone()
     if row is None:
         raise Phase1ReportingError("configured report release is unavailable")
     accounts = tuple(ReportingAccount(*x) for x in con.execute("SELECT source_broker, source_account_id, account_alias FROM phase1_reporting_release_accounts WHERE report_release_uid = ? ORDER BY account_alias", [report_release_uid]).fetchall())
     items = tuple(RealizedHistoryItem(x[0], x[1], x[2], x[3], x[4], x[5], x[6], _utc(x[7]), x[8], Decimal(str(x[9])).normalize(), tuple(json.loads(x[10])) ) for x in con.execute("SELECT item_uid, source_broker, source_account_id, instrument_key, symbol, asset_class, close_market_date, closed_at_utc, currency, realized_pnl, reason_codes_json FROM phase1_reporting_release_realized_items WHERE report_release_uid = ? ORDER BY item_uid", [report_release_uid]).fetchall())
     omissions = tuple(ReportingOmission(*x) for x in con.execute("SELECT omission_uid, source_broker, source_account_id, close_market_date, symbol, reason_code, item_status FROM phase1_reporting_release_omissions WHERE report_release_uid = ? ORDER BY omission_uid", [report_release_uid]).fetchall())
-    release = ReportingRelease(row[0], row[3], row[4], row[5], row[6], row[7], row[8], row[9], row[10], _utc(row[11]), row[12], row[13], _utc(row[14]) if row[14] else None, accounts, items, omissions, row[2])
+    release = ReportingRelease(
+        report_release_uid=row[0],
+        current_valuation_run_uid=row[1],
+        current_result_fingerprint=row[2],
+        current_owner_acceptance_uid=row[3],
+        current_owner_accepted_at_utc=_utc(row[4]),
+        realized_calculation_run_id=row[5],
+        realized_result_fingerprint=row[6],
+        realized_owner_acceptance_uid=row[7],
+        realized_owner_accepted_at_utc=_utc(row[8]),
+        history_revision_uid=row[9],
+        coverage_start_date=row[10],
+        coverage_end_date=row[11],
+        calculation_version=row[12],
+        generated_at_utc=_utc(row[13]),
+        release_status=row[14],
+        owner_acceptance_uid=row[15],
+        owner_accepted_at_utc=_utc(row[16]) if row[16] else None,
+        accounts=accounts,
+        items=items,
+        omissions=omissions,
+        report_release_fingerprint=row[17],
+    )
     _validate_release(release)
     return release
 

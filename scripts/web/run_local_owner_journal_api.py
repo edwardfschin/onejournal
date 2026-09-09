@@ -3,9 +3,9 @@
 
 The database path is an operator-only process-start argument. It is never
 accepted from a browser request, logged by this command, or returned by the
-API. An optional owner-private authorization file selects one exact persisted
-broker-current result. This launcher does not apply migrations, call providers,
-or open raw evidence.
+API. Optional owner-private authorization files select exact persisted
+broker-current and Phase 1 reporting results. This launcher does not apply
+migrations, call providers, or open raw evidence.
 """
 
 from __future__ import annotations
@@ -19,6 +19,9 @@ from onejournal.api.broker_current_position_contracts import (
     load_broker_current_financial_release_authorization,
 )
 from onejournal.api.local_owner_journal import create_local_owner_journal_app
+from onejournal.journal.phase1_reporting_repository import (
+    load_reporting_release_authorization,
+)
 
 
 def parse_args() -> argparse.Namespace:
@@ -31,6 +34,13 @@ def parse_args() -> argparse.Namespace:
             "authorization. Omit to keep the portfolio route unavailable."
         ),
     )
+    parser.add_argument(
+        "--reporting-authorization",
+        help=(
+            "Existing owner-private mode-0600 Phase 1 report-release "
+            "authorization. Omit to keep reporting routes unavailable."
+        ),
+    )
     parser.add_argument("--port", type=int, default=8765, help="Loopback TCP port (default: 8765).")
     return parser.parse_args()
 
@@ -39,16 +49,22 @@ def main() -> int:
     args = parse_args()
     if not 1024 <= args.port <= 65535:
         raise ValueError("port must be between 1024 and 65535")
-    authorization = (
+    broker_current_authorization = (
         load_broker_current_financial_release_authorization(
             Path(args.broker_current_authorization)
         )
         if args.broker_current_authorization
         else None
     )
+    reporting_authorization = (
+        load_reporting_release_authorization(Path(args.reporting_authorization))
+        if args.reporting_authorization
+        else None
+    )
     app = create_local_owner_journal_app(
         journal_db_path=Path(args.db),
-        broker_current_authorization=authorization,
+        broker_current_authorization=broker_current_authorization,
+        reporting_authorization=reporting_authorization,
     )
     uvicorn.run(app, host="127.0.0.1", port=args.port, log_level="warning")
     return 0
