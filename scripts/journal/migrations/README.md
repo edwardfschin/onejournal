@@ -111,6 +111,12 @@ There are currently twenty-five migration files:
   value-free audit table unchanged. After a fresh checksum-matched backup, the
   separately approved private application on 2026-09-09 preserved all compared
   row counts and left every reporting table empty.
+- `0026_widen_phase1_reporting_realized_decimal_precision.sql`:
+  preserve the exact accepted WEB-W08 realized values at up to 27 fractional
+  digits. The migration fails closed unless all four related release tables are
+  empty, then recreates only the empty realized-item table as
+  `DECIMAL(38,27)`. Preparation and disposable-copy rehearsal do not authorize
+  live application.
 
 The existing DuckDB schema is a prototype bootstrap baseline created (and now
 versioned) by `scripts/journal/init_journal_db.py`.

@@ -143,7 +143,7 @@ the portfolio route unavailable while leaving the accepted WEB-W06 journal
 boundary unchanged.
 
 Add `--reporting-authorization <private-report-authorization.json>` only after
-migration 0024 and an exact owner-accepted Phase 1 report release have been
+migration 0026 and an exact owner-accepted Phase 1 report release have been
 separately persisted. The file uses contract
 `onejournal.phase1-report-release-authorization.v1`, mode `0600`, a mode-`0700`
 parent directory, and exact release UID, release fingerprint, and owner-

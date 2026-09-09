@@ -170,6 +170,15 @@ def _fingerprint(value: Any) -> str:
     return sha256(json.dumps(value, sort_keys=True, separators=(",", ":"), default=str).encode()).hexdigest()
 
 
+def _decimal_text(value: Decimal) -> str:
+    if not value.is_finite():
+        raise Phase1ReportingError("financial values must be finite decimals")
+    text = format(value, "f")
+    if "." in text:
+        text = text.rstrip("0").rstrip(".")
+    return "0" if text in {"-0", ""} else text
+
+
 def calculate_report_release_fingerprint(
     *, release: ReportingRelease, include_fingerprint: bool = False
 ) -> str:
@@ -198,7 +207,7 @@ def calculate_report_release_fingerprint(
         "owner_accepted_at_utc": _utc_text(release.owner_accepted_at_utc) if release.owner_accepted_at_utc else None,
         "accounts": [a.__dict__ for a in sorted(release.accounts, key=lambda x: (x.source_broker, x.source_account_id))],
         "items": [
-            {**x.__dict__, "close_market_date": x.close_market_date.isoformat(), "closed_at_utc": _utc_text(x.closed_at_utc), "realized_pnl": str(x.realized_pnl)}
+            {**x.__dict__, "close_market_date": x.close_market_date.isoformat(), "closed_at_utc": _utc_text(x.closed_at_utc), "realized_pnl": _decimal_text(x.realized_pnl)}
             for x in sorted(release.items, key=lambda x: x.item_uid)
         ],
         "omissions": [
@@ -250,6 +259,12 @@ def _validate_release(release: ReportingRelease) -> None:
         if not item.symbol or not item.item_uid or not item.instrument_key:
             raise Phase1ReportingError("realized item identity is incomplete")
         _utc_text(item.closed_at_utc)
+        decimal_text = _decimal_text(item.realized_pnl)
+        integer, _, fraction = decimal_text.lstrip("-").partition(".")
+        if len(integer.lstrip("0")) > 11 or len(fraction) > 27:
+            raise Phase1ReportingError(
+                "realized P&L exceeds DECIMAL(38,27) persistence precision"
+            )
         if not release.coverage_start_date <= item.close_market_date <= release.coverage_end_date:
             raise Phase1ReportingError("realized item is outside report coverage")
     if len({x.item_uid for x in release.items}) != len(release.items):
@@ -336,7 +351,7 @@ def persist_reporting_release(con: duckdb.DuckDBPyConnection, release: Reporting
         if release.items:
             con.executemany(
                 "INSERT INTO phase1_reporting_release_realized_items VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-                [(release.report_release_uid, x.item_uid, x.source_broker, x.source_account_id, x.instrument_key, x.symbol, x.asset_class, x.close_market_date, _utc_text(x.closed_at_utc), x.currency, x.realized_pnl, "valid", json.dumps(x.reason_codes)) for x in release.items]
+                [(release.report_release_uid, x.item_uid, x.source_broker, x.source_account_id, x.instrument_key, x.symbol, x.asset_class, x.close_market_date, _utc_text(x.closed_at_utc), x.currency, _decimal_text(x.realized_pnl), "valid", json.dumps(x.reason_codes)) for x in release.items]
             )
         if release.omissions:
             con.executemany(
@@ -366,7 +381,7 @@ def load_reporting_release(con: duckdb.DuckDBPyConnection, *, report_release_uid
     if row is None:
         raise Phase1ReportingError("configured report release is unavailable")
     accounts = tuple(ReportingAccount(*x) for x in con.execute("SELECT source_broker, source_account_id, account_alias FROM phase1_reporting_release_accounts WHERE report_release_uid = ? ORDER BY account_alias", [report_release_uid]).fetchall())
-    items = tuple(RealizedHistoryItem(x[0], x[1], x[2], x[3], x[4], x[5], x[6], _utc(x[7]), x[8], Decimal(str(x[9])).normalize(), tuple(json.loads(x[10])) ) for x in con.execute("SELECT item_uid, source_broker, source_account_id, instrument_key, symbol, asset_class, close_market_date, closed_at_utc, currency, realized_pnl, reason_codes_json FROM phase1_reporting_release_realized_items WHERE report_release_uid = ? ORDER BY item_uid", [report_release_uid]).fetchall())
+    items = tuple(RealizedHistoryItem(x[0], x[1], x[2], x[3], x[4], x[5], x[6], _utc(x[7]), x[8], Decimal(str(x[9])), tuple(json.loads(x[10])) ) for x in con.execute("SELECT item_uid, source_broker, source_account_id, instrument_key, symbol, asset_class, close_market_date, closed_at_utc, currency, realized_pnl, reason_codes_json FROM phase1_reporting_release_realized_items WHERE report_release_uid = ? ORDER BY item_uid", [report_release_uid]).fetchall())
     omissions = tuple(ReportingOmission(*x) for x in con.execute("SELECT omission_uid, source_broker, source_account_id, close_market_date, symbol, reason_code, item_status FROM phase1_reporting_release_omissions WHERE report_release_uid = ? ORDER BY omission_uid", [report_release_uid]).fetchall())
     release = ReportingRelease(
         report_release_uid=row[0],

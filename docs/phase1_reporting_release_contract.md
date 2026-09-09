@@ -42,12 +42,31 @@ clean integrity, and zero rows in all five reporting tables. The backup remains
 at 0024 for rollback. This live schema migration still does not authorize or
 constitute report-release persistence.
 
+The first exact release rehearsal then proved that the realized-item
+`DECIMAL(38,13)` column would change 16 values in the already accepted result.
+Read-back fingerprint validation stopped the write, the private package was not
+created, and the live journal remained unchanged. Migration 0026 therefore
+widens only that still-empty item column to `DECIMAL(38,27)`. A fresh disposable
+copy reached 0026, preserved 67 non-reporting base-table row counts, persisted
+the release twice idempotently, and read back all 230 admitted items and 57
+withheld scopes exactly. The live journal remains at 0025 with every reporting
+table empty; live migration 0026 and report persistence remain unapproved.
+
 Gate 3 owner acceptance was granted on 2026-09-09 for bounded realized-result
 fingerprint
 `bd05ac8f87e58b9fdc57792cd19f763ee40a136dcd692e8e0399d19227566063`,
 with 230 admitted allocations and 57 withheld scopes. Acceptance UID
 `ONEJOURNAL-WEB-W08-GATE3-OWNER-ACCEPTANCE-20260909-01` records that exact
 scope. No report-release persistence is authorized by this acceptance.
+
+The owner chose the private alias `Primary` and explicitly approved preparation
+of the combined release on 2026-09-09. The prepared release is
+`ONEJOURNAL-WEB-W08-REPORT-RELEASE-20260909-01`, fingerprint
+`506a4b49810e4da77f3880818a83425c835eb9cd25d08b1503dd95ed9d6ddb2c`.
+Its value-free private package binds the exact current and realized authorities,
+separate acceptance lineage, 287 processed scopes, the omission reasons, and
+the successful disposable-copy rehearsal. The authorization file is prepared
+but not active.
 
 ## Impact map
 

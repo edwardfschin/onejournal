@@ -56,7 +56,7 @@ class Phase1ReportingRepositoryTests(unittest.TestCase):
             owner_acceptance_uid="owner-acceptance-1",
             owner_accepted_at_utc=datetime(2026, 2, 1, 1, tzinfo=UTC),
             accounts=(ReportingAccount("schwab", "private-account-id", "Primary"),),
-            items=(RealizedHistoryItem("item-1", "schwab", "private-account-id", "instrument-1", "ABC", "equity", date(2026, 1, 12), datetime(2026, 1, 12, 20, tzinfo=UTC), "USD", Decimal("12.34")),),
+            items=(RealizedHistoryItem("item-1", "schwab", "private-account-id", "instrument-1", "ABC", "equity", date(2026, 1, 12), datetime(2026, 1, 12, 20, tzinfo=UTC), "USD", Decimal("12.345678901234567890123456789")),),
             omissions=omissions,
         )
         provisional = ReportingRelease(**base, report_release_fingerprint="")
@@ -79,7 +79,10 @@ class Phase1ReportingRepositoryTests(unittest.TestCase):
         )
         state, rows, reasons = realized_history(loaded, from_date=date(2026, 1, 1), to_date=date(2026, 1, 31))
         self.assertEqual(state, "incomplete")
-        self.assertEqual(rows[0].realized_pnl, Decimal("12.34"))
+        self.assertEqual(
+            rows[0].realized_pnl,
+            Decimal("12.345678901234567890123456789"),
+        )
         self.assertEqual(reasons, {"opening_history_missing": 1})
         state, rows, reasons = realized_history(loaded, from_date=date(2026, 1, 13), to_date=date(2026, 1, 31))
         self.assertEqual((state, rows, reasons), ("valid", (), {}))

@@ -269,6 +269,19 @@ data-table row counts unchanged, integrity clean, and every reporting table
 still empty. The verified 0024 backup remains the rollback artifact. No report
 release or API audit row was written.
 
+The first exact report-release rehearsal then stopped on fingerprint read-back:
+16 accepted realized values carry meaningful precision beyond migration 0025's
+`DECIMAL(38,13)` item column. The live database remained unchanged and no
+private authorization package was produced. Migration 0026 widens only the
+still-empty item column to `DECIMAL(38,27)` and fails if release state exists.
+A fresh disposable copy reached 0026, preserved all 67 non-reporting base-table
+row counts, accepted identical persistence replay, and read back 230 admitted
+items plus 57 omissions exactly. The prepared owner-accepted release uses alias
+`Primary`, UID `ONEJOURNAL-WEB-W08-REPORT-RELEASE-20260909-01`, and fingerprint
+`506a4b49810e4da77f3880818a83425c835eb9cd25d08b1503dd95ed9d6ddb2c`.
+Its value-free mode-`0600` authorization is prepared but not activated. The live
+journal remains at 0025 with every reporting table empty.
+
 The correction is locally validated by 546 passing tests plus 267 passing
 subtests, focused migration and route checks, frontend lint, and the production
 frontend build. These checks use synthetic or temporary data and do not
