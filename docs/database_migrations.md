@@ -196,6 +196,25 @@ counts unchanged, the table set intact, journal integrity clean, and all five
 reporting tables still empty. The verified migration-0024 backup is retained as
 the rollback artifact. No report release or API audit row was written.
 
+The subsequent exact WEB-W08 release rehearsal found that migration 0025's
+`DECIMAL(38,13)` realized-item column would change 16 accepted values carrying
+meaningful precision through 27 fractional digits. Read-back fingerprint
+validation stopped the rehearsal; the private package was not written and the
+live migration-0025 journal remained byte-identical. Migration 0026 therefore
+widens only the still-empty realized-item column to `DECIMAL(38,27)` after
+proving all four release tables are empty. Local preparation and disposable-
+copy rehearsal do not authorize live migration 0026 or report persistence.
+
+The corrected disposable-copy rehearsal reached migration 0026, preserved all
+67 non-reporting base-table row counts, and then persisted the exact report
+release twice to prove idempotency. Exact read-back of the 230 admitted realized
+items and 57 omissions reproduced report fingerprint
+`506a4b49810e4da77f3880818a83425c835eb9cd25d08b1503dd95ed9d6ddb2c`.
+The source journal SHA-256 remained
+`097925d5532e7874e551eee343cc21b836a060585d1b01beea64a9bea0c74ffa`,
+at migration 0025 with all five reporting tables empty. Live migration 0026 and
+report persistence require a later explicit operation.
+
 Migration 0016 additively stores one immutable, account-scoped ADR-0024 Schwab
 evidence assembly and its exact account, position, order, transaction, fill,
 cash, quote, and session family payloads. It preserves per-family source
