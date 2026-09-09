@@ -140,7 +140,16 @@ Add `--broker-current-authorization <private-authorization.json>` only after
 migration 0023 and the exact accepted broker-current result have been
 separately approved and persisted in that database. Omitting the option keeps
 the portfolio route unavailable while leaving the accepted WEB-W06 journal
-boundary unchanged. The launcher reads no provider credential or raw evidence.
+boundary unchanged.
+
+Add `--reporting-authorization <private-report-authorization.json>` only after
+migration 0024 and an exact owner-accepted Phase 1 report release have been
+separately persisted. The file uses contract
+`onejournal.phase1-report-release-authorization.v1`, mode `0600`, a mode-`0700`
+parent directory, and exact release UID, release fingerprint, and owner-
+acceptance UID binding. Omitting it keeps the reporting routes unavailable.
+Supplying it does not calculate or persist a report. The launcher reads no
+provider credential or raw evidence.
 
 For the browser checkpoint, start the API and web development server in two
 separate local terminals. Set `ONEJOURNAL_LOCAL_API_URL=http://127.0.0.1:8765`

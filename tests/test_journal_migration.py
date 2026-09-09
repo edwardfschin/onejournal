@@ -155,6 +155,8 @@ class JournalMigrationTests(unittest.TestCase):
             self.assertEqual(rows[22][1], "applied")
             self.assertEqual(rows[23][0], "0024")
             self.assertEqual(rows[23][1], "applied")
+            self.assertEqual(rows[24][0], "0025")
+            self.assertEqual(rows[24][1], "applied")
 
             fill_columns = {
                 row[1]: row[2]
@@ -186,6 +188,28 @@ class JournalMigrationTests(unittest.TestCase):
             self.assertEqual(
                 position_columns["broker_tax_lot_average_price"],
                 "DECIMAL(38,13)",
+            )
+            reporting_columns = {
+                row[1]: (row[2], row[3])
+                for row in con.execute(
+                    "PRAGMA table_info(phase1_reporting_releases)"
+                ).fetchall()
+            }
+            self.assertEqual(
+                reporting_columns["current_owner_acceptance_uid"],
+                ("VARCHAR", True),
+            )
+            self.assertEqual(
+                reporting_columns["current_owner_accepted_at_utc"],
+                ("VARCHAR", True),
+            )
+            self.assertEqual(
+                reporting_columns["realized_owner_acceptance_uid"],
+                ("VARCHAR", True),
+            )
+            self.assertEqual(
+                reporting_columns["realized_owner_accepted_at_utc"],
+                ("VARCHAR", True),
             )
 
     def test_released_migration_0002_checksum_is_immutable(self) -> None:
@@ -240,7 +264,7 @@ class JournalMigrationTests(unittest.TestCase):
             self.db_path,
             migrations_dir=MIGRATIONS_DIR,
         )
-        self.assertEqual(resulting_version, 24)
+        self.assertEqual(resulting_version, 25)
         with duckdb.connect(str(self.db_path), read_only=True) as con:
             snapshot_columns = {
                 row[1]: row[2]
@@ -285,13 +309,93 @@ class JournalMigrationTests(unittest.TestCase):
                 ),
             )
 
+    def test_migration_0025_preserves_audit_rows_and_requires_empty_releases(
+        self,
+    ) -> None:
+        apply_schema_migrations(
+            self.db_path,
+            target_version="0024",
+            migrations_dir=MIGRATIONS_DIR,
+        )
+        with duckdb.connect(str(self.db_path)) as con:
+            con.execute(
+                """INSERT INTO phase1_reporting_api_audit_events VALUES (
+                       'audit-1', 'realized_history', NULL, ?, '{}',
+                       0, 0, 0, 0, 'unavailable',
+                       '2026-09-09T00:00:00Z'
+                   )""",
+                ["a" * 64],
+            )
+
+        self.assertEqual(
+            apply_schema_migrations(
+                self.db_path,
+                migrations_dir=MIGRATIONS_DIR,
+            ),
+            25,
+        )
+        with duckdb.connect(str(self.db_path), read_only=True) as con:
+            self.assertEqual(
+                con.execute(
+                    "SELECT audit_uid FROM phase1_reporting_api_audit_events"
+                ).fetchall(),
+                [("audit-1",)],
+            )
+
+        blocked_path = Path(self.tmp.name) / "blocked.duckdb"
+        apply_schema_migrations(
+            blocked_path,
+            target_version="0024",
+            migrations_dir=MIGRATIONS_DIR,
+        )
+        with duckdb.connect(str(blocked_path)) as con:
+            con.execute(
+                """INSERT INTO phase1_reporting_releases VALUES (
+                       'release-1',
+                       'onejournal.phase1-report-release.v1', ?,
+                       'current-run-1', ?, 'realized-run-1', ?,
+                       'history-1', DATE '2026-01-01', DATE '2026-01-31',
+                       'onejournal.pnl.v1', '2026-02-01T00:00:00Z',
+                       'draft', NULL, NULL, 0, 0, 0, 0, '{}'
+                   )""",
+                ["a" * 64, "b" * 64, "c" * 64],
+            )
+
+        with self.assertRaisesRegex(
+            duckdb.InvalidInputException,
+            "requires empty phase1 reporting release tables",
+        ):
+            apply_schema_migrations(
+                blocked_path,
+                migrations_dir=MIGRATIONS_DIR,
+            )
+
+        with duckdb.connect(str(blocked_path), read_only=True) as con:
+            self.assertEqual(
+                con.execute("SELECT max(version) FROM schema_migrations").fetchone(),
+                ("0024",),
+            )
+            self.assertEqual(
+                con.execute(
+                    "SELECT report_release_uid FROM phase1_reporting_releases"
+                ).fetchall(),
+                [("release-1",)],
+            )
+            columns = {
+                row[1]
+                for row in con.execute(
+                    "PRAGMA table_info(phase1_reporting_releases)"
+                ).fetchall()
+            }
+            self.assertNotIn("current_owner_acceptance_uid", columns)
+
     def test_init_schema_is_idempotent(self) -> None:
         init_schema(self.db_path)
         init_schema(self.db_path)
 
         with duckdb.connect(str(self.db_path), read_only=True) as con:
             count = con.execute("SELECT COUNT(*) FROM schema_migrations").fetchone()[0]
-            self.assertEqual(count, 24)
+            self.assertEqual(count, 25)
 
     def test_migration_0005_backfills_existing_reviews_from_version_0002(self) -> None:
         apply_schema_migrations(
@@ -328,7 +432,7 @@ class JournalMigrationTests(unittest.TestCase):
             self.db_path,
             migrations_dir=MIGRATIONS_DIR,
         )
-        self.assertEqual(resulting_version, 24)
+        self.assertEqual(resulting_version, 25)
 
         with duckdb.connect(str(self.db_path), read_only=True) as con:
             rows = con.execute(

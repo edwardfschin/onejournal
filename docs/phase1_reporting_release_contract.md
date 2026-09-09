@@ -13,15 +13,41 @@ release, API activation, hosting, or deployment.
 
 ## Verified starting state
 
-The private operational journal is at migration 0023. It contains one accepted
-broker-current valuation run used by WEB-W07 and no operational realized-P&L
-calculation or allocation rows. The current API omits source account identity,
-and the operational normalized-account table supplies no account label.
+At contract approval, the private operational journal was at migration 0023.
+It contained one accepted broker-current valuation run used by WEB-W07 and no
+operational realized-P&L calculation or allocation rows. The current API omits
+source account identity, and the operational normalized-account table supplies
+no account label.
 
 Accordingly, WEB-W08 must fail closed until a release binds both a realized
 authority and a private account alias. Current-position breakdowns may continue
 to use the exact accepted WEB-W07 run, but they must not imply that realized or
 total P&L exists.
+
+Migration 0024 was later applied under its separate live-migration approval.
+The reporting tables remain empty until an exact calculated result and owner
+acceptance pass the later persistence gate.
+
+Before Gate 4 persistence, migration 0025 must correct the empty release table
+so the current-valuation acceptance and realized-result acceptance are stored
+as two separate identity-and-UTC-time pairs. This is not a reinterpretation or
+backfill: 0025 fails closed if any release row already exists. Preparing or
+rehearsing 0025 does not authorize a live database write or a report release.
+The 2026-09-09 disposable-copy rehearsal succeeded: the copy advanced to 0025,
+all 81 compared data-table row counts remained identical, journal integrity
+passed, and the live journal remained at 0024 with its checksum unchanged.
+The owner later approved the fresh backup and live 0025 migration only. The
+live journal reached 0025 on 2026-09-09 with the same 81 data-table row counts,
+clean integrity, and zero rows in all five reporting tables. The backup remains
+at 0024 for rollback. This live schema migration still does not authorize or
+constitute report-release persistence.
+
+Gate 3 owner acceptance was granted on 2026-09-09 for bounded realized-result
+fingerprint
+`bd05ac8f87e58b9fdc57792cd19f763ee40a136dcd692e8e0399d19227566063`,
+with 230 admitted allocations and 57 withheld scopes. Acceptance UID
+`ONEJOURNAL-WEB-W08-GATE3-OWNER-ACCEPTANCE-20260909-01` records that exact
+scope. No report-release persistence is authorized by this acceptance.
 
 ## Impact map
 
@@ -86,6 +112,14 @@ Each admitted history item must be backed by an accepted allocation with:
 unreconciled, currency-missing, multiplier-missing, identity-conflicting, or
 otherwise incomplete scopes are unavailable and contribute no financial value.
 They remain represented in count and reason metadata.
+
+The bounded calculation operator reads only the exact active history revision
+set. It fails if that revision is stale against normalized fills, if any active
+execution economics are unreconciled, or if an unmatched close appears in a
+scope marked resolved. Allocations whose opening or closing evidence touches an
+unresolved episode are withheld. Each unresolved episode produces one
+value-free omission, while every admitted allocation retains its exact opening,
+closing or lifecycle-event lineage inside the fingerprinted calculation result.
 
 ## Read models
 
@@ -167,6 +201,13 @@ All resources require one exact process-start report-release authorization.
 Without it they return an unavailable response without values. Browser input
 cannot select a database, run, revision, authorization, source account, raw
 path, calculation method, or provider.
+
+The process-start file uses contract
+`onejournal.phase1-report-release-authorization.v1`, requires owner-private
+`0700`/`0600` directory and file permissions, and binds the exact report release
+UID, fingerprint, and owner-acceptance UID. It cannot request calculation or
+persistence and is rejected if it is a symlink, malformed, over-specified, or
+does not match the persisted release.
 
 ## CSV parity
 

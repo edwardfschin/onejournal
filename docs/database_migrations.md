@@ -108,6 +108,7 @@ Examples:
 0022_add_local_owner_financial_api_audit.sql
 0023_widen_broker_current_decimal_precision.sql
 0024_add_phase1_reporting_releases.sql
+0025_add_phase1_reporting_acceptance_lineage.sql
 ```
 
 Migration 0009 adds explicit canonical UTC evidence fields without
@@ -164,8 +165,36 @@ Migration 0024 additively introduces an immutable Phase 1 reporting-release
 boundary. It binds owner-accepted current valuation and realized-history
 fingerprints, private aliases, date-scoped realized items, date-scoped
 omissions, and value-free report-read audit rows. Repository tests use temporary
-DuckDB databases only; applying 0024 to the operational journal remains a
-separate explicit approval gate.
+DuckDB databases only. After a checksum-identical mode-`0600` backup and
+successful disposable-copy rehearsal, the separately approved migration was
+applied to the private operational journal on 2026-09-08. All pre-existing
+financial and journal row counts were preserved; the five new tables remained
+empty pending accepted-result persistence.
+
+Migration 0025 corrects the empty migration-0024 release schema before any
+report release is persisted. It requires distinct owner-acceptance identities
+and UTC instants for the current-valuation fingerprint and the realized-result
+fingerprint. Because DuckDB prevents alteration of a parent table referenced by
+foreign keys, the migration transaction first proves all four related release
+tables are empty and then recreates only those tables. It aborts without a
+schema-version advance if release state exists and does not alter the separate
+value-free API audit table. Preparation and disposable-copy rehearsal do not
+authorize application to the private operational journal.
+
+The 2026-09-09 rehearsal started from a checksum-identical, mode-`0600`
+disposable copy of the private migration-0024 journal. Migration 0025 reached
+version 0025, preserved all 81 compared data-table row counts and the table set,
+installed all four new columns as `NOT NULL`, and passed the read-only journal
+integrity check. The live journal remained at version 0024 with its
+pre-rehearsal SHA-256 unchanged.
+
+The project owner then separately approved a fresh private backup and live
+migration 0025 only, explicitly excluding WEB-W08 report persistence. On
+2026-09-09 the mode-`0600` backup matched the live migration-0024 journal byte
+for byte. The live migration reached 0025 with all 81 compared data-table row
+counts unchanged, the table set intact, journal integrity clean, and all five
+reporting tables still empty. The verified migration-0024 backup is retained as
+the rollback artifact. No report release or API audit row was written.
 
 Migration 0016 additively stores one immutable, account-scoped ADR-0024 Schwab
 evidence assembly and its exact account, position, order, transaction, fill,

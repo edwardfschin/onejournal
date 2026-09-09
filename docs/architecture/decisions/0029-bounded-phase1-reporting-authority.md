@@ -231,6 +231,49 @@ Gate 1 was explicitly approved by the OneJournal project owner on 2026-09-07
 for the bounded WEB-W08 reporting design and contract only. That approval did
 not authorize implementation or private database work.
 
+The original Gate 2 slice was merged on 2026-09-08. A subsequent private
+calculation attempt correctly exposed the missing active-history calculation
+operator and was not accepted. Migration 0024 was separately rehearsed and
+applied, with its new tables left empty. The Gate 2 precision correction adds
+the missing read-only, deterministic calculation and omission boundary.
+
+The corrected Gate 3 calculation was run read-only on 2026-09-08. Exact replay
+produced fingerprint
+`bd05ac8f87e58b9fdc57792cd19f763ee40a136dcd692e8e0399d19227566063`
+over one active revision covering 2026-03-06 through 2026-09-04. It admitted
+230 realized allocations and withheld 57 scopes: 28 for missing opening
+history, 13 for incomplete position reconciliation, and 16 for lifecycle
+review. Result validation, reporting-item value-sum parity, omission/reason
+parity, date coverage, and journal integrity passed. Exact replay returned the
+same fingerprint, and the database SHA-256 remained
+`16a6088aacefc2bbf1d0fce707502945e8d0eab754c7b531ab8a72ebe50f4c6e`.
+The result is explicitly `incomplete` and is not a complete portfolio realized
+P&L. On 2026-09-09, the project owner explicitly accepted this exact bounded
+result under acceptance UID
+`ONEJOURNAL-WEB-W08-GATE3-OWNER-ACCEPTANCE-20260909-01`. The acceptance is
+limited to fingerprint
+`bd05ac8f87e58b9fdc57792cd19f763ee40a136dcd692e8e0399d19227566063`,
+230 admitted allocations, 57 withheld scopes, and the declared coverage. It
+does not authorize persistence, a complete realized-P&L claim, API activation,
+browser acceptance, commit, or push. Gate 3 is complete for that exact scope.
+
+Migration 0025 corrects the still-empty release schema by preserving separate
+owner-acceptance identities and UTC instants for the current-valuation and
+realized-result fingerprints. Its 2026-09-09 disposable-copy rehearsal reached
+0025 with all 81 compared data-table row counts unchanged and journal integrity
+clean; the live journal remained at 0024 with its checksum unchanged. This does
+not by itself authorize the live migration or report-release persistence. The
+owner then separately approved a fresh checksum-matched backup and live 0025
+migration only. The live journal reached 0025 on 2026-09-09 with all 81 compared
+data-table row counts unchanged, integrity clean, and every reporting table
+still empty. The verified 0024 backup remains the rollback artifact. No report
+release or API audit row was written.
+
+The correction is locally validated by 546 passing tests plus 267 passing
+subtests, focused migration and route checks, frontend lint, and the production
+frontend build. These checks use synthetic or temporary data and do not
+constitute Gate 3 private-result acceptance.
+
 ## Rollback or supersession
 
 Before Gate 4, rollback is a focused code/document reversion and disposal of
