@@ -212,8 +212,17 @@ items and 57 omissions reproduced report fingerprint
 `506a4b49810e4da77f3880818a83425c835eb9cd25d08b1503dd95ed9d6ddb2c`.
 The source journal SHA-256 remained
 `097925d5532e7874e551eee343cc21b836a060585d1b01beea64a9bea0c74ffa`,
-at migration 0025 with all five reporting tables empty. Live migration 0026 and
-report persistence require a later explicit operation.
+at migration 0025 with all five reporting tables empty.
+
+The owner then separately approved a fresh private backup and live migration
+0026 only. On 2026-09-09 the backup matched the live migration-0025 journal
+byte for byte. The live journal reached 0026 with the migration file checksum
+and canonical Git revision recorded, all 67 non-reporting base-table row counts
+unchanged, table identity preserved, integrity clean, and all five reporting
+tables still empty. The verified migration-0025 backup remains the rollback
+artifact. The exact guarded persistence command subsequently passed its live
+read-only dry-run without changing the post-migration journal checksum. Report
+persistence and API restart remain separate later operations.
 
 Migration 0016 additively stores one immutable, account-scoped ADR-0024 Schwab
 evidence assembly and its exact account, position, order, transaction, fill,

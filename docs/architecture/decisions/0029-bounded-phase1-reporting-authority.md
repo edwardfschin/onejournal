@@ -280,7 +280,14 @@ items plus 57 omissions exactly. The prepared owner-accepted release uses alias
 `Primary`, UID `ONEJOURNAL-WEB-W08-REPORT-RELEASE-20260909-01`, and fingerprint
 `506a4b49810e4da77f3880818a83425c835eb9cd25d08b1503dd95ed9d6ddb2c`.
 Its value-free mode-`0600` authorization is prepared but not activated. The live
-journal remains at 0025 with every reporting table empty.
+journal reached migration 0026 on 2026-09-09 after a fresh byte-identical
+private backup. All 67 non-reporting base-table row counts remained unchanged,
+integrity passed, and every reporting table remained empty. A guarded
+persistence command now defaults to read-only and binds the exact prepared
+package, database checksum, release fingerprint, migration, authorization, and
+backup before permitting a write. Its exact live dry-run rebuilt all 230 items
+and 57 omissions and left the database checksum unchanged. Report persistence
+and API activation remain separate unapproved gates.
 
 The correction is locally validated by 546 passing tests plus 267 passing
 subtests, focused migration and route checks, frontend lint, and the production
