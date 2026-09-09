@@ -136,8 +136,10 @@ Before changing anything:
 
 Always fix root causes rather than introducing workarounds.
 
-Work one small, validated step at a time. Avoid broad rewrites unless evidence
-proves the current architecture cannot safely support the requirement.
+Within a work item, take small, validated execution steps, but group them into
+the largest coherent approval and delivery chunk that reaches a logical
+checkpoint without increasing risk. Avoid broad rewrites unless evidence proves
+the current architecture cannot safely support the requirement.
 
 Do not provide fragmented command spam. Show commands only when the user needs
 to run them, inspect their output, or approve an action.
@@ -608,6 +610,27 @@ database migrations, major framework changes, major dependency installations,
 public contract changes, external deployment, VPS/production synchronization,
 broker-account access, security-policy changes, order submission, pushing
 commits, or creating pull requests.
+
+Request approval for the largest coherent, explicitly bounded chunk of work
+that can safely reach a logical checkpoint. Do not ask for separate approval
+for routine inspection, implementation, tests, documentation, or validation
+steps within an already approved scope. One approval may cover multiple named
+actions, including commit, push, pull-request creation, merge, and canonical
+sync, when all targets and preconditions are explicit, the actions share the
+same risk boundary, validation must pass before each dependent action, and the
+combined authorization does not increase risk. Never infer an unlisted action
+from a general instruction.
+
+Separate approval is still required when a later action depends on evidence or
+a decision that is not yet available, or when it crosses a materially different
+risk or authority boundary. In particular, keep live private-database writes,
+runtime activation or restart, destructive operations, broker-account access,
+order submission, production deployment, and security-policy changes separate
+unless the user explicitly approves the exact combined scope and combining it
+does not increase risk. If a new failure, conflict, target change, or risk
+appears, stop before the affected action and explain the reason in human
+language. Do not turn read-only checks or ordinary validation into additional
+approval gates.
 
 When the user explicitly says `Proceed` after an action has already been
 presented and approved, treat that instruction as authorization to execute the
