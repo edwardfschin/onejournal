@@ -283,13 +283,14 @@ def _validate_release(release: ReportingRelease) -> None:
         raise Phase1ReportingError("report release fingerprint mismatch")
 
 
+def validate_reporting_release(release: ReportingRelease) -> None:
+    """Validate one complete immutable release without persistence."""
+
+    _validate_release(release)
+
+
 def persist_reporting_release(con: duckdb.DuckDBPyConnection, release: ReportingRelease) -> None:
     _validate_release(release)
-    existing = con.execute("SELECT report_release_fingerprint FROM phase1_reporting_releases WHERE report_release_uid = ?", [release.report_release_uid]).fetchone()
-    if existing is not None:
-        if existing[0] != release.report_release_fingerprint:
-            raise Phase1ReportingError("report release UID conflicts with existing immutable state")
-        return
     processed = len(release.items) + len(release.omissions)
     available = len(release.items)
     unavailable = sum(x.item_status == "unavailable" for x in release.omissions)
@@ -300,6 +301,18 @@ def persist_reporting_release(con: duckdb.DuckDBPyConnection, release: Reporting
         reason_counts[omission.reason_code] = reason_counts.get(omission.reason_code, 0) + 1
     con.execute("BEGIN TRANSACTION")
     try:
+        existing = con.execute(
+            "SELECT report_release_fingerprint FROM phase1_reporting_releases "
+            "WHERE report_release_uid = ?",
+            [release.report_release_uid],
+        ).fetchone()
+        if existing is not None:
+            if existing[0] != release.report_release_fingerprint:
+                raise Phase1ReportingError(
+                    "report release UID conflicts with existing immutable state"
+                )
+            con.execute("COMMIT")
+            return
         con.execute(
             """INSERT INTO phase1_reporting_releases (
                    report_release_uid, contract_version,

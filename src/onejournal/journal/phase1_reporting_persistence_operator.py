@@ -1,4 +1,4 @@
-"""Guarded preparation and disposable-copy rehearsal for WEB-W08 releases."""
+"""Guarded preparation, rehearsal, and persistence for WEB-W08 releases."""
 
 from __future__ import annotations
 
@@ -8,6 +8,7 @@ from hashlib import sha256
 import json
 import os
 from pathlib import Path
+import re
 import shutil
 import stat
 import tempfile
@@ -34,16 +35,25 @@ from onejournal.journal.phase1_reporting_repository import (
     REPORTING_RELEASE_AUTHORIZATION_VERSION,
     ReportingAccount,
     ReportingRelease,
+    authorize_reporting_release,
     calculate_report_release_fingerprint,
+    load_reporting_release_authorization,
     load_reporting_release,
     persist_reporting_release,
+    validate_reporting_release,
 )
 
 
 PACKAGE_SCHEMA = "onejournal.phase1-report-release-package.v1"
 REHEARSAL_SCHEMA = "onejournal.phase1-report-release-rehearsal.v1"
+PERSISTENCE_AUDIT_SCHEMA = "onejournal.phase1-report-release-persistence-audit.v1"
 SUPPORTED_SOURCE_MIGRATION_VERSIONS = {"0025", "0026"}
 REHEARSAL_MIGRATION_VERSION = "0026"
+PERSISTENCE_MIGRATION_VERSION = "0026"
+AUTHORIZATION_FILENAME = "report-release-authorization.json"
+MANIFEST_FILENAME = "manifest.json"
+_DIGEST_RE = re.compile(r"[0-9a-f]{64}")
+MAX_PACKAGE_DOCUMENT_BYTES = 1024 * 1024
 
 
 class Phase1ReportingPersistenceOperatorError(ValueError):
@@ -67,6 +77,58 @@ class ReportingReleaseRehearsal:
     unchanged_data_table_count: int
 
 
+@dataclass(frozen=True)
+class ReportingReleasePersistenceExecution:
+    release: ReportingRelease
+    target_state_before: str
+    database_sha256_before: str
+    database_sha256_after: str
+    write_requested: bool
+    created: bool
+    replayed: bool
+    release_count: int
+    account_count: int
+    realized_item_count: int
+    omission_count: int
+    audit_count: int
+
+    def privacy_safe_audit(self) -> dict[str, object]:
+        """Return persistence evidence without values or private identities."""
+
+        return {
+            "schema": PERSISTENCE_AUDIT_SCHEMA,
+            "report_release_uid": self.release.report_release_uid,
+            "report_release_fingerprint": (
+                self.release.report_release_fingerprint
+            ),
+            "owner_acceptance_uid": self.release.owner_acceptance_uid,
+            "account_aliases": [x.account_alias for x in self.release.accounts],
+            "processed_count": len(self.release.items)
+            + len(self.release.omissions),
+            "available_count": len(self.release.items),
+            "unavailable_count": len(self.release.omissions),
+            "quality": "incomplete" if self.release.omissions else "valid",
+            "migration_version": PERSISTENCE_MIGRATION_VERSION,
+            "target_state_before": self.target_state_before,
+            "database_sha256_before": self.database_sha256_before,
+            "database_sha256_after": self.database_sha256_after,
+            "write_requested": self.write_requested,
+            "created": self.created,
+            "replayed": self.replayed,
+            "reporting_table_counts": {
+                "releases": self.release_count,
+                "accounts": self.account_count,
+                "realized_items": self.realized_item_count,
+                "omissions": self.omission_count,
+                "audit_events": self.audit_count,
+            },
+            "provider_call_performed": False,
+            "credential_access_performed": False,
+            "order_api_performed": False,
+            "api_restart_performed": False,
+        }
+
+
 def _utc(value: datetime, field: str) -> datetime:
     if value.tzinfo is None or value.utcoffset() != UTC.utcoffset(value):
         raise Phase1ReportingPersistenceOperatorError(
@@ -87,13 +149,25 @@ def _sha256_file(path: Path) -> str:
     return digest.hexdigest()
 
 
+def _require_digest(value: str, label: str) -> str:
+    if _DIGEST_RE.fullmatch(value) is None:
+        raise Phase1ReportingPersistenceOperatorError(
+            f"{label} must be lowercase SHA-256 hex"
+        )
+    return value
+
+
 def _require_private_file(path: Path, label: str) -> Path:
     supplied = path.expanduser()
-    if supplied.is_symlink():
-        raise Phase1ReportingPersistenceOperatorError(f"{label} must not be a symlink")
+    if not supplied.is_absolute() or supplied.is_symlink():
+        raise Phase1ReportingPersistenceOperatorError(
+            f"{label} must be an absolute non-symlink file"
+        )
     resolved = supplied.resolve()
     if not resolved.is_file():
         raise Phase1ReportingPersistenceOperatorError(f"{label} does not exist")
+    if resolved.stat().st_size <= 0:
+        raise Phase1ReportingPersistenceOperatorError(f"{label} must not be empty")
     if stat.S_IMODE(resolved.stat().st_mode) != 0o600:
         raise Phase1ReportingPersistenceOperatorError(f"{label} must use mode 0600")
     if stat.S_IMODE(resolved.parent.stat().st_mode) != 0o700:
@@ -101,6 +175,50 @@ def _require_private_file(path: Path, label: str) -> Path:
             f"{label} directory must use mode 0700"
         )
     return resolved
+
+
+def _require_private_directory(path: Path, label: str) -> Path:
+    supplied = path.expanduser()
+    if not supplied.is_absolute() or supplied.is_symlink():
+        raise Phase1ReportingPersistenceOperatorError(
+            f"{label} must be an absolute non-symlink directory"
+        )
+    resolved = supplied.resolve()
+    if not resolved.is_dir():
+        raise Phase1ReportingPersistenceOperatorError(f"{label} does not exist")
+    if stat.S_IMODE(resolved.stat().st_mode) != 0o700:
+        raise Phase1ReportingPersistenceOperatorError(
+            f"{label} must use mode 0700"
+        )
+    return resolved
+
+
+def _latest_migration(con: duckdb.DuckDBPyConnection) -> str:
+    row = con.execute(
+        """SELECT version FROM schema_migrations
+           WHERE status = 'applied'
+           ORDER BY CAST(version AS INTEGER) DESC LIMIT 1"""
+    ).fetchone()
+    if row is None:
+        raise Phase1ReportingPersistenceOperatorError(
+            "database has no applied migration"
+        )
+    return str(row[0])
+
+
+def _reporting_counts(
+    con: duckdb.DuckDBPyConnection,
+) -> tuple[int, int, int, int, int]:
+    return tuple(
+        int(con.execute(f"SELECT count(*) FROM {table}").fetchone()[0])
+        for table in (
+            "phase1_reporting_releases",
+            "phase1_reporting_release_accounts",
+            "phase1_reporting_release_realized_items",
+            "phase1_reporting_release_omissions",
+            "phase1_reporting_api_audit_events",
+        )
+    )
 
 
 def _require_empty_reporting_boundary(db_path: Path) -> None:
@@ -230,12 +348,14 @@ def prepare_owner_accepted_reporting_release(
         omissions=reporting_omissions(realized),
     )
     provisional = ReportingRelease(**base, report_release_fingerprint="")
-    return ReportingRelease(
+    release = ReportingRelease(
         **base,
         report_release_fingerprint=calculate_report_release_fingerprint(
             release=provisional
         ),
     )
+    validate_reporting_release(release)
+    return release
 
 
 def rehearse_reporting_release(
@@ -347,6 +467,380 @@ def rehearse_reporting_release(
         identical_replay_verified=True,
         migration_version=migration_version,
         unchanged_data_table_count=len(data_counts_before),
+    )
+
+
+def _load_package_json(path: Path, label: str) -> tuple[dict[str, Any], bytes]:
+    private_path = _require_private_file(path, label)
+    if private_path.stat().st_size > MAX_PACKAGE_DOCUMENT_BYTES:
+        raise Phase1ReportingPersistenceOperatorError(
+            f"{label} exceeds the accepted size"
+        )
+    payload = private_path.read_bytes()
+    try:
+        document = json.loads(payload)
+    except (UnicodeError, json.JSONDecodeError) as exc:
+        raise Phase1ReportingPersistenceOperatorError(
+            f"{label} is not valid JSON"
+        ) from exc
+    if not isinstance(document, dict):
+        raise Phase1ReportingPersistenceOperatorError(
+            f"{label} must contain one JSON object"
+        )
+    return document, payload
+
+
+def _parse_utc_text(value: object, label: str) -> datetime:
+    if not isinstance(value, str):
+        raise Phase1ReportingPersistenceOperatorError(
+            f"{label} must be a UTC timestamp"
+        )
+    try:
+        parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError as exc:
+        raise Phase1ReportingPersistenceOperatorError(
+            f"{label} must be a UTC timestamp"
+        ) from exc
+    return _utc(parsed, label)
+
+
+def prepare_reporting_release_from_package(
+    *,
+    db_path: Path,
+    broker_current_authorization_path: Path,
+    package_dir: Path,
+) -> ReportingRelease:
+    """Rebuild and validate the exact value-free prepared package."""
+
+    package = _require_private_directory(package_dir, "prepared package")
+    if {item.name for item in package.iterdir()} != {
+        MANIFEST_FILENAME,
+        AUTHORIZATION_FILENAME,
+    }:
+        raise Phase1ReportingPersistenceOperatorError(
+            "prepared package files do not exactly match the contract"
+        )
+    manifest, _ = _load_package_json(
+        package / MANIFEST_FILENAME, "prepared package manifest"
+    )
+    authorization_path = package / AUTHORIZATION_FILENAME
+    _, authorization_bytes = _load_package_json(
+        authorization_path, "prepared report authorization"
+    )
+    expected_fields = {
+        "schema",
+        "report_release_uid",
+        "report_release_fingerprint",
+        "current_valuation_run_uid",
+        "current_result_fingerprint",
+        "current_owner_acceptance_uid",
+        "current_owner_accepted_at_utc",
+        "realized_calculation_run_id",
+        "realized_result_fingerprint",
+        "realized_owner_acceptance_uid",
+        "realized_owner_accepted_at_utc",
+        "history_revision_uid",
+        "coverage_start_date",
+        "coverage_end_date",
+        "calculation_version",
+        "generated_at_utc",
+        "release_status",
+        "owner_acceptance_uid",
+        "owner_accepted_at_utc",
+        "account_aliases",
+        "processed_count",
+        "available_count",
+        "unavailable_count",
+        "reconciliation_pending_count",
+        "reason_counts",
+        "quality",
+        "authorization_sha256",
+        "rehearsal",
+        "database_write_performed",
+        "rehearsal_copy_write_performed",
+        "provider_call_performed",
+        "credential_access_performed",
+        "order_api_performed",
+        "api_restart_performed",
+    }
+    if set(manifest) != expected_fields or manifest.get("schema") != PACKAGE_SCHEMA:
+        raise Phase1ReportingPersistenceOperatorError(
+            "prepared package manifest does not match the contract"
+        )
+    if (
+        manifest["database_write_performed"] is not False
+        or manifest["rehearsal_copy_write_performed"] is not True
+        or manifest["provider_call_performed"] is not False
+        or manifest["credential_access_performed"] is not False
+        or manifest["order_api_performed"] is not False
+        or manifest["api_restart_performed"] is not False
+    ):
+        raise Phase1ReportingPersistenceOperatorError(
+            "prepared package safety flags are invalid"
+        )
+    aliases = manifest["account_aliases"]
+    if (
+        not isinstance(aliases, list)
+        or len(aliases) != 1
+        or not isinstance(aliases[0], str)
+    ):
+        raise Phase1ReportingPersistenceOperatorError(
+            "prepared package must bind exactly one account alias"
+        )
+    if manifest["authorization_sha256"] != sha256(authorization_bytes).hexdigest():
+        raise Phase1ReportingPersistenceOperatorError(
+            "prepared report authorization checksum mismatch"
+        )
+    for field in (
+        "report_release_fingerprint",
+        "current_result_fingerprint",
+        "realized_result_fingerprint",
+    ):
+        if not isinstance(manifest[field], str):
+            raise Phase1ReportingPersistenceOperatorError(
+                f"prepared package {field} is invalid"
+            )
+        _require_digest(manifest[field], f"prepared package {field}")
+
+    release = prepare_owner_accepted_reporting_release(
+        db_path=db_path,
+        broker_current_authorization_path=broker_current_authorization_path,
+        account_alias=aliases[0],
+        expected_realized_result_fingerprint=manifest[
+            "realized_result_fingerprint"
+        ],
+        realized_owner_acceptance_uid=manifest[
+            "realized_owner_acceptance_uid"
+        ],
+        realized_owner_accepted_at_utc=_parse_utc_text(
+            manifest["realized_owner_accepted_at_utc"],
+            "realized_owner_accepted_at_utc",
+        ),
+        report_release_uid=manifest["report_release_uid"],
+        generated_at_utc=_parse_utc_text(
+            manifest["generated_at_utc"], "generated_at_utc"
+        ),
+        report_owner_acceptance_uid=manifest["owner_acceptance_uid"],
+        report_owner_accepted_at_utc=_parse_utc_text(
+            manifest["owner_accepted_at_utc"], "owner_accepted_at_utc"
+        ),
+    )
+    reasons: dict[str, int] = {}
+    for omission in release.omissions:
+        reasons[omission.reason_code] = reasons.get(omission.reason_code, 0) + 1
+    expected_bindings = {
+        "report_release_uid": release.report_release_uid,
+        "report_release_fingerprint": release.report_release_fingerprint,
+        "current_valuation_run_uid": release.current_valuation_run_uid,
+        "current_result_fingerprint": release.current_result_fingerprint,
+        "current_owner_acceptance_uid": release.current_owner_acceptance_uid,
+        "current_owner_accepted_at_utc": _utc_text(
+            release.current_owner_accepted_at_utc
+        ),
+        "realized_calculation_run_id": release.realized_calculation_run_id,
+        "realized_result_fingerprint": release.realized_result_fingerprint,
+        "realized_owner_acceptance_uid": release.realized_owner_acceptance_uid,
+        "realized_owner_accepted_at_utc": _utc_text(
+            release.realized_owner_accepted_at_utc
+        ),
+        "history_revision_uid": release.history_revision_uid,
+        "coverage_start_date": release.coverage_start_date.isoformat(),
+        "coverage_end_date": release.coverage_end_date.isoformat(),
+        "calculation_version": release.calculation_version,
+        "generated_at_utc": _utc_text(release.generated_at_utc),
+        "release_status": release.release_status,
+        "owner_acceptance_uid": release.owner_acceptance_uid,
+        "owner_accepted_at_utc": _utc_text(release.owner_accepted_at_utc),
+        "account_aliases": [x.account_alias for x in release.accounts],
+        "processed_count": len(release.items) + len(release.omissions),
+        "available_count": len(release.items),
+        "unavailable_count": len(release.omissions),
+        "reconciliation_pending_count": 0,
+        "reason_counts": dict(sorted(reasons.items())),
+        "quality": "incomplete" if release.omissions else "valid",
+    }
+    if any(manifest[key] != value for key, value in expected_bindings.items()):
+        raise Phase1ReportingPersistenceOperatorError(
+            "prepared package does not match the rebuilt exact release"
+        )
+    rehearsal = manifest["rehearsal"]
+    if (
+        not isinstance(rehearsal, dict)
+        or rehearsal.get("schema") != REHEARSAL_SCHEMA
+        or rehearsal.get("report_release_uid") != release.report_release_uid
+        or rehearsal.get("report_release_fingerprint")
+        != release.report_release_fingerprint
+        or rehearsal.get("release_count") != 1
+        or rehearsal.get("account_count") != len(release.accounts)
+        or rehearsal.get("realized_item_count") != len(release.items)
+        or rehearsal.get("omission_count") != len(release.omissions)
+        or rehearsal.get("audit_count") != 0
+        or rehearsal.get("identical_replay_verified") is not True
+        or rehearsal.get("migration_version") != REHEARSAL_MIGRATION_VERSION
+    ):
+        raise Phase1ReportingPersistenceOperatorError(
+            "prepared package rehearsal evidence is invalid"
+        )
+    authorization = load_reporting_release_authorization(authorization_path)
+    authorize_reporting_release(release, authorization)
+    return release
+
+
+def _inspect_persistence_target(
+    target: Path, release: ReportingRelease
+) -> tuple[str, tuple[int, int, int, int, int]]:
+    with duckdb.connect(str(target), read_only=True) as con:
+        if _latest_migration(con) != PERSISTENCE_MIGRATION_VERSION:
+            raise Phase1ReportingPersistenceOperatorError(
+                "database must be exactly at migration 0026"
+            )
+        counts = _reporting_counts(con)
+        if counts == (0, 0, 0, 0, 0):
+            return "would_create", counts
+        if counts[:4] != (
+            1,
+            len(release.accounts),
+            len(release.items),
+            len(release.omissions),
+        ):
+            raise Phase1ReportingPersistenceOperatorError(
+                "reporting boundary contains unexpected existing state"
+            )
+        loaded = load_reporting_release(
+            con, report_release_uid=release.report_release_uid
+        )
+    if loaded != release:
+        raise Phase1ReportingPersistenceOperatorError(
+            "target contains a conflicting report release"
+        )
+    return "identical_replay", counts
+
+
+def execute_reporting_release_persistence(
+    db_path: Path,
+    *,
+    release: ReportingRelease,
+    authorization_path: Path,
+    expected_database_sha256: str,
+    expected_report_release_fingerprint: str,
+    persist: bool = False,
+    verified_backup_path: Path | None = None,
+) -> ReportingReleasePersistenceExecution:
+    """Validate by default; persist only with exact hashes and a backup."""
+
+    target = _require_private_file(db_path, "database")
+    expected_database_digest = _require_digest(
+        expected_database_sha256, "expected database SHA-256"
+    )
+    expected_release_digest = _require_digest(
+        expected_report_release_fingerprint,
+        "expected report release fingerprint",
+    )
+    if release.report_release_fingerprint != expected_release_digest:
+        raise Phase1ReportingPersistenceOperatorError(
+            "rebuilt report release fingerprint differs from the approved target"
+        )
+    validate_reporting_release(release)
+    authorization = load_reporting_release_authorization(authorization_path)
+    authorize_reporting_release(release, authorization)
+    if Path(str(target) + ".wal").exists():
+        raise Phase1ReportingPersistenceOperatorError(
+            "database WAL exists; target is not quiescent"
+        )
+    before_digest = _sha256_file(target)
+    if before_digest != expected_database_digest:
+        raise Phase1ReportingPersistenceOperatorError(
+            "database checksum differs from the approved target"
+        )
+    backup: Path | None = None
+    if persist:
+        if verified_backup_path is None:
+            raise Phase1ReportingPersistenceOperatorError(
+                "persistence requires a verified backup"
+            )
+        backup = _require_private_file(verified_backup_path, "verified backup")
+        if target.samefile(backup):
+            raise Phase1ReportingPersistenceOperatorError(
+                "verified backup must be a distinct file"
+            )
+        if _sha256_file(backup) != before_digest:
+            raise Phase1ReportingPersistenceOperatorError(
+                "verified backup is not byte-identical to the approved target"
+            )
+    elif verified_backup_path is not None:
+        raise Phase1ReportingPersistenceOperatorError(
+            "verified backup is accepted only with persistence"
+        )
+
+    target_state, counts = _inspect_persistence_target(target, release)
+    if not persist:
+        after_digest = _sha256_file(target)
+        if after_digest != before_digest:
+            raise Phase1ReportingPersistenceOperatorError(
+                "dry-run changed the database"
+            )
+        return ReportingReleasePersistenceExecution(
+            release=release,
+            target_state_before=target_state,
+            database_sha256_before=before_digest,
+            database_sha256_after=after_digest,
+            write_requested=False,
+            created=False,
+            replayed=False,
+            release_count=counts[0],
+            account_count=counts[1],
+            realized_item_count=counts[2],
+            omission_count=counts[3],
+            audit_count=counts[4],
+        )
+
+    with duckdb.connect(str(target)) as con:
+        if _latest_migration(con) != PERSISTENCE_MIGRATION_VERSION:
+            raise Phase1ReportingPersistenceOperatorError(
+                "database migration changed before persistence"
+            )
+        current_counts = _reporting_counts(con)
+        if current_counts != counts:
+            raise Phase1ReportingPersistenceOperatorError(
+                "reporting state changed before persistence"
+            )
+        persist_reporting_release(con, release)
+        loaded = load_reporting_release(
+            con, report_release_uid=release.report_release_uid
+        )
+        counts_after = _reporting_counts(con)
+    if loaded != release:
+        raise Phase1ReportingPersistenceOperatorError(
+            "persisted release failed exact read-back"
+        )
+    expected_counts = (
+        1,
+        len(release.accounts),
+        len(release.items),
+        len(release.omissions),
+        counts[4],
+    )
+    if counts_after != expected_counts:
+        raise Phase1ReportingPersistenceOperatorError(
+            "persisted reporting table counts are invalid"
+        )
+    if backup is None or _sha256_file(backup) != before_digest:
+        raise Phase1ReportingPersistenceOperatorError(
+            "verified backup changed during persistence"
+        )
+    return ReportingReleasePersistenceExecution(
+        release=release,
+        target_state_before=target_state,
+        database_sha256_before=before_digest,
+        database_sha256_after=_sha256_file(target),
+        write_requested=True,
+        created=target_state == "would_create",
+        replayed=target_state == "identical_replay",
+        release_count=counts_after[0],
+        account_count=counts_after[1],
+        realized_item_count=counts_after[2],
+        omission_count=counts_after[3],
+        audit_count=counts_after[4],
     )
 
 

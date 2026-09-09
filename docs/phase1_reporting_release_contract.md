@@ -49,8 +49,16 @@ created, and the live journal remained unchanged. Migration 0026 therefore
 widens only that still-empty item column to `DECIMAL(38,27)`. A fresh disposable
 copy reached 0026, preserved 67 non-reporting base-table row counts, persisted
 the release twice idempotently, and read back all 230 admitted items and 57
-withheld scopes exactly. The live journal remains at 0025 with every reporting
-table empty; live migration 0026 and report persistence remain unapproved.
+withheld scopes exactly. The owner then separately approved a fresh private
+backup and live migration 0026 only. The live journal reached 0026 on
+2026-09-09 with all 67 non-reporting base-table row counts unchanged, clean
+integrity, and every reporting table still empty. The migration-0025 backup is
+the rollback artifact. The guarded persistence command defaults to read-only,
+requires the exact prepared package plus database and release fingerprints,
+and requires a distinct byte-identical backup with its explicit write flag.
+Its exact live dry-run rebuilt the 230 admitted items and 57 omissions and left
+the post-migration database checksum unchanged. Report persistence and API
+restart remain unapproved.
 
 Gate 3 owner acceptance was granted on 2026-09-09 for bounded realized-result
 fingerprint

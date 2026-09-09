@@ -1,12 +1,17 @@
 from __future__ import annotations
 
+from contextlib import contextmanager
 from datetime import UTC, date, datetime
 from decimal import Decimal
+from hashlib import sha256
 import json
 from pathlib import Path
+import shutil
 import tempfile
 import unittest
 from unittest.mock import patch
+
+import duckdb
 
 from onejournal.api.broker_current_position_contracts import (
     BrokerCurrentFinancialReleaseAuthorization,
@@ -22,10 +27,18 @@ from onejournal.journal.phase1_reporting_calculation import (
     RealizedScopeOmission,
 )
 from onejournal.journal.phase1_reporting_persistence_operator import (
+    AUTHORIZATION_FILENAME,
     Phase1ReportingPersistenceOperatorError,
+    execute_reporting_release_persistence,
     prepare_owner_accepted_reporting_release,
+    prepare_reporting_release_from_package,
     rehearse_reporting_release,
     write_private_release_package,
+)
+from onejournal.journal.phase1_reporting_repository import (
+    RealizedHistoryItem,
+    ReportingOmission,
+    load_reporting_release,
 )
 
 
@@ -139,7 +152,8 @@ class Phase1ReportingPersistenceOperatorTests(unittest.TestCase):
             result_fingerprint="c" * 64,
         )
 
-    def _prepare(self, *, account: str = "private-account"):
+    @contextmanager
+    def _preparation_context(self, *, account: str = "private-account"):
         current_authorization = BrokerCurrentFinancialReleaseAuthorization(
             owner_acceptance_uid="current-acceptance",
             valuation_run_uid="current-run",
@@ -148,6 +162,8 @@ class Phase1ReportingPersistenceOperatorTests(unittest.TestCase):
             decision="accepted",
         )
         realized = self._realized(account=account)
+        item = realized.items[0]
+        omission = realized.omissions[0]
         with (
             patch(
                 "onejournal.journal.phase1_reporting_persistence_operator.load_broker_current_financial_release_authorization",
@@ -169,13 +185,40 @@ class Phase1ReportingPersistenceOperatorTests(unittest.TestCase):
             ),
             patch(
                 "onejournal.journal.phase1_reporting_persistence_operator.reporting_items",
-                return_value=(),
+                return_value=(
+                    RealizedHistoryItem(
+                        item_uid=item.item_uid,
+                        source_broker=item.source_broker,
+                        source_account_id=item.source_account_id,
+                        instrument_key=item.instrument_key,
+                        symbol=item.symbol,
+                        asset_class=item.asset_class,
+                        close_market_date=item.close_market_date,
+                        closed_at_utc=item.closed_at_utc,
+                        currency=item.currency,
+                        realized_pnl=item.realized_pnl,
+                    ),
+                ),
             ),
             patch(
                 "onejournal.journal.phase1_reporting_persistence_operator.reporting_omissions",
-                return_value=(),
+                return_value=(
+                    ReportingOmission(
+                        omission_uid=omission.omission_uid,
+                        source_broker=omission.source_broker,
+                        source_account_id=omission.source_account_id,
+                        close_market_date=omission.close_market_date,
+                        symbol=omission.symbol,
+                        reason_code=omission.reason_code,
+                        item_status="incomplete",
+                    ),
+                ),
             ),
         ):
+            yield
+
+    def _prepare(self, *, account: str = "private-account"):
+        with self._preparation_context(account=account):
             return prepare_owner_accepted_reporting_release(
                 db_path=self.db,
                 broker_current_authorization_path=self.authorization_path,
@@ -188,6 +231,31 @@ class Phase1ReportingPersistenceOperatorTests(unittest.TestCase):
                 report_owner_acceptance_uid="report-acceptance",
                 report_owner_accepted_at_utc=NOW,
             )
+
+    def _package(self):
+        release = self._prepare()
+        rehearsal = rehearse_reporting_release(
+            source_db_path=self.db,
+            rehearsal_db_path=self.root / "package-rehearsal.duckdb",
+            release=release,
+        )
+        package = self.root / "package"
+        write_private_release_package(
+            output_dir=package, release=release, rehearsal=rehearsal
+        )
+        return release, package
+
+    def _advance_source_to_0026(self) -> None:
+        apply_schema_migrations(
+            self.db, target_version="0026", migrations_dir=MIGRATIONS
+        )
+        self.db.chmod(0o600)
+
+    def _backup(self) -> Path:
+        backup = self.root / "verified-backup.duckdb"
+        shutil.copy2(self.db, backup)
+        backup.chmod(0o600)
+        return backup
 
     def test_preparation_binds_alias_and_separate_acceptances(self) -> None:
         release = self._prepare()
@@ -228,6 +296,187 @@ class Phase1ReportingPersistenceOperatorTests(unittest.TestCase):
         self.assertNotIn("private-account", serialized)
         self.assertNotIn("12.34", serialized)
         self.assertFalse(document["database_write_performed"])
+
+    def test_prepared_package_rebuilds_and_authorizes_exact_release(self) -> None:
+        release, package = self._package()
+        self._advance_source_to_0026()
+        with self._preparation_context():
+            rebuilt = prepare_reporting_release_from_package(
+                db_path=self.db,
+                broker_current_authorization_path=self.authorization_path,
+                package_dir=package,
+            )
+        self.assertEqual(rebuilt, release)
+
+    def test_tampered_package_fails_before_persistence(self) -> None:
+        _, package = self._package()
+        self._advance_source_to_0026()
+        manifest_path = package / "manifest.json"
+        manifest = json.loads(manifest_path.read_text())
+        manifest["available_count"] += 1
+        manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+        with (
+            self._preparation_context(),
+            self.assertRaisesRegex(
+                Phase1ReportingPersistenceOperatorError,
+                "does not match the rebuilt exact release",
+            ),
+        ):
+            prepare_reporting_release_from_package(
+                db_path=self.db,
+                broker_current_authorization_path=self.authorization_path,
+                package_dir=package,
+            )
+
+    def test_persistence_dry_run_is_read_only_and_privacy_safe(self) -> None:
+        release, package = self._package()
+        self._advance_source_to_0026()
+        before = file_sha256(self.db)
+        execution = execute_reporting_release_persistence(
+            self.db,
+            release=release,
+            authorization_path=package / AUTHORIZATION_FILENAME,
+            expected_database_sha256=before,
+            expected_report_release_fingerprint=(
+                release.report_release_fingerprint
+            ),
+        )
+        self.assertEqual(execution.target_state_before, "would_create")
+        self.assertFalse(execution.write_requested)
+        self.assertEqual(execution.database_sha256_after, before)
+        audit = json.dumps(execution.privacy_safe_audit(), sort_keys=True)
+        self.assertNotIn("private-account", audit)
+        self.assertNotIn("12.34", audit)
+        self.assertIn('"api_restart_performed": false', audit)
+
+    def test_persistence_requires_exact_backup_and_reads_back(self) -> None:
+        release, package = self._package()
+        self._advance_source_to_0026()
+        backup = self._backup()
+        before = file_sha256(self.db)
+        execution = execute_reporting_release_persistence(
+            self.db,
+            release=release,
+            authorization_path=package / AUTHORIZATION_FILENAME,
+            expected_database_sha256=before,
+            expected_report_release_fingerprint=(
+                release.report_release_fingerprint
+            ),
+            persist=True,
+            verified_backup_path=backup,
+        )
+        self.assertTrue(execution.created)
+        self.assertFalse(execution.replayed)
+        self.assertEqual(
+            (
+                execution.release_count,
+                execution.account_count,
+                execution.realized_item_count,
+                execution.omission_count,
+                execution.audit_count,
+            ),
+            (1, 1, 1, 1, 0),
+        )
+        self.assertEqual(file_sha256(backup), before)
+        self.assertNotEqual(file_sha256(self.db), before)
+        with duckdb.connect(str(self.db), read_only=True) as con:
+            loaded = load_reporting_release(
+                con, report_release_uid=release.report_release_uid
+            )
+        self.assertEqual(loaded, release)
+
+    def test_persistence_rejects_wrong_migration_and_backup(self) -> None:
+        release, package = self._package()
+        before = file_sha256(self.db)
+        with self.assertRaisesRegex(
+            Phase1ReportingPersistenceOperatorError,
+            "exactly at migration 0026",
+        ):
+            execute_reporting_release_persistence(
+                self.db,
+                release=release,
+                authorization_path=package / AUTHORIZATION_FILENAME,
+                expected_database_sha256=before,
+                expected_report_release_fingerprint=(
+                    release.report_release_fingerprint
+                ),
+            )
+
+        self._advance_source_to_0026()
+        before = file_sha256(self.db)
+        backup = self._backup()
+        backup.write_bytes(backup.read_bytes() + b"mismatch")
+        with self.assertRaisesRegex(
+            Phase1ReportingPersistenceOperatorError,
+            "not byte-identical",
+        ):
+            execute_reporting_release_persistence(
+                self.db,
+                release=release,
+                authorization_path=package / AUTHORIZATION_FILENAME,
+                expected_database_sha256=before,
+                expected_report_release_fingerprint=(
+                    release.report_release_fingerprint
+                ),
+                persist=True,
+                verified_backup_path=backup,
+            )
+
+    def test_persistence_rejects_changed_hashes_authorization_and_wal(self) -> None:
+        release, package = self._package()
+        self._advance_source_to_0026()
+        before = file_sha256(self.db)
+        common = {
+            "release": release,
+            "authorization_path": package / AUTHORIZATION_FILENAME,
+            "expected_database_sha256": before,
+            "expected_report_release_fingerprint": (
+                release.report_release_fingerprint
+            ),
+        }
+        with self.assertRaisesRegex(
+            Phase1ReportingPersistenceOperatorError,
+            "approved target",
+        ):
+            execute_reporting_release_persistence(
+                self.db,
+                **{
+                    **common,
+                    "expected_report_release_fingerprint": "f" * 64,
+                },
+            )
+        with self.assertRaisesRegex(
+            Phase1ReportingPersistenceOperatorError,
+            "database checksum differs",
+        ):
+            execute_reporting_release_persistence(
+                self.db,
+                **{**common, "expected_database_sha256": "0" * 64},
+            )
+
+        authorization_path = package / AUTHORIZATION_FILENAME
+        authorization = json.loads(authorization_path.read_text())
+        authorization["report_release_fingerprint"] = "f" * 64
+        authorization_path.write_text(json.dumps(authorization), encoding="utf-8")
+        with self.assertRaisesRegex(ValueError, "does not match"):
+            execute_reporting_release_persistence(self.db, **common)
+        self.assertEqual(file_sha256(self.db), before)
+
+        authorization["report_release_fingerprint"] = (
+            release.report_release_fingerprint
+        )
+        authorization_path.write_text(json.dumps(authorization), encoding="utf-8")
+        wal = Path(str(self.db) + ".wal")
+        wal.write_bytes(b"not-quiescent")
+        with self.assertRaisesRegex(
+            Phase1ReportingPersistenceOperatorError, "WAL exists"
+        ):
+            execute_reporting_release_persistence(self.db, **common)
+        self.assertEqual(file_sha256(self.db), before)
+
+
+def file_sha256(path: Path) -> str:
+    return sha256(path.read_bytes()).hexdigest()
 
 
 def stat_mode(path: Path) -> int:
