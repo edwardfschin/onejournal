@@ -19,3 +19,6 @@ dependencies = [
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[project.optional-dependencies]
+security = ["webauthn>=3.0.1,<4"]

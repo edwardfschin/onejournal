@@ -6,9 +6,14 @@
 - Related roadmap items: P1-09, P1-10, WEB-W10, WEB-W12, OPS-06
 - Related contracts: ADR-0017, ADR-0018, `docs/local_owner_journal_api_contract.md`, `docs/production_web_delivery_contract.md`
 - Supersedes: None; does not change the accepted production foundation
-- Superseded by: None
+- Superseded by: ADR-0031 for the subsequent Mac passkey prototype decision only; portability findings remain applicable
 
-## Owner direction: local security implementation deferred
+## Earlier owner direction: local security implementation deferred
+
+This section and the password/TOTP design below record the earlier deferred
+proposal. The subsequent owner instruction to proceed directly with passkeys
+is accepted for bounded local implementation in ADR-0031. It does not activate
+the accepted site or accept production security/hosting.
 
 On 2026-10-05, after considering password/TOTP and passkeys, the owner chose
 to keep the current Mac-only setup simple and defer additional website

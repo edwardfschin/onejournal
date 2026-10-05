@@ -1,3 +1,5 @@
+import { fetchLocalOwner } from './local-owner-access.ts';
+
 export const LOCAL_OWNER_CURRENT_PORTFOLIO_API_PATH =
   '/api/v1/local-owner/portfolio/current';
 export const BROKER_CURRENT_CONTRACT_VERSION =
@@ -306,7 +308,7 @@ export function validateBrokerCurrentPortfolio(value: unknown): BrokerCurrentPor
 }
 
 export async function fetchBrokerCurrentPortfolio(): Promise<BrokerCurrentPortfolio> {
-  const response = await fetch(LOCAL_OWNER_CURRENT_PORTFOLIO_API_PATH, {
+  const response = await fetchLocalOwner(LOCAL_OWNER_CURRENT_PORTFOLIO_API_PATH, {
     cache: 'no-store',
   });
   if (!response.ok) {

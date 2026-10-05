@@ -1,7 +1,8 @@
 import { sites } from '@openai/sites-vite-plugin';
 import tailwindcss from '@tailwindcss/postcss';
 import vinext from 'vinext';
-import { defineConfig } from 'vite';
+import { defineConfig, type ViteDevServer } from 'vite';
+import { readFileSync } from 'node:fs';
 import hostingConfig from './.openai/hosting.json';
 
 const SITE_CREATOR_PLACEHOLDER_DATABASE_ID =
@@ -36,6 +37,17 @@ const localBindingConfig = {
 };
 
 export default defineConfig(async () => {
+  const passkeyMode = process.env.ONEJOURNAL_PASSKEY_MODE === '1';
+  if (passkeyMode && (!process.env.ONEJOURNAL_TEST_TLS_CERT || !process.env.ONEJOURNAL_TEST_TLS_KEY)) {
+    throw new Error('The passkey prototype requires explicit localhost HTTPS; no HTTP fallback.');
+  }
+  const passkeyHeaders = {
+    'Cache-Control': 'no-store',
+    'X-Frame-Options': 'DENY',
+    'Content-Security-Policy': "frame-ancestors 'none'; base-uri 'self'; form-action 'self'",
+    'Referrer-Policy': 'no-referrer',
+    'Permissions-Policy': 'publickey-credentials-get=(self), publickey-credentials-create=(self)',
+  };
   // Keep Wrangler and Miniflare state project-local. These are non-secret tool
   // settings; application environment belongs in ignored `.env*` files.
   process.env.WRANGLER_WRITE_LOGS ??= 'false';
@@ -46,11 +58,17 @@ export default defineConfig(async () => {
   const { cloudflare } = await import('@cloudflare/vite-plugin');
 
   return {
+    // Non-secret opt-in mode only; no private configuration enters the bundle.
+    define: { 'process.env.ONEJOURNAL_PASSKEY_MODE': JSON.stringify(passkeyMode ? '1' : '0') },
     css: { postcss: { plugins: [tailwindcss()] } },
     server: {
       host: '127.0.0.1',
       // Never hop to another port: the canonical URL and API pairing must agree.
       strictPort: true,
+      ...(passkeyMode ? { https: {
+        cert: readFileSync(process.env.ONEJOURNAL_TEST_TLS_CERT!),
+        key: readFileSync(process.env.ONEJOURNAL_TEST_TLS_KEY!),
+      }, headers: passkeyHeaders } : {}),
       ...(isCodexSeatbeltSandbox
         ? { watch: { useFsEvents: false, usePolling: true } }
         : {}),
@@ -70,6 +88,16 @@ export default defineConfig(async () => {
         : {}),
     },
     plugins: [
+      {
+        name: 'onejournal-passkey-response-headers',
+        configureServer(server: ViteDevServer) {
+          // Vinext handles SSR before Vite's standard header middleware.
+          if (passkeyMode) server.middlewares.use((_request, response, next) => {
+            for (const [name, value] of Object.entries(passkeyHeaders)) response.setHeader(name, value);
+            next();
+          });
+        },
+      },
       vinext(),
       sites(),
       cloudflare({

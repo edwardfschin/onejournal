@@ -1,3 +1,5 @@
+import { fetchLocalOwner } from './local-owner-access.ts';
+
 export const LOCAL_OWNER_REPORTS_API_PREFIX = '/api/v1/local-owner/reports';
 
 export type Quality = 'valid' | 'stale' | 'incomplete' | 'reconciliation_pending' | 'unavailable' | 'failed';
@@ -75,7 +77,7 @@ function realizedItem(value: unknown): boolean {
 }
 
 async function request(path: string, signal?: AbortSignal): Promise<Record<string, unknown>> {
-  const res = await fetch(path, { cache: 'no-store', signal });
+  const res = await fetchLocalOwner(path, { cache: 'no-store', signal });
   if (!res.ok) throw new Error(res.status === 422 ? 'Check the dates, account, and symbol. This selection is not supported.' : 'The reporting service is unavailable. Try again when it is running.');
   const value: unknown = await res.json();
   context(value);
@@ -111,7 +113,7 @@ export async function fetchRealizedHistory(filters: HistoryFilters, signal?: Abo
 // Check the export belongs to the loaded release/selection before saving it.
 export async function fetchReportCsv(current: ReportContext, history?: { report: HistoryReport; filters: HistoryFilters }): Promise<Blob> {
   const path = history ? `realized-history.csv?${historyQuery(history.filters)}` : 'current/positions.csv';
-  const res = await fetch(`${LOCAL_OWNER_REPORTS_API_PREFIX}/${path}`, { cache: 'no-store' });
+  const res = await fetchLocalOwner(`${LOCAL_OWNER_REPORTS_API_PREFIX}/${path}`, { cache: 'no-store' });
   const expected = history?.report ?? current;
   if (!res.ok || !res.headers.get('content-type')?.startsWith('text/csv')
     || res.headers.get('X-OneJournal-Report-Release-Fingerprint') !== expected.metadata.report_release_fingerprint
