@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { Geist, Geist_Mono } from 'next/font/google';
 import './globals.css';
+import PasskeyBoundary from '@/components/passkey-boundary';
 
 const geistSans = Geist({ variable: '--font-geist-sans', subsets: ['latin'] });
 const geistMono = Geist_Mono({ variable: '--font-geist-mono', subsets: ['latin'] });
@@ -11,5 +12,5 @@ export const metadata: Metadata = {
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
-  return <html className="dark" lang="en"><body className={`${geistSans.variable} ${geistMono.variable}`}>{children}</body></html>;
+  return <html className="dark" lang="en"><body className={`${geistSans.variable} ${geistMono.variable}`}><PasskeyBoundary enabled={process.env.ONEJOURNAL_PASSKEY_MODE === '1'}>{children}</PasskeyBoundary></body></html>;
 }

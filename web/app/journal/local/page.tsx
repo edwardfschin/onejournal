@@ -9,6 +9,7 @@ import {
   LockKeyhole, Menu, NotebookPen, RefreshCw, Search, Settings, ShieldCheck,
 } from 'lucide-react';
 import { LOCAL_ROUTES } from '@/lib/routes';
+import { fetchLocalOwner } from '@/lib/local-owner-access';
 
 const API_ROOT = '/api/v5/local-owner/journal';
 const CONTRACT_VERSION = 'onejournal.local-owner-journal.v5';
@@ -213,7 +214,7 @@ class ApiError extends Error {
 }
 
 async function apiJson<T>(path: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(path, init);
+  const response = await fetchLocalOwner(path, init);
   if (!response.ok) throw new ApiError('The local journal request could not be completed.', response.status);
   const value = await response.json() as T;
   const metadata = (value as { metadata?: Metadata }).metadata;

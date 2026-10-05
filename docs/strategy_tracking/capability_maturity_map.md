@@ -94,6 +94,30 @@ or production claim.
 This update advances only bounded reporting; it does not promote the other
 capabilities in the September snapshot.
 
+### Bounded Mac passkey implementation: 2026-10-05
+
+ADR-0031 selects direct passkeys for the single-owner Mac prototype, supporting
+the product vision's private trustworthy review workspace without adding a
+password/TOTP intermediate system or another website. The separate security
+store, verified WebAuthn ceremonies, session/CSRF gate and shared frontend path
+are implemented and validated with signed synthetic credentials and disposable
+journal state. Exact HTTPS origin/Host, replay, expiry, owner/UV/signature checks,
+offline recovery, public-key limits and denial before financial/audit work pass.
+The isolated certificate-verified HTTPS smoke reaches the existing private API
+only after sign-in and denies it after logout.
+
+The owner subsequently approved and activated the bounded protected Mac pair,
+verified its encrypted USB access-setup backup, supplied real-browser passkey
+registration evidence, and confirmed Reports sign-in, sign-out hiding the
+private view and re-login. Anonymous journal/export requests remain denied;
+the accepted financial configuration and calculations are unchanged. This
+advances the evidence from synthetic-only validation to an owner-verified basic
+Mac login flow, not full security/operational or financial acceptance. M3 remains
+the conservative overall security maturity; P1-09/WEB-W10 remain in progress,
+and production operations and P1-10 through P1-12 are not promoted. The USB image
+backs up access setup, not passkey private keys or the financial journal.
+See `docs/mac_passkey_access_contract.md` for evidence and limitations.
+
 ## Update rules
 
 Update this map when a capability crosses a maturity boundary or when evidence

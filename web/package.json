@@ -11,6 +11,7 @@
     "start": "wrangler dev --config dist/server/wrangler.json",
     "lint": "oxlint",
     "test:reports": "node --experimental-strip-types --test tests/local-owner-reports.test.mjs",
+    "test:access": "node --experimental-strip-types --test tests/local-owner-access.test.mjs",
     "format": "oxfmt"
   },
   "dependencies": {

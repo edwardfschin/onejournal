@@ -68,8 +68,19 @@ as before. Saved snapshots remain dated snapshots, not live quotes.
 Rollback: stop this managed session and return to the previous two-terminal
 procedure using the same existing private files. No journal schema, data,
 release authorization, broker credentials, or accepted financial fingerprints
-are changed by installing the launcher. Security remains deferred for local
-use and is required before private non-local exposure.
+are changed by installing the launcher. The current launcher is still
+unauthenticated and must remain loopback-only. The separate opt-in passkey
+prototype in `docs/mac_passkey_access_contract.md` is for disposable local
+testing by default. The separately approved bounded Mac switchover uses explicit
+`--owner-local`, trusted HTTPS and private passkey enrollment; its activation and
+rollback follow that contract, not this legacy command. Security is required before private
+non-local exposure.
+
+The owner-approved Mac access-setup USB recovery method is documented in
+`docs/mac_passkey_access_contract.md`. Use its encrypted-image command from
+your own Terminal; never enter the image password in chat. It is not a backup
+of financial data or the Touch ID passkey, and does not activate the protected
+site, erase the USB, restore old credentials or complete production recovery.
 
 The sections below retain the legacy Streamlit/import operator procedures;
 they are not required merely to start the local website.
