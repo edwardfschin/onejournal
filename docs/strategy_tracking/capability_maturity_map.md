@@ -75,15 +75,22 @@ roadmap and repository documents. It is not a new acceptance decision.
 
 ### Bounded reporting update: 2026-10-05
 
-P1-08/WEB-W08 bounded reporting is **M3 - Validated for the local synthetic
-application path and exact private persistence**, not operationally accepted.
+P1-08/WEB-W08 bounded reporting is **M4 - Operationally accepted for the
+demonstrated private single-owner local-only scope**. Owner acceptance
+`ONEJOURNAL-WEB-W08-GATE4-OWNER-ACCEPTANCE-20261005-01` follows exact private
+API/CSV reconciliation and desktop/tablet/mobile and keyboard verification.
 ADR-0029 and `docs/phase1_reporting_release_contract.md` bind one `Primary`
 account, 230 admitted realized allocations, 57 withheld scopes, and explicit
 coverage. The local application now exposes account/symbol breakdowns,
 date/account/symbol selection, omission counts/reasons, and checked CSV exports.
-Private API activation, real-data application verification, and final owner
-acceptance remain open. Historical snapshots, complete portfolio realized/total
-P&L, broader analytics, and hosted production remain outside this claim.
+PR #13 delivered implementation `c62531c` into canonical merge `eba4a4c`;
+the canonical loopback API/application was activated and verified. Eleven
+privacy-safe read-audit rows were added within the approved bound; all 81 other
+compared tables/views retained identical counts and content. Historical
+snapshots, complete portfolio realized/total P&L, broader analytics, and hosted
+production remain outside this claim. Financial acceptance remains bound to
+the existing exact current and realized authorities, not a broader portfolio
+or production claim.
 This update advances only bounded reporting; it does not promote the other
 capabilities in the September snapshot.
 

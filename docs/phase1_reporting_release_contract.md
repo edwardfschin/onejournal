@@ -76,7 +76,7 @@ separate acceptance lineage, 287 processed scopes, the omission reasons, and
 the successful disposable-copy rehearsal. The authorization file is prepared
 but not active.
 
-### Current checkpoint: 2026-10-05
+### Pre-activation checkpoint: 2026-10-05
 
 The separately approved guarded live persistence has completed. Read-only
 verification found the exact release and fingerprints above at migration 0026,
@@ -96,6 +96,50 @@ Focused API/repository/route and frontend checks, type/lint/build checks, and
 responsive synthetic browser verification validate this local change, not
 private runtime acceptance. No live database or private API change is included.
 P1-08 remains in progress; full realized and total P&L remain unavailable.
+
+### Local runtime and owner acceptance: 2026-10-05
+
+The separately approved delivery and activation bundle completed through
+PR #13, implementation commit `c62531cabf675cec90e68bb7bfca9fa493291c38`,
+and canonical merge `eba4a4c1b8b34baf6386f28f82b8065355a051d6`.
+The canonical loopback API and `/local/reports` were activated using the exact
+persisted release above, without migration, recalculation, provider access,
+or financial-state changes. All six Python-version push/PR CI jobs passed,
+alongside 20 focused Python tests, five frontend tests, and type/lint/build
+checks.
+
+Private verification through the frontend proxy reconciled account/symbol
+breakdowns and the 58-position CSV to accepted current valuations, and every
+realized-history JSON/CSV item to the exact 230 stored admitted allocations.
+Release and selection fingerprints, exact decimal text, counts, quality, and
+the 57 omission reasons matched. A covered empty selection was valid; a range
+outside coverage was unavailable without financial values. Desktop, tablet,
+and mobile layouts had no page overflow; keyboard focus and horizontal table
+scroll preserved access to every column. Real-data verification emitted no
+holdings, financial values, source account identities, or private screenshots.
+
+Verification added 11 privacy-safe report-read audit rows within the approved
+maximum of 16: two current-account reads, two current-symbol reads, five
+realized-history reads, and one read of each CSV export. Audit fields and filter
+presence flags were checked for privacy. Counts and content hashes of all 81
+other compared tables/views were unchanged. The database file is not claimed
+byte-identical because the approved audit records were appended.
+
+After viewing the real local report, the owner stated, "It looks good lets
+proceed from here." Documentary acceptance
+`ONEJOURNAL-WEB-W08-GATE4-OWNER-ACCEPTANCE-20261005-01` binds that approval to
+the exact release and delivered implementation above. P1-08/WEB-W08 is complete
+and operationally accepted only for this demonstrated private single-owner,
+local-only scope. This acceptance record changes no persisted financial
+acceptance identity or authorization file.
+
+Full portfolio realized P&L and total P&L remain unavailable. Historical
+snapshots, broader analytics, continuous acquisition, credentials, authenticated
+hosting, deployment, other brokers, and trading remain excluded. The saved
+current snapshot is dated 2026-09-04; it is not a live quote. Production security,
+hosting/state, production quality checks, and final Phase 1 acceptance remain
+open. Rollback remains withdrawal of process-start reporting authorization;
+accepted releases and audit history are preserved.
 
 ## Impact map
 

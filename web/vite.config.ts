@@ -49,6 +49,8 @@ export default defineConfig(async () => {
     css: { postcss: { plugins: [tailwindcss()] } },
     server: {
       host: '127.0.0.1',
+      // Never hop to another port: the canonical URL and API pairing must agree.
+      strictPort: true,
       ...(isCodexSeatbeltSandbox
         ? { watch: { useFsEvents: false, usePolling: true } }
         : {}),

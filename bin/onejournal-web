@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+# Start both local services; the Python supervisor owns their shutdown.
+set -euo pipefail
+
+OJ_SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+OJ_ROOT="$(cd "$OJ_SCRIPT_DIR/.." && pwd)"
+OJ_ENV="${ONEJOURNAL_VENV_DIR:-${VIRTUAL_ENV:-$HOME/python-envs/onejournal-env}}"
+OJ_PY="${ONEJOURNAL_PYTHON:-$OJ_ENV/bin/python}"
+
+if [[ ! -x "$OJ_PY" ]]; then
+  echo "OneJournal did not start: activate the OneJournal Python environment or set ONEJOURNAL_PYTHON." >&2
+  exit 1
+fi
+
+exec "$OJ_PY" "$OJ_ROOT/scripts/web/run_local_owner_website.py" "$@"
