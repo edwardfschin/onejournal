@@ -2,9 +2,77 @@
 
 ## Purpose
 
-This is the simple operator workflow for the current OneJournal internal prototype.
+This covers the current private local website and the legacy internal prototype.
 
-OneJournal is read-only. It does not place orders, cancel orders, replace orders, or auto-trade.
+OneJournal is read-only toward brokers. Private journal entries and reviews can
+be saved through their approved application boundaries. It does not place,
+cancel, replace, or modify broker orders or auto-trade.
+
+## Local website: one terminal
+
+Use the repository's `bin/onejournal-web` launcher for the current Mac-only
+website. It starts the existing loopback API and development website together,
+opens the canonical local page, and keeps both in one foreground session.
+It is not a production server, login implementation, VPS deployment command,
+import, migration, or financial calculation.
+
+After the normal Python and `web/` dependency setup, configure it once:
+
+```bash
+./bin/onejournal-web configure
+```
+
+Enter the **existing approved** journal database and optional portfolio/report
+authorization file locations privately in that terminal. Input is hidden. Do
+not paste credentials or private configuration into chat. Blank authorization
+locations deliberately keep those financial routes unavailable. Configuration
+is saved outside Git at `~/.onejournal/local-web/config.json`, mode `0600`, inside
+a dedicated owner-only `0700` folder. Existing configuration is never overwritten;
+the permissions of an existing `~/.onejournal` folder are left unchanged.
+
+For normal use:
+
+```bash
+./bin/onejournal-web
+```
+
+Keep that terminal open. **Ctrl-C stops both services started by this command.**
+If either service crashes, its managed companion stops too. The launcher never
+kills an existing port owner or reads a stale PID file. If the previous two
+manual terminals are still running, it refuses occupied ports; leave those
+services alone until a deliberate switchover is approved.
+
+`./bin/onejournal-web --check` validates dependencies, private permissions,
+existing journal schema, and exact release authorizations without starting
+services, migrating the database, or writing read-audit rows. It does not
+require the normal ports to be free. `--no-browser` suppresses automatic browser
+opening. `--config` selects another private configuration file outside Git.
+`ONEJOURNAL_PYTHON` / `ONEJOURNAL_VENV_DIR` select the existing Python environment;
+`ONEJOURNAL_NODE` can select an installed Node executable. Nothing is installed
+automatically. Python 3.11–3.13 and Node 22.13+ are required.
+
+The optional configuration fields are `broker_current_authorization`,
+`reporting_authorization`, `web_port` (default 4173), `api_port` (default 8765),
+and `start_page` (a canonical `/local/` Journal, Trades, Portfolio, or Reports
+path). Required fields are `contract_version: onejournal.local-web.v1` and
+`journal_db_path`. Ports must be different and unprivileged; a host or remote
+API URL cannot be configured. The default page is Reports when report authority
+is configured, otherwise Portfolio when portfolio authority is configured,
+otherwise Journal. The website refuses to silently switch to another port.
+
+The launcher reads the same accepted financial authority as the manual API
+launcher. Startup validation does not update data. Once the browser loads,
+existing privacy-safe read audits and explicitly submitted journal writes work
+as before. Saved snapshots remain dated snapshots, not live quotes.
+
+Rollback: stop this managed session and return to the previous two-terminal
+procedure using the same existing private files. No journal schema, data,
+release authorization, broker credentials, or accepted financial fingerprints
+are changed by installing the launcher. Security remains deferred for local
+use and is required before private non-local exposure.
+
+The sections below retain the legacy Streamlit/import operator procedures;
+they are not required merely to start the local website.
 
 ## Activate OneJournal
 
