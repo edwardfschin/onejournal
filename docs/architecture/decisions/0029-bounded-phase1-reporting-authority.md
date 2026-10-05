@@ -289,9 +289,12 @@ backup before permitting a write. Its exact live dry-run rebuilt all 230 items
 and 57 omissions and left the database checksum unchanged. Report persistence
 and API activation were separate unapproved gates at that dry-run checkpoint.
 The later separately approved guarded persistence completed with exact
-read-back of the prepared release. The current checkpoint and remaining
-runtime/owner-acceptance boundary are recorded in
-`docs/phase1_reporting_release_contract.md`; persistence is not runtime acceptance.
+read-back of the prepared release. Subsequent separately approved canonical
+delivery, local activation, private verification, and the 2026-10-05 owner
+acceptance completed bounded P1-08/WEB-W08 for the demonstrated private
+single-owner local-only scope. The exact acceptance record and limitations are
+in `docs/phase1_reporting_release_contract.md`; neither persistence nor this
+bounded local acceptance establishes hosted production acceptance.
 
 The correction is locally validated by 546 passing tests plus 267 passing
 subtests, focused migration and route checks, frontend lint, and the production
