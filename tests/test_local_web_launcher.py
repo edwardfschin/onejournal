@@ -117,6 +117,27 @@ class LocalWebLauncherTests(unittest.TestCase):
         with patch.object(runner.shutil, "which", return_value="node"), patch.object(runner.subprocess, "run", return_value=Mock(stdout="24.0.0")), self.assertRaisesRegex(runner.LocalWebError, "npm ci"):
             runner.node_runtime(self.private)
 
+    def test_recently_closed_server_port_is_not_mistaken_for_an_active_listener(self) -> None:
+        with socket.socket() as server, socket.socket() as client, socket.socket() as api:
+            server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+            server.bind(("127.0.0.1", 0))
+            web_port = server.getsockname()[1]
+            server.listen()
+            client.connect(("127.0.0.1", web_port))
+            connection, _ = server.accept()
+            with connection:
+                connection.shutdown(socket.SHUT_WR)
+                self.assertEqual(client.recv(1), b"")
+                client.close()
+                self.assertEqual(connection.recv(1), b"")
+            server.close()
+            api.bind(("127.0.0.1", 0))
+            api_port = api.getsockname()[1]
+            api.close()
+            with socket.socket() as without_reuse, self.assertRaises(OSError):
+                without_reuse.bind(("127.0.0.1", web_port))
+            runner.free_ports(runner.LocalWebConfig(self.db, web_port=web_port, api_port=api_port))
+
     def test_child_environment_does_not_copy_provider_secrets(self) -> None:
         with patch.dict(os.environ, {"BROKER_TOKEN": "private", "VITE_PRIVATE_VALUE": "private", "ONEJOURNAL_LOCAL_API_URL": "https://invalid"}):
             env = runner.child_environment(ROOT, "/opt/bin/node")

@@ -155,6 +155,9 @@ def free_ports(config: LocalWebConfig) -> None:
         for label, port in (("website", config.web_port), ("API", config.api_port)):
             probe = socket.socket()
             sockets.append(probe)
+            # Like the servers, allow a recently closed TCP socket's TIME_WAIT;
+            # an active listener still prevents this bind.
+            probe.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
             try:
                 probe.bind(("127.0.0.1", port))
             except OSError:
