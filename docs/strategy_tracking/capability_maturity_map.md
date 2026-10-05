@@ -73,6 +73,20 @@ roadmap and repository documents. It is not a new acceptance decision.
 | Paper-trading execution plane | M0 - Identified for later work | Not accepted or enabled | Requires a separately approved execution architecture and all paper-trading gates | PAP-01 through PAP-07 |
 | Guarded live trading | M1 - Readiness controls documented | Not accepted or enabled | External review, paper evidence, explicit authorization, deployment, and bounded operating approval remain separate requirements | LIV-01 through LIV-05 and PAP gates |
 
+### Bounded reporting update: 2026-10-05
+
+P1-08/WEB-W08 bounded reporting is **M3 - Validated for the local synthetic
+application path and exact private persistence**, not operationally accepted.
+ADR-0029 and `docs/phase1_reporting_release_contract.md` bind one `Primary`
+account, 230 admitted realized allocations, 57 withheld scopes, and explicit
+coverage. The local application now exposes account/symbol breakdowns,
+date/account/symbol selection, omission counts/reasons, and checked CSV exports.
+Private API activation, real-data application verification, and final owner
+acceptance remain open. Historical snapshots, complete portfolio realized/total
+P&L, broader analytics, and hosted production remain outside this claim.
+This update advances only bounded reporting; it does not promote the other
+capabilities in the September snapshot.
+
 ## Update rules
 
 Update this map when a capability crosses a maturity boundary or when evidence

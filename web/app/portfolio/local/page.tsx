@@ -20,7 +20,7 @@ const navItems = [
   ['Portfolio', BriefcaseBusiness, LOCAL_ROUTES.portfolio],
   ['Trades', Activity, LOCAL_ROUTES.trades],
   ['Journal', BookOpenText, LOCAL_ROUTES.journal],
-  ['Reports', FileChartColumn, null],
+  ['Reports', FileChartColumn, LOCAL_ROUTES.reports],
   ['Data', Database, null],
 ] as const;
 

@@ -287,7 +287,11 @@ persistence command now defaults to read-only and binds the exact prepared
 package, database checksum, release fingerprint, migration, authorization, and
 backup before permitting a write. Its exact live dry-run rebuilt all 230 items
 and 57 omissions and left the database checksum unchanged. Report persistence
-and API activation remain separate unapproved gates.
+and API activation were separate unapproved gates at that dry-run checkpoint.
+The later separately approved guarded persistence completed with exact
+read-back of the prepared release. The current checkpoint and remaining
+runtime/owner-acceptance boundary are recorded in
+`docs/phase1_reporting_release_contract.md`; persistence is not runtime acceptance.
 
 The correction is locally validated by 546 passing tests plus 267 passing
 subtests, focused migration and route checks, frontend lint, and the production

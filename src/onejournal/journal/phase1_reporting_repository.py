@@ -447,12 +447,7 @@ def realized_history(release: ReportingRelease, *, from_date: date, to_date: dat
     if symbol is not None and symbol not in {x.symbol for x in release.items} | {x.symbol for x in release.omissions if x.symbol is not None}:
         raise Phase1ReportingError("requested symbol is unavailable")
     selected = tuple(x for x in release.items if from_date <= x.close_market_date <= to_date and (account_alias is None or (x.source_broker, x.source_account_id) == aliases[account_alias]) and (symbol is None or x.symbol == symbol))
-    omissions = [
-        x for x in release.omissions
-        if from_date <= x.close_market_date <= to_date
-        and (account_alias is None or (x.source_broker, x.source_account_id) == aliases[account_alias])
-        and (symbol is None or x.symbol is None or x.symbol == symbol)
-    ]
+    omissions = select_reporting_omissions(release, from_date=from_date, to_date=to_date, account_alias=account_alias, symbol=symbol)
     reasons: dict[str, int] = {}
     for item in omissions:
         reasons[item.reason_code] = reasons.get(item.reason_code, 0) + 1
@@ -461,6 +456,18 @@ def realized_history(release: ReportingRelease, *, from_date: date, to_date: dat
     if omissions:
         return "incomplete", selected, reasons
     return "valid", selected, reasons
+
+
+def select_reporting_omissions(release: ReportingRelease, *, from_date: date, to_date: date, account_alias: str | None = None, symbol: str | None = None) -> tuple[ReportingOmission, ...]:
+    """Use the same omission scope for history quality and API/CSV counts."""
+
+    aliases = {x.account_alias: (x.source_broker, x.source_account_id) for x in release.accounts}
+    return tuple(
+        x for x in release.omissions
+        if from_date <= x.close_market_date <= to_date
+        and (account_alias is None or (x.source_broker, x.source_account_id) == aliases[account_alias])
+        and (symbol is None or x.symbol is None or x.symbol == symbol)
+    )
 
 
 def current_breakdowns(db_path: Path, release: ReportingRelease) -> tuple[BrokerCurrentPositionValuationReadBack, tuple[dict[str, Any], ...], tuple[dict[str, Any], ...]]:
