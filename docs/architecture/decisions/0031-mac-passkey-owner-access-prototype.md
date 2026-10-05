@@ -1,6 +1,7 @@
 # ADR-0031: Direct-to-passkeys Mac owner-access prototype
 
-- Status: Accepted for local implementation and subsequently approved bounded Mac activation; basic owner-login check verified, full security/production acceptance pending
+- Status: Accepted
+- Acceptance scope: Local implementation and subsequently approved bounded Mac activation; basic owner-login check verified, full security/production acceptance pending
 - Date: 2026-10-05
 - Decision owner: OneJournal project owner
 - Related work: P1-09, WEB-W10
