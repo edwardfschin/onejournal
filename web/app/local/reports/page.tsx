@@ -1,163 +1,214 @@
 'use client';
 
 import Link from 'next/link';
-import { CircleAlert, FileSpreadsheet, LockKeyhole, RefreshCw } from 'lucide-react';
+import { CircleAlert, Download, FileSpreadsheet, LockKeyhole, RefreshCw } from 'lucide-react';
 import * as React from 'react';
-import { fetchRealizedHistory, fetchReportAccounts, fetchReportSymbols, type AccountBreakdown, type RealizedItem, type SymbolBreakdown } from '@/lib/local-owner-reports';
+import {
+  fetchRealizedHistory, fetchReportAccounts, fetchReportCsv, fetchReportSymbols, formatReportMoney,
+  type AccountBreakdown, type AccountReport, type HistoryFilters, type HistoryReport, type Quality,
+  type ReportContext, type SymbolBreakdown, type SymbolReport,
+} from '@/lib/local-owner-reports';
 import { LOCAL_ROUTES } from '@/lib/routes';
 
-function money(value: string | null, currency: string) {
-  return value === null ? "Unavailable" : new Intl.NumberFormat(undefined, { style: 'currency', currency, maximumFractionDigits: 2 }).format(Number(value));
+const qualityLabels: Record<Quality, string> = {
+  valid: 'Complete for this selection', stale: 'Stale data', incomplete: 'Partial results',
+  reconciliation_pending: 'Reconciliation pending', unavailable: 'Unavailable', failed: 'Report failed',
+};
+const reasonLabels: Record<string, string> = {
+  opening_history_missing: 'Opening history missing',
+  position_reconciliation_incomplete: 'Position reconciliation incomplete',
+  lifecycle_review_required: 'Lifecycle review needed',
+  outside_accepted_coverage: 'Dates outside the accepted coverage',
+  metric_unavailable: 'One or more metrics unavailable',
+};
+function label(value: string) { return reasonLabels[value] ?? value.replaceAll('_', ' '); }
+function readable(report: ReportContext) { return !['unavailable', 'failed'].includes(report.metadata.quality); }
+function message(error: unknown) { return error instanceof Error ? error.message : 'The reporting service is unavailable. Try again.'; }
+
+function QualitySummary({ report, unit }: { report: ReportContext; unit: string }) {
+  const { metadata, counts } = report;
+  return (
+    <section className={`bounded-report-quality ${metadata.quality}`} aria-label="Report quality" aria-live="polite">
+      <strong>{qualityLabels[metadata.quality]}</strong>
+      <p>{counts.available_count} available · {counts.unavailable_count} withheld · {counts.reconciliation_pending_count} pending · {counts.processed_count} {unit} checked</p>
+      {Object.entries(metadata.reason_counts).length ? (
+        <ul>{Object.entries(metadata.reason_counts).map(([reason, count]) => <li key={reason}>{label(reason)}: {count}</li>)}</ul>
+      ) : null}
+    </section>
+  );
+}
+
+function BreakdownTable({ rows, symbols = false }: { rows: (AccountBreakdown | SymbolBreakdown)[]; symbols?: boolean }) {
+  return (
+    // eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- The scroll region needs keyboard focus so every metric remains reachable.
+    <section className="report-table-region" aria-label={symbols ? 'Symbol breakdown, scroll for all metrics' : 'Account breakdown, scroll for all metrics'} tabIndex={0}>
+      <table className="report-table">
+        <caption className="sr-only">{symbols ? 'Current symbol breakdown' : 'Current account breakdown'}</caption>
+        <thead><tr>{symbols ? <th scope="col">Symbol</th> : null}<th scope="col">Account</th><th scope="col">Positions</th><th scope="col">Cost basis</th><th scope="col">Market value</th><th scope="col">Unrealized P&amp;L</th></tr></thead>
+        <tbody>{rows.map((row) => (
+          <tr key={`${row.account_alias}-${row.symbol ?? 'account'}-${row.currency}`}>
+            {symbols ? <th scope="row">{row.symbol}</th> : null}
+            {symbols ? <td>{row.account_alias}</td> : <th scope="row">{row.account_alias}</th>}
+            <td>{row.position_count}</td>
+            {(['open_cost_basis', 'broker_market_value', 'unrealized_pnl'] as const).map((metric) => (
+              <td key={metric}><span title={row[metric] ?? undefined}>{formatReportMoney(row[metric], row.currency)}</span><small>{row[`${metric}_status`] === 'valid' ? 'Available' : qualityLabels[row[`${metric}_status`]]}</small></td>
+            ))}
+          </tr>
+        ))}</tbody>
+      </table>
+    </section>
+  );
 }
 
 export default function LocalReportsPage() {
-  const [accounts, setAccounts] = React.useState<AccountBreakdown[]>([]);
-  const [symbols, setSymbols] = React.useState<SymbolBreakdown[]>([]);
-  const [history, setHistory] = React.useState<RealizedItem[]>([]);
-  const [from, setFrom] = React.useState('');
-  const [to, setTo] = React.useState('');
+  const [current, setCurrent] = React.useState<{ accounts: AccountReport; symbols: SymbolReport } | null>(null);
+  const [history, setHistory] = React.useState<{ report: HistoryReport; filters: HistoryFilters } | null>(null);
+  const [filters, setFilters] = React.useState<HistoryFilters>({ from: '', to: '', accountAlias: '', symbol: '' });
   const [error, setError] = React.useState<string | null>(null);
+  const [historyError, setHistoryError] = React.useState<string | null>(null);
+  const [downloadError, setDownloadError] = React.useState<string | null>(null);
   const [loading, setLoading] = React.useState(true);
+  const [historyLoading, setHistoryLoading] = React.useState(false);
+  const [downloading, setDownloading] = React.useState(false);
+  const historyRequest = React.useRef<AbortController | null>(null);
 
   React.useEffect(() => {
-    void Promise.all([fetchReportAccounts(), fetchReportSymbols()])
-      .then(([a, s]) => {
-        setAccounts(a.accounts);
-        setSymbols(s.symbols);
+    const controller = new AbortController();
+    void Promise.all([fetchReportAccounts(controller.signal), fetchReportSymbols(controller.signal)])
+      .then(([accounts, symbols]) => {
+        if (controller.signal.aborted) return;
+        if (accounts.metadata.report_release_fingerprint !== symbols.metadata.report_release_fingerprint
+          || accounts.metadata.current_valuation_asof !== symbols.metadata.current_valuation_asof
+          || accounts.metadata.current_valuation_asof === null) throw new Error('The current reports do not match. Reload after checking the reporting service.');
+        setCurrent({ accounts, symbols });
+        setFilters({ from: accounts.metadata.coverage_start_date, to: accounts.metadata.coverage_end_date, accountAlias: '', symbol: '' });
       })
-      .catch(() => setError('The accepted reporting release is unavailable. No current or historical values are substituted.'))
-      .finally(() => setLoading(false));
+      .catch((cause: unknown) => { if (!controller.signal.aborted) setError(message(cause)); })
+      .finally(() => { if (!controller.signal.aborted) setLoading(false); });
+    return () => { controller.abort(); historyRequest.current?.abort(); };
   }, []);
 
-  async function loadHistory(event: { preventDefault: () => void }) {
+  function changeFilter(key: keyof HistoryFilters, value: string) {
+    historyRequest.current?.abort();
+    setHistoryLoading(false);
+    setHistory(null);
+    setHistoryError(null);
+    setDownloadError(null);
+    setFilters((previous) => ({ ...previous, [key]: value }));
+  }
+
+  async function loadHistory(event: { preventDefault(): void }) {
     event.preventDefault();
-    if (!from || !to) return;
-    setError(null);
+    if (!current) return;
+    historyRequest.current?.abort();
+    setHistory(null);
+    setHistoryError(null);
+    setDownloadError(null);
+    const selection = { ...filters, symbol: filters.symbol.trim() };
+    if (!selection.from || !selection.to || selection.from > selection.to) {
+      setHistoryError('Choose a start date on or before the end date.');
+      return;
+    }
+    const controller = new AbortController();
+    historyRequest.current = controller;
+    setHistoryLoading(true);
     try {
-      const value = await fetchRealizedHistory(from, to);
-      setHistory(value.items);
-    } catch {
-      setHistory([]);
-      setError('That reporting range is unavailable or incomplete. No zero value was assumed.');
+      const report = await fetchRealizedHistory(selection, controller.signal);
+      if (controller.signal.aborted) return;
+      if (report.metadata.report_release_fingerprint !== current.accounts.metadata.report_release_fingerprint) throw new Error('The reporting release changed. Reload this page before selecting history.');
+      setHistory({ report, filters: selection });
+    } catch (cause) {
+      if (!controller.signal.aborted) setHistoryError(message(cause));
+    } finally {
+      if (!controller.signal.aborted) setHistoryLoading(false);
+    }
+  }
+
+  async function download(kind: 'positions' | 'history') {
+    if (!current || (kind === 'history' && (!history || !readable(history.report)))) return;
+    setDownloading(true);
+    setDownloadError(null);
+    try {
+      const blob = await fetchReportCsv(current.accounts, kind === 'history' && history ? history : undefined);
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = kind === 'positions' ? 'onejournal-current-positions.csv' : 'onejournal-realized-history.csv';
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+    } catch (cause) {
+      setDownloadError(message(cause));
+    } finally {
+      setDownloading(false);
     }
   }
 
   return (
-    <main className="app-shell local-portfolio-route">
+    <main className="app-shell local-reports-route">
       <section className="workspace">
         <header className="topbar">
-          <div className="brand-mark">
-            <span className="brand-glyph">1</span>
-            <span className="brand-wordmark">OneJournal</span>
-          </div>
-          <div className="topbar-actions">
-            <span className="local-pill">
-              <LockKeyhole aria-hidden="true" /> Local owner
-            </span>
-            <Link className="nav-item" href={LOCAL_ROUTES.portfolio}>Portfolio</Link>
-          </div>
+          <div className="brand-mark"><span className="brand-glyph">1</span><span className="brand-wordmark">OneJournal</span></div>
+          <nav className="report-navigation" aria-label="Private workspace">
+            <span className="report-owner"><LockKeyhole aria-hidden="true" /> Local owner</span>
+            <Link href={LOCAL_ROUTES.portfolio}>Portfolio</Link><Link href={LOCAL_ROUTES.trades}>Trades</Link><Link href={LOCAL_ROUTES.journal}>Journal</Link>
+          </nav>
         </header>
-        <output className="mode-banner local-portfolio-banner">
-          <span><FileSpreadsheet aria-hidden="true" /> Bounded reporting authority</span>
-          <p>Only an exact owner-accepted report release can supply breakdowns, history, or exports.</p>
-        </output>
+        <div className="mode-banner local-portfolio-banner"><span><FileSpreadsheet aria-hidden="true" /> Private reports</span><p>Saved snapshots and accepted history. Updates are manually released.</p></div>
         <div className="content-frame">
-          <div className="page-heading portfolio-heading">
-            <div>
-              <p className="eyebrow">Reports · private local owner</p>
-              <h1>Breakdowns that keep uncertainty visible.</h1>
-              <p className="heading-copy">
-                Current valuation and bounded realized history remain separate unless their scopes match exactly.
-              </p>
-            </div>
-          </div>
-          {loading ? (
-            <section className="panel local-portfolio-state">
-              <RefreshCw className="local-spinner" aria-hidden="true" />
-              <div>
-                <strong>Checking the accepted reporting release</strong>
-                <p>No cached or synthetic report is shown.</p>
-              </div>
-            </section>
-          ) : null}
-          {error ? (
-            <section className="panel local-portfolio-state is-unavailable" role="alert">
-              <CircleAlert aria-hidden="true" />
-              <div>
-                <strong>Reporting unavailable</strong>
-                <p>{error}</p>
-              </div>
-            </section>
-          ) : null}
-          {!loading && !error ? (
+          <div className="page-heading"><div><p className="eyebrow">Reports</p><h1>Your results, with the full context.</h1><p className="heading-copy">Current holdings and realized history show their own dates and coverage.</p></div></div>
+          {loading ? <section className="panel local-portfolio-state" aria-live="polite"><RefreshCw className="local-spinner" aria-hidden="true" /><div><strong>Loading your saved reports</strong><p>Checking the accepted release.</p></div></section> : null}
+          {error ? <section className="panel local-portfolio-state is-unavailable" role="alert"><CircleAlert aria-hidden="true" /><div><strong>Reporting unavailable</strong><p>{error}</p></div></section> : null}
+          {current ? (
             <>
-              <section className="local-metric-grid">
-                {accounts.map((row) => (
-                  <article className="metric-card portfolio-stat" key={`${row.account_alias}-${row.currency}`}>
-                    <div className="card-label">
-                      <span>{row.account_alias} · current value</span>
-                    </div>
-                    <p className="metric-value small">{money(row.broker_market_value, row.currency)}</p>
-                    <p className="metric-context">{row.position_count} positions · {row.broker_market_value_status}</p>
-                  </article>
-                ))}
+              <section className="panel report-section">
+                <div className="report-section-heading"><div><p className="eyebrow">Current portfolio</p><h2>Account breakdown</h2><p>Snapshot date: {current.accounts.metadata.current_valuation_asof}. This is a saved snapshot, not a live quote.</p></div><button className="report-download" type="button" onClick={() => void download('positions')} disabled={downloading || !readable(current.accounts)}><Download aria-hidden="true" /> Download positions CSV</button></div>
+                <QualitySummary report={current.accounts} unit="account/currency groups" />
+                {readable(current.accounts) && current.accounts.accounts.length ? <BreakdownTable rows={current.accounts.accounts} /> : <p className="report-empty">No account values are available for this release.</p>}
               </section>
-              <section className="panel">
-                <div className="panel-heading">
-                  <div>
-                    <p className="eyebrow">Current symbols</p>
-                    <h2>Broker-current breakdown</h2>
-                  </div>
-                </div>
-                <div className="local-holdings-list">
-                  {symbols.map((row) => (
-                    <article className="local-holding-row" key={`${row.symbol}-${row.currency}`}>
-                      <span className="symbol-tile">{row.symbol.slice(0, 1)}</span>
-                      <span className="local-holding-name">
-                        <strong>{row.symbol}</strong>
-                        <small>{row.position_count} positions</small>
-                      </span>
-                      <span className="holding-cell">
-                        <small>Market value</small>
-                        <strong>{money(row.broker_market_value, row.currency)}</strong>
-                      </span>
-                      <span className="holding-cell">
-                        <small>Unrealized P&amp;L</small>
-                        <strong>{money(row.unrealized_pnl, row.currency)}</strong>
-                      </span>
-                    </article>
-                  ))}
-                </div>
+              <section className="panel report-section">
+                <div className="report-section-heading"><div><p className="eyebrow">Current portfolio</p><h2>Symbol breakdown</h2><p>Equities use their symbol; options use their underlying symbol. Currencies remain separate.</p></div></div>
+                <QualitySummary report={current.symbols} unit="symbol/currency groups" />
+                {readable(current.symbols) && current.symbols.symbols.length ? <BreakdownTable rows={current.symbols.symbols} symbols /> : <p className="report-empty">No symbol values are available for this release.</p>}
               </section>
-              <section className="panel">
-                <div className="panel-heading">
-                  <div>
-                    <p className="eyebrow">Realized history</p>
-                    <h2>Accepted date range only</h2>
-                  </div>
-                </div>
-                <form className="local-report-filter" onSubmit={loadHistory}>
-                  <label>From
-                    <input aria-label="From market date" type="date" value={from} onChange={(e) => setFrom(e.target.value)} />
-                  </label>
-                  <label>To
-                    <input aria-label="To market date" type="date" value={to} onChange={(e) => setTo(e.target.value)} />
-                  </label>
-                  <button className="primary-action" type="submit">Load history</button>
+              <section className="panel report-section" aria-busy={historyLoading}>
+                <div className="report-section-heading"><div><p className="eyebrow">Realized P&amp;L</p><h2>Trade history</h2><p>Accepted coverage: {current.accounts.metadata.coverage_start_date} through {current.accounts.metadata.coverage_end_date}. Dates use the New York market day.</p></div></div>
+                <form className="local-report-filter" onSubmit={(event) => void loadHistory(event)}>
+                  <label>From<input type="date" required disabled={downloading} value={filters.from} min={current.accounts.metadata.coverage_start_date} max={current.accounts.metadata.coverage_end_date} onChange={(event) => changeFilter('from', event.target.value)} /></label>
+                  <label>To<input type="date" required disabled={downloading} value={filters.to} min={filters.from || current.accounts.metadata.coverage_start_date} max={current.accounts.metadata.coverage_end_date} onChange={(event) => changeFilter('to', event.target.value)} /></label>
+                  <label>Account<select aria-label="Account" disabled={downloading} value={filters.accountAlias} onChange={(event) => changeFilter('accountAlias', event.target.value)}><option value="">All admitted accounts</option>{[...new Set(current.accounts.accounts.map((row) => row.account_alias))].map((alias) => <option key={alias} value={alias}>{alias}</option>)}</select></label>
+                  <label>Symbol<input type="text" disabled={downloading} list="report-symbols" maxLength={64} placeholder="All admitted symbols" value={filters.symbol} onChange={(event) => changeFilter('symbol', event.target.value)} /></label>
+                  <datalist id="report-symbols">{[...new Set(current.symbols.symbols.map((row) => row.symbol))].map((symbol) => <option key={symbol} value={symbol}>{symbol}</option>)}</datalist>
+                  <button className="primary-action" type="submit" disabled={historyLoading || downloading}>{historyLoading ? 'Loading…' : 'Load history'}</button>
                 </form>
-                {history.map((item) => (
-                  <div className="local-holding-row" key={item.item_uid}>
-                    <span className="symbol-tile violet">{item.symbol.slice(0, 1)}</span>
-                    <span className="local-holding-name">
-                      <strong>{item.symbol}</strong>
-                      <small>{item.close_market_date} · {item.account_alias}</small>
-                    </span>
-                    <span className="holding-cell">
-                      <small>Realized P&amp;L</small>
-                      <strong>{money(item.realized_pnl, item.currency)}</strong>
-                    </span>
-                  </div>
-                ))}
+                {historyError ? <p className="report-error" role="alert">{historyError}</p> : null}
+                {historyLoading ? <output className="report-empty">Loading the selected history…</output> : null}
+                {!history && !historyLoading && !historyError ? <p className="report-empty">Choose your filters, then load history.</p> : null}
+                {history ? (
+                  <>
+                    <p className="report-selection">Loaded: {history.filters.from} through {history.filters.to} · {history.filters.accountAlias || 'All admitted accounts'} · {history.filters.symbol || 'All admitted symbols'}</p>
+                    <QualitySummary report={history.report} unit="allocations/scopes" />
+                    {readable(history.report) ? (
+                      <>
+                        {history.report.items.length ? (
+                          // eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- Keyboard users must be able to scroll the history columns.
+                          <section className="report-table-region" aria-label="Realized history, scroll for all columns" tabIndex={0}><table className="report-table"><caption className="sr-only">Realized results for the loaded filters</caption><thead><tr><th scope="col">Market date</th><th scope="col">Account</th><th scope="col">Symbol</th><th scope="col">Instrument</th><th scope="col">Realized P&amp;L</th></tr></thead><tbody>{history.report.items.map((item) => <tr key={item.item_uid}><td>{item.close_market_date}</td><td>{item.account_alias}</td><th scope="row">{item.symbol}</th><td>{item.asset_class}</td><td><span title={item.realized_pnl}>{formatReportMoney(item.realized_pnl, item.currency)}</span></td></tr>)}</tbody></table></section>
+                        ) : <p className="report-empty">{history.report.metadata.quality === 'valid' ? 'No realized activity in this fully covered selection.' : 'No admitted results in this selection. Withheld scopes remain unresolved.'}</p>}
+                        <button className="report-download" type="button" onClick={() => void download('history')} disabled={downloading}><Download aria-hidden="true" /> Download this history CSV</button>
+                        {history.report.metadata.quality !== 'valid' ? <p className="report-note">The CSV contains admitted records only. The withheld and pending counts above still apply.</p> : null}
+                      </>
+                    ) : <p className="report-empty">No financial result or download is available for this selection.</p>}
+                  </>
+                ) : null}
+              </section>
+              {downloadError ? <p className="report-error" role="alert">{downloadError}</p> : null}
+              {downloading ? <output className="report-note">Checking the download against the loaded report…</output> : null}
+              <section className="panel report-section report-context">
+                <h2>What these reports cover</h2>
+                <p>Total P&amp;L is unavailable: realized history and current holdings do not cover the same scope. Partial history is never added to a wider unrealized total.</p>
+                <p>Amounts are rounded to two decimal places for display. CSV downloads preserve the stored decimal text.</p>
+                <details><summary>Report source and acceptance</summary><dl><dt>Release</dt><dd>{current.accounts.metadata.report_release_uid}</dd><dt>Prepared (UTC)</dt><dd>{current.accounts.metadata.generated_at_utc}</dd><dt>Accepted (UTC)</dt><dd>{current.accounts.metadata.owner_accepted_at_utc}</dd><dt>Calculation</dt><dd>{current.accounts.metadata.calculation_version}</dd></dl></details>
               </section>
             </>
           ) : null}

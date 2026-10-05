@@ -1,16 +1,21 @@
 from __future__ import annotations
 
 import csv
+from concurrent.futures import ThreadPoolExecutor
+from dataclasses import replace
 from datetime import UTC, date, datetime
 from decimal import Decimal
 from io import StringIO
 import json
 from pathlib import Path
 import tempfile
+from threading import Lock
 import unittest
+from unittest.mock import patch
 
 import duckdb
 from fastapi.testclient import TestClient
+import onejournal.api.local_owner_journal as local_owner_api
 
 from onejournal.api.app import app as demo_app
 from onejournal.api.broker_current_position_contracts import (
@@ -376,6 +381,12 @@ class LocalOwnerReportingApiTests(LocalOwnerPortfolioApiTests):
             {f"S{index:02d}" for index in range(58)},
         )
         self.assertEqual(len(history.json()["items"]), 1)
+        self.assertEqual(accounts.json()["metadata"]["current_valuation_asof"], "2026-09-04")
+        self.assertEqual(history.json()["metadata"]["current_valuation_asof"], None)
+        self.assertEqual(history.json()["metadata"]["calculation_version"], "onejournal.pnl.v1")
+        self.assertEqual(history.json()["metadata"]["owner_accepted_at_utc"], "2026-09-04T20:00:00Z")
+        self.assertEqual(history.json()["metadata"]["quality"], "incomplete")
+        self.assertEqual(history.json()["counts"], {"processed_count": 2, "available_count": 1, "unavailable_count": 1, "reconciliation_pending_count": 0})
         with duckdb.connect(str(self.db_path), read_only=True) as con:
             actions = {
                 row[0]
@@ -434,6 +445,9 @@ class LocalOwnerReportingApiTests(LocalOwnerPortfolioApiTests):
         self.assertEqual(len(csv_rows), len(history_json.json()["items"]))
         self.assertEqual(csv_rows[0]["item_uid"], history_json.json()["items"][0]["item_uid"])
         self.assertEqual(csv_rows[0]["realized_pnl"], history_json.json()["items"][0]["realized_pnl"])
+        self.assertEqual(history_csv.headers["X-OneJournal-Report-Release-Fingerprint"], self.reporting_release.report_release_fingerprint)
+        self.assertEqual(history_csv.headers["X-OneJournal-Quality"], history_json.json()["metadata"]["quality"])
+        self.assertEqual(json.loads(history_csv.headers["X-OneJournal-Reason-Counts"]), history_json.json()["metadata"]["reason_counts"])
 
         body = "\n".join([positions_csv.text, history_csv.text])
         self.assertNotIn("account:synthetic-should-not-leak", body)
@@ -461,3 +475,66 @@ class LocalOwnerReportingApiTests(LocalOwnerPortfolioApiTests):
         self.assertNotIn("connection:synthetic-private", response.text)
         self.assertNotIn("raw/synthetic/positions.json", response.text)
         self.assertNotIn("account:synthetic-should-not-leak", response.text)
+
+    def test_reporting_filters_empty_and_outside_coverage_keep_json_csv_parity(self) -> None:
+        client = self._make_client(include_reporting=True)
+        for from_date, to_date, expected_quality, expected_count in (
+            ("2026-09-01", "2026-09-30", "incomplete", 1),
+            ("2026-09-05", "2026-09-30", "valid", 0),
+            ("2026-08-31", "2026-09-30", "unavailable", 0),
+        ):
+            with self.subTest(from_date=from_date):
+                params = {"from_date": from_date, "to_date": to_date, "account_alias": "Primary", "symbol": "S00"}
+                body = client.get(f"{LOCAL_OWNER_REPORTING_API_PREFIX}/realized-history", params=params).json()
+                export = client.get(f"{LOCAL_OWNER_REPORTING_API_PREFIX}/realized-history.csv", params=params)
+                self.assertEqual(body["metadata"]["quality"], expected_quality)
+                self.assertEqual(len(body["items"]), expected_count)
+                self.assertEqual(len(list(csv.DictReader(StringIO(export.text)))), expected_count)
+                self.assertEqual(export.headers["X-OneJournal-Selection-Fingerprint"], body["metadata"]["selection_fingerprint"])
+                self.assertEqual(export.headers["X-OneJournal-Quality"], expected_quality)
+                for key, value in body["counts"].items():
+                    self.assertEqual(int(export.headers["X-OneJournal-" + key.replace('_', '-')] ), value)
+        for bad_filter in ({"account_alias": "Unknown"}, {"symbol": "Unknown"}, {"from_date": "not-a-date"}):
+            params = {"from_date": "2026-09-01", "to_date": "2026-09-30", **bad_filter}
+            self.assertEqual(client.get(f"{LOCAL_OWNER_REPORTING_API_PREFIX}/realized-history", params=params).status_code, 422)
+
+    def test_reporting_mixed_omissions_keep_pending_and_withheld_counts_distinct(self) -> None:
+        original = self.reporting_release.omissions[0]
+        provisional = replace(
+            self.reporting_release,
+            report_release_uid="report-release-mixed",
+            omissions=(original, replace(original, omission_uid="pending-1", item_status="reconciliation_pending", reason_code="pending_review"), replace(original, omission_uid="outside-filter", close_market_date=date(2026, 9, 5))),
+            report_release_fingerprint="",
+        )
+        self.reporting_release = replace(provisional, report_release_fingerprint=calculate_report_release_fingerprint(release=provisional))
+        self.reporting_authorization = ReportingReleaseAuthorization(self.reporting_release.report_release_uid, self.reporting_release.report_release_fingerprint, self.reporting_release.owner_acceptance_uid)
+        with duckdb.connect(str(self.db_path)) as con:
+            persist_reporting_release(con, self.reporting_release)
+        client = self._make_client(include_reporting=True)
+        params = {"from_date": "2026-09-04", "to_date": "2026-09-04", "account_alias": "Primary", "symbol": "S00"}
+        body = client.get(f"{LOCAL_OWNER_REPORTING_API_PREFIX}/realized-history", params=params).json()
+        export = client.get(f"{LOCAL_OWNER_REPORTING_API_PREFIX}/realized-history.csv", params=params)
+        self.assertEqual(body["metadata"]["quality"], "reconciliation_pending")
+        self.assertEqual(body["counts"], {"processed_count": 3, "available_count": 1, "unavailable_count": 1, "reconciliation_pending_count": 1})
+        self.assertEqual(int(export.headers["X-OneJournal-Unavailable-Count"]), 1)
+        self.assertEqual(int(export.headers["X-OneJournal-Reconciliation-Pending-Count"]), 1)
+
+    def test_reporting_concurrent_reads_and_audits_share_the_database_lock(self) -> None:
+        guard = Lock()
+        with patch.object(local_owner_api, "Lock", return_value=guard):
+            client = self._make_client(include_reporting=True)
+        read_breakdowns = local_owner_api.current_breakdowns
+        audit_read = local_owner_api._audit_phase1_reporting_read
+
+        def guarded_read(*args, **kwargs):
+            self.assertTrue(guard.locked(), "report database reads must share the audit lock")
+            return read_breakdowns(*args, **kwargs)
+
+        def guarded_audit(*args, **kwargs):
+            self.assertTrue(guard.locked(), "report audits must share the database read lock")
+            return audit_read(*args, **kwargs)
+
+        paths = ["/current/accounts", "/current/symbols", "/current/positions.csv", "/realized-history?from_date=2026-09-01&to_date=2026-09-30"]
+        with patch.object(local_owner_api, "current_breakdowns", side_effect=guarded_read), patch.object(local_owner_api, "_audit_phase1_reporting_read", side_effect=guarded_audit), ThreadPoolExecutor(max_workers=4) as pool:
+            responses = list(pool.map(lambda path: client.get(LOCAL_OWNER_REPORTING_API_PREFIX + path), paths))
+        self.assertEqual([response.status_code for response in responses], [200] * len(paths))

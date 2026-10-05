@@ -54,6 +54,7 @@ from onejournal.journal.phase1_reporting_repository import (
     current_breakdowns,
     load_reporting_release,
     realized_history,
+    select_reporting_omissions,
     selection_fingerprint,
 )
 from onejournal.journal.search import JournalSearchFilters, search_journal
@@ -627,7 +628,7 @@ def create_local_owner_journal_app(
                 )
         return broker_current_response
 
-    def report_metadata(*, selection: str, quality: str, reason_counts: dict[str, int]) -> dict[str, Any]:
+    def report_metadata(*, selection: str, quality: str, reason_counts: dict[str, int], current_asof: date | None = None) -> dict[str, Any]:
         if reporting_release is None:
             raise HTTPException(status_code=503, detail="bounded reporting is unavailable")
         return {
@@ -639,26 +640,30 @@ def create_local_owner_journal_app(
             "coverage_end_date": reporting_release.coverage_end_date.isoformat(),
             "quality": quality,
             "reason_counts": reason_counts,
+            "current_valuation_asof": current_asof.isoformat() if current_asof else None,
+            "calculation_version": reporting_release.calculation_version,
+            "generated_at_utc": reporting_release.generated_at_utc.isoformat().replace("+00:00", "Z"),
+            "owner_accepted_at_utc": reporting_release.owner_accepted_at_utc.isoformat().replace("+00:00", "Z"),
         }
 
-    def report_counts(*, available_count: int, reason_counts: dict[str, int], quality: str) -> dict[str, int]:
+    def report_counts(*, available_count: int, reason_counts: dict[str, int], quality: str, pending_count: int = 0) -> dict[str, int]:
         unavailable_count = sum(reason_counts.values())
         return {
             "processed_count": available_count + unavailable_count,
             "available_count": available_count,
-            "unavailable_count": unavailable_count if quality != "reconciliation_pending" else 0,
-            "reconciliation_pending_count": unavailable_count if quality == "reconciliation_pending" else 0,
+            "unavailable_count": unavailable_count - pending_count,
+            "reconciliation_pending_count": pending_count,
         }
 
     def report_rows(rows: tuple[dict[str, Any], ...]) -> list[dict[str, Any]]:
         return [{**row, **{key: format(value, "f") if isinstance(value, Decimal) else value for key, value in row.items()}} for row in rows]
 
-    def report_csv(*, filename: str, fields: list[str], rows: list[dict[str, Any]], selection: str, counts: dict[str, int]) -> Response:
+    def report_csv(*, filename: str, fields: list[str], rows: list[dict[str, Any]], selection: str, counts: dict[str, int], quality: str, reason_counts: dict[str, int]) -> Response:
         output = StringIO(newline="")
         writer = csv.DictWriter(output, fieldnames=fields, extrasaction="ignore")
         writer.writeheader()
         writer.writerows(rows)
-        return Response(content=output.getvalue(), media_type="text/csv", headers={"Content-Disposition": f'attachment; filename="{filename}"', "X-OneJournal-Selection-Fingerprint": selection, "X-OneJournal-Processed-Count": str(counts["processed_count"]), "X-OneJournal-Available-Count": str(counts["available_count"]), "X-OneJournal-Unavailable-Count": str(counts["unavailable_count"]), "X-OneJournal-Reconciliation-Pending-Count": str(counts["reconciliation_pending_count"])})
+        return Response(content=output.getvalue(), media_type="text/csv", headers={"Content-Disposition": f'attachment; filename="{filename}"', "X-OneJournal-Selection-Fingerprint": selection, "X-OneJournal-Report-Release-Fingerprint": reporting_release.report_release_fingerprint, "X-OneJournal-Quality": quality, "X-OneJournal-Reason-Counts": json.dumps(reason_counts, sort_keys=True), "X-OneJournal-Processed-Count": str(counts["processed_count"]), "X-OneJournal-Available-Count": str(counts["available_count"]), "X-OneJournal-Unavailable-Count": str(counts["unavailable_count"]), "X-OneJournal-Reconciliation-Pending-Count": str(counts["reconciliation_pending_count"])})
 
     def audit_reporting_read(*, action: str, selection: str, filters_present: dict[str, bool], counts: dict[str, int], outcome: str) -> None:
         if reporting_release is None:
@@ -667,11 +672,17 @@ def create_local_owner_journal_app(
             with open_db(read_only=False) as con:
                 _audit_phase1_reporting_read(con, action=action, report_release_uid=reporting_release.report_release_uid, selection_fingerprint=selection, filters_present=filters_present, counts=counts, outcome=outcome)
 
+    def read_reporting_breakdowns():
+        # DuckDB cannot mix read-only and writable connections to the same file.
+        # Share the journal/audit lock so concurrent report requests cannot overlap them.
+        with db_lock:
+            return current_breakdowns(db_path, reporting_release)
+
     @app.get(f"{LOCAL_OWNER_REPORTING_API_PREFIX}/current/accounts", tags=["local-owner-reports"])
     def report_current_accounts() -> dict[str, Any]:
         if reporting_release is None:
             raise HTTPException(status_code=503, detail="bounded reporting is unavailable")
-        _valuation, accounts, _symbols = current_breakdowns(db_path, reporting_release)
+        _valuation, accounts, _symbols = read_reporting_breakdowns()
         selection = selection_fingerprint(reporting_release, action="current_accounts")
         rows = report_rows(accounts)
         unavailable = sum(any(value == "unavailable" for key, value in row.items() if key.endswith("_status")) for row in rows)
@@ -679,13 +690,13 @@ def create_local_owner_journal_app(
         reasons = {"metric_unavailable": unavailable} if unavailable else {}
         counts = report_counts(available_count=len(rows) - unavailable, reason_counts=reasons, quality=quality)
         audit_reporting_read(action="current_accounts", selection=selection, filters_present={}, counts=counts, outcome=quality)
-        return {"metadata": report_metadata(selection=selection, quality=quality, reason_counts=reasons), "counts": counts, "accounts": rows}
+        return {"metadata": report_metadata(selection=selection, quality=quality, reason_counts=reasons, current_asof=_valuation.asof), "counts": counts, "accounts": rows}
 
     @app.get(f"{LOCAL_OWNER_REPORTING_API_PREFIX}/current/symbols", tags=["local-owner-reports"])
     def report_current_symbols() -> dict[str, Any]:
         if reporting_release is None:
             raise HTTPException(status_code=503, detail="bounded reporting is unavailable")
-        _valuation, _accounts, symbols = current_breakdowns(db_path, reporting_release)
+        _valuation, _accounts, symbols = read_reporting_breakdowns()
         selection = selection_fingerprint(reporting_release, action="current_symbols")
         rows = report_rows(symbols)
         unavailable = sum(any(status == "unavailable" for key, status in row.items() if key.endswith("_status")) for row in rows)
@@ -693,7 +704,7 @@ def create_local_owner_journal_app(
         reasons = {"metric_unavailable": unavailable} if unavailable else {}
         counts = report_counts(available_count=len(rows) - unavailable, reason_counts=reasons, quality=quality)
         audit_reporting_read(action="current_symbols", selection=selection, filters_present={}, counts=counts, outcome=quality)
-        return {"metadata": report_metadata(selection=selection, quality=quality, reason_counts=reasons), "counts": counts, "symbols": rows}
+        return {"metadata": report_metadata(selection=selection, quality=quality, reason_counts=reasons, current_asof=_valuation.asof), "counts": counts, "symbols": rows}
 
     @app.get(f"{LOCAL_OWNER_REPORTING_API_PREFIX}/realized-history", tags=["local-owner-reports"])
     def report_realized_history(
@@ -708,7 +719,8 @@ def create_local_owner_journal_app(
         selection = selection_fingerprint(reporting_release, action="realized_history", from_date=from_date, to_date=to_date, account_alias=account_alias, symbol=symbol)
         aliases = {(x.source_broker, x.source_account_id): x.account_alias for x in reporting_release.accounts}
         rows = [{"item_uid": x.item_uid, "account_alias": aliases[(x.source_broker, x.source_account_id)], "symbol": x.symbol, "asset_class": x.asset_class, "close_market_date": x.close_market_date.isoformat(), "currency": x.currency, "realized_pnl": format(x.realized_pnl, "f"), "item_status": "valid", "reason_codes": list(x.reason_codes), "calculation_version": reporting_release.calculation_version} for x in items]
-        counts = report_counts(available_count=len(rows), reason_counts=reason_counts, quality=quality)
+        pending_count = sum(x.item_status == "reconciliation_pending" for x in select_reporting_omissions(reporting_release, from_date=from_date, to_date=to_date, account_alias=account_alias, symbol=symbol)) if quality != "unavailable" else 0
+        counts = report_counts(available_count=len(rows), reason_counts=reason_counts, quality=quality, pending_count=pending_count)
         audit_reporting_read(action="realized_history", selection=selection, filters_present={"account_alias": account_alias is not None, "symbol": symbol is not None}, counts=counts, outcome=quality)
         return {"metadata": report_metadata(selection=selection, quality=quality, reason_counts=reason_counts), "counts": counts, "items": rows}
 
@@ -716,7 +728,7 @@ def create_local_owner_journal_app(
     def report_current_positions_csv() -> Response:
         if reporting_release is None:
             raise HTTPException(status_code=503, detail="bounded reporting is unavailable")
-        valuation, _accounts, _symbols = current_breakdowns(db_path, reporting_release)
+        valuation, _accounts, _symbols = read_reporting_breakdowns()
         aliases = {(x.source_broker, x.source_account_id): x.account_alias for x in reporting_release.accounts}
         alias = aliases[(valuation.source_broker, valuation.source_account_id)]
         selection = selection_fingerprint(reporting_release, action="current_positions_csv")
@@ -727,7 +739,7 @@ def create_local_owner_journal_app(
         counts = report_counts(available_count=len(rows) - unavailable, reason_counts=reasons, quality=quality)
         audit_reporting_read(action="current_positions_csv", selection=selection, filters_present={}, counts=counts, outcome=quality)
         fields = ["report_release_uid", "selection_fingerprint", "asof", "account_alias", "symbol", "instrument_key", "asset_class", "currency", "quantity", "cost_basis", "cost_basis_status", "market_value", "market_value_status", "unrealized_pnl", "unrealized_pnl_status", "position_status", "reason_codes"]
-        return report_csv(filename="onejournal-current-positions.csv", fields=fields, rows=rows, selection=selection, counts=counts)
+        return report_csv(filename="onejournal-current-positions.csv", fields=fields, rows=rows, selection=selection, counts=counts, quality=quality, reason_counts=reasons)
 
     @app.get(f"{LOCAL_OWNER_REPORTING_API_PREFIX}/realized-history.csv", tags=["local-owner-reports"])
     def report_realized_history_csv(from_date: date = Query(), to_date: date = Query(), account_alias: str | None = Query(default=None, max_length=64), symbol: str | None = Query(default=None, max_length=64)) -> Response:
@@ -740,10 +752,11 @@ def create_local_owner_journal_app(
         aliases = {(x.source_broker, x.source_account_id): x.account_alias for x in reporting_release.accounts}
         selection = selection_fingerprint(reporting_release, action="realized_history", from_date=from_date, to_date=to_date, account_alias=account_alias, symbol=symbol)
         rows = [{"report_release_uid": reporting_release.report_release_uid, "selection_fingerprint": selection, "from_market_date": from_date.isoformat(), "to_market_date": to_date.isoformat(), "item_uid": x.item_uid, "close_market_date": x.close_market_date.isoformat(), "account_alias": aliases[(x.source_broker, x.source_account_id)], "symbol": x.symbol, "asset_class": x.asset_class, "currency": x.currency, "realized_pnl": format(x.realized_pnl, "f"), "item_status": "valid", "reason_codes": ";".join(x.reason_codes), "calculation_version": reporting_release.calculation_version} for x in items]
-        counts = report_counts(available_count=len(rows), reason_counts=reason_counts, quality=quality)
+        pending_count = sum(x.item_status == "reconciliation_pending" for x in select_reporting_omissions(reporting_release, from_date=from_date, to_date=to_date, account_alias=account_alias, symbol=symbol)) if quality != "unavailable" else 0
+        counts = report_counts(available_count=len(rows), reason_counts=reason_counts, quality=quality, pending_count=pending_count)
         audit_reporting_read(action="realized_history_csv", selection=selection, filters_present={"account_alias": account_alias is not None, "symbol": symbol is not None}, counts=counts, outcome=quality)
         fields = ["report_release_uid", "selection_fingerprint", "from_market_date", "to_market_date", "item_uid", "close_market_date", "account_alias", "symbol", "asset_class", "currency", "realized_pnl", "item_status", "reason_codes", "calculation_version"]
-        return report_csv(filename="onejournal-realized-history.csv", fields=fields, rows=rows, selection=selection, counts=counts)
+        return report_csv(filename="onejournal-realized-history.csv", fields=fields, rows=rows, selection=selection, counts=counts, quality=quality, reason_counts=reason_counts)
 
     @app.get(f"{LOCAL_OWNER_JOURNAL_API_PREFIX}/search", response_model=SearchResponse, tags=["local-owner-journal"])
     def journal_search(

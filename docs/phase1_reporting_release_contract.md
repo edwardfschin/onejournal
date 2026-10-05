@@ -25,7 +25,7 @@ to use the exact accepted WEB-W07 run, but they must not imply that realized or
 total P&L exists.
 
 Migration 0024 was later applied under its separate live-migration approval.
-The reporting tables remain empty until an exact calculated result and owner
+At that checkpoint, the reporting tables remained empty until an exact calculated result and owner
 acceptance pass the later persistence gate.
 
 Before Gate 4 persistence, migration 0025 must correct the empty release table
@@ -58,7 +58,7 @@ requires the exact prepared package plus database and release fingerprints,
 and requires a distinct byte-identical backup with its explicit write flag.
 Its exact live dry-run rebuilt the 230 admitted items and 57 omissions and left
 the post-migration database checksum unchanged. Report persistence and API
-restart remain unapproved.
+restart remained unapproved at that dry-run checkpoint.
 
 Gate 3 owner acceptance was granted on 2026-09-09 for bounded realized-result
 fingerprint
@@ -75,6 +75,27 @@ Its value-free private package binds the exact current and realized authorities,
 separate acceptance lineage, 287 processed scopes, the omission reasons, and
 the successful disposable-copy rehearsal. The authorization file is prepared
 but not active.
+
+### Current checkpoint: 2026-10-05
+
+The separately approved guarded live persistence has completed. Read-only
+verification found the exact release and fingerprints above at migration 0026,
+with one `Primary` account, 230 admitted allocations, 57 withheld scopes,
+287 processed scopes, and zero reconciliation-pending scopes. Omission counts
+are `lifecycle_review_required: 16`, `opening_history_missing: 28`, and
+`position_reconciliation_incomplete: 13`. Coverage is 2026-03-06 through
+2026-09-04. Exact persistence is complete; private reporting API activation,
+real-data browser verification, and final WEB-W08 owner acceptance are not.
+
+The local reporting completion adds account/symbol tables, date/account/symbol
+filters, explicit quality/count/reason summaries, provenance dates, and guarded
+CSV downloads. Mixed pending/withheld counts are kept separate. Current report
+reads use the same existing database lock as audit writers, preventing DuckDB
+read-only/writable connection collisions during simultaneous requests.
+Focused API/repository/route and frontend checks, type/lint/build checks, and
+responsive synthetic browser verification validate this local change, not
+private runtime acceptance. No live database or private API change is included.
+P1-08 remains in progress; full realized and total P&L remain unavailable.
 
 ## Impact map
 
@@ -236,6 +257,14 @@ UID, fingerprint, and owner-acceptance UID. It cannot request calculation or
 persistence and is rejected if it is a symlink, malformed, over-specified, or
 does not match the persisted release.
 
+JSON metadata includes `current_valuation_asof` (null for history),
+`calculation_version`, `generated_at_utc`, and `owner_accepted_at_utc` alongside
+release/selection fingerprints, coverage, quality, and omission reasons.
+The current valuation date identifies a saved snapshot, never a live quote.
+History filters are submitted as one selection; editing a filter clears the
+previous result and cancels an outstanding request. HTTP 200 with unavailable
+quality must remain unavailable, not become a valid empty result.
+
 ## CSV parity
 
 The CSV serializer consumes the same validated in-memory selection as the JSON
@@ -256,6 +285,12 @@ report_release_uid,selection_fingerprint,from_market_date,to_market_date,item_ui
 Rows use stable deterministic ordering. Decimal text, dates, nulls, reason
 ordering, and CSV escaping are contract tested. The export response includes
 the same selection fingerprint and counts as the corresponding JSON response.
+CSV headers also carry `X-OneJournal-Report-Release-Fingerprint`,
+`X-OneJournal-Quality`, and JSON `X-OneJournal-Reason-Counts`. The browser checks
+the release for every download and the exact selection, quality, counts, and
+reasons for history downloads. Changed or unavailable exports fail closed.
+Displayed amounts are decimal-safe, rounded to two places; CSV retains stored
+decimal text. Withheld/pending scopes are disclosed but never fabricated as rows.
 
 ## Audit and privacy
 

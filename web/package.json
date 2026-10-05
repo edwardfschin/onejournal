@@ -10,6 +10,7 @@
     "build": "vinext build",
     "start": "wrangler dev --config dist/server/wrangler.json",
     "lint": "oxlint",
+    "test:reports": "node --experimental-strip-types --test tests/local-owner-reports.test.mjs",
     "format": "oxfmt"
   },
   "dependencies": {
