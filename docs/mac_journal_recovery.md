@@ -145,3 +145,11 @@ verification for the bounded operational journal/exact-release scope. Keep the
 password separately from the USB. Raw-evidence/security-audit recovery, hosted
 operations and full disaster recovery remain open; P1-10 and Phase 1 are not
 complete. Git integration is tracked separately from this recovery receipt.
+
+## Separate source-evidence and audit image: 2026-10-06
+
+The subsequent owner USB image described in
+`docs/mac_evidence_audit_recovery.md` now covers the exact persisted Phase 1
+Schwab v1/v2 source fingerprints and a point-in-time, value-free security-audit
+export. It does not alter this journal image or turn either image into a
+recurring, cross-Mac or hosted disaster-recovery policy. P1-10 remains open.

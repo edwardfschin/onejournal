@@ -324,3 +324,12 @@ external-browser Reports tabs and check the other. The owner reported that
 browser check; it does not establish other-browser coverage, full WEB-W10/P1-09
 acceptance or hosted security readiness. This browser check was completed on
 the Mac before Git publication; it is not a hosted release check.
+
+### Separate audit-history recovery image: 2026-10-06
+
+The later owner-created USB image in `docs/mac_evidence_audit_recovery.md`
+preserves the value-free security events that existed at capture time, alongside
+the journal-linked private raw evidence. It deliberately does **not** restore
+the security database, old passkeys, counters, sessions or enrollment grants.
+Fresh offline enrollment remains the lost-access path. This bounded Mac
+point-in-time backup does not complete WEB-W10/P1-09 or hosted recovery.
