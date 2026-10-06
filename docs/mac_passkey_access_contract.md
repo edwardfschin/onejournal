@@ -37,7 +37,10 @@ expires. Security-store failure does not grant legacy access.
 Session status reports the seconds until the earlier of idle or absolute
 expiry. The browser hides private views at that deadline and checks it again
 on focus after sleep. The server gate remains authoritative for every private
-request.
+request. After confirmed logout, an origin-scoped browser signal also hides
+already-open private views in other tabs immediately; it carries no credential
+or financial value. A browser without this feature still loses server access
+immediately and its other tabs clear on their next session check.
 
 Defaults: 15-minute idle/8-hour absolute session, two-minute single-use challenge,
 ten-minute one-use enrollment, five failed attempts per 15 minutes, five passkeys,
@@ -311,3 +314,13 @@ P1-09 or Phase 1, establish hosted/VPS policy, prove full financial/security-aud
 disaster recovery, or replace the remaining security/quality/final release
 review. The encrypted USB access-setup recovery receipt remains valid for its
 stated access-only scope; it is not a second passkey or journal backup.
+
+### Owner-confirmed two-tab sign-out: 2026-10-06
+
+After the local cross-tab lock fix was validated and the protected Mac site
+restarted from canonical code, the owner was asked to sign out in one of two
+external-browser Reports tabs and check the other. The owner reported that
+"both signed out." This confirms the visible two-tab lock for that Mac-only
+browser check; it does not establish other-browser coverage, full WEB-W10/P1-09
+acceptance or hosted security readiness. This browser check was completed on
+the Mac before Git publication; it is not a hosted release check.

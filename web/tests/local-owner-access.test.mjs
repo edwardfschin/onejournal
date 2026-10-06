@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { accessJson, ACCESS_REQUIRED_EVENT, decodeBase64url, encodeBase64url, expireAccessIfDue, fetchLocalOwner, setAccessSession } from '../lib/local-owner-access.ts';
+import { accessJson, ACCESS_REQUIRED_EVENT, decodeBase64url, encodeBase64url, expireAccessIfDue, fetchLocalOwner, listenForAccessRevocation, revokeAccessAcrossTabs, setAccessSession } from '../lib/local-owner-access.ts';
 
 test('private writes attach volatile CSRF; reads do not; all requests bypass cache', async (t) => {
   const requests = [];
@@ -45,6 +45,46 @@ test('session deadline locks the browser view and clears write authority', async
   setAccessSession('synthetic-csrf', 0.01);
   await new Promise((resolve) => setTimeout(resolve, 30));
   assert.equal(locks, 2); // Active tab timer locks without waiting for polling.
+});
+
+test('confirmed logout locks other open tabs immediately', (t) => {
+  const previousWindow = globalThis.window;
+  const previousChannel = globalThis.BroadcastChannel;
+  globalThis.window = new EventTarget();
+  class FakeChannel extends EventTarget {
+    static instances = [];
+    constructor(name) { super(); this.name = name; FakeChannel.instances.push(this); }
+    postMessage(value) {
+      for (const other of FakeChannel.instances) {
+        if (other !== this && other.name === this.name) {
+          const event = new Event('message');
+          Object.defineProperty(event, 'data', { value });
+          other.dispatchEvent(event);
+        }
+      }
+    }
+  }
+  globalThis.BroadcastChannel = FakeChannel;
+  const stopListening = listenForAccessRevocation();
+  t.after(() => { stopListening(); setAccessSession(null); globalThis.window = previousWindow; globalThis.BroadcastChannel = previousChannel; });
+  let locks = 0;
+  window.addEventListener(ACCESS_REQUIRED_EVENT, () => { locks += 1; });
+  setAccessSession('synthetic-csrf', 900);
+  const otherTab = new FakeChannel('onejournal-access-revoked');
+  otherTab.postMessage('unrelated');
+  assert.equal(locks, 0);
+  otherTab.postMessage('logout');
+  assert.equal(locks, 1);
+  setAccessSession('synthetic-csrf', 900);
+  let sent = 0;
+  otherTab.addEventListener('message', () => { sent += 1; });
+  revokeAccessAcrossTabs();
+  assert.equal(locks, 2);
+  assert.equal(sent, 1);
+  FakeChannel.instances[0].postMessage = () => { throw new Error('browser channel unavailable'); };
+  setAccessSession('synthetic-csrf', 900);
+  assert.doesNotThrow(() => revokeAccessAcrossTabs());
+  assert.equal(locks, 3);
 });
 
 test('WebAuthn binary serialization round trips unpadded base64url', () => {

@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { usePathname } from 'next/navigation';
-import { accessJson, ACCESS_REQUIRED_EVENT, credentialJson, decodeBase64url, expireAccessIfDue, setAccessSession } from '@/lib/local-owner-access';
+import { accessJson, ACCESS_REQUIRED_EVENT, credentialJson, decodeBase64url, expireAccessIfDue, listenForAccessRevocation, revokeAccessAcrossTabs, setAccessSession } from '@/lib/local-owner-access';
 import './passkey-boundary.css';
 
 type SessionStatus = { contract_version: string; authenticated: boolean; enrollment_required: boolean; csrf: string | null; passkey_count: number | null; expires_in_seconds: number | null };
@@ -47,7 +47,8 @@ function ProtectedWorkspace({ children }: { children: ReactNode }) {
     const focus = () => { expireAccessIfDue(); void refresh(); };
     window.addEventListener(ACCESS_REQUIRED_EVENT, lock);
     window.addEventListener('focus', focus);
-    return () => { ++epoch.value; clearTimeout(initial); clearInterval(timer); window.removeEventListener(ACCESS_REQUIRED_EVENT, lock); window.removeEventListener('focus', focus); setAccessSession(null); };
+    const stopListening = listenForAccessRevocation();
+    return () => { ++epoch.value; clearTimeout(initial); clearInterval(timer); window.removeEventListener(ACCESS_REQUIRED_EVENT, lock); window.removeEventListener('focus', focus); stopListening(); setAccessSession(null); };
   }, [refresh]);
 
   async function ceremony(register: boolean) {
@@ -88,7 +89,7 @@ function ProtectedWorkspace({ children }: { children: ReactNode }) {
     logoutUnconfirmed.current = true;
     // Hide private views immediately; keep the CSRF value until the request is sent.
     setSession(null);
-    try { await accessJson('logout', {}); logoutUnconfirmed.current = false; setError(''); }
+    try { await accessJson('logout', {}); logoutUnconfirmed.current = false; setError(''); revokeAccessAcrossTabs(); }
     catch { setError('Logout could not be confirmed. Stop the prototype to revoke this session.'); }
     finally { setAccessSession(null); setBusy(false); }
     if (!logoutUnconfirmed.current) await refresh();
