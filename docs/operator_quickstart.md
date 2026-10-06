@@ -82,6 +82,12 @@ your own Terminal; never enter the image password in chat. It is not a backup
 of financial data or the Touch ID passkey, and does not activate the protected
 site, erase the USB, restore old credentials or complete production recovery.
 
+For the separate complete operational-journal/exact-release backup and
+disposable restoration check, see `docs/mac_journal_recovery.md`. It preserves
+the access image and does not overwrite live state or restart services. Creating
+the lasting encrypted USB journal image requires the owner's private Terminal
+password entry; a temporary rehearsal is not a lasting backup.
+
 The sections below retain the legacy Streamlit/import operator procedures;
 they are not required merely to start the local website.
 
