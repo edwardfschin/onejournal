@@ -274,9 +274,13 @@ def protect_app(app: FastAPI, access: Access) -> FastAPI:
         with access.lock:
             session = access.session(request.cookies.get(COOKIE))
             count = access.con.execute("SELECT COUNT(*) FROM passkeys").fetchone()[0]
+            remaining = (max(0, int(min(session.last_used + IDLE_SECONDS,
+                                         session.created + ABSOLUTE_SECONDS) - access.clock()))
+                         if session else None)
             return {"contract_version": CONTRACT, "authenticated": session is not None,
                     "enrollment_required": count == 0, "passkey_count": count if session else None,
-                    "csrf": session.csrf if session else None}
+                    "csrf": session.csrf if session else None,
+                    "expires_in_seconds": remaining}
 
     @app.post(PREFIX+"/register/options", include_in_schema=False)
     async def register_options(request: Request):

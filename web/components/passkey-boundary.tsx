@@ -2,10 +2,10 @@
 
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { usePathname } from 'next/navigation';
-import { accessJson, ACCESS_REQUIRED_EVENT, credentialJson, decodeBase64url, setAccessSession } from '@/lib/local-owner-access';
+import { accessJson, ACCESS_REQUIRED_EVENT, credentialJson, decodeBase64url, expireAccessIfDue, setAccessSession } from '@/lib/local-owner-access';
 import './passkey-boundary.css';
 
-type SessionStatus = { contract_version: string; authenticated: boolean; enrollment_required: boolean; csrf: string | null; passkey_count: number | null };
+type SessionStatus = { contract_version: string; authenticated: boolean; enrollment_required: boolean; csrf: string | null; passkey_count: number | null; expires_in_seconds: number | null };
 type CeremonyOptions = {
   ceremony: string;
   options: Omit<PublicKeyCredentialCreationOptions, 'challenge' | 'user' | 'excludeCredentials'> &
@@ -29,9 +29,10 @@ function ProtectedWorkspace({ children }: { children: ReactNode }) {
     try {
       const state = await accessJson<SessionStatus>('session');
       if (state.contract_version !== 'onejournal.mac-passkey.v1' || typeof state.authenticated !== 'boolean'
-        || (state.authenticated && (typeof state.csrf !== 'string' || !state.csrf))) throw new Error('Access service is unavailable.');
+        || (state.authenticated && (typeof state.csrf !== 'string' || !state.csrf
+          || typeof state.expires_in_seconds !== 'number'))) throw new Error('Access service is unavailable.');
       if (requestGeneration !== generation.current.value || logoutUnconfirmed.current) return;
-      setAccessSession(state.csrf);
+      setAccessSession(state.csrf, state.expires_in_seconds ?? undefined);
       setSession(state);
     } catch {
       if (requestGeneration !== generation.current.value) return;
@@ -43,7 +44,7 @@ function ProtectedWorkspace({ children }: { children: ReactNode }) {
     const initial = setTimeout(() => { void refresh(); }, 0);
     const timer = setInterval(() => { void refresh(); }, 30_000);
     const lock = () => { ++epoch.value; setAccessSession(null); setSession(null); void refresh(); };
-    const focus = () => { void refresh(); };
+    const focus = () => { expireAccessIfDue(); void refresh(); };
     window.addEventListener(ACCESS_REQUIRED_EVENT, lock);
     window.addEventListener('focus', focus);
     return () => { ++epoch.value; clearTimeout(initial); clearInterval(timer); window.removeEventListener(ACCESS_REQUIRED_EVENT, lock); window.removeEventListener('focus', focus); setAccessSession(null); };

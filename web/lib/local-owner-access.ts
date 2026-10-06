@@ -1,11 +1,44 @@
 // Volatile session/CSRF state only. No browser storage and no bearer tokens.
 let csrf: string | null = null;
+let expiresAt = 0;
+let expiryTimer: ReturnType<typeof setTimeout> | null = null;
 export const ACCESS_REQUIRED_EVENT = 'onejournal-access-required';
 export const ACCESS_PREFIX = '/api/v1/local-owner/access';
 
-export function setAccessSession(value: string | null) { csrf = value; }
+function clearExpiryTimer() {
+  if (expiryTimer !== null) clearTimeout(expiryTimer);
+  expiryTimer = null;
+}
+
+function expireAccess() {
+  clearExpiryTimer();
+  if (csrf === null) return;
+  csrf = null;
+  expiresAt = 0;
+  if (typeof window !== 'undefined') window.dispatchEvent(new Event(ACCESS_REQUIRED_EVENT));
+}
+
+export function expireAccessIfDue() {
+  if (csrf !== null && Date.now() >= expiresAt) expireAccess();
+}
+
+export function setAccessSession(value: string | null, expiresInSeconds?: number) {
+  clearExpiryTimer();
+  csrf = value;
+  expiresAt = 0;
+  if (value === null) return;
+  if (typeof expiresInSeconds !== 'number' || !Number.isFinite(expiresInSeconds)
+    || expiresInSeconds < 0 || expiresInSeconds > 8 * 60 * 60) {
+    csrf = null;
+    throw new Error('Access session expiry is unavailable.');
+  }
+  const delay = Math.floor(expiresInSeconds * 1000);
+  expiresAt = Date.now() + delay;
+  expiryTimer = setTimeout(expireAccess, delay);
+}
 
 export async function fetchLocalOwner(path: string, init: RequestInit = {}) {
+  expireAccessIfDue();
   const headers = new Headers(init.headers);
   if (csrf && !['GET', 'HEAD'].includes((init.method ?? 'GET').toUpperCase())) {
     headers.set('X-OneJournal-CSRF', csrf);
