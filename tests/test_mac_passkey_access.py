@@ -134,6 +134,7 @@ class MacPasskeyTests(unittest.TestCase):
         self.assertEqual(self.client.get("/private").status_code, 200)
         self.assertEqual(self.client.post("/private", json={}, headers={"Origin": ORIGIN}).status_code, 403)
         csrf = self.client.get(PREFIX+"/session").json()["csrf"]
+        self.assertEqual(self.client.get(PREFIX+"/session").json()["expires_in_seconds"], IDLE_SECONDS)
         self.assertEqual(self.client.post("/private", json={}, headers={"Origin": ORIGIN, "X-OneJournal-CSRF": csrf}).status_code, 200)
         self.assertEqual(self.post("login/verify", value).status_code, 403)
         self.assertEqual(self.post("logout", headers={"X-OneJournal-CSRF": csrf}).status_code, 200)
@@ -174,9 +175,12 @@ class MacPasskeyTests(unittest.TestCase):
     def test_expiry_polling_does_not_keep_session_alive_and_absolute_limit(self):
         self.ready()
         self.now[0] += IDLE_SECONDS-1
-        self.assertTrue(self.client.get(PREFIX+"/session").json()["authenticated"])
+        state = self.client.get(PREFIX+"/session").json()
+        self.assertTrue(state["authenticated"])
+        self.assertEqual(state["expires_in_seconds"], 1)
         self.now[0] += 1
         self.assertEqual(self.client.get("/private").status_code, 401)
+        self.assertIsNone(self.client.get(PREFIX+"/session").json()["expires_in_seconds"])
         self.assertEqual(self.login()[0].status_code, 200)
         for _ in range(ABSOLUTE_SECONDS // 600):
             self.now[0] += 600
