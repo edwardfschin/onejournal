@@ -465,13 +465,14 @@ tunnel, public or VPS exposure is authorized. Complete security acceptance
 before any private non-local staging or soft-launch deployment.
 The remaining actionable sequence is:
 
-1. Mac-only operation - the foreground `bin/onejournal-web` launcher is
-   delivered and locally activated with the same accepted functionality,
-   private authorizations, loopback ports, and canonical URLs. See
-   `docs/operator_quickstart.md`. ADR-0030 records the bounded portability
-   evidence and remaining production-packaging gap; this does not complete
+1. Mac-only operation - the protected ADR-0031 HTTPS/passkey pair is active
+   with the existing accepted functionality, exact financial authorizations,
+   loopback ports and canonical URLs. `bin/onejournal-web` is the legacy
+   unauthenticated launcher, not the normal protected-site restart command.
+   See `docs/operator_quickstart.md`. ADR-0030 records bounded portability
+   evidence and the remaining production-packaging gap; this does not complete
    the security or hosted release packages. No new website, speculative
-   feature, framework change, production migration, or hosting is implied.
+   feature, framework change, production migration or hosting is implied.
 2. Mac passkey access, `WEB-W10` - the isolated ADR-0031 implementation and
    approved bounded protected runtime preflight are complete, with USB access
    setup recovery verified. The owner confirmed real enrollment, Reports access,
@@ -490,6 +491,61 @@ The remaining actionable sequence is:
 6. After Phase 1, continue broader PNL-04 through PNL-08, UXJ-05/06 and
    WEB-W09, additional brokers, continuous connector ownership, and other
    explicitly deferred capabilities in approved dependency order.
+
+### Mac-first close-out review: 2026-10-09
+
+The next work should close these existing gaps, not expand Phase 1. The formal
+count remains **8/12**. Mac-first preparation defers deployment; it does not
+supersede ADR-0018's private production acceptance gate.
+
+- **Data update:** finish the exact bounded capture specification from the
+  retained OneBot-owned runners, then obtain one coherent acquisition/transfer/
+  validation approval. `docs/mac_data_refresh_capture_plan.md` records the
+  verified archive lineage, old source-pin mismatch and candidate five-GET
+  position/history scope. Quote scope depends on the new verified positions.
+  Reconcile and rehearse a new immutable release on a disposable database;
+  acceptance of changed results, live append and protected API activation
+  remain later boundaries. The current report still ends on 2026-09-04.
+  This is maintenance of the accepted manual evidence route, not a continuous
+  connector requirement or a reason to reopen accepted P1-05 through P1-08.
+- **Real route coverage:** `web/lib/routes.ts` defines four local routes:
+  Portfolio, Trades, Journal and Reports. Today, Data and Settings still have
+  demo routes and synthetic content. Deliver their bounded private equivalents
+  using existing domain/API authority, with real freshness/quality and security
+  state or explicit unavailable behavior. Do not promote demo values, add broker
+  calls to the browser, or build speculative account/connection management.
+  ADR-0018 already requires these journeys before final release acceptance.
+- **P1-09 — security:** retain completed Mac passkey/logout/recovery evidence;
+  resolve production domain/RP/TLS, enrollment and recovery, dependency
+  disposition, hosted proxy/abuse/access checks, and security-state/audit/
+  incident procedures. Local dependency triage is not hosted clearance.
+- **P1-10 — operations:** resolve production packaging and same-origin API
+  routing against ADR-0017; ADR-0030 documents the current Vinext/Node preview
+  versus the accepted static frontend topology. Do not silently adopt that
+  difference or rewrite the framework without a decision. Approve the private
+  host/environment and production-state design, then rehearse PostgreSQL
+  migration where the accepted hosted topology requires it, deployment,
+  rollback, observability and restoration. Decide recovery objectives, backup
+  cadence/retention and incident handling before encoding them. Existing USB
+  images already passed disposable restoration for their dated Mac scope;
+  do not repeat those ceremonies unchanged or call them hosted recovery.
+- **P1-11 — quality:** agree the supported browser/device matrix and page/
+  interaction performance budgets, then run the smallest critical journey
+  checks on the release artifact: keyboard/screen-reader semantics, contrast,
+  zoom/reflow, responsive layouts, failure/unavailable states, financial
+  export parity, session protection and measured performance. Reuse existing
+  evidence for unchanged components; add checks for changed or unverified paths.
+- **P1-12 — final acceptance:** provide the dated exact private release and
+  limitations, verify its supported financial/export and recovery journeys,
+  define export/correction/deletion/account-closure procedures without silently
+  adopting retention policy, record Streamlit's retain/retire disposition, and
+  obtain final owner acceptance. No destructive retirement is implied.
+
+No strategic maturity or accepted policy is advanced by this review. The
+product vision and spreadsheet mapping remain unchanged: evidence-backed
+financial state and authored reflection stay distinct. Additional brokers,
+continuous credential ownership/polling, attachments, advanced analytics,
+multi-user access and trading remain outside Phase 1.
 
 No implementation should bypass unresolved blockers above, especially P&L
 financial correctness, quote governance, attachment controls, and production

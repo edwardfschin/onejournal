@@ -67,14 +67,40 @@ legacy `onebot.schwab.quote-evidence-capture.v1` bundle. It is not a position,
 lifecycle or bounded-batch acquisition command. Do not substitute it or
 relabel its output as `onejournal.external-provider-acquisition.v1`.
 
-ADR-0015 and the historical capture records describe separately reviewed,
-bounded owner-side runners. Preparation has not verified a current installed
-runner or its operating identity, hashes, owner epoch, private output root or
-active acknowledgement. Old single-use approvals cannot be reused. Locate and
-review the retained owner-controlled producer before supplying a runnable
-command; do not claim that historical successful captures establish current
-execution readiness. Changes to OneBot or deployment are not authorized by
-this OneJournal preparation.
+### Retained runner review: 2026-10-09
+
+Read-only inspection located the archived position runner
+`pnl03v_schwab_position_capture_v2.py` and the later history runner
+`onejournal_p1_06_history_capture_v1.py`. Both are mode `0600` and match the
+producer SHA-256 in their respective retained acquisition manifests. Their
+code was inspected without executing it, importing the provider client or
+reading credentials. Private constant values were suppressed from review
+output; no source bundle was changed.
+
+These are fixed, single-use owner-side programs, not recurring refresh tools.
+They bind old run/approval identities, source/runtime hashes, owner identities,
+acknowledgement and private output locations; the history runner also binds an
+old date window. Both require the active OneBot VPS role, no refresh override,
+empty non-overwriting acquisition directories, unchanged token state and
+manifest-last output. The position runner checks token expiry before its one
+GET; the history runner makes exactly the ordered pair of GETs.
+
+The current local OneBot authentication source does not match either retained
+runner's authentication-source pin; its configuration source does match.
+This is a local source comparison, not proof of the installed VPS version or
+a security defect. The inspected current `get_access_token` branch still stops
+on expiry in batch mode, but source/runtime provenance must be reviewed and
+rebound rather than bypassed. The archived position source contract also
+records a historical pre-capture refresh; it must not be carried forward as
+authority for this proposed zero-refresh run.
+
+The archive-location/code-review dependency is resolved. Current owner-host
+identity, installed source/runtime hashes, acknowledgement, exact new dates,
+new run/approval identities and empty output/transfer destinations remain to be
+bound before a runnable command or broker-access approval is presented. Old
+single-use approvals cannot be reused. Do not alter or execute the archived
+runners on the Mac. No OneBot source change, deployment, provider call or
+credential access is authorized by this preparation.
 
 ## Handoff and checks that matter
 
