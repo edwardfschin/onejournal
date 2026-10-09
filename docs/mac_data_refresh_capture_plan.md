@@ -102,6 +102,33 @@ single-use approvals cannot be reused. Do not alter or execute the archived
 runners on the Mac. No OneBot source change, deployment, provider call or
 credential access is authorized by this preparation.
 
+### Owner-host read-only verification: 2026-10-09
+
+The owner supplied the existing SSH destination. Strict known-host,
+non-interactive read-only inspection reached the expected host and OS account.
+Both retained runner files match their archived producer hashes and remain
+`0600`; their existing source/evidence directories remain `0700`. The pinned
+acknowledgement and account-binding files match their historical checksums,
+remain `0600` and are not symlinks. Account-binding fields were not parsed or
+displayed, and broker credentials were not opened; checksum equality is not a
+new acceptance or proof that the acknowledgement is currently active.
+
+The installed authentication module no longer matches either historical pin,
+but its SHA-256 matches the current local OneBot source inspected above. The
+installed configuration module still matches both old pins. The runners'
+pinned Python executable exists but has a different hash from the historical
+executable. The system Python version reported by a separate read-only probe
+was 3.12.3; this is not proof of the capture environment's installed dependency
+versions. No provider client was imported, no token was read, and no remote
+file, environment configuration, database or service was modified.
+
+The target/retained-installation lookup is now resolved. A fresh fixed capture
+must use reviewed current source/runtime pins, fresh approval/run identities,
+explicit dates and new output directories; do not relax a hash check or reuse
+an old approval. Current owner-role/epoch and acknowledgement validity still
+need explicit validation before capture. New runner installation and provider
+access are not authorized by this read-only verification.
+
 ## Handoff and checks that matter
 
 One coherent acquisition approval can cover the exact bounded GETs, creation
