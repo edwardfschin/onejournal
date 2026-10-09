@@ -26,6 +26,7 @@ from onejournal.journal.phase1_reporting_persistence_operator import (  # noqa: 
     execute_reporting_release_persistence,
     prepare_reporting_release_from_package,
 )
+from onejournal.journal.phase1_reporting_repository import load_reporting_release_authorization  # noqa: E402
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -42,6 +43,10 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--prepared-package", required=True, type=Path)
     parser.add_argument("--expected-database-sha256", required=True)
     parser.add_argument("--expected-report-fingerprint", required=True)
+    parser.add_argument(
+        "--predecessor-report-authorization", type=Path,
+        help="Exact private predecessor authorization matching an update's v2 prepared package",
+    )
     parser.add_argument(
         "--persist",
         action="store_true",
@@ -64,12 +69,17 @@ def main(argv: Sequence[str] | None = None) -> int:
         parser.error("--verified-backup is accepted only with --persist")
 
     try:
+        predecessor = (
+            load_reporting_release_authorization(args.predecessor_report_authorization)
+            if args.predecessor_report_authorization is not None else None
+        )
         release = prepare_reporting_release_from_package(
             db_path=args.db,
             broker_current_authorization_path=(
                 args.broker_current_authorization
             ),
             package_dir=args.prepared_package,
+            predecessor_authorization=predecessor,
         )
         execution = execute_reporting_release_persistence(
             args.db,
@@ -83,6 +93,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             ),
             persist=args.persist,
             verified_backup_path=args.verified_backup,
+            predecessor_authorization=predecessor,
         )
     except (OSError, ValueError, RuntimeError) as exc:
         raise SystemExit(f"FAIL: {exc}") from exc

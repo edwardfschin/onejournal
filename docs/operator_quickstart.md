@@ -123,14 +123,30 @@ The safe evidence-to-display path is:
    authorizations. Live writes and runtime activation are separate from local
    preparation; the old release remains rollback evidence.
 
-This is **not yet a ready-to-run refresh command**. The 2026-10-09 review found
-local v2 assemblies dated 2026-09-04, not a newer assembled update. It also found
-that `phase1_reporting_persistence_operator.py` still gates preparation on an
-empty reporting boundary and checks rehearsal/persistence against one release.
-The database repository supports immutable releases keyed by UID, but the
-guarded operator needs explicit existing-state handling and focused append/
-replay/conflict/preservation validation before a second release can be used.
-Do not remove those guards, clear tables or invent an acceptance identity.
+The 2026-10-09 review found local v2 assemblies dated 2026-09-04, not a newer
+assembled update. The first-release-only operator gap was then corrected
+locally; that correction does not acquire data or refresh the running site.
+
+For a subsequent release, both `prepare_phase1_reporting_release.py` and
+`persist_phase1_reporting_release.py` require the additional
+`--predecessor-report-authorization` option naming an existing private accepted
+release authorization file. The predecessor is explicit, never automatically
+selected as "latest." Preparation writes a v2 package binding that predecessor
+and the existing report/audit state; persistence must use the same predecessor.
+The update requires migration 0026, an unchanged account/alias scope and a fresh
+report acceptance. Changed financial fingerprints also require fresh financial
+acceptance identities. Existing unchanged financial results can retain their
+existing acceptance. Initial-release v1 packages remain supported without the
+new option; unrelated existing releases still block that initial-release path.
+
+The rehearsal proves append and identical replay on a new disposable copy,
+preserves prior report/audit rows and leaves the source unchanged. A changed
+report/audit baseline invalidates the prepared package, even if row counts are
+unchanged. Persistence remains dry-run by default; `--persist` still requires
+an exact database digest, a distinct byte-identical private backup and a
+quiescent database. Do not remove guards, clear tables or invent an acceptance
+identity. New source evidence, accepted results, live persistence and protected
+API activation are still needed for an actual data update.
 
 The legacy `refresh_dashboard.py`, `refresh_dashboard_db_transition.py` and
 daily-import commands below are not substitutes for this website release path.

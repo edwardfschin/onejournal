@@ -12,6 +12,7 @@ from onejournal.journal.phase1_reporting_persistence_operator import (
     rehearse_reporting_release,
     write_private_release_package,
 )
+from onejournal.journal.phase1_reporting_repository import load_reporting_release_authorization
 
 
 def _instant(value: str) -> datetime:
@@ -37,12 +38,20 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--report-owner-accepted-at", required=True, type=_instant)
     parser.add_argument("--rehearsal-db", required=True)
     parser.add_argument("--output-dir", required=True)
+    parser.add_argument(
+        "--predecessor-report-authorization", type=Path,
+        help="Exact private authorization for an existing accepted release; required for an update",
+    )
     return parser.parse_args()
 
 
 def main() -> int:
     args = parse_args()
     source = Path(args.db)
+    predecessor = (
+        load_reporting_release_authorization(args.predecessor_report_authorization)
+        if args.predecessor_report_authorization is not None else None
+    )
     release = prepare_owner_accepted_reporting_release(
         db_path=source,
         broker_current_authorization_path=Path(args.broker_current_authorization),
@@ -54,11 +63,13 @@ def main() -> int:
         generated_at_utc=args.generated_at,
         report_owner_acceptance_uid=args.report_owner_acceptance_uid,
         report_owner_accepted_at_utc=args.report_owner_accepted_at,
+        predecessor_authorization=predecessor,
     )
     rehearsal = rehearse_reporting_release(
         source_db_path=source,
         rehearsal_db_path=Path(args.rehearsal_db),
         release=release,
+        predecessor_authorization=predecessor,
     )
     write_private_release_package(
         output_dir=Path(args.output_dir), release=release, rehearsal=rehearsal

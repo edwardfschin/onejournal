@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from datetime import UTC, datetime
 from hashlib import sha256
 import json
@@ -35,6 +35,7 @@ from onejournal.journal.phase1_reporting_repository import (
     REPORTING_RELEASE_AUTHORIZATION_VERSION,
     ReportingAccount,
     ReportingRelease,
+    ReportingReleaseAuthorization,
     authorize_reporting_release,
     calculate_report_release_fingerprint,
     load_reporting_release_authorization,
@@ -46,6 +47,8 @@ from onejournal.journal.phase1_reporting_repository import (
 
 PACKAGE_SCHEMA = "onejournal.phase1-report-release-package.v1"
 REHEARSAL_SCHEMA = "onejournal.phase1-report-release-rehearsal.v1"
+UPDATE_PACKAGE_SCHEMA = "onejournal.phase1-report-release-package.v2"
+UPDATE_REHEARSAL_SCHEMA = "onejournal.phase1-report-release-rehearsal.v2"
 PERSISTENCE_AUDIT_SCHEMA = "onejournal.phase1-report-release-persistence-audit.v1"
 SUPPORTED_SOURCE_MIGRATION_VERSIONS = {"0025", "0026"}
 REHEARSAL_MIGRATION_VERSION = "0026"
@@ -54,6 +57,13 @@ AUTHORIZATION_FILENAME = "report-release-authorization.json"
 MANIFEST_FILENAME = "manifest.json"
 _DIGEST_RE = re.compile(r"[0-9a-f]{64}")
 MAX_PACKAGE_DOCUMENT_BYTES = 1024 * 1024
+REPORTING_TABLES = (
+    "phase1_reporting_releases",
+    "phase1_reporting_release_accounts",
+    "phase1_reporting_release_realized_items",
+    "phase1_reporting_release_omissions",
+    "phase1_reporting_api_audit_events",
+)
 
 
 class Phase1ReportingPersistenceOperatorError(ValueError):
@@ -75,6 +85,9 @@ class ReportingReleaseRehearsal:
     identical_replay_verified: bool
     migration_version: str
     unchanged_data_table_count: int
+    predecessor_authorization: ReportingReleaseAuthorization | None = None
+    existing_reporting_counts: tuple[int, int, int, int, int] = (0, 0, 0, 0, 0)
+    existing_reporting_fingerprint: str = ""
 
 
 @dataclass(frozen=True)
@@ -208,20 +221,55 @@ def _latest_migration(con: duckdb.DuckDBPyConnection) -> str:
 
 def _reporting_counts(
     con: duckdb.DuckDBPyConnection,
+    *,
+    excluding_release_uid: str | None = None,
 ) -> tuple[int, int, int, int, int]:
-    return tuple(
-        int(con.execute(f"SELECT count(*) FROM {table}").fetchone()[0])
-        for table in (
-            "phase1_reporting_releases",
-            "phase1_reporting_release_accounts",
-            "phase1_reporting_release_realized_items",
-            "phase1_reporting_release_omissions",
-            "phase1_reporting_api_audit_events",
+    counts = []
+    for table in REPORTING_TABLES:
+        where = ""
+        parameters = []
+        if excluding_release_uid is not None and table != REPORTING_TABLES[-1]:
+            where = " WHERE report_release_uid <> ?"
+            parameters = [excluding_release_uid]
+        counts.append(
+            int(con.execute(
+                f"SELECT count(*) FROM {table}{where}", parameters
+            ).fetchone()[0])
         )
+    return tuple(counts)
+
+
+def _existing_reporting_fingerprint(
+    con: duckdb.DuckDBPyConnection, release_uid: str,
+) -> str:
+    """Bind every prior reporting row and every audit row, without emitting values."""
+    digest = sha256()
+    for table in REPORTING_TABLES:
+        where = (
+            "" if table == REPORTING_TABLES[-1]
+            else " WHERE report_release_uid <> ?"
+        )
+        parameters = [] if not where else [release_uid]
+        rows = con.execute(
+            f"SELECT * FROM {table}{where} ORDER BY ALL", parameters
+        ).fetchall()
+        digest.update(
+            json.dumps([table, rows], default=str, separators=(",", ":"))
+            .encode("utf-8")
+        )
+    return digest.hexdigest()
+
+
+def _expected_reporting_counts(
+    existing: tuple[int, int, int, int, int], release: ReportingRelease,
+) -> tuple[int, int, int, int, int]:
+    additions = (
+        1, len(release.accounts), len(release.items), len(release.omissions), 0
     )
+    return tuple(before + added for before, added in zip(existing, additions))
 
 
-def _require_empty_reporting_boundary(db_path: Path) -> None:
+def _require_source_migration(db_path: Path) -> None:
     with duckdb.connect(str(db_path), read_only=True) as con:
         migration = con.execute(
             """SELECT version FROM schema_migrations
@@ -232,21 +280,6 @@ def _require_empty_reporting_boundary(db_path: Path) -> None:
             raise Phase1ReportingPersistenceOperatorError(
                 "database is not at a supported reporting migration"
             )
-        tables = (
-            "phase1_reporting_releases",
-            "phase1_reporting_release_accounts",
-            "phase1_reporting_release_realized_items",
-            "phase1_reporting_release_omissions",
-            "phase1_reporting_api_audit_events",
-        )
-        counts = {
-            table: int(con.execute(f"SELECT count(*) FROM {table}").fetchone()[0])
-            for table in tables
-        }
-    if any(counts.values()):
-        raise Phase1ReportingPersistenceOperatorError(
-            "reporting boundary is not empty; existing state requires explicit review"
-        )
 
 
 def prepare_owner_accepted_reporting_release(
@@ -261,11 +294,12 @@ def prepare_owner_accepted_reporting_release(
     generated_at_utc: datetime,
     report_owner_acceptance_uid: str,
     report_owner_accepted_at_utc: datetime,
+    predecessor_authorization: ReportingReleaseAuthorization | None = None,
 ) -> ReportingRelease:
     """Rebuild and bind one exact owner-accepted release without writing the DB."""
 
     source_db = _require_private_file(db_path, "source database")
-    _require_empty_reporting_boundary(source_db)
+    _require_source_migration(source_db)
     generated_at = _utc(generated_at_utc, "generated_at_utc")
     report_accepted_at = _utc(
         report_owner_accepted_at_utc, "report_owner_accepted_at_utc"
@@ -355,15 +389,24 @@ def prepare_owner_accepted_reporting_release(
         ),
     )
     validate_reporting_release(release)
+    _inspect_persistence_target(
+        source_db, release, predecessor_authorization=predecessor_authorization,
+        source_preparation=True,
+    )
     return release
 
 
 def rehearse_reporting_release(
-    *, source_db_path: Path, rehearsal_db_path: Path, release: ReportingRelease
+    *, source_db_path: Path, rehearsal_db_path: Path, release: ReportingRelease,
+    predecessor_authorization: ReportingReleaseAuthorization | None = None,
 ) -> ReportingReleaseRehearsal:
     """Persist twice and read back on one new disposable copy only."""
 
     source = _require_private_file(source_db_path, "source database")
+    if Path(str(source) + ".wal").exists():
+        raise Phase1ReportingPersistenceOperatorError(
+            "source database WAL exists; rehearsal requires a quiescent source"
+        )
     target = rehearsal_db_path.expanduser()
     if target.exists() or target.is_symlink():
         raise Phase1ReportingPersistenceOperatorError(
@@ -376,6 +419,10 @@ def rehearse_reporting_release(
         )
 
     source_before = _sha256_file(source)
+    _, _, existing_counts, existing_fingerprint = _inspect_persistence_target(
+        source, release, predecessor_authorization=predecessor_authorization,
+        source_preparation=True,
+    )
     shutil.copy2(source, target)
     target.chmod(0o600)
     copy_before = _sha256_file(target)
@@ -414,15 +461,9 @@ def rehearse_reporting_release(
         loaded = load_reporting_release(
             con, report_release_uid=release.report_release_uid
         )
-        counts = tuple(
-            int(con.execute(f"SELECT count(*) FROM {table}").fetchone()[0])
-            for table in (
-                "phase1_reporting_releases",
-                "phase1_reporting_release_accounts",
-                "phase1_reporting_release_realized_items",
-                "phase1_reporting_release_omissions",
-                "phase1_reporting_api_audit_events",
-            )
+        counts = _reporting_counts(con)
+        historical_fingerprint_after = _existing_reporting_fingerprint(
+            con, release.report_release_uid
         )
         migration_version = con.execute(
             """SELECT version FROM schema_migrations WHERE status = 'applied'
@@ -436,7 +477,7 @@ def rehearse_reporting_release(
         raise Phase1ReportingPersistenceOperatorError(
             "rehearsal release read-back does not match the prepared release"
         )
-    expected_counts = (1, len(release.accounts), len(release.items), len(release.omissions), 0)
+    expected_counts = _expected_reporting_counts(existing_counts, release)
     if counts != expected_counts:
         raise Phase1ReportingPersistenceOperatorError(
             "rehearsal reporting table counts do not match the release"
@@ -448,6 +489,10 @@ def rehearse_reporting_release(
     if data_counts_after != data_counts_before:
         raise Phase1ReportingPersistenceOperatorError(
             "non-reporting data changed during rehearsal"
+        )
+    if historical_fingerprint_after != existing_fingerprint:
+        raise Phase1ReportingPersistenceOperatorError(
+            "existing reporting or audit rows changed during rehearsal"
         )
     if _sha256_file(source) != source_before:
         raise Phase1ReportingPersistenceOperatorError(
@@ -467,6 +512,9 @@ def rehearse_reporting_release(
         identical_replay_verified=True,
         migration_version=migration_version,
         unchanged_data_table_count=len(data_counts_before),
+        predecessor_authorization=predecessor_authorization,
+        existing_reporting_counts=existing_counts,
+        existing_reporting_fingerprint=existing_fingerprint,
     )
 
 
@@ -509,6 +557,7 @@ def prepare_reporting_release_from_package(
     db_path: Path,
     broker_current_authorization_path: Path,
     package_dir: Path,
+    predecessor_authorization: ReportingReleaseAuthorization | None = None,
 ) -> ReportingRelease:
     """Rebuild and validate the exact value-free prepared package."""
 
@@ -563,9 +612,19 @@ def prepare_reporting_release_from_package(
         "order_api_performed",
         "api_restart_performed",
     }
-    if set(manifest) != expected_fields or manifest.get("schema") != PACKAGE_SCHEMA:
+    updating = predecessor_authorization is not None
+    package_schema = UPDATE_PACKAGE_SCHEMA if updating else PACKAGE_SCHEMA
+    if updating:
+        expected_fields.add("predecessor_authorization")
+    if set(manifest) != expected_fields or manifest.get("schema") != package_schema:
         raise Phase1ReportingPersistenceOperatorError(
             "prepared package manifest does not match the contract"
+        )
+    if updating and (
+        manifest["predecessor_authorization"] != asdict(predecessor_authorization)
+    ):
+        raise Phase1ReportingPersistenceOperatorError(
+            "prepared package predecessor does not match the explicit authorization"
         )
     if (
         manifest["database_write_performed"] is not False
@@ -624,6 +683,7 @@ def prepare_reporting_release_from_package(
         report_owner_accepted_at_utc=_parse_utc_text(
             manifest["owner_accepted_at_utc"], "owner_accepted_at_utc"
         ),
+        predecessor_authorization=predecessor_authorization,
     )
     reasons: dict[str, int] = {}
     for omission in release.omissions:
@@ -664,22 +724,37 @@ def prepare_reporting_release_from_package(
             "prepared package does not match the rebuilt exact release"
         )
     rehearsal = manifest["rehearsal"]
+    _, _, existing_counts, existing_fingerprint = _inspect_persistence_target(
+        db_path, release, predecessor_authorization=predecessor_authorization,
+        source_preparation=True,
+    )
+    expected_counts = _expected_reporting_counts(existing_counts, release)
     if (
         not isinstance(rehearsal, dict)
-        or rehearsal.get("schema") != REHEARSAL_SCHEMA
+        or rehearsal.get("schema") != (
+            UPDATE_REHEARSAL_SCHEMA if updating else REHEARSAL_SCHEMA
+        )
         or rehearsal.get("report_release_uid") != release.report_release_uid
         or rehearsal.get("report_release_fingerprint")
         != release.report_release_fingerprint
-        or rehearsal.get("release_count") != 1
-        or rehearsal.get("account_count") != len(release.accounts)
-        or rehearsal.get("realized_item_count") != len(release.items)
-        or rehearsal.get("omission_count") != len(release.omissions)
-        or rehearsal.get("audit_count") != 0
+        or rehearsal.get("release_count") != expected_counts[0]
+        or rehearsal.get("account_count") != expected_counts[1]
+        or rehearsal.get("realized_item_count") != expected_counts[2]
+        or rehearsal.get("omission_count") != expected_counts[3]
+        or rehearsal.get("audit_count") != expected_counts[4]
         or rehearsal.get("identical_replay_verified") is not True
         or rehearsal.get("migration_version") != REHEARSAL_MIGRATION_VERSION
     ):
         raise Phase1ReportingPersistenceOperatorError(
             "prepared package rehearsal evidence is invalid"
+        )
+    if updating and (
+        rehearsal.get("predecessor_authorization") != asdict(predecessor_authorization)
+        or rehearsal.get("existing_reporting_counts") != list(existing_counts)
+        or rehearsal.get("existing_reporting_fingerprint") != existing_fingerprint
+    ):
+        raise Phase1ReportingPersistenceOperatorError(
+            "existing reporting or audit state differs from the rehearsed package"
         )
     authorization = load_reporting_release_authorization(authorization_path)
     authorize_reporting_release(release, authorization)
@@ -687,33 +762,95 @@ def prepare_reporting_release_from_package(
 
 
 def _inspect_persistence_target(
-    target: Path, release: ReportingRelease
-) -> tuple[str, tuple[int, int, int, int, int]]:
+    target: Path, release: ReportingRelease,
+    *,
+    predecessor_authorization: ReportingReleaseAuthorization | None = None,
+    source_preparation: bool = False,
+) -> tuple[str, tuple[int, int, int, int, int], tuple[int, int, int, int, int], str]:
     with duckdb.connect(str(target), read_only=True) as con:
-        if _latest_migration(con) != PERSISTENCE_MIGRATION_VERSION:
+        migration = _latest_migration(con)
+        supported = (
+            SUPPORTED_SOURCE_MIGRATION_VERSIONS if source_preparation
+            else {PERSISTENCE_MIGRATION_VERSION}
+        )
+        if migration not in supported:
             raise Phase1ReportingPersistenceOperatorError(
                 "database must be exactly at migration 0026"
             )
         counts = _reporting_counts(con)
-        if counts == (0, 0, 0, 0, 0):
-            return "would_create", counts
-        if counts[:4] != (
-            1,
-            len(release.accounts),
-            len(release.items),
-            len(release.omissions),
+        existing_uids = [
+            row[0] for row in con.execute(
+                "SELECT report_release_uid FROM phase1_reporting_releases "
+                "WHERE report_release_uid <> ?",
+                [release.report_release_uid],
+            ).fetchall()
+        ]
+        target_exists = con.execute(
+            "SELECT 1 FROM phase1_reporting_releases WHERE report_release_uid = ?",
+            [release.report_release_uid],
+        ).fetchone() is not None
+        if predecessor_authorization is None and (
+            existing_uids or (not target_exists and any(counts))
         ):
             raise Phase1ReportingPersistenceOperatorError(
-                "reporting boundary contains unexpected existing state"
+                "existing reporting state requires an explicit predecessor authorization"
             )
-        loaded = load_reporting_release(
-            con, report_release_uid=release.report_release_uid
+        if predecessor_authorization is not None:
+            if migration != PERSISTENCE_MIGRATION_VERSION:
+                raise Phase1ReportingPersistenceOperatorError(
+                    "subsequent releases require migration 0026"
+                )
+            if predecessor_authorization.report_release_uid == release.report_release_uid:
+                raise Phase1ReportingPersistenceOperatorError(
+                    "predecessor must be a different report release"
+                )
+            predecessor = load_reporting_release(
+                con, report_release_uid=predecessor_authorization.report_release_uid
+            )
+            authorize_reporting_release(predecessor, predecessor_authorization)
+            if predecessor.accounts != release.accounts:
+                raise Phase1ReportingPersistenceOperatorError(
+                    "predecessor account scope or alias differs"
+                )
+            for uid in existing_uids:
+                prior = (
+                    predecessor if uid == predecessor.report_release_uid
+                    else load_reporting_release(con, report_release_uid=uid)
+                )
+                if prior.owner_acceptance_uid == release.owner_acceptance_uid:
+                    raise Phase1ReportingPersistenceOperatorError(
+                        "new report release requires a new owner acceptance identity"
+                    )
+                for branch in ("current", "realized"):
+                    result_field = f"{branch}_result_fingerprint"
+                    acceptance_field = f"{branch}_owner_acceptance_uid"
+                    if (
+                        getattr(prior, result_field) != getattr(release, result_field)
+                        and getattr(prior, acceptance_field) == getattr(release, acceptance_field)
+                    ):
+                        raise Phase1ReportingPersistenceOperatorError(
+                            f"changed {branch} result requires a new owner acceptance identity"
+                        )
+        existing_counts = _reporting_counts(
+            con, excluding_release_uid=release.report_release_uid
         )
-    if loaded != release:
-        raise Phase1ReportingPersistenceOperatorError(
-            "target contains a conflicting report release"
+        if target_exists:
+            loaded = load_reporting_release(
+                con, report_release_uid=release.report_release_uid
+            )
+            if loaded != release:
+                raise Phase1ReportingPersistenceOperatorError(
+                    "target contains a conflicting report release"
+                )
+            if counts != _expected_reporting_counts(existing_counts, release):
+                raise Phase1ReportingPersistenceOperatorError(
+                    "reporting boundary contains unexpected existing state"
+                )
+        return (
+            "identical_replay" if target_exists else "would_create",
+            counts, existing_counts,
+            _existing_reporting_fingerprint(con, release.report_release_uid),
         )
-    return "identical_replay", counts
 
 
 def execute_reporting_release_persistence(
@@ -725,6 +862,7 @@ def execute_reporting_release_persistence(
     expected_report_release_fingerprint: str,
     persist: bool = False,
     verified_backup_path: Path | None = None,
+    predecessor_authorization: ReportingReleaseAuthorization | None = None,
 ) -> ReportingReleasePersistenceExecution:
     """Validate by default; persist only with exact hashes and a backup."""
 
@@ -772,7 +910,9 @@ def execute_reporting_release_persistence(
             "verified backup is accepted only with persistence"
         )
 
-    target_state, counts = _inspect_persistence_target(target, release)
+    target_state, counts, existing_counts, existing_fingerprint = _inspect_persistence_target(
+        target, release, predecessor_authorization=predecessor_authorization
+    )
     if not persist:
         after_digest = _sha256_file(target)
         if after_digest != before_digest:
@@ -800,29 +940,40 @@ def execute_reporting_release_persistence(
                 "database migration changed before persistence"
             )
         current_counts = _reporting_counts(con)
-        if current_counts != counts:
+        if (
+            current_counts != counts
+            or _existing_reporting_fingerprint(con, release.report_release_uid)
+            != existing_fingerprint
+        ):
             raise Phase1ReportingPersistenceOperatorError(
                 "reporting state changed before persistence"
+            )
+        if target_state == "identical_replay" and load_reporting_release(
+            con, report_release_uid=release.report_release_uid
+        ) != release:
+            raise Phase1ReportingPersistenceOperatorError(
+                "reporting state changed before replay"
             )
         persist_reporting_release(con, release)
         loaded = load_reporting_release(
             con, report_release_uid=release.report_release_uid
         )
         counts_after = _reporting_counts(con)
+        historical_fingerprint_after = _existing_reporting_fingerprint(
+            con, release.report_release_uid
+        )
     if loaded != release:
         raise Phase1ReportingPersistenceOperatorError(
             "persisted release failed exact read-back"
         )
-    expected_counts = (
-        1,
-        len(release.accounts),
-        len(release.items),
-        len(release.omissions),
-        counts[4],
-    )
+    expected_counts = _expected_reporting_counts(existing_counts, release)
     if counts_after != expected_counts:
         raise Phase1ReportingPersistenceOperatorError(
             "persisted reporting table counts are invalid"
+        )
+    if historical_fingerprint_after != existing_fingerprint:
+        raise Phase1ReportingPersistenceOperatorError(
+            "existing reporting or audit rows changed during persistence"
         )
     if backup is None or _sha256_file(backup) != before_digest:
         raise Phase1ReportingPersistenceOperatorError(
@@ -872,11 +1023,19 @@ def write_private_release_package(
     authorization_bytes = (
         json.dumps(authorization, sort_keys=True, indent=2) + "\n"
     ).encode("utf-8")
+    updating = rehearsal.predecessor_authorization is not None
+    rehearsal_document = asdict(rehearsal)
+    if not updating:
+        for field in (
+            "predecessor_authorization", "existing_reporting_counts",
+            "existing_reporting_fingerprint",
+        ):
+            rehearsal_document.pop(field)
     reasons: dict[str, int] = {}
     for omission in release.omissions:
         reasons[omission.reason_code] = reasons.get(omission.reason_code, 0) + 1
     manifest = {
-        "schema": PACKAGE_SCHEMA,
+        "schema": UPDATE_PACKAGE_SCHEMA if updating else PACKAGE_SCHEMA,
         "report_release_uid": release.report_release_uid,
         "report_release_fingerprint": release.report_release_fingerprint,
         "current_valuation_run_uid": release.current_valuation_run_uid,
@@ -908,8 +1067,8 @@ def write_private_release_package(
         "quality": "incomplete" if release.omissions else "valid",
         "authorization_sha256": sha256(authorization_bytes).hexdigest(),
         "rehearsal": {
-            "schema": REHEARSAL_SCHEMA,
-            **rehearsal.__dict__,
+            "schema": UPDATE_REHEARSAL_SCHEMA if updating else REHEARSAL_SCHEMA,
+            **rehearsal_document,
         },
         "database_write_performed": False,
         "rehearsal_copy_write_performed": True,
@@ -918,6 +1077,8 @@ def write_private_release_package(
         "order_api_performed": False,
         "api_restart_performed": False,
     }
+    if updating:
+        manifest["predecessor_authorization"] = asdict(rehearsal.predecessor_authorization)
     manifest_bytes = (json.dumps(manifest, sort_keys=True, indent=2) + "\n").encode(
         "utf-8"
     )

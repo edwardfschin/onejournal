@@ -143,14 +143,38 @@ accepted releases and audit history are preserved.
 
 ### Subsequent release readiness: 2026-10-09
 
-The immutable repository/schema can store separately keyed report releases,
-but the guarded preparation/rehearsal/persistence operator currently implements
-the first-release checkpoint: preparation requires an empty reporting boundary,
-and rehearsal/target counts assume one release. This is not a working routine
-refresh pipeline. Subsequent-release support must explicitly account for
-existing accepted releases and audit rows, preserve them, reject conflicts and
-prove replay on a disposable copy before any live update. It must not silently
-weaken the initial-release guards or reuse old acceptance for changed results.
+The review identified first-release-only guards in preparation, rehearsal and
+persistence despite an additive, separately keyed repository/schema. The local
+correction adds explicit subsequent-release support, without changing the
+financial API, calculation, database schema or active release.
+
+Both operator commands accept `--predecessor-report-authorization`, a private
+file identifying an existing exact accepted release. Initial packages and
+rehearsal receipts retain their v1 formats. An update uses
+`onejournal.phase1-report-release-package.v2` and
+`onejournal.phase1-report-release-rehearsal.v2`; the manifest adds the predecessor
+authorization identity and the receipt binds the prior reporting counts and
+full report/audit-state fingerprint. The v1 financial release and authorization
+contracts are unchanged. Without the explicit predecessor, unrelated existing
+state remains rejected; an exact existing target can be verified as a replay.
+
+Updates require migration 0026, the same account/alias scope, a new report owner
+acceptance and a new financial acceptance whenever its fingerprint changes.
+Acceptance identities cannot be recycled for different values from any prior
+release. The predecessor is named explicitly, not inferred from timestamp or
+an automatic latest-release selector. Counts in receipts/audits describe the
+whole reporting boundary, including preserved prior releases and audit rows.
+
+Synthetic disposable-copy checks cover multiple releases, exact decimal
+preservation, replay, crossed scope, reused acceptance, UID conflict, stale
+audit state, package tampering, read-only CLI validation and WAL refusal.
+The final focused operator suite passed all 16 tests; the ten existing
+calculation/repository checks also passed. These checks used synthetic temporary
+databases, not the private operational journal. Live
+persistence still requires the exact approved database/release hashes and a
+distinct byte-identical private backup. No real data update or runtime
+activation was performed for this correction. New captured evidence, financial
+acceptance, live persistence and activation remain separate operating steps.
 The API binds its exact authorized release at startup, rather than selecting
 the latest database row on browser reload. The operator sequence and legacy
 replacement-import warning are in `docs/operator_quickstart.md`.
