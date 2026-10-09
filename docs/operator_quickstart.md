@@ -127,6 +127,12 @@ The 2026-10-09 review found local v2 assemblies dated 2026-09-04, not a newer
 assembled update. The first-release-only operator gap was then corrected
 locally; that correction does not acquire data or refresh the running site.
 
+The next bounded capture preparation is recorded in
+`docs/mac_data_refresh_capture_plan.md`. It defines the missing history windows
+and position-request budget, distinguishes candidate dates from actual capture
+authority, and records the unresolved owner-side runner dependency. It is not
+an executable broker command or permission to reuse an old capture approval.
+
 For a subsequent release, both `prepare_phase1_reporting_release.py` and
 `persist_phase1_reporting_release.py` require the additional
 `--predecessor-report-authorization` option naming an existing private accepted
