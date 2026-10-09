@@ -333,3 +333,28 @@ the journal-linked private raw evidence. It deliberately does **not** restore
 the security database, old passkeys, counters, sessions or enrollment grants.
 Fresh offline enrollment remains the lost-access path. This bounded Mac
 point-in-time backup does not complete WEB-W10/P1-09 or hosted recovery.
+
+### Focused server-package security correction: 2026-10-06
+
+The local web manifest and lockfile now pin React, React DOM, and
+`react-server-dom-webpack` together at 19.2.8. React's
+`GHSA-wx67-qw84-cm4g` identifies 19.2.6 as affected by a Server Functions
+denial-of-service issue and 19.2.8 as patched. A disposable clean install and
+production build passed; all five focused access tests passed; the React
+package advisory disappeared from a production-dependency audit. At that
+initial source-validation checkpoint, the running Mac pair was not restarted
+or reinstalled, and no live-database or private-data operation occurred. The
+remaining critical `proxy-addr` audit finding comes through the unused
+`shadcn` design-tool CLI, not an imported application route; broader dependency
+and hosted security acceptance remain open.
+
+The owner then authorized the next Mac activation checkpoint. The two orphaned
+old localhost process groups were stopped gracefully, the pinned packages were
+installed, and the same owner-local passkey launcher restarted the API and
+website. Both listeners were limited to `127.0.0.1`; trusted HTTPS Reports
+returned 200, while an anonymous private portfolio request returned 401.
+Existing security and financial databases were not migrated or manually
+changed. On 2026-10-09, in response to the requested post-restart passkey sign-in
+check, the owner confirmed that Reports opens. This completes the bounded Mac
+patch-activation checkpoint; full P1-09 and hosted security acceptance remain
+open.
