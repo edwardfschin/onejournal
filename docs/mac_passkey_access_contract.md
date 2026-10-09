@@ -358,3 +358,63 @@ changed. On 2026-10-09, in response to the requested post-restart passkey sign-i
 check, the owner confirmed that Reports opens. This completes the bounded Mac
 patch-activation checkpoint; full P1-09 and hosted security acceptance remain
 open.
+
+### Bounded Mac security review: 2026-10-09
+
+The review inspected canonical commit
+`b08bf75abc30fdd44790f1fcdb72c68ca47e9147`, including the passkey service,
+private-route middleware, browser access boundary, session client, Vite
+configuration, dependency locks and existing signed-credential/negative-access
+tests. The current API and website listeners were confirmed on loopback only.
+Existing owner enrollment, sign-in, sign-out, two-tab lock and USB restoration
+evidence above was reused; unchanged tests and recovery ceremonies were not
+repeated. No financial database write, service restart or provider access was
+performed by this review.
+
+The inspected controls include exact raw Host/origin admission, rejection of
+forwarding and cross-site headers, authentication before private readers,
+JSON-only bounded authentication bodies, write-CSRF checks, single-use
+challenges, required device verification, idle/absolute session expiry,
+cross-tab locking and offline credential revocation. No additional confirmed
+critical defect was identified in this inspected Mac owner workflow. This is
+a bounded source/reachability review, not an independent penetration test or
+a claim that every application path is vulnerability-free.
+
+A fresh npm production-dependency audit reported 21 package-chain findings
+(one critical, 16 high, three moderate and one low). Exact-version OSV queries
+for the 61 locked Python packages returned advisory matches for seven packages:
+AnyIO, Starlette, python-multipart, GitPython, Pillow, setuptools and urllib3.
+These are package alerts, not 28 demonstrated application vulnerabilities.
+React's previously corrected advisory did not reappear.
+
+Source inspection separates current reachability from future exposure:
+
+- The critical `proxy-addr` chain enters through the unused `shadcn` CLI;
+  it is not imported by application routes. Vite's reported Windows-specific
+  paths do not describe this Mac runtime.
+- Vinext's `image-size` use reads repository metadata images during generation,
+  not owner-uploaded/request-supplied images in the inspected workflow.
+- The reported Starlette form-parser and python-multipart `parse_form` issues
+  require parser paths not used by the inspected private JSON API. The reported
+  Starlette URL-hostname issue does not replace the raw Host check used here.
+- The reported AnyIO process-pool/outgoing-TLS paths and GitPython/Pillow/
+  urllib3 features were not found in the inspected access/private-API code.
+  Other frontend build/network alerts remain dependency-review items; this
+  review does not establish blanket non-reachability or waive them.
+
+This triage is an inference from the current call paths and advisory conditions,
+not exploit-test proof. See the publisher advisories for
+[Starlette form parsing](https://github.com/Kludex/starlette/security/advisories/GHSA-82w8-qh3p-5jfq),
+[multipart parsing](https://github.com/Kludex/python-multipart/security/advisories/GHSA-v9pg-7xvm-68hf)
+and [AnyIO TLS](https://github.com/agronholm/anyio/security/advisories/GHSA-82r6-8w77-94w6).
+Dependency maintenance and renewed reachability review remain required before
+external hosting or introducing affected forms, images, workers or network
+features; no broad upgrade or security-policy change was made here.
+
+The remaining WEB-W10 release work is concrete: production domain/RP and TLS
+with enrollment/recovery; production packaging and dependency disposition;
+hosted proxy, abuse and access-boundary verification; and secret/security-state,
+audit/retention, monitoring and incident/recovery procedures coordinated with
+OPS-06. These are existing hosted-release requirements, not new Mac features or
+approved policies. The Mac review is recorded; P1-09 remains IN PROGRESS and
+Phase 1 remains 8/12 under the existing hosted-production completion definition.
