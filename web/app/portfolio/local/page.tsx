@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import {
   Activity, BookOpenText, BriefcaseBusiness, CheckCircle2, CircleAlert,
-  Database, FileChartColumn, LayoutDashboard, LoaderCircle, LockKeyhole, Menu,
+  Database, FileChartColumn, LayoutDashboard, LoaderCircle, LockKeyhole,
   RefreshCw, Search, Settings, ShieldCheck,
 } from 'lucide-react';
 
@@ -14,14 +14,15 @@ import {
   type BrokerCurrentPosition,
 } from '@/lib/local-owner-portfolio';
 import { LOCAL_ROUTES } from '@/lib/routes';
+import { LocalMobileNavigation } from '@/components/local-workspace-navigation';
 
 const navItems = [
-  ['Today', LayoutDashboard, null],
+  ['Today', LayoutDashboard, LOCAL_ROUTES.today],
   ['Portfolio', BriefcaseBusiness, LOCAL_ROUTES.portfolio],
   ['Trades', Activity, LOCAL_ROUTES.trades],
   ['Journal', BookOpenText, LOCAL_ROUTES.journal],
   ['Reports', FileChartColumn, LOCAL_ROUTES.reports],
-  ['Data', Database, null],
+  ['Data', Database, LOCAL_ROUTES.data],
 ] as const;
 
 function label(value: string) {
@@ -162,8 +163,7 @@ export default function LocalOwnerPortfolioPage() {
           <span className="brand-wordmark">OneJournal</span>
         </div>
         <nav className="nav-stack">
-          {navItems.map(([itemLabel, Icon, href]) =>
-            href ? (
+          {navItems.map(([itemLabel, Icon, href]) => (
               <Link
                 className={`nav-item ${itemLabel === 'Portfolio' ? 'is-active' : ''}`}
                 href={href}
@@ -173,19 +173,13 @@ export default function LocalOwnerPortfolioPage() {
                 <Icon aria-hidden="true" />
                 <span>{itemLabel}</span>
               </Link>
-            ) : (
-              <span className="nav-item is-disabled" key={itemLabel} aria-disabled="true">
-                <Icon aria-hidden="true" />
-                <span>{itemLabel}</span>
-              </span>
-            ),
-          )}
+            ))}
         </nav>
         <div className="rail-footer">
-          <span className="nav-item is-disabled" aria-disabled="true">
+          <Link className="nav-item" href={LOCAL_ROUTES.settings}>
             <Settings aria-hidden="true" />
             <span>Settings</span>
-          </span>
+          </Link>
           <div className="owner-chip">
             <span className="owner-avatar">ES</span>
             <span>
@@ -198,9 +192,7 @@ export default function LocalOwnerPortfolioPage() {
 
       <section className="workspace">
         <header className="topbar">
-          <button className="icon-button mobile-menu" type="button" aria-label="Open navigation">
-            <Menu aria-hidden="true" />
-          </button>
+          <LocalMobileNavigation />
           <label className="search-box">
             <Search aria-hidden="true" />
             <span className="sr-only">Portfolio scope</span>
@@ -424,8 +416,7 @@ export default function LocalOwnerPortfolioPage() {
       </section>
 
       <nav className="mobile-nav" aria-label="Mobile navigation">
-        {navItems.slice(0, 4).map(([itemLabel, Icon, href]) =>
-          href ? (
+        {navItems.slice(0, 4).map(([itemLabel, Icon, href]) => (
             <Link
               className={itemLabel === 'Portfolio' ? 'is-active' : ''}
               href={href}
@@ -434,13 +425,7 @@ export default function LocalOwnerPortfolioPage() {
               <Icon aria-hidden="true" />
               <span>{itemLabel}</span>
             </Link>
-          ) : (
-            <span className="is-disabled" key={itemLabel} aria-disabled="true">
-              <Icon aria-hidden="true" />
-              <span>{itemLabel}</span>
-            </span>
-          ),
-        )}
+          ))}
       </nav>
     </main>
   );

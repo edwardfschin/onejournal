@@ -508,13 +508,31 @@ supersede ADR-0018's private production acceptance gate.
   remain later boundaries. The current report still ends on 2026-09-04.
   This is maintenance of the accepted manual evidence route, not a continuous
   connector requirement or a reason to reopen accepted P1-05 through P1-08.
-- **Real route coverage:** `web/lib/routes.ts` defines four local routes:
-  Portfolio, Trades, Journal and Reports. Today, Data and Settings still have
-  demo routes and synthetic content. Deliver their bounded private equivalents
-  using existing domain/API authority, with real freshness/quality and security
-  state or explicit unavailable behavior. Do not promote demo values, add broker
-  calls to the browser, or build speculative account/connection management.
-  ADR-0018 already requires these journeys before final release acceptance.
+- **Real route coverage:** all seven mode-first private routes are now
+  implemented in local source: `/local/today`, `/local/portfolio`,
+  `/local/trades`, `/local/journal`, `/local/reports`, `/local/data`, and
+  `/local/settings`. The new Today/Data screens read the existing accepted
+  account report and full covered realized-history selection. They display
+  snapshot dates, coverage, quality, omission counts/reasons and provenance;
+  they do not calculate P&L, substitute demo data or call a broker. A release
+  mismatch or service failure makes the overview unavailable. Settings checks
+  the existing Mac passkey session and displays the verified passkey count,
+  existing access controls and offline recovery limitations; it does not
+  change security policy or claim backups are current. Shared navigation now
+  reaches every private route, including a keyboard-operated mobile menu on
+  the existing Portfolio/Trades/Journal screens. `Reload saved data` means
+  re-reading the active release, not acquiring fresh evidence.
+  Focused validation on 2026-10-09: eight client tests (three new workspace
+  tests and five report-contract regressions), four route tests, scoped
+  type-aware lint and the complete web build passed. An isolated synthetic
+  preview, with no private database or live API connection, verified Today at
+  desktop width, Data at 768px, Settings at 360px, unavailable-data removal,
+  and keyboard access from the existing mobile menu. The measured tablet and
+  phone layouts had no horizontal page overflow. This is implementation and
+  bounded Mac layout evidence, not private owner acceptance, comprehensive
+  WCAG/browser certification or production clearance. No protected service
+  restart, financial write or broker call was performed. ADR-0018's final
+  release acceptance remains outstanding.
 - **P1-09 — security:** retain completed Mac passkey/logout/recovery evidence;
   resolve production domain/RP/TLS, enrollment and recovery, dependency
   disposition, hosted proxy/abuse/access checks, and security-state/audit/

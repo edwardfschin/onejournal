@@ -1,14 +1,13 @@
 'use client';
 
-import Link from 'next/link';
-import { CircleAlert, Download, FileSpreadsheet, LockKeyhole, RefreshCw } from 'lucide-react';
+import { CircleAlert, Download, FileSpreadsheet, RefreshCw } from 'lucide-react';
 import * as React from 'react';
 import {
   fetchRealizedHistory, fetchReportAccounts, fetchReportCsv, fetchReportSymbols, formatReportMoney,
   type AccountBreakdown, type AccountReport, type HistoryFilters, type HistoryReport, type Quality,
   type ReportContext, type SymbolBreakdown, type SymbolReport,
 } from '@/lib/local-owner-reports';
-import { LOCAL_ROUTES } from '@/lib/routes';
+import { LocalWorkspaceNavigation } from '@/components/local-workspace-navigation';
 
 const qualityLabels: Record<Quality, string> = {
   valid: 'Complete for this selection', stale: 'Stale data', incomplete: 'Partial results',
@@ -150,10 +149,7 @@ export default function LocalReportsPage() {
       <section className="workspace">
         <header className="topbar">
           <div className="brand-mark"><span className="brand-glyph">1</span><span className="brand-wordmark">OneJournal</span></div>
-          <nav className="report-navigation" aria-label="Private workspace">
-            <span className="report-owner"><LockKeyhole aria-hidden="true" /> Local owner</span>
-            <Link href={LOCAL_ROUTES.portfolio}>Portfolio</Link><Link href={LOCAL_ROUTES.trades}>Trades</Link><Link href={LOCAL_ROUTES.journal}>Journal</Link>
-          </nav>
+          <LocalWorkspaceNavigation />
         </header>
         <div className="mode-banner local-portfolio-banner"><span><FileSpreadsheet aria-hidden="true" /> Private reports</span><p>Saved snapshots and accepted history. Updates are manually released.</p></div>
         <div className="content-frame">

@@ -9,10 +9,13 @@ export const DEMO_ROUTES = {
 } as const;
 
 export const LOCAL_ROUTES = {
+  today: '/local/today',
   portfolio: '/local/portfolio',
   trades: '/local/trades',
   journal: '/local/journal',
   reports: '/local/reports',
+  data: '/local/data',
+  settings: '/local/settings',
 } as const;
 
 export const LEGACY_ROUTE_REDIRECTS = [

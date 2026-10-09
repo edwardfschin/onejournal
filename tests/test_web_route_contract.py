@@ -22,6 +22,9 @@ class WebRouteContractTests(unittest.TestCase):
             "/local/trades",
             "/local/journal",
             "/local/reports",
+            "/local/today",
+            "/local/data",
+            "/local/settings",
         ):
             self.assertIn(f"'{route}'", routes)
 
@@ -38,6 +41,9 @@ class WebRouteContractTests(unittest.TestCase):
             "app/local/trades/page.tsx",
             "app/local/journal/page.tsx",
             "app/local/reports/page.tsx",
+            "app/local/today/page.tsx",
+            "app/local/data/page.tsx",
+            "app/local/settings/page.tsx",
         ):
             self.assertTrue((WEB_ROOT / relative_path).is_file(), relative_path)
 

@@ -12,6 +12,7 @@
     "lint": "oxlint",
     "test:reports": "node --experimental-strip-types --test tests/local-owner-reports.test.mjs",
     "test:access": "node --experimental-strip-types --test tests/local-owner-access.test.mjs",
+    "test:workspace": "node --experimental-strip-types --test tests/local-owner-workspace.test.mjs",
     "format": "oxfmt"
   },
   "dependencies": {
