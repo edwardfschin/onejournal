@@ -1,11 +1,14 @@
 # Mac data-refresh capture preparation
 
-## Status: prepared, not authorized or executed
+## Status: command preparation validated; execution blocked on HTTP runtime
 
 Prepared on 2026-10-09 for the existing private single-owner `Primary` scope.
-This is a request-scope plan, not an executable acquisition command or a new
-provider policy. No provider call, credential read, private evidence creation,
-transfer, database write or service restart was performed during preparation.
+The offline preparation command now produces fixed, private owner-side runner
+sources from the checksum-verified retained scripts. This is not broker-access
+authorization or a new provider policy. No provider call, credential read,
+broker evidence creation, transfer, database write or service restart was
+performed during preparation. Local private program files are not broker
+evidence and must not be committed.
 
 The accepted report covers 2026-03-06 through 2026-09-04. The reviewed local v2
 assemblies have a 2026-09-04 snapshot; a newer assembled update was not found.
@@ -131,6 +134,85 @@ access are not authorized by this read-only verification.
 
 ## Handoff and checks that matter
 
+### Current fixed preparation: 2026-10-09
+
+`scripts/journal/prepare_mac_refresh_capture.py` orchestrates the pure source
+compiler in `src/onejournal/provider_connectors/capture_preparation.py`. It
+never imports or executes a retained runner, accesses credentials or connects
+to a provider. Inputs include the reviewed source checksum, exact source/runtime
+pins, proposed approval/run identities, dates and owner output root. Output is
+one non-overwriting `0600` program in an existing `0700` private directory.
+Historical sources, identities, owner epoch, binding, acknowledgement and
+manifest profiles remain intact; the historical pre-capture OAuth refresh
+declaration is replaced with zero.
+
+Further read-only verification confirmed the expected OS account and configured
+active-producer role on `one-prod`. The actual pinned runtime reports Python
+3.12.3. Authentication/configuration/runtime hashes were rebound to the inspected
+installation; acknowledgement and account-binding checksums remain unchanged.
+The archived acknowledgement was also validated against the current provider
+policy and current time without renewal. This does not grant a new owner lease,
+authorize execution or read the account-binding contents. The three proposed
+owner run directories and the new Mac transfer destination do not exist.
+
+Proposed approval identity: `ONEJOURNAL-MAC-REFRESH-20261009-CAPTURE-01`.
+It is a label for the proposed scope, not an approval already obtained.
+
+| Order | Proposed run | Scope | GETs |
+| --- | --- | --- | ---: |
+| 1 | `ONEJOURNAL-MAC-REFRESH-20261009-POSITION-01` | Complete existing-account positions | 1 |
+| 2 | `ONEJOURNAL-MAC-REFRESH-20261009-HISTORY-W01-01` | Orders then transactions, September 5–October 4 | 2 |
+| 3 | `ONEJOURNAL-MAC-REFRESH-20261009-HISTORY-W02-01` | Orders then transactions, October 5–9 | 2 |
+
+Capture date is fixed to October 9 in both UTC and New York. The added guard
+runs before any side effect and immediately before/after each GET; a date
+rollover stops without a complete manifest. An intraday snapshot remains
+intraday evidence, not complete October 9 session coverage. History collected
+after positions still uses the existing snapshot cutoff. Prepared entry points
+hide unexpected exception details because HTTP errors can contain a private
+account hash in their URL. No retry or implicit token refresh was introduced.
+
+### Critical runtime dependency; do not execute the current installation
+
+The pinned owner environment contains Requests 2.31.0 and urllib3 2.0.7. The
+retained runners use streamed responses, and the four-MiB payload limit does
+not bound a malformed chunk-size line inside the HTTP library. The official
+[urllib3 streaming advisory](https://github.com/urllib3/urllib3/security/advisories/GHSA-vxq7-64xx-v4gw)
+identifies this path as affected below 2.8.0. Requests also has published fixes
+after the installed version; see its
+[official advisory](https://github.com/psf/requests/security/advisories/GHSA-gc5v-m9x4-r6x2).
+That latter advisory concerns a utility the runner does not call; it is not
+evidence of a credential leak in this capture path.
+
+The prepared runners require stable Requests >=2.33.0 and urllib3 >=2.8.0
+before any credential/client import or GET. Missing, older or prerelease
+versions fail closed. The current owner environment therefore cannot execute
+the prepared capture. No package was installed, no shared OneBot runtime was
+changed, and no service was restarted. Do not work around the guard with custom
+HTTP parsing or remove it to use the old environment. Resolve an isolated
+capture runtime and rebind its inspected executable/source pins before broker
+execution. An isolated runtime must be reviewed for the existing OneBot auth
+module's dependencies and existing credential-store path; do not copy tokens
+or assume environment compatibility.
+
+The nine focused synthetic tests cover exact scope rebinding, retained owner
+and acknowledgement constants, bounded history dates, checksum/identity/output
+boundary rejection, date guards, stale/missing transport rejection, private
+exception suppression and non-overwriting private output. All three updated
+programs also compiled in memory on owner Python 3.12.3 without executing their
+entry points. Executing only the isolated transport guard, without importing
+the client or reading credentials, confirmed that it rejects the current
+environment. Earlier private program files predate the HTTP guard and are
+superseded, not approved for use. Reprepare from retained sources after
+resolving the capture runtime. No broad application test run or broker probe is
+needed for this source-only preparation.
+
+Proposed new Mac transfer root:
+`/Users/edward/Projects/Private/OneJournal/mac-refresh/ONEJOURNAL-MAC-REFRESH-20261009-01`.
+Retain each acquisition as a separate non-overwriting bundle; do not merge raw
+directories. Dates and identities must be freshly prepared if the fixed scope
+expires before authorized execution.
+
 One coherent acquisition approval can cover the exact bounded GETs, creation
 of new owner-only evidence bundles, checksum-preserving transfer to a named
 new private Mac destination and credential-free validation, once the producer,
@@ -169,9 +251,12 @@ Old evidence, notes, reviews and accepted releases remain rollback history.
 ## Impact and rollback
 
 Authoritative inputs are immutable provider evidence under the approved bridge
-contracts. This preparation changes only operator documentation; downstream
+contracts. This preparation adds an offline source compiler, operator, focused
+synthetic tests and operator documentation; downstream
 intake, assembly, history revision, financial calculation and report-release
 contracts are unchanged. No persisted state or user-facing runtime is changed.
-Validation is the offline date-window calculation, source/profile comparison
-and documentation diff check; no broad test run or provider probe is needed.
-Rollback is a focused documentation revert, not deletion of private evidence.
+Validation is the offline date-window calculation, source/profile comparison,
+nine focused tests and documentation/Git diff checks. No broad test run or
+provider probe is needed. Rollback is a focused source revert; uninstalled
+private prepared programs do not affect the running system. Do not delete
+retained private evidence as part of rollback.
