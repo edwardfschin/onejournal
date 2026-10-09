@@ -8,10 +8,18 @@ OneJournal is read-only toward brokers. Private journal entries and reviews can
 be saved through their approved application boundaries. It does not place,
 cancel, replace, or modify broker orders or auto-trade.
 
-## Local website: one terminal
+## Current protected Mac website
 
-Use the repository's `bin/onejournal-web` launcher for the current Mac-only
-website. It starts the existing loopback API and development website together,
+The owner-approved site uses trusted `https://localhost:4173` and passkey login.
+Use the owner-local procedure in `docs/mac_passkey_access_contract.md` to start
+that protected pair. The launcher below is the older, unauthenticated route;
+it is not the normal restart procedure for the protected site. Do not start
+both pairs or substitute the legacy launcher to bypass a login problem.
+
+## Legacy local website launcher: one terminal
+
+The repository's `bin/onejournal-web` launcher starts the legacy unauthenticated
+loopback API and development website together,
 opens the canonical local page, and keeps both in one foreground session.
 It is not a production server, login implementation, VPS deployment command,
 import, migration, or financial calculation.
@@ -90,6 +98,47 @@ password entry; a temporary rehearsal is not a lasting backup.
 
 The sections below retain the legacy Streamlit/import operator procedures;
 they are not required merely to start the local website.
+
+## Updating the data shown by the private website
+
+Reloading Reports or changing a filter rereads the selected saved release.
+It does not call Schwab, ingest files, recalculate P&L, select the newest
+database release or advance the displayed as-of date. The report authority is
+selected and validated when the API starts.
+
+The safe evidence-to-display path is:
+
+1. Obtain an explicit new private evidence bundle through the existing bounded
+   Schwab bridge: complete positions, transaction/lifecycle history and the
+   required quote/session lineage. ADR-0016 keeps OneBot as sole token owner;
+   no shared credentials, website-triggered fetch or automatic polling.
+2. Validate the immutable source and assemble/reconcile it through OneJournal's
+   existing v2 evidence/history-revision path, using a disposable journal copy
+   first. Preserve prior revisions, journal notes and reviews.
+3. Reconcile a new broker-current valuation and bounded realized result, then
+   prepare and rehearse a new exact immutable report release. A prior financial
+   acceptance does not approve new values or a new fingerprint.
+4. Only after the new result is accepted, take a fresh verified backup, append
+   the approved data/release and deliberately switch the protected API's exact
+   authorizations. Live writes and runtime activation are separate from local
+   preparation; the old release remains rollback evidence.
+
+This is **not yet a ready-to-run refresh command**. The 2026-10-09 review found
+local v2 assemblies dated 2026-09-04, not a newer assembled update. It also found
+that `phase1_reporting_persistence_operator.py` still gates preparation on an
+empty reporting boundary and checks rehearsal/persistence against one release.
+The database repository supports immutable releases keyed by UID, but the
+guarded operator needs explicit existing-state handling and focused append/
+replay/conflict/preservation validation before a second release can be used.
+Do not remove those guards, clear tables or invent an acceptance identity.
+
+The legacy `refresh_dashboard.py`, `refresh_dashboard_db_transition.py` and
+daily-import commands below are not substitutes for this website release path.
+The transition script invokes `import_journal_to_db.py --replace`; do not run it
+against the accepted private journal. CSV/dashboard generation does not update
+the process-start report authority. See `docs/phase1_reporting_release_contract.md`
+and `docs/schwab_history_materialization_revision_contract.md` for the financial
+and append-only history boundaries.
 
 ## Activate OneJournal
 

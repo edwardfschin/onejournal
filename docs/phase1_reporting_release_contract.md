@@ -141,6 +141,20 @@ hosting/state, production quality checks, and final Phase 1 acceptance remain
 open. Rollback remains withdrawal of process-start reporting authorization;
 accepted releases and audit history are preserved.
 
+### Subsequent release readiness: 2026-10-09
+
+The immutable repository/schema can store separately keyed report releases,
+but the guarded preparation/rehearsal/persistence operator currently implements
+the first-release checkpoint: preparation requires an empty reporting boundary,
+and rehearsal/target counts assume one release. This is not a working routine
+refresh pipeline. Subsequent-release support must explicitly account for
+existing accepted releases and audit rows, preserve them, reject conflicts and
+prove replay on a disposable copy before any live update. It must not silently
+weaken the initial-release guards or reuse old acceptance for changed results.
+The API binds its exact authorized release at startup, rather than selecting
+the latest database row on browser reload. The operator sequence and legacy
+replacement-import warning are in `docs/operator_quickstart.md`.
+
 ## Impact map
 
 | Area | Contracted impact |
