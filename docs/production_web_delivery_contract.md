@@ -467,7 +467,7 @@ API a JSON 404. Headers were verified before redirects/API handling, not just
 on served files; a focused regression check preserves this ordering.
 
 Remaining: authorized Mac handover with trusted HTTPS and an owner-device
-private navigation/export check; installed Python/service packaging rehearsal and
+private navigation/export check, plus
 remaining operations/quality/security acceptance. No live journal/security
 write, accepted website change, restart, broker call or financial refresh
 publication was performed. Formal Phase 1 remains 8/12; changed financial
@@ -512,6 +512,22 @@ environment, following `INSTALL.txt` in the archive. Dependency installation
 requires package-index or cache access; this is not an offline Python/runtime
 bundle. The installed service requires neither Node nor a source checkout.
 Its serving arguments and explicit Mac activation boundary are unchanged.
+Evidence: a 58-file public archive from source commit `ba476b0` was installed
+non-editably into a fresh Python 3.13.9 environment using the unchanged locks;
+dependency consistency passed. The relocated service started on a separate
+loopback HTTPS port with no Node executable in PATH and no source import.
+Explicit test-client certificate trust, real ES256 synthetic passkey login,
+private journal search, CSRF denial/acceptance, append/replay, logout and owned
+process shutdown passed. Startup left the disposable journal byte-identical;
+the deliberate API write affected that synthetic database only. File hashes
+were verified after archive relocation. Five focused packaging/activation
+guards and five existing static/access integration checks passed. The first
+restricted-process attempt timed out; the local-process-authorized rerun
+passed, and test cleanup now bounds termination of its own process even on
+failure. No owner journal, security store, system certificate trust, watched
+checkout or running service was changed. These checks do not substitute for
+the actual owner-device navigation/export handover.
+
 No Linux/VPS portability, hosted deployment, production security clearance or
 owner-device acceptance is claimed. Phase 1 remains 8/12.
 

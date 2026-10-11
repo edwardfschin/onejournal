@@ -604,7 +604,8 @@ supersede ADR-0018's private production acceptance gate.
   site remain unchanged. The installed Python/static candidate now has a
   public wheel, complete static artifact, existing dependency locks and
   commit-bound file checksums, built from clean committed source only.
-  Relocated installed-service rehearsal is the current checkpoint;
+  Fresh-environment installed HTTPS rehearsal passed with a real signed
+  synthetic passkey and protected, replay-safe journal read/write/logout;
   trusted-HTTPS Mac handover/private owner journeys remain outstanding.
   Approve the private
   host/environment and production-state design, then rehearse PostgreSQL

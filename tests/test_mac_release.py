@@ -149,16 +149,18 @@ class InstalledMacRelease(unittest.TestCase):
             try:
                 context = ssl.create_default_context(cafile=str(certificate))
                 with httpx.Client(base_url=origin, verify=context, trust_env=False, timeout=5) as client:
-                    for _ in range(100):
+                    last_error = None
+                    for _ in range(300):
                         if process.poll() is not None:
                             self.fail("Installed service exited before readiness: " + process.communicate()[1].decode())
                         try:
                             response = client.get("/local/reports")
                             break
-                        except httpx.TransportError:
+                        except httpx.TransportError as error:
+                            last_error = error
                             time.sleep(0.1)
                     else:
-                        self.fail("Installed service did not become ready.")
+                        self.fail(f"Installed service did not become ready: {last_error}")
                     self.assertEqual(response.status_code, 200)
                     self.assertIn('id="root"', response.text)
                     self.assertEqual(hashlib.sha256(journal.read_bytes()).hexdigest(), journal_before)
@@ -189,5 +191,11 @@ class InstalledMacRelease(unittest.TestCase):
             finally:
                 if process.poll() is None:
                     process.send_signal(signal.SIGINT)
-                process.communicate(timeout=10)
+                try:
+                    output, errors = process.communicate(timeout=10)
+                except subprocess.TimeoutExpired:
+                    process.kill()  # Only this Popen-owned disposable process.
+                    output, errors = process.communicate(timeout=5)
+                if process.returncode != 0:
+                    print("Disposable service output:", output.decode(), errors.decode())
             self.assertEqual(process.returncode, 0)
