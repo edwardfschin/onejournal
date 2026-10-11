@@ -3,7 +3,9 @@
 
 The operator has no provider, credential, migration, raw-evidence write, or
 order capability. Validation is the default; persistence requires --persist
-and a pre-existing database with migration 0016 already applied.
+and a pre-existing database with the exact version's migration already applied
+(0016 for legacy v1, 0027 for snapshot-cutoff v3). V3 storage is evidence-only:
+it neither activates journal history nor publishes a report.
 """
 
 from __future__ import annotations
@@ -23,12 +25,16 @@ if str(SRC_DIR) not in sys.path:
     sys.path.insert(0, str(SRC_DIR))
 
 from onejournal.journal.schwab_evidence_assembly import (  # noqa: E402
+    SCHWAB_PHASE1_EVIDENCE_ASSEMBLY_V3,
     load_schwab_phase1_evidence_assembly_bytes,
     privacy_safe_schwab_evidence_audit,
 )
 from onejournal.journal.schwab_evidence_import_repository import (  # noqa: E402
     load_schwab_phase1_evidence_assembly,
     persist_schwab_phase1_evidence_assembly,
+)
+from onejournal.journal.schwab_snapshot_evidence_repository import (  # noqa: E402
+    persist_schwab_snapshot_evidence, load_schwab_snapshot_evidence,
 )
 
 
@@ -69,7 +75,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--db",
         type=Path,
-        help="absolute path to a pre-existing 0600 DuckDB with migration 0016",
+        help="absolute path to a pre-existing 0600 DuckDB with the required migration",
     )
     return parser
 
@@ -91,8 +97,10 @@ def main(argv: Sequence[str] | None = None) -> int:
         audit["operation"] = "validated"
         if args.persist:
             db_path = _database_file(args.db)
-            result = persist_schwab_phase1_evidence_assembly(db_path, assembly)
-            loaded = load_schwab_phase1_evidence_assembly(
+            persist = persist_schwab_snapshot_evidence if assembly.contract_version == SCHWAB_PHASE1_EVIDENCE_ASSEMBLY_V3 else persist_schwab_phase1_evidence_assembly
+            load = load_schwab_snapshot_evidence if assembly.contract_version == SCHWAB_PHASE1_EVIDENCE_ASSEMBLY_V3 else load_schwab_phase1_evidence_assembly
+            result = persist(db_path, assembly)
+            loaded = load(
                 db_path, assembly_uid=assembly.assembly_uid
             )
             if loaded.result_fingerprint != assembly.result_fingerprint:
@@ -110,7 +118,9 @@ def main(argv: Sequence[str] | None = None) -> int:
         print(json.dumps(audit, sort_keys=True, separators=(",", ":")))
         return 0
     except (duckdb.Error, OSError, RuntimeError, ValueError) as exc:
-        print(f"Schwab Phase 1 evidence ingestion failed: {exc}", file=sys.stderr)
+        # Database errors can include the rejected private financial row.
+        reason = "database validation failed; no activation occurred" if isinstance(exc, duckdb.Error) else str(exc)
+        print(f"Schwab Phase 1 evidence ingestion failed: {reason}", file=sys.stderr)
         return 1
 
 

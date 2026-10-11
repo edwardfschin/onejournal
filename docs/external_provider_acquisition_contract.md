@@ -10,6 +10,11 @@ PNL-03V additively defines
 `schwab-read-only-bounded-batch-quotes-and-market-hours.v1` for one exact,
 ordered quote batch of at most 50 symbols plus one through three matching
 schedule responses. It does not widen the original single-symbol profile.
+The 2026-10-11 offline correction additively defines
+`schwab-read-only-bounded-batch-quotes-and-market-hours.v2`: one or two
+disjoint batches, each at most 50 symbols, plus one through three schedules,
+still at most five GETs total. Existing profiles and accepted evidence remain
+unchanged. This intake contract is not approval to acquire evidence.
 ADR-0020 additively defines
 `schwab-read-only-single-account-positions.v1` for one separately approved,
 complete account-position response under the same sole-owner boundary.
@@ -46,6 +51,10 @@ so identical replay is stable and changed lineage cannot reuse the identity.
 The batch converter returns the same contracts as one complete capture and
 requires OneJournal-owned canonical mappings to match the provider-symbol
 order exactly.
+The v2 multi-batch converter requires exact mappings for every quote request
+and returns one independent capture per response, in manifest order. It does
+not merge or synthesize raw JSON; each capture retains its own request UID,
+raw bytes, digest, capture identity and private manifest.
 
 Market-hours conversion returns parsed schedule evidence whose combined
 lineage binds the external manifest digest and every response digest. An
@@ -94,6 +103,11 @@ duplicate, reordered, oversized, or unsafe symbols reject the complete batch.
 All existing manifest, acknowledgement, owner-epoch, request-count, response,
 checksum, no-retry, no-redirect, and forbidden-activity controls remain in
 force.
+
+Batch profile v2 additionally requires symbols to be unique and globally
+sorted across both batches. Each batch keeps the existing 50-symbol cap and
+exact response-set validation. Shared schedules count once within the same
+five-GET ceiling. No retry or provider/credential capability is introduced.
 
 The separate `schwab-read-only-single-account-positions.v1` profile permits
 exactly one response from one redirect-free GET represented by
@@ -212,6 +226,14 @@ manifest and its named `0600` provider responses, plus the exact current `0600`
 provider-use acknowledgement. The operator requires explicit expected run,
 approval, source-owner, owner-epoch, quote-mapping, schedule-scope, evaluation,
 normal-reference-date, and schedule-validity inputs.
+
+For either batch profile, repeat `--quote-mapping` once per instrument with
+the same request UID for instruments in that batch. Mappings must preserve
+each request's exact symbol order and cover every batch; duplicates and unknown
+schedule scopes fail. Batch audit emits `instrument_key_sha256`, not instrument
+keys or provider symbols. The original single-symbol profile's output contract
+is unchanged. Materialization stores each exact capture independently, only
+after every included quote has passed the requested validation gates.
 
 Validation-only is the default. It verifies and converts the acquisition,
 builds exact same-provider schedule authority, and reports the freshness result

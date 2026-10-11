@@ -3,7 +3,7 @@
 This directory is reserved for ordered DuckDB migration artifacts governed by
 `docs/database_migrations.md`.
 
-There are currently twenty-five migration files:
+There are currently twenty-seven migration files:
 
 - `0001_establish_schema_version.sql`:
   create the migration ledger (`schema_migrations`) with run metadata and audit
@@ -119,6 +119,13 @@ There are currently twenty-five migration files:
   approved private application on 2026-09-09 preserved all 67 non-reporting
   base-table row counts, passed integrity validation, and left all five
   reporting tables empty. Report persistence and API restart remain separate.
+- `0027_add_snapshot_cutoff_evidence.sql`:
+  add one immutable assembly-v3 artifact store with exact UTC cutoff, UTC query
+  dates, New York snapshot date, canonical JSON and checksum/fingerprint lineage.
+  No existing table, accepted artifact, reporting release or current view is
+  rewritten. Rehearsed on a disposable copy of the immutable schema-0026
+  backup: 73 existing table counts, nine views and two assembly fingerprints
+  preserved; new table empty; replay verified. Not applied to the live journal.
 
 The existing DuckDB schema is a prototype bootstrap baseline created (and now
 versioned) by `scripts/journal/init_journal_db.py`.

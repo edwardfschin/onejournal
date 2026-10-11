@@ -1,7 +1,7 @@
 # Schwab Phase 1 evidence import operator
 
 `scripts/journal/ingest_schwab_phase1_evidence_assembly.py` validates a
-pre-existing private `onejournal.schwab-phase1-evidence-artifact.v1` file. It
+pre-existing private `onejournal.schwab-phase1-evidence-artifact.v1` or v3 file. It
 does not assemble provider bytes, access Schwab, open credentials, apply a
 migration, write raw evidence, select P&L, or place orders.
 
@@ -29,7 +29,12 @@ PYTHONPATH=.:src python -m scripts.journal.ingest_schwab_phase1_evidence_assembl
 
 The command atomically stores all eight families, loads the exact assembly UID
 back, revalidates it, and reports `persisted` or `replayed`. A nonzero exit means
-the result must not be used. Do not redirect output into a public path; although
+the result must not be used. V3 instead requires exact migration 0027 and
+stores the complete ten-family canonical artifact in the separate immutable
+snapshot-evidence table, with exact scope/cutoff read-back. It does not activate
+history or reports. V3 audit adds the exact cutoff, UTC history end and
+exclusion counts. Database errors are sanitized to avoid printing rejected
+private financial rows. Do not redirect output into a public path; although
 the audit omits holdings and values, it remains operating evidence.
 
 ## Recovery and rollback

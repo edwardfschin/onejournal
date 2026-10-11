@@ -16,6 +16,7 @@ from typing import Any, Mapping
 from onejournal.instruments import InstrumentIdentity
 from onejournal.journal.schwab_evidence_assembly import (
     SCHWAB_PHASE1_EVIDENCE_ASSEMBLY_V2,
+    SCHWAB_PHASE1_EVIDENCE_ASSEMBLY_V3,
     SchwabPhase1EvidenceAssembly,
     canonical_schwab_evidence_json,
     validate_schwab_phase1_evidence_assembly,
@@ -144,8 +145,8 @@ def build_schwab_journal_lifecycle_reconciliation(
     """Build episode state from fills, terminal events, and one complete snapshot."""
 
     validate_schwab_phase1_evidence_assembly(assembly)
-    if assembly.contract_version != SCHWAB_PHASE1_EVIDENCE_ASSEMBLY_V2:
-        raise ValueError("journal lifecycle reconciliation requires assembly v2")
+    if assembly.contract_version not in {SCHWAB_PHASE1_EVIDENCE_ASSEMBLY_V2, SCHWAB_PHASE1_EVIDENCE_ASSEMBLY_V3}:
+        raise ValueError("journal lifecycle reconciliation requires assembly v2 or v3")
     account = _family_records(assembly, "account")
     if len(account) != 1 or account[0].get("account_complete") is not True:
         raise ValueError("journal lifecycle reconciliation requires a complete snapshot")

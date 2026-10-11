@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import argparse
 from datetime import UTC, date, datetime
+from hashlib import sha256
 import json
 from pathlib import Path
 import stat
@@ -38,9 +39,14 @@ from onejournal.market_data import (  # noqa: E402
 from onejournal.provider_connectors import (  # noqa: E402
     EXTERNAL_PROVIDER_ACQUISITION_MANIFEST_FILENAME,
     ExternalSchwabQuoteMapping,
+    ExternalSchwabBatchQuoteMapping,
+    SCHWAB_BATCH_QUOTES_EXTERNAL_ACQUISITION_PROFILE,
+    SCHWAB_MULTI_BATCH_QUOTES_EXTERNAL_ACQUISITION_PROFILE,
     LocalPrivateRawCaptureStore,
     build_external_schwab_schedule_evidence,
     convert_external_schwab_quotes,
+    convert_external_schwab_batch_quotes,
+    convert_external_schwab_multi_batch_quotes,
     load_external_provider_acquisition,
     load_provider_usage_policy,
 )
@@ -257,13 +263,32 @@ def main(argv: Sequence[str] | None = None) -> int:
         expected_owner_uid=args.expected_owner_uid,
         expected_owner_epoch_uid=args.expected_owner_epoch_uid,
     )
-    mappings, scope_by_request_uid = _mappings(args.quote_mapping)
-    captures = convert_external_schwab_quotes(
-        acquisition,
-        mappings=mappings,
-        evaluated_at_utc=args.evaluated_at,
-        freshness_policy=freshness_policy,
-    )
+    batch_profile = acquisition.manifest.profile in {
+        SCHWAB_BATCH_QUOTES_EXTERNAL_ACQUISITION_PROFILE,
+        SCHWAB_MULTI_BATCH_QUOTES_EXTERNAL_ACQUISITION_PROFILE}
+    if batch_profile:
+        grouped: dict[str, list[QuoteInstrumentRequest]] = {}
+        scope_by_request_uid = {}
+        for row in args.quote_mapping:
+            uid, key, symbol, asset, currency, scope_name = row
+            joined = (uid, key)
+            if joined in scope_by_request_uid or scope_name not in _SCOPE_BY_NAME:
+                raise ExternalAcquisitionOperatorError("batch mapping or schedule scope is invalid")
+            grouped.setdefault(uid, []).append(QuoteInstrumentRequest(key, symbol, asset, currency))
+            scope_by_request_uid[joined] = _SCOPE_BY_NAME[scope_name]
+        batches = tuple(ExternalSchwabBatchQuoteMapping(uid, tuple(items)) for uid, items in grouped.items())
+        if acquisition.manifest.profile == SCHWAB_MULTI_BATCH_QUOTES_EXTERNAL_ACQUISITION_PROFILE:
+            captures = convert_external_schwab_multi_batch_quotes(acquisition, mappings=batches,
+                evaluated_at_utc=args.evaluated_at, freshness_policy=freshness_policy)
+        else:
+            if len(batches) != 1:
+                raise ExternalAcquisitionOperatorError("batch profile v1 requires exactly one mapping")
+            captures = (convert_external_schwab_batch_quotes(acquisition, mapping=batches[0],
+                evaluated_at_utc=args.evaluated_at, freshness_policy=freshness_policy),)
+    else:
+        mappings, scope_by_request_uid = _mappings(args.quote_mapping)
+        captures = convert_external_schwab_quotes(acquisition, mappings=mappings,
+            evaluated_at_utc=args.evaluated_at, freshness_policy=freshness_policy)
     schedules = build_external_schwab_schedule_evidence(
         acquisition,
         normal_reference_date=args.normal_reference_date,
@@ -271,9 +296,9 @@ def main(argv: Sequence[str] | None = None) -> int:
     )
 
     results: list[dict[str, object]] = []
-    for converted in captures:
-        scope = scope_by_request_uid[converted.external_request_uid]
-        quote = converted.capture.quotes[0]
+    for converted, quote in ((item, normalized) for item in captures for normalized in item.capture.quotes):
+        scope_key = (converted.external_request_uid, quote.instrument_key) if batch_profile else converted.external_request_uid
+        scope = scope_by_request_uid[scope_key]
         authority = resolve_provider_session_authority(
             SchwabMarketHoursResolver(
                 connection_uid=acquisition.manifest.connection_uid,
@@ -299,8 +324,9 @@ def main(argv: Sequence[str] | None = None) -> int:
                 "external_request_uid": converted.external_request_uid,
                 "quote_run_uid": converted.capture.quote_run_uid,
                 "quote_uid": quote.quote_uid,
-                "instrument_key": quote.instrument_key,
-                "provider_instrument_id": quote.provider_instrument_id,
+                **({"instrument_key_sha256": sha256(quote.instrument_key.encode()).hexdigest()}
+                   if batch_profile else {"instrument_key": quote.instrument_key,
+                                          "provider_instrument_id": quote.provider_instrument_id}),
                 "source_locator": converted.source.locator,
                 "source_raw_sha256": converted.source.raw_sha256,
                 "session_authority_uid": authority.authority_uid,

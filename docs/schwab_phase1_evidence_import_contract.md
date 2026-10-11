@@ -76,6 +76,55 @@ fields from the complete Schwab position response without inventing a quote.
 
 ## Persistence and replay
 
+### Additive snapshot-cutoff assembly v3
+
+The owner's 2026-10-11 offline correction approval adds
+`onejournal.schwab-phase1-evidence-assembly.v3` and artifact v3. It retains the
+ten-family v2 structure without changing v1/v2 serialization or fingerprints.
+Its authoritative producer is `build_schwab_phase1_evidence_assembly_v3`.
+
+V3 accepts one or two independent converted quote captures. Duplicate
+instruments fail. Provider, connection, currency, position subset, exact raw
+lineage, capture validation and same-provider session authority remain mandatory.
+Quote `asof` remains its provider timestamp's New York date; it need not equal
+the snapshot's New York date. Quotes later than the snapshot instant fail.
+Evaluation time stays distinct; no timestamps are changed to fit the contract,
+and no freshness rule is weakened.
+
+`snapshot_cutoff_utc` must equal the complete account snapshot receipt instant;
+its New York date must equal assembly `asof`. Contiguous history query dates
+remain UTC dates and end on the cutoff's UTC date. Admitted transaction, fill,
+cash and lifecycle-event instants must be no later than the exact cutoff;
+lifecycle legs follow their parent event. Missing or naive instants fail.
+Later records are excluded with `after_snapshot_cutoff` counts, retaining raw
+source evidence and hashes. Account metadata separately counts later order
+fill rows; direct order observations are retained for lineage, not treated as
+snapshot-time execution state. Global order/transaction reconciliation is
+recomputed after filtering. Any such financial exclusion makes v3
+`review_required`. Historical exclusions remain separately labelled.
+
+Migration 0027 adds only `phase1_schwab_snapshot_evidence_imports`. The private
+canonical artifact retains all families, counts, exclusions and fingerprints.
+SQL constraints distinguish UTC query dates from the New York snapshot date.
+`schwab_snapshot_evidence_repository.py` requires a pre-existing database and
+the exact applied migration checksum; write/replay/read-back validate both
+artifact digest and duplicated scope metadata in one transaction. UTC cutoff
+comparison uses exact integer microseconds, without adding a timezone package.
+It never automatically migrates or activates a financial/report release.
+
+Pure materialization, execution projection and lifecycle reconciliation consume
+validated v3. The legacy history-revision writer rejects v3 before database
+access because migration 0021 still binds v2 lineage and market-date window
+constraints. A compatible history/report activation path remains outstanding;
+evidence storage is not proof that the website refresh is wired in.
+
+Live migration, private persistence and activation remain outside the offline
+approval. Existing accepted reporting releases and all unresolved positions
+are preserved. Copy-only upgrade and synthetic exact replay passed; actual
+private v3 assembly/reconciliation still require quote/session evidence.
+
+### Retained v1/v2 stores
+
 Migration 0016 is additive:
 
 - `phase1_schwab_evidence_import_runs` stores account/as-of scope,

@@ -18,6 +18,7 @@ from typing import Any
 import duckdb
 
 from onejournal.journal.schwab_evidence_assembly import (
+    SCHWAB_PHASE1_EVIDENCE_ASSEMBLY_V3,
     SchwabPhase1EvidenceAssembly,
     canonical_schwab_evidence_json,
 )
@@ -656,6 +657,8 @@ def persist_schwab_history_revision(
 ) -> HistoryRevisionResult:
     """Append and activate one exact reconstruction, bootstrapping legacy once."""
 
+    if assembly.contract_version == SCHWAB_PHASE1_EVIDENCE_ASSEMBLY_V3:
+        raise ValueError("snapshot assembly v3 is evidence-only; history activation requires its own compatible revision writer")
     timestamp = created_at or datetime.now(UTC)
     materialization = build_schwab_journal_materialization_plan(assembly)
     projection = build_schwab_execution_projection_from_assembly(

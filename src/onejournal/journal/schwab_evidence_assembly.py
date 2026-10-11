@@ -14,6 +14,7 @@ import json
 import re
 from types import MappingProxyType
 from typing import Any, Literal, Mapping
+from zoneinfo import ZoneInfo
 
 from onejournal.market_data.ingestion import validate_quote_capture
 from onejournal.market_data.quotes import QuoteFreshnessPolicy
@@ -25,6 +26,7 @@ from onejournal.provider_connectors.external_acquisition import (
     ConvertedExternalLifecycleEvidence,
     ConvertedExternalPositionSnapshot,
     ConvertedExternalQuoteCapture,
+    reconcile_lifecycle_rows,
 )
 
 
@@ -34,12 +36,14 @@ SCHWAB_PHASE1_EVIDENCE_ASSEMBLY_VERSION = (
 SCHWAB_PHASE1_EVIDENCE_ASSEMBLY_V2 = (
     "onejournal.schwab-phase1-evidence-assembly.v2"
 )
+SCHWAB_PHASE1_EVIDENCE_ASSEMBLY_V3 = "onejournal.schwab-phase1-evidence-assembly.v3"
 SCHWAB_PHASE1_EVIDENCE_ARTIFACT_VERSION = (
     "onejournal.schwab-phase1-evidence-artifact.v1"
 )
 SCHWAB_PHASE1_EVIDENCE_ARTIFACT_V2 = (
     "onejournal.schwab-phase1-evidence-artifact.v2"
 )
+SCHWAB_PHASE1_EVIDENCE_ARTIFACT_V3 = "onejournal.schwab-phase1-evidence-artifact.v3"
 FAMILY_ORDER = (
     "account",
     "positions",
@@ -124,6 +128,7 @@ class SchwabPhase1EvidenceAssembly:
     reconciliation: SchwabEvidenceReconciliation
     final_status: Literal["ready", "review_required"]
     result_fingerprint: str
+    snapshot_cutoff_utc: datetime | None = None
 
 
 def _utc(value: datetime, field_name: str) -> datetime:
@@ -138,6 +143,15 @@ def _machine_id(value: str, field_name: str) -> str:
             f"{field_name} must be a secret-safe opaque identifier"
         )
     return value
+
+
+def _record_instant(record: Mapping[str, Any], field: str) -> datetime:
+    value = record.get(field)
+    try:
+        parsed = value if isinstance(value, datetime) else datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+        return _utc(parsed, field)
+    except (TypeError, ValueError) as exc:
+        raise SchwabEvidenceAssemblyError("financial evidence requires an explicit UTC instant") from exc
 
 
 def _digest(value: str, field_name: str) -> str:
@@ -321,6 +335,8 @@ def _window_observation_record(
 
 def _assembly_payload(assembly: SchwabPhase1EvidenceAssembly) -> dict[str, Any]:
     return {
+        **({"snapshot_cutoff_utc": assembly.snapshot_cutoff_utc}
+           if assembly.contract_version == SCHWAB_PHASE1_EVIDENCE_ASSEMBLY_V3 else {}),
         "contract_version": assembly.contract_version,
         "provider": assembly.provider,
         "connection_uid": assembly.connection_uid,
@@ -350,6 +366,7 @@ def validate_schwab_phase1_evidence_assembly(
     if assembly.contract_version not in {
         SCHWAB_PHASE1_EVIDENCE_ASSEMBLY_VERSION,
         SCHWAB_PHASE1_EVIDENCE_ASSEMBLY_V2,
+        SCHWAB_PHASE1_EVIDENCE_ASSEMBLY_V3,
     }:
         raise SchwabEvidenceAssemblyError("unsupported assembly contract version")
     if assembly.provider != "schwab":
@@ -359,11 +376,24 @@ def validate_schwab_phase1_evidence_assembly(
     _utc(assembly.assembled_at_utc, "assembled_at_utc")
     if assembly.lifecycle_window_start > assembly.lifecycle_window_end:
         raise SchwabEvidenceAssemblyError("lifecycle window is inverted")
-    if assembly.lifecycle_window_end > assembly.asof:
+    v3 = assembly.contract_version == SCHWAB_PHASE1_EVIDENCE_ASSEMBLY_V3
+    if v3:
+        if assembly.snapshot_cutoff_utc is None:
+            raise SchwabEvidenceAssemblyError("snapshot cutoff is required for assembly v3")
+        cutoff = _utc(assembly.snapshot_cutoff_utc, "snapshot_cutoff_utc")
+        if cutoff.astimezone(ZoneInfo("America/New_York")).date() != assembly.asof:
+            raise SchwabEvidenceAssemblyError("snapshot market date differs from cutoff")
+        if assembly.assembled_at_utc < cutoff or not (
+            assembly.lifecycle_window_start <= cutoff.date() <= assembly.lifecycle_window_end
+        ) or assembly.lifecycle_window_end > cutoff.date():
+            raise SchwabEvidenceAssemblyError("UTC history window differs from snapshot cutoff")
+    elif assembly.snapshot_cutoff_utc is not None:
+        raise SchwabEvidenceAssemblyError("legacy assembly cannot declare a v3 cutoff")
+    if not v3 and assembly.lifecycle_window_end > assembly.asof:
         raise SchwabEvidenceAssemblyError("lifecycle evidence extends beyond asof")
     expected_family_order = (
         FAMILY_ORDER_V2
-        if assembly.contract_version == SCHWAB_PHASE1_EVIDENCE_ASSEMBLY_V2
+        if assembly.contract_version != SCHWAB_PHASE1_EVIDENCE_ASSEMBLY_VERSION
         else FAMILY_ORDER
     )
     if tuple(family.family for family in assembly.families) != expected_family_order:
@@ -382,7 +412,7 @@ def validate_schwab_phase1_evidence_assembly(
         field="transaction_observation_uid",
         family="transactions",
     )
-    if assembly.contract_version == SCHWAB_PHASE1_EVIDENCE_ASSEMBLY_V2:
+    if assembly.contract_version != SCHWAB_PHASE1_EVIDENCE_ASSEMBLY_VERSION:
         _ensure_unique(
             by_name["lifecycle_events"].records,
             field="event_observation_uid",
@@ -421,6 +451,21 @@ def validate_schwab_phase1_evidence_assembly(
     if len(by_name["account"].records) != 1:
         raise SchwabEvidenceAssemblyError("assembly requires one account record")
     account_record = by_name["account"].records[0]
+    if v3:
+        if _record_instant(account_record, "retrieved_at_utc") != cutoff:
+            raise SchwabEvidenceAssemblyError("account receipt differs from snapshot cutoff")
+        excluded_orders = account_record.get("order_fill_rows_after_snapshot_cutoff")
+        if type(excluded_orders) is not int or excluded_orders < 0:
+            raise SchwabEvidenceAssemblyError("snapshot order-fill exclusion count is invalid")
+        for name, field in (("fills", "filled_at"), ("transactions", "transaction_at_utc"),
+                            ("cash", "transaction_at_utc"), ("lifecycle_events", "event_at")):
+            for record in by_name[name].records:
+                if _record_instant(record, field) > cutoff:
+                    raise SchwabEvidenceAssemblyError("financial evidence is after snapshot cutoff")
+        for record in by_name["quotes"].records:
+            quote_at = _record_instant(record, "provider_quote_at")
+            if quote_at > cutoff or quote_at.astimezone(ZoneInfo("America/New_York")).date().isoformat() != record.get("asof"):
+                raise SchwabEvidenceAssemblyError("quote date or instant differs from snapshot-cutoff scope")
     expected_account_fields = {
         "source_broker": assembly.provider,
         "connection_uid": assembly.connection_uid,
@@ -516,6 +561,11 @@ def validate_schwab_phase1_evidence_assembly(
         if assembly.reconciliation.order_only_fill_rows == 0
         and assembly.reconciliation.transaction_only_fill_rows == 0
         and by_name["fills"].excluded_record_count == 0
+        and (not v3 or (
+            excluded_orders == 0
+            and by_name["transactions"].excluded_record_count == 0
+            and by_name["cash"].excluded_record_count == 0
+        ))
         and assembly.reconciliation.cash_review_required_rows == 0
         and (
             assembly.contract_version == SCHWAB_PHASE1_EVIDENCE_ASSEMBLY_VERSION
@@ -549,18 +599,25 @@ def build_schwab_phase1_evidence_assembly(
     assembled_at_utc: datetime,
     freshness_policy: QuoteFreshnessPolicy,
     contract_version: str = SCHWAB_PHASE1_EVIDENCE_ASSEMBLY_VERSION,
+    additional_quotes: tuple[ConvertedExternalQuoteCapture, ...] = (),
 ) -> SchwabPhase1EvidenceAssembly:
     """Assemble all required Phase 1 families from accepted in-memory evidence."""
 
     if contract_version not in {
         SCHWAB_PHASE1_EVIDENCE_ASSEMBLY_VERSION,
         SCHWAB_PHASE1_EVIDENCE_ASSEMBLY_V2,
+        SCHWAB_PHASE1_EVIDENCE_ASSEMBLY_V3,
     }:
         raise SchwabEvidenceAssemblyError("unsupported requested assembly version")
     snapshot = position.snapshot
     capture = quote.capture
+    v3 = contract_version == SCHWAB_PHASE1_EVIDENCE_ASSEMBLY_V3
+    converted_quotes = (quote, *additional_quotes)
+    if additional_quotes and not v3:
+        raise SchwabEvidenceAssemblyError("multiple captures require assembly v3")
+    if not 1 <= len(converted_quotes) <= 2:
+        raise SchwabEvidenceAssemblyError("assembly permits at most two quote captures")
     assembled_at = _utc(assembled_at_utc, "assembled_at_utc")
-    validate_quote_capture(capture, policy=freshness_policy)
     if not snapshot.account_complete:
         raise SchwabEvidenceAssemblyError("complete account position evidence is required")
     if position.account_record is None:
@@ -572,12 +629,25 @@ def build_schwab_phase1_evidence_assembly(
         snapshot.source_account_id,
     ) != expected_scope:
         raise SchwabEvidenceAssemblyError("position snapshot scope is invalid")
-    if (capture.provider, capture.connection_uid) != expected_scope[:2]:
-        raise SchwabEvidenceAssemblyError("quote capture differs from position scope")
-    if capture.asof != snapshot.asof:
-        raise SchwabEvidenceAssemblyError("position and quote asof must match")
-    if assembled_at < max(snapshot.retrieved_at, capture.evaluated_at):
-        raise SchwabEvidenceAssemblyError("assembly precedes required current evidence")
+    for converted in converted_quotes:
+        current = converted.capture
+        validate_quote_capture(current, policy=freshness_policy)
+        if (current.provider, current.connection_uid) != expected_scope[:2]:
+            raise SchwabEvidenceAssemblyError("quote capture differs from position scope")
+        if not v3 and current.asof != snapshot.asof:
+            raise SchwabEvidenceAssemblyError("position and quote asof must match")
+        if assembled_at < max(snapshot.retrieved_at, current.evaluated_at):
+            raise SchwabEvidenceAssemblyError("assembly precedes required current evidence")
+        if not converted.raw_response_bytes or sha256(converted.raw_response_bytes).hexdigest() != current.source.raw_sha256:
+            raise SchwabEvidenceAssemblyError("quote raw bytes do not match lineage")
+        _digest(converted.external_manifest_sha256, "quote manifest digest")
+        if v3 and any(item.provider_quote_at > snapshot.retrieved_at for item in current.quotes):
+            raise SchwabEvidenceAssemblyError("quote evidence is after snapshot cutoff")
+    all_quotes = tuple(item for converted in converted_quotes for item in converted.capture.quotes)
+    if len({item.instrument_key for item in all_quotes}) != len(all_quotes):
+        raise SchwabEvidenceAssemblyError("quote captures contain duplicate instruments")
+    evaluation_by_quote = {item.quote_uid: converted.capture.evaluated_at
+                           for converted in converted_quotes for item in converted.capture.quotes}
     if (
         not position.raw_response_bytes
         or sha256(position.raw_response_bytes).hexdigest() != snapshot.raw_sha256
@@ -607,7 +677,7 @@ def build_schwab_phase1_evidence_assembly(
             raise SchwabEvidenceAssemblyError(
                 "lifecycle window requires exact order and transaction bytes"
             )
-        if window.window_end_date > snapshot.asof:
+        if window.window_end_date > (snapshot.retrieved_at.astimezone(UTC).date() if v3 else snapshot.asof):
             raise SchwabEvidenceAssemblyError("lifecycle window extends beyond snapshot")
         if index and window.window_start_date != (
             windows[index - 1].window_end_date + timedelta(days=1)
@@ -623,7 +693,7 @@ def build_schwab_phase1_evidence_assembly(
             )
 
     position_keys = {item.identity.key for item in snapshot.positions}
-    quote_by_key = {item.instrument_key: item for item in capture.quotes}
+    quote_by_key = {item.instrument_key: item for item in all_quotes}
     if not set(quote_by_key).issubset(position_keys):
         raise SchwabEvidenceAssemblyError(
             "quote evidence must be limited to current positions"
@@ -631,21 +701,21 @@ def build_schwab_phase1_evidence_assembly(
     authority_by_quote = {item.quote_uid: item for item in session_authorities}
     if len(authority_by_quote) != len(session_authorities):
         raise SchwabEvidenceAssemblyError("session authorities contain duplicates")
-    if set(authority_by_quote) != {item.quote_uid for item in capture.quotes}:
+    if set(authority_by_quote) != {item.quote_uid for item in all_quotes}:
         raise SchwabEvidenceAssemblyError(
             "session authority must exactly cover quote evidence"
         )
-    for normalized_quote in capture.quotes:
+    for normalized_quote in all_quotes:
         validate_provider_session_authority_binding(
             authority_by_quote[normalized_quote.quote_uid],
             quote=normalized_quote,
-            evaluated_at=capture.evaluated_at,
+            evaluated_at=evaluation_by_quote[normalized_quote.quote_uid],
         )
     if any(assembled_at < item.evaluated_at for item in session_authorities):
         raise SchwabEvidenceAssemblyError("assembly precedes session authority")
 
     currencies = {item.identity.currency for item in snapshot.positions}
-    currencies.update(item.currency for item in capture.quotes)
+    currencies.update(item.currency for item in all_quotes)
     order_records = tuple(
         _window_observation_record(
             record,
@@ -697,6 +767,22 @@ def build_schwab_phase1_evidence_assembly(
         for window in windows
         for record in window.cash_rows
     )
+    post_transactions = post_fills = post_cash = post_events = post_legs = post_order_fills = 0
+    filtered_orders = tuple(row for window in windows for row in window.order_rows)
+    if v3:
+        cutoff = _utc(snapshot.retrieved_at, "snapshot cutoff")
+        def before(records: tuple[Mapping[str, Any], ...], field: str):
+            included = tuple(record for record in records if _record_instant(record, field) <= cutoff)
+            return included, len(records) - len(included)
+        transaction_records, post_transactions = before(transaction_records, "transaction_at_utc")
+        fill_records, post_fills = before(fill_records, "filled_at")
+        cash_records, post_cash = before(cash_records, "transaction_at_utc")
+        lifecycle_event_records, post_events = before(lifecycle_event_records, "event_at")
+        event_ids = {row["event_uid"] for row in lifecycle_event_records}
+        included_legs = tuple(row for row in lifecycle_event_leg_records if row["event_uid"] in event_ids)
+        post_legs = len(lifecycle_event_leg_records) - len(included_legs)
+        lifecycle_event_leg_records = included_legs
+        filtered_orders, post_order_fills = before(filtered_orders, "filled_at")
     currencies.update(
         str(record.get("currency", ""))
         for record in (*transaction_records, *fill_records, *cash_records)
@@ -716,8 +802,8 @@ def build_schwab_phase1_evidence_assembly(
         for window in windows
         for body in window.raw_response_bytes.values()
     )
-    quote_manifest = (quote.external_manifest_sha256,)
-    quote_raw = (capture.source.raw_sha256,)
+    quote_manifest = tuple(item.external_manifest_sha256 for item in converted_quotes)
+    quote_raw = tuple(item.capture.source.raw_sha256 for item in converted_quotes)
     session_raw = tuple(item.raw_sha256 for item in session_authorities)
     order_excluded = sum(
         window.excluded_out_of_window_order_records for window in windows
@@ -733,6 +819,9 @@ def build_schwab_phase1_evidence_assembly(
     lifecycle_event_leg_excluded = sum(
         window.excluded_out_of_window_lifecycle_event_legs for window in windows
     )
+    fill_excluded += post_fills
+    lifecycle_event_excluded += post_events
+    lifecycle_event_leg_excluded += post_legs
     base_families = (
         _family(
             "account",
@@ -745,6 +834,7 @@ def build_schwab_phase1_evidence_assembly(
                     "currency": currency,
                     "position_snapshot_uid": snapshot.snapshot_uid,
                     "account_complete": True,
+                    **({"order_fill_rows_after_snapshot_cutoff": post_order_fills} if v3 else {}),
                 },
             ),
         ),
@@ -770,6 +860,8 @@ def build_schwab_phase1_evidence_assembly(
             source_raw_sha256s=lifecycle_raw,
             source_record_count=sum(window.transaction_stats.transactions for window in windows),
             records=transaction_records,
+            excluded_record_count=post_transactions,
+            exclusion_reasons=("after_snapshot_cutoff",) if post_transactions else (),
         ),
     )
     lifecycle_families = (
@@ -783,7 +875,8 @@ def build_schwab_phase1_evidence_assembly(
             records=lifecycle_event_records,
             excluded_record_count=lifecycle_event_excluded,
             exclusion_reasons=(
-                ("outside_approved_window",) if lifecycle_event_excluded else ()
+                tuple(reason for reason, count in (("outside_approved_window", lifecycle_event_excluded - post_events),
+                                                   ("after_snapshot_cutoff", post_events)) if count)
             ),
         ),
         _family(
@@ -796,9 +889,8 @@ def build_schwab_phase1_evidence_assembly(
             records=lifecycle_event_leg_records,
             excluded_record_count=lifecycle_event_leg_excluded,
             exclusion_reasons=(
-                ("outside_approved_window",)
-                if lifecycle_event_leg_excluded
-                else ()
+                tuple(reason for reason, count in (("outside_approved_window", lifecycle_event_leg_excluded - post_legs),
+                                                   ("after_snapshot_cutoff", post_legs)) if count)
             ),
         ),
     )
@@ -810,21 +902,24 @@ def build_schwab_phase1_evidence_assembly(
             source_record_count=len(fill_records) + fill_excluded,
             records=fill_records,
             excluded_record_count=fill_excluded,
-            exclusion_reasons=("outside_approved_window",) if fill_excluded else (),
+            exclusion_reasons=tuple(reason for reason, count in (("outside_approved_window", fill_excluded - post_fills),
+                                                               ("after_snapshot_cutoff", post_fills)) if count),
         ),
         _family(
             "cash",
             source_manifest_sha256s=lifecycle_manifests,
             source_raw_sha256s=lifecycle_raw,
-            source_record_count=len(cash_records),
+            source_record_count=len(cash_records) + post_cash,
             records=cash_records,
+            excluded_record_count=post_cash,
+            exclusion_reasons=("after_snapshot_cutoff",) if post_cash else (),
         ),
         _family(
             "quotes",
             source_manifest_sha256s=quote_manifest,
             source_raw_sha256s=quote_raw,
-            source_record_count=len(capture.requests),
-            records=tuple(asdict(item) for item in capture.quotes),
+            source_record_count=sum(len(item.capture.requests) for item in converted_quotes),
+            records=tuple(asdict(item) for item in all_quotes),
         ),
         _family(
             "sessions",
@@ -836,7 +931,7 @@ def build_schwab_phase1_evidence_assembly(
     )
     families = (
         base_families
-        + (lifecycle_families if contract_version == SCHWAB_PHASE1_EVIDENCE_ASSEMBLY_V2 else ())
+        + (lifecycle_families if contract_version != SCHWAB_PHASE1_EVIDENCE_ASSEMBLY_VERSION else ())
         + remaining_families
     )
     matched = sum(window.reconciliation.matched_rows for window in windows)
@@ -844,6 +939,10 @@ def build_schwab_phase1_evidence_assembly(
     transaction_only = sum(
         window.reconciliation.only_transaction_rows for window in windows
     )
+    if v3:
+        reconciled = reconcile_lifecycle_rows(filtered_orders, fill_records)
+        matched, order_only, transaction_only = (
+            reconciled.matched_rows, reconciled.only_order_rows, reconciled.only_transaction_rows)
     cash_review_required = sum(
         1
         for record in cash_records
@@ -854,7 +953,7 @@ def build_schwab_phase1_evidence_assembly(
         order_only_fill_rows=order_only,
         transaction_only_fill_rows=transaction_only,
         position_count=len(snapshot.positions),
-        quote_count=len(capture.quotes),
+        quote_count=len(all_quotes),
         positions_without_quotes=len(position_keys - set(quote_by_key)),
         session_count=len(session_authorities),
         cash_review_required_rows=cash_review_required,
@@ -876,6 +975,7 @@ def build_schwab_phase1_evidence_assembly(
         final_status=(
             "ready"
             if order_only == 0 and transaction_only == 0 and fill_excluded == 0
+            and (not v3 or post_order_fills == post_transactions == post_cash == 0)
             and cash_review_required == 0
             and (
                 contract_version == SCHWAB_PHASE1_EVIDENCE_ASSEMBLY_VERSION
@@ -891,6 +991,7 @@ def build_schwab_phase1_evidence_assembly(
             else "review_required"
         ),
         result_fingerprint="pending",
+        snapshot_cutoff_utc=_utc(snapshot.retrieved_at, "snapshot cutoff") if v3 else None,
     )
     fingerprint = calculate_schwab_evidence_assembly_fingerprint(candidate)
     assembly = replace(
@@ -908,6 +1009,8 @@ def schwab_phase1_evidence_assembly_bytes(
     validate_schwab_phase1_evidence_assembly(assembly)
     document = {
         "artifact_version": (
+            SCHWAB_PHASE1_EVIDENCE_ARTIFACT_V3
+            if assembly.contract_version == SCHWAB_PHASE1_EVIDENCE_ASSEMBLY_V3 else
             SCHWAB_PHASE1_EVIDENCE_ARTIFACT_V2
             if assembly.contract_version == SCHWAB_PHASE1_EVIDENCE_ASSEMBLY_V2
             else SCHWAB_PHASE1_EVIDENCE_ARTIFACT_VERSION
@@ -932,6 +1035,7 @@ def load_schwab_phase1_evidence_assembly_bytes(
     if artifact_version not in {
         SCHWAB_PHASE1_EVIDENCE_ARTIFACT_VERSION,
         SCHWAB_PHASE1_EVIDENCE_ARTIFACT_V2,
+        SCHWAB_PHASE1_EVIDENCE_ARTIFACT_V3,
     }:
         raise SchwabEvidenceAssemblyError("unsupported assembly artifact version")
     try:
@@ -968,12 +1072,16 @@ def load_schwab_phase1_evidence_assembly_bytes(
             reconciliation=reconciliation,
             final_status=document["final_status"],
             result_fingerprint=document["result_fingerprint"],
+            snapshot_cutoff_utc=(datetime.fromisoformat(document["snapshot_cutoff_utc"])
+                                 if document.get("snapshot_cutoff_utc") is not None else None),
         )
     except (KeyError, TypeError, ValueError) as exc:
         raise SchwabEvidenceAssemblyError(
             "assembly artifact fields do not match the contract"
         ) from exc
     expected_artifact = (
+        SCHWAB_PHASE1_EVIDENCE_ARTIFACT_V3
+        if assembly.contract_version == SCHWAB_PHASE1_EVIDENCE_ASSEMBLY_V3 else
         SCHWAB_PHASE1_EVIDENCE_ARTIFACT_V2
         if assembly.contract_version == SCHWAB_PHASE1_EVIDENCE_ASSEMBLY_V2
         else SCHWAB_PHASE1_EVIDENCE_ARTIFACT_VERSION
@@ -995,6 +1103,17 @@ def build_schwab_phase1_evidence_assembly_v2(**kwargs: Any) -> SchwabPhase1Evide
     )
 
 
+def build_schwab_phase1_evidence_assembly_v3(
+    *, quotes: tuple[ConvertedExternalQuoteCapture, ...], **kwargs: Any,
+) -> SchwabPhase1EvidenceAssembly:
+    """Assemble snapshot-cutoff evidence while preserving each quote's own date."""
+    if not quotes:
+        raise SchwabEvidenceAssemblyError("at least one quote capture is required")
+    return build_schwab_phase1_evidence_assembly(
+        **kwargs, quote=quotes[0], additional_quotes=quotes[1:],
+        contract_version=SCHWAB_PHASE1_EVIDENCE_ASSEMBLY_V3)
+
+
 def privacy_safe_schwab_evidence_audit(
     assembly: SchwabPhase1EvidenceAssembly,
 ) -> Mapping[str, Any]:
@@ -1008,6 +1127,15 @@ def privacy_safe_schwab_evidence_audit(
                 assembly.source_account_id.encode("utf-8")
             ).hexdigest(),
             "asof": assembly.asof.isoformat(),
+            **({
+                "snapshot_cutoff_utc": assembly.snapshot_cutoff_utc.isoformat(),
+                "utc_history_window_end": assembly.lifecycle_window_end.isoformat(),
+                "excluded_record_counts": {
+                    family.family: family.excluded_record_count for family in assembly.families
+                },
+                "order_fill_rows_after_snapshot_cutoff": assembly.families[0].records[0][
+                    "order_fill_rows_after_snapshot_cutoff"],
+            } if assembly.contract_version == SCHWAB_PHASE1_EVIDENCE_ASSEMBLY_V3 else {}),
             "final_status": assembly.final_status,
             "family_counts": {
                 family.family: family.normalized_record_count

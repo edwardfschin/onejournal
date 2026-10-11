@@ -83,6 +83,9 @@ SCHWAB_EXTERNAL_ACQUISITION_PROFILE = "schwab-read-only-quotes-and-market-hours.
 SCHWAB_BATCH_QUOTES_EXTERNAL_ACQUISITION_PROFILE = (
     "schwab-read-only-bounded-batch-quotes-and-market-hours.v1"
 )
+SCHWAB_MULTI_BATCH_QUOTES_EXTERNAL_ACQUISITION_PROFILE = (
+    "schwab-read-only-bounded-batch-quotes-and-market-hours.v2"
+)
 SCHWAB_BATCH_QUOTES_MAX_SYMBOLS = 50
 SCHWAB_POSITION_EXTERNAL_ACQUISITION_PROFILE = (
     "schwab-read-only-single-account-positions.v1"
@@ -126,6 +129,7 @@ _SUPPORTED_PROFILES = frozenset(
     {
         SCHWAB_EXTERNAL_ACQUISITION_PROFILE,
         SCHWAB_BATCH_QUOTES_EXTERNAL_ACQUISITION_PROFILE,
+        SCHWAB_MULTI_BATCH_QUOTES_EXTERNAL_ACQUISITION_PROFILE,
         SCHWAB_POSITION_EXTERNAL_ACQUISITION_PROFILE,
         SCHWAB_LIFECYCLE_EXTERNAL_ACQUISITION_PROFILE,
     }
@@ -599,7 +603,8 @@ def _validate_schwab_request(
         if query[0][0] != "symbols" or query[1] != ("fields", "quote,reference"):
             raise ExternalProviderAcquisitionError(f"{field} quote query scope is invalid")
         symbols = tuple(query[0][1].split(","))
-        if profile == SCHWAB_BATCH_QUOTES_EXTERNAL_ACQUISITION_PROFILE:
+        if profile in {SCHWAB_BATCH_QUOTES_EXTERNAL_ACQUISITION_PROFILE,
+                       SCHWAB_MULTI_BATCH_QUOTES_EXTERNAL_ACQUISITION_PROFILE}:
             if (
                 not 1 <= len(symbols) <= SCHWAB_BATCH_QUOTES_MAX_SYMBOLS
                 or len({symbol.upper() for symbol in symbols}) != len(symbols)
@@ -772,11 +777,16 @@ def _parse_manifest(document: object) -> ExternalProviderAcquisitionManifest:
         schedule_requests = tuple(
             item for item in requests if item.operation == "market_hours"
         )
-        if profile == SCHWAB_BATCH_QUOTES_EXTERNAL_ACQUISITION_PROFILE:
-            if len(quote_requests) != 1 or not 1 <= len(schedule_requests) <= 3:
+        if profile in {SCHWAB_BATCH_QUOTES_EXTERNAL_ACQUISITION_PROFILE,
+                       SCHWAB_MULTI_BATCH_QUOTES_EXTERNAL_ACQUISITION_PROFILE}:
+            maximum_batches = 1 if profile == SCHWAB_BATCH_QUOTES_EXTERNAL_ACQUISITION_PROFILE else 2
+            if not 1 <= len(quote_requests) <= maximum_batches or not 1 <= len(schedule_requests) <= 3:
                 raise ExternalProviderAcquisitionError(
-                    "Schwab batch scope requires one quote and one through three schedules"
+                    "Schwab batch scope exceeds its bounded quotes/schedules"
                 )
+            symbols = tuple(symbol for item in quote_requests for symbol in item.query[0].value.split(","))
+            if len(set(symbols)) != len(symbols) or symbols != tuple(sorted(symbols)):
+                raise ExternalProviderAcquisitionError("quote batches must be disjoint and globally sorted")
         else:
             if not 1 <= len(quote_requests) <= 2 or not 1 <= len(schedule_requests) <= 3:
                 raise ExternalProviderAcquisitionError(
@@ -1238,6 +1248,36 @@ def convert_external_schwab_batch_quotes(
             "bounded batch acquisition must contain exactly one quote request"
         )
     (request,) = quote_requests
+    return _convert_batch_quote_request(acquisition, mapping, request, evaluated, freshness_policy)
+
+
+def convert_external_schwab_multi_batch_quotes(
+    acquisition: VerifiedExternalProviderAcquisition,
+    *,
+    mappings: tuple[ExternalSchwabBatchQuoteMapping, ...],
+    evaluated_at_utc: datetime,
+    freshness_policy: QuoteFreshnessPolicy,
+) -> tuple[ConvertedExternalQuoteCapture, ...]:
+    """Preserve each of at most two disjoint batch responses as its own capture."""
+    if acquisition.manifest.profile != SCHWAB_MULTI_BATCH_QUOTES_EXTERNAL_ACQUISITION_PROFILE:
+        raise ExternalProviderAcquisitionError("multi-batch conversion requires batch profile v2")
+    if evaluated_at_utc.tzinfo is None or evaluated_at_utc.utcoffset() is None:
+        raise ExternalProviderAcquisitionError("evaluated_at_utc must include a timezone")
+    requests = tuple(item for item in acquisition.manifest.requests if item.operation == "quote")
+    by_uid = {item.request_uid: item for item in mappings}
+    if len(by_uid) != len(mappings) or set(by_uid) != {item.request_uid for item in requests}:
+        raise ExternalProviderAcquisitionError("mappings must exactly cover every quote batch")
+    return tuple(_convert_batch_quote_request(acquisition, by_uid[item.request_uid], item,
+                 evaluated_at_utc.astimezone(UTC), freshness_policy) for item in requests)
+
+
+def _convert_batch_quote_request(
+    acquisition: VerifiedExternalProviderAcquisition,
+    mapping: ExternalSchwabBatchQuoteMapping,
+    request: ExternalAcquisitionRequest,
+    evaluated: datetime,
+    freshness_policy: QuoteFreshnessPolicy,
+) -> ConvertedExternalQuoteCapture:
     if mapping.request_uid != request.request_uid:
         raise ExternalProviderAcquisitionError(
             "OneJournal batch mapping does not match the quote request"

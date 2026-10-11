@@ -135,3 +135,29 @@ they must not repair it by guessing.
   privacy, latency, traceability, and financial-correctness reasons.
 - Treat OneBot state or computed values as source evidence: rejected; OneBot is
   only the temporary credential-owning evidence bridge.
+
+## Approved v3 addendum: 2026-10-11
+
+The project owner approved a bounded offline correction, additive upgrade
+preparation, disposable-copy rehearsal, commit and push. The contract now
+offers a separate v3 path: at most two independent quote captures, exact UTC
+snapshot cutoff, actual UTC query-window dates and independently preserved
+provider quote/New York snapshot dates. Later financial activity is excluded
+and counted before cross-window fill reconciliation. Session/freshness rules,
+decimal-safe calculations, complete-position scope and old v1/v2 fingerprints
+are unchanged. This fixes the observed 64-instrument and UTC/weekend date
+incompatibilities without relabelling evidence.
+
+Migration 0027 adds a single immutable private canonical-artifact store instead
+of rebuilding accepted tables or duplicating ten family tables. It preserves
+all family payloads and validation, with exact scope/checksum read-back. Pure
+calculation consumers support v3, but legacy history activation fails closed
+before database access; migration 0021's v2 foreign keys/date constraints have
+not been bypassed. Compatible history/report refresh integration remains a
+separate unfinished implementation step, not an accepted operational capability.
+
+The approval excludes broker access, live database writes, deployment and
+runtime changes. No fresh quote/session evidence or private v3 financial
+release exists yet. Product strategy, financial methodology, accepted reporting
+scope and Phase 1 maturity remain unchanged. Before live use, rollback is a
+focused source revert; existing immutable evidence is never deleted.

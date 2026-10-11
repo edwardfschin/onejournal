@@ -2,9 +2,58 @@
 
 ## Status: capture, mapping and offline coverage complete; financial release pending
 
-### Next bounded correction proposal: 2026-10-11
+### Approved offline correction and rehearsal: 2026-10-11
 
-This section is a proposal, not approved contract policy or broker authority.
+The owner's `Proceed to next few items` approved the bounded implementation,
+copy-only upgrade rehearsal, focused validation, documentation, commit and push
+described below. It did not approve further broker requests, live database
+writes, deployment, report activation or runtime changes.
+
+Implemented offline:
+
+- Batch acquisition profile v2 retains two disjoint captures, each at most 50
+  symbols, within the existing five-GET ceiling. The intake operator accepts
+  the complete synthetic 50+14 scope and emits instrument digests, not symbols.
+- Assembly v3 retains all ten families, separate quote-source lineage, actual
+  provider quote dates, the New York snapshot date and the exact UTC snapshot
+  cutoff. UTC history windows are not relabelled. Later financial activity is
+  excluded and counted; orders remain source observations rather than proof
+  that their later state existed at the snapshot instant. Fill reconciliation
+  is recomputed across the admitted history. Freshness/session guards remain.
+- Migration 0027 adds one private immutable artifact store. It does not rebuild
+  accepted v1/v2 tables, alter current views, activate history or publish reports.
+  The writer requires the exact migration checksum and exact artifact read-back.
+- Pure journal, execution and lifecycle calculations accept the new evidence.
+  The legacy history-activation writer explicitly rejects v3 before opening a
+  database: its migration-0021 date constraint and v2 foreign-key lineage are
+  not bypassed. A compatible history/report refresh writer remains outstanding.
+
+Copy-only rehearsal used the existing immutable schema-0026 pre-report-persist
+backup (SHA-256 `c009a21c4b0eaa85e06031bb01e41a2981fb9574b0582f096427febb3b218b13`).
+The upgrade preserved all 73 existing base-table counts (apart from the one
+expected ledger entry), existing column definitions, nine view definitions and
+two old assembly fingerprints. The new evidence table stayed empty. Migration
+replay passed and the original backup checksum remained unchanged. The live
+database was not opened. The accepted private v2 artifact also passed exact
+canonical byte-for-byte roundtrip under the changed implementation. Migration 0027 SHA-256:
+`2bc7f348910bd92e95b825929a2fd344a37b12d840f011b0169794c272b828fa`.
+
+Forty-four focused tests passed across the affected modules. Synthetic
+regressions cover 64-instrument intake, batch scope/lineage, weekend
+date separation, exact cutoff admission/exclusions, tamper rejection, storage
+replay, operator dispatch and legacy activation rejection. Existing acquisition,
+assembly, lifecycle and history-revision tests also pass. No private v3 assembly
+or refreshed financial release has been produced: fresh quote/session responses
+are still absent. All eight unresolved current-position scopes remain unresolved;
+Phase 1 remains **8/12**. Product scope and strategic maturity claims are unchanged.
+
+Rollback before any live use is a focused source revert. Disposable copies were
+removed on completion; existing private evidence and accepted reports remain.
+
+### Retained request-scope proposal: 2026-10-11
+
+The request scope below remains a proposal, not broker authority. The additive
+contracts have now been implemented under the offline approval above.
 Read-only preparation from the validated 64-position binding created a new
 private `quote-preparation-01/scope-proposal.json` below the Mac refresh root.
 It contains the exact sorted provider symbols and two disjoint batches of
@@ -13,7 +62,7 @@ No instrument is dropped because it lacks fill-history eligibility. Proposal
 SHA-256: `fd149f54a86fa17ca62206a07d3f1bd74acd2189637dc46b62ed819f32a3bcdd`.
 The proposal is explicitly non-executable and unaccepted financially.
 
-The existing code has three concrete compatibility blockers:
+The pre-correction code had three concrete compatibility blockers:
 
 1. The batch acquisition profile and converter accept exactly one quote batch
    of at most 50 instruments. The assembly also accepts one converted quote
@@ -47,7 +96,7 @@ schedule validity ends October 12 at 00:00 UTC. Expired or insufficient scope
 requires repreparation; no invented trading calendar, waiting rule or timestamp
 change is permitted. No new broker GET is approved or performed here.
 
-One coherent implementation approval should cover the additive acquisition and
+The implementation approval covered the additive acquisition and
 assembly contracts, affected conversion/read-back/materialization consumers,
 necessary additive migration preparation, focused synthetic regressions,
 disposable-copy rehearsal where evidence permits, documentation, commit and
@@ -56,8 +105,9 @@ accepted releases and all eight unresolved positions. Live migration,
 persistence, broker access, deployment and runtime changes remain excluded.
 The impact is the credential-free evidence pipeline and its private persistence
 format, not the frontend or a new provider/security policy. Rollback retains
-the accepted September release and old contracts. No source, schema, financial
-policy or live state was changed during this proposal-only investigation.
+the accepted September release and old contracts. The initial proposal-only
+investigation changed no source, schema, financial policy or live state;
+the subsequent offline implementation is recorded above.
 
 ### Date correction: 2026-10-11
 
