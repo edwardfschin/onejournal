@@ -446,7 +446,10 @@ process at the configured existing website port, with the same localhost RP,
 cookie origin and release authority. It does not provision access, migrate a
 database, fetch a broker, select a new financial release, install dependencies
 or terminate another process. Occupied ports fail; Ctrl-C stops this process
-only. The legacy development launcher remains available with direct Vite and
+only. The bind check uses the same `SO_REUSEADDR` semantics as Uvicorn:
+recently closed TCP connections are not mistaken for active listeners.
+An immediate-restart regression and the real-listener refusal check cover
+this distinction. The legacy development launcher remains available with direct Vite and
 its existing loopback API proxy. Vite preview is only a public/demo check,
 not the private release server ([Vite deployment guidance](https://vite.dev/guide/static-deploy.html)).
 

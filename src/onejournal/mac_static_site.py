@@ -32,6 +32,9 @@ def main(argv=None, *, project_root=None):
             private_file(path, "private access/TLS file", private_parent=True)
         static_routes(args.static_dir)
         with socket.socket() as check:
+            # Match Uvicorn's bind semantics: TIME_WAIT is not a listener.
+            # SO_REUSEADDR does not permit taking over an active TCP listener.
+            check.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
             check.bind(("127.0.0.1", config.web_port))
         api = configured_app(config)
         access = Access(args.security_db, config.journal_db, f"https://localhost:{config.web_port}")

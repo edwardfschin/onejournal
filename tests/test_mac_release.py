@@ -63,6 +63,7 @@ class MacReleaseGuards(unittest.TestCase):
     def test_occupied_port_fails_before_journal_or_security_open(self):
         with tempfile.TemporaryDirectory() as temporary, socket.socket() as listener:
             root = Path(temporary)
+            listener.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
             listener.bind(("127.0.0.1", 0))
             listener.listen()
             config = LocalWebConfig(root / "journal.duckdb", web_port=listener.getsockname()[1])
@@ -72,6 +73,31 @@ class MacReleaseGuards(unittest.TestCase):
                  patch("onejournal.mac_static_site.configured_app") as api, redirect_stderr(io.StringIO()):
                 self.assertEqual(main(self.arguments(root) + ["--owner-local"]), 1)
                 api.assert_not_called()
+
+    @unittest.skipUnless(AVAILABLE, "Security extra required.")
+    def test_recently_closed_connection_does_not_block_immediate_restart(self):
+        from fastapi import FastAPI
+        with tempfile.TemporaryDirectory() as temporary, socket.socket() as listener:
+            listener.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+            listener.bind(("127.0.0.1", 0))
+            address = listener.getsockname()
+            listener.listen()
+            with socket.create_connection(address) as peer:
+                connection, _ = listener.accept()
+                with connection:
+                    connection.shutdown(socket.SHUT_WR)
+                    self.assertEqual(peer.recv(1), b"")
+            listener.close()
+            root = Path(temporary)
+            config = LocalWebConfig(root / "journal.duckdb", web_port=address[1])
+            with patch("onejournal.mac_static_site.load_config", return_value=config), \
+                 patch("onejournal.mac_static_site.private_file"), \
+                 patch("onejournal.mac_static_site.static_routes"), \
+                 patch("onejournal.mac_static_site.configured_app", return_value=FastAPI()), \
+                 patch("onejournal.mac_static_site.serve_static_web", return_value=FastAPI()), \
+                 patch("onejournal.passkey_access.Access"), patch("uvicorn.run") as serve:
+                self.assertEqual(main(self.arguments(root) + ["--owner-local"]), 0)
+                serve.assert_called_once()
 
     @unittest.skipUnless(AVAILABLE, "Security extra required.")
     def test_private_files_cannot_be_placed_in_public_static_tree(self):
