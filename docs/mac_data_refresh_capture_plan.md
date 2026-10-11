@@ -1,6 +1,6 @@
 # Mac data-refresh capture preparation
 
-## Status: date correction validated; acquisition stopped on expired owner token
+## Status: capture and Mac transfer complete; financial intake has unresolved scopes
 
 ### Date correction: 2026-10-11
 
@@ -45,12 +45,54 @@ manifests. The position preflight's acknowledgement and source contract are
 preserved as incomplete run evidence. No OAuth refresh, automatic retry, Mac
 evidence transfer, live database write or service restart occurred.
 
-The next authority boundary is renewal of the existing OneBot-owned token,
-which was explicitly excluded from the capture approval. After that is
-authorized and safely completed, prepare a fresh position run rather than
-retrying the single-use failed directory; keep the same bounded request scope
-only while its approved UTC acquisition day remains valid. Do not copy the
-token into OneJournal, change the credential owner, or roll dates forward.
+Renewal of the existing OneBot-owned token was initially excluded. The owner
+then explicitly authorized it and instructed `proceed`. The failed directory
+was preserved, not retried; a fresh `POSITION-03` program was prepared for the
+same approved UTC day and known account scope.
+
+### Authorized renewal, capture and transfer receipt: 2026-10-11
+
+OneBot's existing confidential-app renewal path renewed the expired access
+token once, using its existing cross-process lock and atomic owner-only token
+store. No token was copied into OneJournal. The owner implementation and its
+configuration/wrapper pins were unchanged. The three capture programs then
+completed all five approved GETs with zero in-capture refreshes, retries,
+account-discovery requests, order writes or database writes:
+
+| Bundle | GETs | Source records | Complete manifest SHA-256 |
+| --- | ---: | --- | --- |
+| `POSITION-03` | 1 | 64 position rows | `fa2be30a32ecba4e3f8c01aaead3cdef4fd2f7559d9654c031b2076f8a5066c8` |
+| `HISTORY-W01-02` | 2 | 94 orders, 62 transactions | `fdcd56a62d6450166e5a5627db12f8e934423d2f47af5542192f036838b6746b` |
+| `HISTORY-W02-02` | 2 | 30 orders, 20 transactions | `69fd1c4eaaef347f5eccc8d46d658c6ac41bac42927e9258a95d3f6b5cbbc862` |
+
+The new private Mac destination below contains three separate bundles, 17
+exact files. Source/destination checksums and `0700`/`0600` permissions matched.
+Only producer programs, source contracts, acknowledgements, acquisition
+manifests and response bytes were transferred; no credential or account-binding
+source was transferred. The missing `mac-refresh` parent was created privately
+under the existing private evidence root, without changing existing material.
+
+Credential-free intake verified both lifecycle bundles under the existing
+policy, account binding, owner epoch and exact approval/run identities. W01
+has 50 matched fill rows, no order-only fills and one transaction-only fill;
+reconciliation remains pending. W02 has 19 matched fill rows and no unmatched
+fills. Existing window exclusions remain explicit: W01 excludes one order
+observation and two order fill rows; W02 excludes three order observations.
+Intake success is not complete financial-history acceptance.
+
+Position conversion stopped correctly against the retained September mapping:
+28 response instruments are unmapped and 22 old mappings are no longer in the
+current response. The receipt-derived New York market date is **2026-10-10**,
+while acquisition occurred on **2026-10-11 UTC**. No date was changed to make
+those labels equal. Changed instrument identities need source-backed mappings;
+do not guess option terms or multipliers. Resolve the unmatched transaction and
+the assembly UTC-window/market-date constraint before financial acceptance.
+Fresh quote/session evidence is also still a later bounded acquisition scope.
+
+No journal materialization, live migration, report-release write, API restart
+or website update occurred. The accepted September report remains unchanged;
+Phase 1 remains **8/12**. The next useful work is offline mapping and lifecycle
+reconciliation, not another copy of these already completed broker requests.
 
 Prepared on 2026-10-09 for the existing private single-owner `Primary` scope.
 The offline preparation command now produces fixed, private owner-side runner
@@ -137,9 +179,9 @@ Approval: `ONEJOURNAL-MAC-REFRESH-20261011-CAPTURE-01` (granted for the bounded 
 
 | Order | New run identity | Scope | GETs |
 | --- | --- | --- | ---: |
-| 1 | `ONEJOURNAL-MAC-REFRESH-20261011-POSITION-02` | Complete existing-account positions; preflight stopped before GET | 1 |
-| 2 | `ONEJOURNAL-MAC-REFRESH-20261011-HISTORY-W01-02` | Orders then transactions, September 5–October 4; not started | 2 |
-| 3 | `ONEJOURNAL-MAC-REFRESH-20261011-HISTORY-W02-02` | Orders then transactions, October 5–11; not started | 2 |
+| 1 | `ONEJOURNAL-MAC-REFRESH-20261011-POSITION-03` | Complete existing-account positions; acquisition complete | 1 |
+| 2 | `ONEJOURNAL-MAC-REFRESH-20261011-HISTORY-W01-02` | Orders then transactions, September 5–October 4; acquisition complete | 2 |
+| 3 | `ONEJOURNAL-MAC-REFRESH-20261011-HISTORY-W02-02` | Orders then transactions, October 5–11; acquisition complete | 2 |
 
 Each new run stays under its retained runner's existing private `OUTPUT_PARENT`.
 Use only the known account binding; no discovery, quotes, order writes, retry,
@@ -153,7 +195,8 @@ or roll the date forward. October 11 is Sunday: receipt time is not a new market
 session, current prices or full-day financial acceptance. Keep actual timestamps
 and existing cutoff rules.
 
-New private Mac destination, confirmed absent:
+Private Mac destination, initially confirmed absent and now checksum-verified
+after the transfer receipt above:
 `/Users/edward/Projects/Private/OneJournal/mac-refresh/ONEJOURNAL-MAC-REFRESH-20261011-01`.
 Transfer only separate acquisition bundles, producer programs and required
 lineage, preserving checksums and `0700`/`0600` permissions. Never transfer the
