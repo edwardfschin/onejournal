@@ -301,6 +301,23 @@ class ExternalSchwabPositionAcquisitionTests(unittest.TestCase):
             Decimal("97.5"),
         )
 
+    def test_utc_download_day_does_not_replace_new_york_market_date(self) -> None:
+        self.started_at = datetime(2026, 9, 1, 2, tzinfo=UTC)
+        self.received_at = self.started_at + timedelta(seconds=1)
+        self.completed_at = self.received_at + timedelta(seconds=1)
+        self.request = replace(self.request, requested_at_utc=self.started_at,
+                               received_at_utc=self.received_at)
+        self.manifest = self.make_manifest()
+        snapshot = self.convert().snapshot
+        self.assertEqual(snapshot.asof, date(2026, 8, 31))
+        self.assertEqual(snapshot.retrieved_at, self.received_at)
+        self.assertEqual(snapshot.retrieved_at.date(), date(2026, 9, 1))
+        invalid = replace(self.manifest, requests=(replace(self.request,
+                          approved_market_date=date(2026, 9, 1)),))
+        with self.assertRaises(ExternalProviderAcquisitionError) as result:
+            self.convert(self.load(manifest=invalid))
+        self.assertIn("New York market date", str(result.exception.__cause__))
+
     def test_manifest_is_canonical_and_omits_raw_account_identifiers(self) -> None:
         manifest_bytes = external_provider_acquisition_manifest_bytes(self.manifest)
         self.assertNotIn(PROVIDER_ACCOUNT_HASH.encode("utf-8"), manifest_bytes)

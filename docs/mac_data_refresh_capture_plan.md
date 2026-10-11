@@ -1,6 +1,56 @@
 # Mac data-refresh capture preparation
 
-## Status: isolated setup installed and validated; authorized capture awaits date window
+## Status: date correction validated; acquisition stopped on expired owner token
+
+### Date correction: 2026-10-11
+
+The noon Singapore restriction was introduced by OneJournal's preparer, not
+Schwab. It incorrectly required the UTC download date to equal the New York
+market date. The owner approved correcting this mismatch. `--asof` in the
+capture preparer now fixes the approved **UTC acquisition day** only. Requests
+and responses must remain within that UTC day; naive timestamps and an expired
+day still stop before a complete manifest. History query boundaries remain
+the exact approved UTC windows. The retained position producer already derives
+its market date from the actual receipt timestamp in `America/New_York`; that
+behavior is preserved. No timestamp is backdated, and receipt is not proof of
+a completed market session.
+
+Thirteen focused preparation tests cover both sides of midnight, standard and
+daylight-saving offsets, and a response crossing New York midnight versus UTC
+midnight. Nine focused position-intake tests also pass, including preservation
+of the actual New York market date when UTC dates differ and rejection of a
+false market date. No intake, financial, assembly, database or publication guard is
+weakened. The approved scope remains five read-only requests, private transfer
+and credential-free intake validation. Full financial assembly is a later
+step: its existing UTC-history-end versus market-date constraint must be
+resolved explicitly if the actual evidence exposes it, not bypassed to publish
+results. Live database writes and runtime restarts remain excluded.
+
+The three installed `-01` programs contain the superseded equality guard and
+have not executed any broker request. Keep them unused and prepare corrected
+programs in new `-02` run directories under the same approved private parents,
+reusing the validated isolated environment and existing acquisition approval.
+Do not overwrite old programs or evidence. Source rollback is a focused revert;
+unused private programs do not affect OneBot or the website.
+
+### Execution receipt: 2026-10-11, 10:29 Singapore time
+
+The corrected `-02` programs were installed without overwriting the `-01`
+programs. Their actual isolated-runtime date, transport and isolation guards
+passed before noon. Source/runtime/wrapper pins and the active VPS role matched.
+The position runner then stopped before its GET because the existing OneBot
+access token had expired. Both history runners remained unstarted. All three
+acquisition directories are empty: zero provider responses and zero completed
+manifests. The position preflight's acknowledgement and source contract are
+preserved as incomplete run evidence. No OAuth refresh, automatic retry, Mac
+evidence transfer, live database write or service restart occurred.
+
+The next authority boundary is renewal of the existing OneBot-owned token,
+which was explicitly excluded from the capture approval. After that is
+authorized and safely completed, prepare a fresh position run rather than
+retrying the single-use failed directory; keep the same bounded request scope
+only while its approved UTC acquisition day remains valid. Do not copy the
+token into OneJournal, change the credential owner, or roll dates forward.
 
 Prepared on 2026-10-09 for the existing private single-owner `Primary` scope.
 The offline preparation command now produces fixed, private owner-side runner
@@ -27,10 +77,10 @@ synthetic streamed response and package consistency. Shared Requests 2.31.0 and
 urllib3 2.0.7 remain unchanged. No broker client was imported, token read,
 provider request made, evidence transferred or service restarted.
 
-At 10:16 Singapore time, the date guard correctly rejected capture before the
-approved window opens at 12:00 on October 11. The installed acquisition
-directories remain empty. Continue the already-authorized five-request scope
-only within the fixed window and after fresh role/pin/acknowledgement checks;
+At 10:16 Singapore time, the original equality guard rejected capture. That
+restriction was an implementation error, corrected above, not a broker rule.
+The installed acquisition directories remained empty. Continue the already-authorized five-request scope
+only within the approved UTC day and after fresh role/pin/acknowledgement checks;
 do not require a new approval for the same scope. No background schedule was
 created. If the window expires, stop and reprepare rather than backdating or
 silently changing approved identities/dates.
@@ -87,17 +137,18 @@ Approval: `ONEJOURNAL-MAC-REFRESH-20261011-CAPTURE-01` (granted for the bounded 
 
 | Order | New run identity | Scope | GETs |
 | --- | --- | --- | ---: |
-| 1 | `ONEJOURNAL-MAC-REFRESH-20261011-POSITION-01` | Complete existing-account positions | 1 |
-| 2 | `ONEJOURNAL-MAC-REFRESH-20261011-HISTORY-W01-01` | Orders then transactions, September 5–October 4 | 2 |
-| 3 | `ONEJOURNAL-MAC-REFRESH-20261011-HISTORY-W02-01` | Orders then transactions, October 5–11 | 2 |
+| 1 | `ONEJOURNAL-MAC-REFRESH-20261011-POSITION-02` | Complete existing-account positions; preflight stopped before GET | 1 |
+| 2 | `ONEJOURNAL-MAC-REFRESH-20261011-HISTORY-W01-02` | Orders then transactions, September 5–October 4; not started | 2 |
+| 3 | `ONEJOURNAL-MAC-REFRESH-20261011-HISTORY-W02-02` | Orders then transactions, October 5–11; not started | 2 |
 
 Each new run stays under its retained runner's existing private `OUTPUT_PARENT`.
 Use only the known account binding; no discovery, quotes, order writes, retry,
 redirect or OAuth refresh. Expired tokens stop, without a refresh or owner
 change. Write manifests last; preserve incomplete evidence on failure.
 
-The fixed UTC/New York date guard allows capture from **12:00 Singapore time
-on October 11 until before 08:00 on October 12**. Do not schedule automatically
+The corrected UTC acquisition-day guard allows capture on October 11 UTC
+(08:00 Singapore time on October 11 until before 08:00 on October 12),
+independently of the actual New York market date. Do not schedule automatically
 or roll the date forward. October 11 is Sunday: receipt time is not a new market
 session, current prices or full-day financial acceptance. Keep actual timestamps
 and existing cutoff rules.
@@ -143,16 +194,17 @@ The existing offline planner verified these candidate windows:
 | 2026-10-08 | 2026-09-05–2026-10-04 (30 days) | 2026-10-05–2026-10-08 (4 days) | 4 | 5 |
 | 2026-10-09 | 2026-09-05–2026-10-04 (30 days) | 2026-10-05–2026-10-09 (5 days) | 4 | 5 |
 
-These are alternatives, not permission to fetch both. The end date and actual
-snapshot market date must be fixed in the reviewed capture specification before
-broker access. Do not infer a completed US session from the Singapore calendar,
+These are alternatives, not permission to fetch both. The UTC query end and
+acquisition day must be fixed before broker access; derive the snapshot market
+date from actual New York receipt time. Do not infer a completed US session from the Singapore calendar,
 backdate a current snapshot, or silently roll this plan forward. An intraday
 capture is not proof of a complete day's activity. Record request/receipt times
 and apply the existing snapshot cutoff and freshness rules. The lifecycle
 coverage check requires the snapshot cutoff's UTC date inside the assembled
 range, while Phase 1 assembly requires the lifecycle end no later than the
-snapshot's market date. Verify both before selecting the capture time; do not
-solve a UTC/New York date mismatch by changing timestamps or weakening a guard.
+snapshot's market date. These are different scopes: do not restrict read-only
+acquisition to make their dates equal. Resolve that assembly constraint before
+financial publication; never change timestamps or bypass financial guards.
 
 Each lifecycle window uses
 `schwab-read-only-single-account-lifecycle.v1`: exactly one orders GET followed
@@ -273,7 +325,8 @@ It is a label for the proposed scope, not an approval already obtained.
 | 2 | `ONEJOURNAL-MAC-REFRESH-20261009-HISTORY-W01-01` | Orders then transactions, September 5–October 4 | 2 |
 | 3 | `ONEJOURNAL-MAC-REFRESH-20261009-HISTORY-W02-01` | Orders then transactions, October 5–9 | 2 |
 
-Capture date is fixed to October 9 in both UTC and New York. The added guard
+Historically, capture date was fixed to October 9 in both UTC and New York.
+That equality requirement is superseded by the correction above. The added guard
 runs before any side effect and immediately before/after each GET; a date
 rollover stops without a complete manifest. An intraday snapshot remains
 intraday evidence, not complete October 9 session coverage. History collected

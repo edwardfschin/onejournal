@@ -25,7 +25,8 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--source", type=Path, required=True)
     parser.add_argument("--reviewed-source-sha256", required=True)
     parser.add_argument("--kind", choices=("position", "history"), required=True)
-    parser.add_argument("--asof", type=date.fromisoformat, required=True)
+    parser.add_argument("--asof", type=date.fromisoformat, required=True,
+        help="Approved UTC acquisition day; position market date comes from actual New York receipt time")
     parser.add_argument("--window-start", type=date.fromisoformat)
     parser.add_argument("--window-end", type=date.fromisoformat)
     parser.add_argument("--run-uid", required=True)

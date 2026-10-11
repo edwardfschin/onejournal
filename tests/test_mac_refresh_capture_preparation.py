@@ -99,13 +99,39 @@ class MacRefreshCapturePreparationTests(unittest.TestCase):
                         replace(specification(), owner_run_root=PurePosixPath("/other/private/new"))):
             with self.assertRaises(CapturePreparationError): prepare_capture_runner(SOURCE, invalid)
 
-    def test_capture_guard_requires_matching_utc_and_new_york_dates(self):
+    def test_capture_guard_separates_utc_acquisition_day_from_market_date(self):
+        from zoneinfo import ZoneInfo
         values = namespace(prepare_capture_runner(SOURCE, specification()))
         guard = values["_REFRESH_require_capture_day"]
         guard(datetime(2026, 10, 9, 8, tzinfo=UTC))
-        for instant in (datetime(2026, 10, 9, 2, tzinfo=UTC), datetime(2026, 10, 10, 1, tzinfo=UTC),
+        instant = datetime(2026, 10, 9, 2, tzinfo=UTC)
+        self.assertEqual(instant.astimezone(ZoneInfo("America/New_York")).date(), date(2026, 10, 8))
+        guard(instant)
+        guard(instant.astimezone(ZoneInfo("America/New_York")))
+        winter = namespace(prepare_capture_runner(SOURCE, replace(specification(), asof=date(2026, 12, 1))))
+        winter["_REFRESH_require_capture_day"](datetime(2026, 12, 1, 4, tzinfo=UTC))
+        for instant in (datetime(2026, 10, 8, 23, 59, tzinfo=UTC), datetime(2026, 10, 10, 1, tzinfo=UTC),
                         datetime(2026, 10, 9, 8)):
             with self.assertRaises(values["CaptureError"]): guard(instant)
+
+    def test_response_can_cross_new_york_midnight_but_not_approved_utc_day(self):
+        values = namespace(prepare_capture_runner(SOURCE, specification()))
+        class Clock:
+            instants = iter(())
+            @classmethod
+            def now(cls, _): return next(cls.instants)
+        class Session:
+            calls = 0
+            def get(self):
+                self.calls += 1
+                return "synthetic-response"
+        values["datetime"] = Clock
+        session = Session()
+        Clock.instants = iter((datetime(2026, 10, 9, 3, 59, tzinfo=UTC), datetime(2026, 10, 9, 4, tzinfo=UTC)))
+        self.assertEqual(values["_fetch"](session), "synthetic-response")
+        Clock.instants = iter((datetime(2026, 10, 9, 23, 59, tzinfo=UTC), datetime(2026, 10, 10, 0, tzinfo=UTC)))
+        with self.assertRaises(values["CaptureError"]): values["_fetch"](session)
+        self.assertEqual(session.calls, 2)  # One call per attempt, never a retry.
 
     def test_expired_date_stops_before_main_or_get(self):
         values = namespace(prepare_capture_runner(SOURCE, specification()))
@@ -174,7 +200,8 @@ class MacRefreshCapturePreparationTests(unittest.TestCase):
         self.assertEqual(values["END_TIMESTAMP"], "2026-10-11T23:59:59.999Z")
         guard = values["_REFRESH_require_capture_day"]
         guard(datetime(2026, 10, 11, 4, tzinfo=UTC))
-        for instant in (datetime(2026, 10, 11, 2, tzinfo=UTC), datetime(2026, 10, 12, 0, tzinfo=UTC)):
+        guard(datetime(2026, 10, 11, 2, tzinfo=UTC))
+        for instant in (datetime(2026, 10, 10, 23, tzinfo=UTC), datetime(2026, 10, 12, 0, tzinfo=UTC)):
             with self.assertRaises(values["CaptureError"]): guard(instant)
 
     def test_isolated_runtime_accepts_only_private_no_shared_packages_and_matching_module_origins(self):

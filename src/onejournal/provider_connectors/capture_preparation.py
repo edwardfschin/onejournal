@@ -25,6 +25,8 @@ class CapturePreparationError(ValueError):
 @dataclass(frozen=True)
 class CapturePreparation:
     kind: Literal["position", "history"]
+    # Approved UTC acquisition day, not the position's New York market date.
+    # The retained position producer derives that date from actual receipt time.
     asof: date
     run_uid: str
     proposed_approval_id: str
@@ -145,10 +147,8 @@ def prepare_capture_runner(source: bytes, spec: CapturePreparation) -> bytes:
     guard = ast.parse(rf'''
 _REFRESH_ASOF = {spec.asof.isoformat()!r}
 def _REFRESH_require_capture_day(instant):
-    from zoneinfo import ZoneInfo
-    if (instant.tzinfo is None or instant.astimezone(UTC).date().isoformat() != _REFRESH_ASOF
-        or instant.astimezone(ZoneInfo("America/New_York")).date().isoformat() != _REFRESH_ASOF):
-        raise CaptureError("Capture date no longer matches the fixed UTC/New York scope; stop and reprepare.")
+    if instant.utcoffset() is None or instant.astimezone(UTC).date().isoformat() != _REFRESH_ASOF:
+        raise CaptureError("Capture date no longer matches the approved UTC acquisition day; stop and reprepare.")
 def _REFRESH_require_transport():
     from importlib.metadata import PackageNotFoundError, version
     import re
