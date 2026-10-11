@@ -392,6 +392,11 @@ def _identity_from_transaction_row(
     raise LifecycleCoverageError("transaction row asset_class is unsupported")
 
 
+def transaction_instrument_identity(row: Mapping[str, str]) -> InstrumentIdentity:
+    """Reuse canonical identity from an already verified accounting fill row."""
+    return _identity_from_transaction_row(row)
+
+
 def _event_leg_provider_id(row: Mapping[str, str]) -> str:
     value = row.get("option_symbol", "") or row.get("symbol", "")
     return "".join(value.upper().split())

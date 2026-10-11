@@ -81,3 +81,24 @@ PNL-03H adds a separate validation-only operator that reads an existing `0700`
 bundle and `0600` private binding without creating any evidence or database
 state. It emits only digest/count-based audit fields. Its validation result is
 not a broker capture or financial acceptance.
+
+## Offline refresh mapping preparation
+
+`prepare_position_refresh_binding` accepts a verified position acquisition,
+retained canonical private binding and assembled lifecycle coverage at the
+exact position receipt cutoff. It is a pure function, not a capture, file writer
+or database operator. The scopes, coverage fingerprint, complete membership
+and quantities must agree. Existing mappings are retained only if any available
+transaction identity agrees. New mappings require explicit canonical identity
+from verified transaction accounting rows; the function independently rederives
+it instead of trusting a mutable derived coverage identity. Missing or conflicting
+proof fails closed. No default multiplier or currency is introduced.
+
+The resulting new binding excludes mappings not present in the complete
+snapshot, then passes through the existing strict position converter. A caller
+may save it as a new owner-only artifact using the existing non-overwriting
+private writer; never overwrite retained bindings or raw evidence. Its audit is
+digest/count-based and declares `financial_acceptance=false`. Fill-history and
+review failures remain separate and unchanged; mapping a position does not
+admit it to financial calculations or publish new results. The position adapter,
+binding schema and existing financial contracts are unchanged.

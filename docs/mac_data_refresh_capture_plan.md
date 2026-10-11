@@ -1,6 +1,6 @@
 # Mac data-refresh capture preparation
 
-## Status: capture and Mac transfer complete; financial intake has unresolved scopes
+## Status: capture, mapping and offline coverage complete; financial release pending
 
 ### Date correction: 2026-10-11
 
@@ -93,6 +93,59 @@ No journal materialization, live migration, report-release write, API restart
 or website update occurred. The accepted September report remains unchanged;
 Phase 1 remains **8/12**. The next useful work is offline mapping and lifecycle
 reconciliation, not another copy of these already completed broker requests.
+
+### Offline mapping and coverage receipt: 2026-10-11
+
+The owner instructed `Proceed` for offline mapping and reconciliation using the
+downloaded evidence. A new private binding and value-free preparation audit
+were generated under the existing Mac refresh root in `offline-preparation-01`,
+with `0700` directory and `0600` non-overwriting files. The September binding,
+immutable provider responses and accepted release remain unchanged.
+
+The new binding covers all **64** current positions: **36** retained mappings,
+**28** new transaction-authoritative mappings and **22** retired mappings absent
+from this snapshot. Every new option's canonical terms, currency and multiplier
+come from verified accounting transactions; OCC fields only verify the binding.
+The credential-free position intake operator passed against the saved binding,
+including exact account completeness, quantities and receipt-derived New York
+date `2026-10-10`. Binding SHA-256:
+`389840b8a2ac0588b4249a44eea17ed78bf5fe3057522c04e6c8a332500dd07d`.
+
+The accepted September assembly selects seven historical source manifests.
+Those exact sources plus the two new windows form nine contiguous,
+non-overlapping UTC windows from March 6 through October 11, evaluated at the
+position receipt `2026-10-11T02:32:16.555819+00:00`. Coverage SHA-256:
+`db32759dd96212093339cc8f1670df28ad7509b365b842b69f40645a39b371cc`.
+
+Of 64 positions, **56** pass `fill_flat_start_proven`, **5** require history
+extension and **3** require reconciliation review. All eight remain unavailable
+for this fill-based financial scope; identity mapping does not admit them to
+FIFO or promote them to accepted P&L. Across retained and new history there are
+604 order fills, 609 transaction fills, 601 matches, three order-only fills and
+eight transaction-only fills. These combined unmatched counts include retained
+historical omissions, not eight new capture failures. The single newly unmatched
+W01 transaction is dated September 11 and has no broker order number. It does
+not affect a current position. Preserve it as unresolved historical evidence;
+do not manufacture an order match from symbol, price, quantity or time.
+
+The reusable preparation function is pure: no files, broker requests,
+credentials, database or runtime access. It requires the verified position
+acquisition, canonical retained binding and exact-cutoff coverage; independently
+checks derived identities against accounting rows; validates the complete
+snapshot; and emits only digest/count-based audit fields. Nine focused synthetic
+tests cover deterministic replay, explicit non-standard option multiplier,
+identity conflicts/tampering, missing accounting proof, cutoff/scope/fingerprint,
+quantity/membership and privacy failures. Nine existing coverage tests and nine
+position-intake tests also pass. No broad test run was needed.
+
+Next, prepare the exact quote/session scope from this verified snapshot and
+resolve the UTC-history-window versus New York market-date assembly constraint
+without weakening its instant cutoff. Further broker requests, live database
+writes and website activation are not authorized by this offline preparation.
+Rehearse financial assembly and the report release on a disposable journal only
+after required evidence is valid; unresolved scopes must remain visible.
+Phase 1 remains **8/12**. Rollback is a focused source revert and continued use
+of the retained September binding/release, not deletion of private evidence.
 
 Prepared on 2026-10-09 for the existing private single-owner `Primary` scope.
 The offline preparation command now produces fixed, private owner-side runner
