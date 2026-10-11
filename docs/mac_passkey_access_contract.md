@@ -418,3 +418,30 @@ audit/retention, monitoring and incident/recovery procedures coordinated with
 OPS-06. These are existing hosted-release requirements, not new Mac features or
 approved policies. The Mac review is recorded; P1-09 remains IN PROGRESS and
 Phase 1 remains 8/12 under the existing hosted-production completion definition.
+
+### Build-tool dependency separation: 2026-10-11
+
+The `shadcn` package is now a pinned development dependency, not an application
+dependency. Its generator is not imported by application code, but
+`web/app/globals.css` imports its `tailwind.css` during the build. Keep the
+package in the full development/build install; do not delete that import or
+move the separate runtime component package `@shadcn/react` out of application
+dependencies. The manifest and lockfile retain every package version and
+integrity hash; only dependency classification changes.
+
+The generator-only `proxy-addr` chain is consequently excluded from installs
+that omit development dependencies. This is packaging isolation, not a patched
+advisory, clearance of developer/build tooling, or an accepted production
+artifact. The Mac launcher still uses the full development installation with
+`npm ci`; neither its installed packages nor its running processes are changed.
+Build with development dependencies available before considering any smaller
+runtime package. The unresolved static-frontend versus Vinext server topology
+must still be decided before selecting the actual hosted package.
+
+`npm run test:packaging` checks the manifest/lock classification and preserves
+the distinct runtime component dependency. A disposable clean install and
+build verify the existing CSS and server output without rebuilding the live
+checkout. Rollback is a focused source revert of this packaging change; no
+financial or security-store restoration is involved. Other dependency findings
+and the hosted-release requirements above remain open; P1-09 is not completed
+by reclassifying a build tool.
