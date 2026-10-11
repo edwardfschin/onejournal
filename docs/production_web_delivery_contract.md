@@ -590,6 +590,20 @@ final owner-acceptance work remain separate.
 
 The web delivery packages map to Phase 1 as follows:
 
+### Installed migration-resource correction: 2026-10-11
+
+Preflight for the owner-approved October financial publication found that the
+installed wheel lacked the exact SQL files used by history checksum guards.
+The correction includes the authoritative `scripts/journal/migrations/*.sql`
+bytes under the environment's `share/onejournal/migrations` directory. All
+checksum consumers use the shared migration-directory resolver: source runs
+retain the existing repository path, installed runs use their own prefix.
+The public source archive includes those tracked SQL inputs; operator scripts,
+private state and credentials remain excluded. No SQL, financial calculation,
+checksum requirement or startup migration behavior changes. Three focused
+resource-routing checks passed; installed-wheel and exact financial-copy
+validation remain required before the controlled publication.
+
 | Phase 1 need | Required web package or dependency |
 |---|---|
 | Approved foundation and product journeys | WEB-W01 and WEB-W02 |

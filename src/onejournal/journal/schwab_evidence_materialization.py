@@ -19,6 +19,7 @@ from pathlib import Path
 from typing import Any, Mapping
 
 import duckdb
+from onejournal.journal.migrations import DEFAULT_MIGRATIONS_DIR
 
 from onejournal.brokers.normalized import NormalizedFill
 from onejournal.journal.episodes import TradeEpisodePreview, build_episode_previews_from_fills
@@ -37,8 +38,7 @@ from onejournal.pnl.calculations import build_instrument_key
 MATERIALIZATION_CONTRACT_VERSION = "onejournal.phase1-journal-materialization.v1"
 MIGRATION_VERSION = "0018"
 MIGRATION_PATH = (
-    Path(__file__).resolve().parents[3]
-    / "scripts/journal/migrations/0018_add_phase1_journal_materialization.sql"
+    DEFAULT_MIGRATIONS_DIR / "0018_add_phase1_journal_materialization.sql"
 )
 REQUIRED_TABLES = {
     "phase1_journal_materialization_runs",

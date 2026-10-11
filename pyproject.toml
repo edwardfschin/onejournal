@@ -20,6 +20,9 @@ dependencies = [
 [tool.setuptools.packages.find]
 where = ["src"]
 
+[tool.setuptools.data-files]
+"share/onejournal/migrations" = ["scripts/journal/migrations/*.sql"]
+
 [project.scripts]
 onejournal-mac-site = "onejournal.mac_static_site:main"
 

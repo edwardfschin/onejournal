@@ -19,6 +19,7 @@ import stat
 from typing import Any, Mapping
 
 import duckdb
+from onejournal.journal.migrations import DEFAULT_MIGRATIONS_DIR
 
 from onejournal.brokers.schwab.position_binding import (
     load_schwab_position_private_binding_bytes,
@@ -59,8 +60,7 @@ AUTHORIZATION_CONTRACT_VERSION = (
 )
 REQUIRED_MIGRATION_VERSION = "0023"
 MIGRATION_PATH = (
-    Path(__file__).resolve().parents[3]
-    / "scripts/journal/migrations/0023_widen_broker_current_decimal_precision.sql"
+    DEFAULT_MIGRATIONS_DIR / "0023_widen_broker_current_decimal_precision.sql"
 )
 MAX_PRIVATE_DOCUMENT_BYTES = 1024 * 1024
 _DIGEST_RE = re.compile(r"[0-9a-f]{64}")

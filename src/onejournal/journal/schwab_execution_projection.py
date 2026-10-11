@@ -19,6 +19,7 @@ import re
 from typing import Any, Mapping
 
 import duckdb
+from onejournal.journal.migrations import DEFAULT_MIGRATIONS_DIR
 
 from onejournal.journal.schwab_evidence_assembly import SchwabPhase1EvidenceAssembly
 from onejournal.journal.schwab_evidence_materialization import (
@@ -32,8 +33,7 @@ EXECUTION_PROJECTION_CONTRACT_VERSION = (
 )
 MIGRATION_VERSION = "0019"
 MIGRATION_PATH = (
-    Path(__file__).resolve().parents[3]
-    / "scripts/journal/migrations/0019_add_phase1_execution_projection.sql"
+    DEFAULT_MIGRATIONS_DIR / "0019_add_phase1_execution_projection.sql"
 )
 REQUIRED_TABLES = {
     "phase1_journal_execution_projection_runs",

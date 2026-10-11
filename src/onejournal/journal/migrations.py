@@ -9,6 +9,7 @@ from datetime import datetime
 from hashlib import sha256
 from pathlib import Path
 from subprocess import CalledProcessError, check_output
+import sys
 from typing import Iterable
 from uuid import uuid4
 
@@ -22,6 +23,9 @@ except Exception:  # pragma: no cover - defensive for environments with unusual 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
 DEFAULT_MIGRATIONS_DIR = PROJECT_ROOT / "scripts" / "journal" / "migrations"
+if not DEFAULT_MIGRATIONS_DIR.is_dir():
+    # Wheels install the same authoritative SQL bytes under their own prefix.
+    DEFAULT_MIGRATIONS_DIR = Path(sys.prefix) / "share" / "onejournal" / "migrations"
 SCHEMA_MIGRATIONS_TABLE = "schema_migrations"
 
 

@@ -27,7 +27,7 @@ def run(command, cwd, **kwargs):
 
 def copy_snapshot(root, target):
     """Only committed public application/build inputs, never ignored local files."""
-    archive = run(["git", "archive", "HEAD", "src", "web", "pyproject.toml",
+    archive = run(["git", "archive", "HEAD", "src", "web", "scripts/journal/migrations", "pyproject.toml",
                    "requirements.lock", "requirements-security.lock"], root)
     with tarfile.open(fileobj=io.BytesIO(archive)) as source:
         for member in source.getmembers():
@@ -106,7 +106,8 @@ def package(root, destination):
             "No Node runtime, checkout, automatic migration, provisioning or service takeover.\n"
             "Keep the previous environment and launcher for rollback; stop only the owned process.\n"
             "This archive contains no journal, access state, TLS keys, enrollment codes or broker evidence.\n"
-            "Migration/operator scripts are NOT bundled; use the reviewed source checkout separately.\n"
+            "Exact SQL migration definitions are bundled for checksum validation; startup never applies them.\n"
+            "Operator scripts are NOT bundled; use the reviewed source checkout separately.\n"
         )
         manifest = {"contract_version": "onejournal.mac-release.v1", "source_commit": commit,
                     "scope": "prepared_mac_loopback_only", "files_sha256": release_files(release)}

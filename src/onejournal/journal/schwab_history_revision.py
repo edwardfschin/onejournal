@@ -16,6 +16,7 @@ from pathlib import Path
 from typing import Any
 
 import duckdb
+from onejournal.journal.migrations import DEFAULT_MIGRATIONS_DIR
 
 from onejournal.journal.schwab_evidence_assembly import (
     SCHWAB_PHASE1_EVIDENCE_ASSEMBLY_V3,
@@ -41,11 +42,10 @@ HISTORY_REVISION_CONTRACT_VERSION = (
 )
 SNAPSHOT_HISTORY_REVISION_CONTRACT_VERSION = "onejournal.history-materialization-revision.v2"
 SNAPSHOT_MIGRATION_PATH = (
-    Path(__file__).resolve().parents[3] / "scripts/journal/migrations/0028_add_snapshot_history_revisions.sql")
+    DEFAULT_MIGRATIONS_DIR / "0028_add_snapshot_history_revisions.sql")
 MIGRATION_VERSION = "0021"
 MIGRATION_PATH = (
-    Path(__file__).resolve().parents[3]
-    / "scripts/journal/migrations/0021_add_append_only_history_revisions.sql"
+    DEFAULT_MIGRATIONS_DIR / "0021_add_append_only_history_revisions.sql"
 )
 REQUIRED_TABLES = {
     "phase1_journal_history_revisions",

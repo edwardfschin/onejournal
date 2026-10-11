@@ -8,6 +8,7 @@ import json
 from pathlib import Path
 
 import duckdb
+from onejournal.journal.migrations import DEFAULT_MIGRATIONS_DIR
 
 from onejournal.journal.schwab_evidence_assembly import (
     FAMILY_ORDER_V2,
@@ -30,8 +31,7 @@ from onejournal.journal.schwab_journal_lifecycle_reconciliation import (
 
 MIGRATION_VERSION = "0020"
 MIGRATION_PATH = (
-    Path(__file__).resolve().parents[3]
-    / "scripts/journal/migrations/0020_add_phase1_lifecycle_reconciliation.sql"
+    DEFAULT_MIGRATIONS_DIR / "0020_add_phase1_lifecycle_reconciliation.sql"
 )
 REQUIRED_TABLES = {
     "phase1_schwab_evidence_v2_import_runs",

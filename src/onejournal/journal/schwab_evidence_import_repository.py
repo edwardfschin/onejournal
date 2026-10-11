@@ -9,6 +9,7 @@ import json
 from pathlib import Path
 
 import duckdb
+from onejournal.journal.migrations import DEFAULT_MIGRATIONS_DIR
 
 from onejournal.journal.schwab_evidence_assembly import (
     FAMILY_ORDER,
@@ -27,8 +28,7 @@ REQUIRED_TABLES = {
 }
 MIGRATION_VERSION = "0016"
 MIGRATION_PATH = (
-    Path(__file__).resolve().parents[3]
-    / "scripts/journal/migrations/0016_add_phase1_schwab_evidence_assemblies.sql"
+    DEFAULT_MIGRATIONS_DIR / "0016_add_phase1_schwab_evidence_assemblies.sql"
 )
 
 

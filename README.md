@@ -271,6 +271,8 @@ See the delivery contract for scoped validation and activation instructions.
 `scripts/web/package_mac_release.py` prepares a public wheel/static archive
 from clean committed source. The installed `onejournal-mac-site` command needs
 Python and the existing pinned dependencies, but no checkout or Node runtime.
+The wheel carries the exact SQL definitions for migration checksum validation;
+startup never applies migrations automatically.
 The installed Mac release and retained rollback procedure are documented in
 `docs/operator_quickstart.md`; no journal migration or financial refresh is included.
 Hosted deployment, final security/operations/quality acceptance and Phase 1

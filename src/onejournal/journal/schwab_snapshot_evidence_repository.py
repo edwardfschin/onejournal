@@ -9,6 +9,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 import duckdb
+from onejournal.journal.migrations import DEFAULT_MIGRATIONS_DIR
 
 from onejournal.journal.schwab_evidence_assembly import (
     SCHWAB_PHASE1_EVIDENCE_ASSEMBLY_V3, SchwabPhase1EvidenceAssembly,
@@ -17,7 +18,7 @@ from onejournal.journal.schwab_evidence_assembly import (
 )
 from onejournal.journal.schwab_evidence_import_repository import SchwabEvidencePersistenceResult
 
-MIGRATION_PATH = Path(__file__).resolve().parents[3] / 'scripts/journal/migrations/0027_add_snapshot_cutoff_evidence.sql'
+MIGRATION_PATH = DEFAULT_MIGRATIONS_DIR / '0027_add_snapshot_cutoff_evidence.sql'
 
 
 def _contract(connection):
