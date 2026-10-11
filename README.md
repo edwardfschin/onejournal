@@ -3,9 +3,11 @@
 OneJournal is a broker-independent trading journal, portfolio, and performance
 platform under active development.
 
-The current application is an internal Streamlit prototype used to validate
-data contracts, journal workflows, and safety boundaries. It is not the final
-production website. The intended product is a polished, responsive, secure,
+Streamlit remains an internal prototype used to validate data contracts,
+journal workflows, and safety boundaries. The separate Mac-local website has
+accepted bounded private journal, portfolio and reporting capabilities; neither
+surface establishes final hosted-production acceptance. The intended product is
+a polished, responsive, secure,
 and trustworthy website for trading review, portfolio monitoring, realized and
 unrealized P&L, strategy analytics, risk monitoring, and—only after separate
 safety gates—controlled automated trading.
@@ -30,17 +32,19 @@ Implemented and validated today:
 - Generated dashboard payloads and a Streamlit review interface
 - Reproducible locked dependencies, automated tests, and clean-checkout CI
   tooling
+- Bounded private Mac website with passkey access, accepted journal/portfolio/
+  reporting slices and recorded dated USB recovery evidence
 
 Not implemented or not yet trustworthy:
 
 - Broker-reconciled, lifecycle-event-allocated P&L across the complete
   portfolio scope (including the remaining complex lifecycle cases)
-- Continuous provider-backed market-data acquisition and PNL-03-approved
-  valuation marks for real portfolio use
-- Daily, monthly, and custom-period reports and exports, plus an approved
-  return-denominator and equity-curve policy
-- Production authentication, API/frontend implementation, hosted runtime, or
-  deployment
+- Continuous OneJournal-owned market-data acquisition and valuation scopes
+  beyond the accepted bounded broker-current result
+- Reporting/analytics beyond the accepted bounded history, account/symbol
+  breakdowns and CSV exports, including return-denominator and equity-curve policy
+- Hosted-production security/operating acceptance and deployment; implemented
+  Mac API/frontend/passkey access do not complete those gates
 - IBKR ingestion beyond its reserved adapter/configuration boundary
 - Paper or live automated trading
 
@@ -72,6 +76,14 @@ connectivity, attachments, advanced journal routines, advanced analytics, and
 paper/live/automated trading are post-Phase 1 and do not block that release.
 The authoritative 12-item completion tracker is in the
 [product roadmap](docs/onejournal_product_roadmap.md#phase-1---private-owner-release).
+
+The current owner-approved direction is **Mac first, hosted acceptance later**:
+complete the local security, operations, quality and release preparation before
+VPS work. P1-08 is already accepted; the prepared data refresh remains a separate
+review/publication task. Mac readiness does not by itself complete Phase 1's
+production acceptance. The [delivery contract](docs/production_web_delivery_contract.md#owner-approved-mac-first-completion-sequence-2026-10-11)
+defines what can be finished locally and what must be verified on the eventual
+host, without adding another website or repeated approval ceremonies.
 
 ## Safety boundary
 

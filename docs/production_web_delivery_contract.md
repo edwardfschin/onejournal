@@ -275,6 +275,45 @@ ADR-0018 defines **Phase 1 — Private Owner Release** as the first operational
 product, not merely the synthetic preview. Phase 1 is finite and requires the
 twelve `P1` roadmap items to complete.
 
+### Owner-approved Mac-first completion sequence: 2026-10-11
+
+The owner approved completing the work that can be implemented and verified on
+the Mac before moving to the eventual hosting environment. This is an execution
+sequence, not a replacement of ADR-0018's production acceptance gate or an
+approval of a different frontend, database, hosting, or security policy.
+
+Continue local implementation, focused validation, documentation and source
+delivery within the existing approved boundaries. Do not wait for a VPS to
+prepare security, operational tooling, quality improvements or the release.
+Do not require repeated approval for ordinary steps inside that scope. A new
+material architecture/policy decision, changed financial acceptance, live
+database operation, runtime activation/restart or external deployment still
+requires its exact operating authority; the Mac-first instruction does not
+grant those actions.
+
+| Package | Complete or prepare on the Mac first | Evidence reserved for the eventual host |
+|---|---|---|
+| P1-09 / WEB-W10 | Reuse accepted Mac passkey/login/logout/recovery evidence; complete relevant dependency disposition, private-access/secret/audit review and portable security preparation. Document domain-bound enrollment and recovery requirements without inventing a production domain or changing the localhost RP. | Actual production domain/RP/TLS, enrollment, proxy/abuse controls and hosted private-route/session/recovery verification. |
+| P1-10 / WEB-W12 | Resolve release packaging against ADR-0017, prepare versioned start/deploy/rollback and monitoring tooling, migration mapping and approved disposable rehearsals, and backup/restore procedures. Present unresolved recovery/retention/incident choices before encoding policy. | Target-environment isolation, approved production-state migration, private deployment, monitoring/alerts, recurring encrypted backup, host restoration and rollback. |
+| P1-11 / WEB-W11 | Agree browser/device and performance targets; inspect/fix accessibility and critical journeys with safe fixtures; measure the candidate artifact and reuse valid evidence for unchanged components. | Focused checks of the deployed artifact and any behavior that depends on the actual host, network or supported device. |
+| P1-12 / WEB-W13 | Prepare the exact release scope, known limitations, export/correction/deletion/closure procedures and Streamlit disposition proposal. Reuse the evidence collected above rather than run another unchanged full suite. | Dated end-to-end private production verification and explicit final owner acceptance. |
+
+The roadmap remains the single completion tracker. Record scoped Mac evidence
+there; do not mark a whole production package complete merely because its local
+preparation is ready. The formal count remains 8/12 until the remaining package
+acceptance gates are met. No second website, new feature scope, routine approval
+ceremony or independent certification process is introduced.
+
+The separately prepared financial refresh is maintenance of completed P1-08.
+Review and exact acceptance of its changed results precede release preparation
+and any separately authorized live update. Its pending publication neither
+reopens P1-08 nor prevents the local work above.
+
+This sequencing preserves the product vision, spreadsheet-to-capability mapping
+and maturity boundaries; no strategic or operational maturity is advanced by
+the planning decision. Rollback of this documentation is a focused source
+revert; implementation changes retain their own scoped rollback methods.
+
 The web delivery packages map to Phase 1 as follows:
 
 | Phase 1 need | Required web package or dependency |

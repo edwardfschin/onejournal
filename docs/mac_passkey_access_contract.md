@@ -445,3 +445,11 @@ checkout. Rollback is a focused source revert of this packaging change; no
 financial or security-store restoration is involved. Other dependency findings
 and the hosted-release requirements above remain open; P1-09 is not completed
 by reclassifying a build tool.
+
+The owner subsequently confirmed Mac-first completion of the remaining local
+work on 2026-10-11. Follow the staged sequence in
+`docs/production_web_delivery_contract.md`: finish locally verifiable security
+and quality preparation now, reserving actual domain/RP/TLS and hosted controls
+for the eventual host. Do not repeat accepted Mac login/logout or dated recovery
+checks unchanged, change the localhost RP, adopt a hosted framework/policy, or
+activate a different runtime under this sequencing instruction alone.

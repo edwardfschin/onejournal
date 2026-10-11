@@ -92,6 +92,14 @@ bounded reporting/export, explicit quality states, and production recovery.
 
 Phase 1 progress: **8 of 12 work packages complete**.
 
+**Current delivery direction: Mac first, hosted acceptance later.** The owner's
+2026-10-11 instruction approves completing the locally implementable and
+verifiable parts of P1-09 through P1-12 before VPS work. This does not redefine
+Phase 1 as local-only or turn Mac preparation into production acceptance. See
+the Mac-first sequence in `docs/production_web_delivery_contract.md`. P1-08 is
+already complete; publishing the separately rehearsed financial refresh is
+maintenance with its own exact financial/live-update boundary.
+
 This tracker is the authoritative Phase 1 completion record. Update the row and
 evidence whenever a package changes state. A broader PNL, UXJ, WEB, or OPS item
 is not complete merely because its required Phase 1 slice is complete.
@@ -441,6 +449,56 @@ approval and successful completion of every prior safety gate.
 | LIV-05 | COMPLETE | Expand automation only through separately approved stages backed by operating evidence. | Expansion governance validator and decision log are complete and signed off by owner. |
 
 ## Immediate execution order
+
+### Current owner-approved direction: Mac first, 2026-10-11
+
+Complete useful local work now; do not make VPS availability a prerequisite for
+source implementation, safe-fixture checks, disposable rehearsals or release
+preparation. The order below is a delivery sequence, not additional gates:
+
+1. Preserve completed P1-01 through P1-08 and the recorded Mac passkey and
+   dated USB-recovery evidence. Do not repeat unchanged tests or recovery
+   ceremonies. Keep review/publication of the prepared financial refresh
+   separate; unseen changed figures are not accepted by this direction.
+2. Close locally verifiable P1-09 security gaps and P1-11 critical-journey,
+   accessibility and performance work using privacy-safe fixtures. Resolve
+   unchosen budgets/policies before treating them as acceptance criteria.
+3. Prepare P1-10 packaging, migration, start/deployment/rollback, monitoring and
+   recovery on the Mac. The current Vinext/Node preview versus ADR-0017 static
+   topology still needs an explicit decision before any framework transition
+   or production adoption. Do not build competing websites or silently choose
+   hosting, retention, backup or incident policy.
+4. Prepare the P1-12 release scope, limitations, operating procedures and
+   Streamlit disposition. Consolidate existing evidence, not another repeated
+   whole-project check.
+5. When ready for soft launch, obtain the exact hosted operating scope and
+   complete only the environment-dependent deployment, TLS/passkey, migration,
+   monitoring, restore/rollback and final owner-acceptance checks there.
+
+Mac preparation can progress while the formal hosted packages remain incomplete.
+Do not inflate the 8/12 count, infer live write/restart/broker authority, or ask
+for repeated approval of routine local steps already covered by the owner's
+instruction. The historical checkpoints below retain their original scope.
+
+Local evidence added on 2026-10-11: focused JSX accessibility checks for control
+labels and ARIA properties passed on the passkey boundary, Reports, shared
+Trades/Journal and Portfolio components. No defect requiring a source change
+was found by these checks. They do not establish full screen-reader, contrast,
+keyboard, device, performance or hosted acceptance; those unverified paths
+remain P1-11 work. No browser/private financial request or runtime change was
+made for this source check.
+
+The same local quality work found a concrete small-text contrast defect in
+the shared `--text-faint` token: 3.07:1 against the normal panel background.
+The token now uses the existing muted-text palette color; its contrast is at
+least 4.74:1 across the five opaque workspace surfaces. The focused regression
+failed against the original color and passes after the single-token correction.
+A rebuilt disposable synthetic Reports preview verified the rendered color at
+1440x900, 768x1024 and 360x800, with no horizontal page overflow. This is scoped
+label/palette and visual evidence, not comprehensive WCAG or P1-11 acceptance.
+The temporary preview had no private API connection and was stopped afterwards.
+No financial calculation, database operation, broker call or live restart was
+performed. See [WCAG's minimum text-contrast guidance](https://www.w3.org/WAI/WCAG22/Understanding/contrast-minimum.html).
 
 CON-02's seven owner decisions are resolved in accepted ADR-0003. CON-07 and
 JRN-08 remain separate future provenance/correction work. PNL-02 is complete

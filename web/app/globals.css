@@ -24,7 +24,7 @@
   --border: rgba(171, 203, 211, .13); --ring: #8ae7de; --radius: .75rem;
   --surface-0: #071017; --surface-1: #0a141c; --surface-2: #0d1821;
   --surface-3: #12212b; --surface-hover: #162832;
-  --text-strong: #f4fafb; --text: #c6d5d9; --text-muted: #7f939c; --text-faint: #536871;
+  --text-strong: #f4fafb; --text: #c6d5d9; --text-muted: #7f939c; --text-faint: #7f939c;
   --line: rgba(171, 203, 211, .13); --line-strong: rgba(171, 203, 211, .24);
   --signal-cyan: #71dfd5; --signal-cyan-soft: rgba(113, 223, 213, .12);
   --signal-violet: #a999ff; --signal-violet-soft: rgba(169, 153, 255, .12);
