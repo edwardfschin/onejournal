@@ -605,6 +605,11 @@ supersede ADR-0018's private production acceptance gate.
   cadence/retention and incident handling before encoding them. Existing USB
   images already passed disposable restoration for their dated Mac scope;
   do not repeat those ceremonies unchanged or call them hosted recovery.
+  The 2026-10-11 relocated frontend-only Mac packaging rehearsal corrected
+  missing React runtime peers and produced a loopback-only standalone candidate
+  without project/build-tool dependencies. See the scoped evidence and remaining
+  architecture/private-routing boundary in `docs/production_web_delivery_contract.md`.
+  This is portability preparation, not private release or P1-10 acceptance.
 - **P1-11 — quality:** agree the supported browser/device matrix and page/
   interaction performance budgets, then run the smallest critical journey
   checks on the release artifact: keyboard/screen-reader semantics, contrast,

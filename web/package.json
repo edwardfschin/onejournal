@@ -13,6 +13,7 @@
     "test:reports": "node --experimental-strip-types --test tests/local-owner-reports.test.mjs",
     "test:access": "node --experimental-strip-types --test tests/local-owner-access.test.mjs",
     "test:packaging": "node --test tests/dependency-packaging.test.mjs",
+    "package:mac-preview": "node scripts/package-mac-preview.mjs",
     "test:contrast": "node --test tests/text-contrast.test.mjs",
     "test:workspace": "node --experimental-strip-types --test tests/local-owner-workspace.test.mjs",
     "format": "oxfmt"

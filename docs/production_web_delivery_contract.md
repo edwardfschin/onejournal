@@ -314,6 +314,72 @@ and maturity boundaries; no strategic or operational maturity is advanced by
 the planning decision. Rollback of this documentation is a focused source
 revert; implementation changes retain their own scoped rollback methods.
 
+### Mac frontend packaging rehearsal: 2026-10-11
+
+`npm run package:mac-preview` prepares a movable frontend-only feasibility
+candidate after a fresh build in a disposable copy of tracked public `web/`
+source. It does not package the Python API, journal, security store, TLS files,
+release authorizations or private configuration, and does not start anything.
+It is not an approved private release or a replacement for the protected Mac
+launcher. Keep generated output outside Git.
+
+The producer reuses the pinned Vinext standalone emitter. The actual relocation
+test exposed a missing runtime dependency: the application externals manifest
+was empty, but Vinext's own server imports React. An in-project start would mask
+this defect by resolving ancestor `node_modules`. The producer now adds the
+existing lockfile-matched `react`, `react-dom` and `scheduler` packages without
+installing or upgrading anything. It retains the public source lockfile in the
+candidate and replaces the upstream wildcard-binding starter with a fixed
+`127.0.0.1:4187` starter that clears inherited environment values before loading
+the server. It does not load dotenv or accept HOST/PORT overrides. An existing
+standalone directory or missing externals manifest blocks packaging; use a fresh
+disposable build rather than overwriting an earlier candidate.
+
+Build procedure, **in the disposable public-source copy only**, using the
+declared Node runtime and an empty inherited environment:
+
+```text
+npm ci --ignore-scripts --no-audit --no-fund
+npm run build
+npm run package:mac-preview
+```
+
+Move the entire `dist/standalone` folder to a separate location with no ancestor
+project dependency installation. Start its `server.js` with the declared Node
+runtime in an empty inherited environment. It serves the public packaging
+preview on port 4187; no package installation is required there. Do not use
+`npm start`, the upstream wildcard starter or this candidate to restart the
+protected site. If 4187 is occupied, stop: no existing process is replaced.
+
+The corrected relocated Mac candidate contains 59 runtime packages and is
+approximately 45 MiB unpacked. Vite, Wrangler, shadcn's generator and its
+`proxy-addr` chain are absent from its top-level runtime installation. The
+Reports demonstration and its 20 referenced script/style/font resources return
+200; the legacy portfolio alias returns 307 to the canonical route. Both the
+private portfolio API and access-session API return 404: the development proxy
+is not present and no private backend was connected. Four focused packaging
+tests and focused lint pass. The isolated preview is stopped after verification.
+This evidence does not establish browser hydration, private authentication or
+export journeys, Linux compatibility, dependency security clearance, monitoring,
+backup/rollback acceptance or a complete frontend/backend release.
+
+ADR-0017 remains authoritative. Its static React/Vite frontend avoids a second
+application server; the current Vinext/Next-compatible preview requires Node
+server rendering. This candidate proves the latter can be moved on the Mac,
+not that it is selected for production. The next material decision is to align
+the existing UI/routing with the accepted static topology (recommended), or
+explicitly supersede that topology with a reviewed Node-server design. Do not
+silently choose either through packaging. Trusted HTTPS, same-origin private
+API routing, session/header preservation and the API/service package must then
+be validated for the chosen design before any private runtime activation.
+
+Impact: public build output and packaging tests only; no financial calculation,
+API contract, private persisted state, accepted runtime or strategic maturity
+changes. Rollback is a focused source revert and discarding this generated
+candidate, not restoring any database. P1-10 remains incomplete and Phase 1
+remains 8/12. The pending financial refresh still needs owner review and exact
+acceptance before separately authorized publication.
+
 The web delivery packages map to Phase 1 as follows:
 
 | Phase 1 need | Required web package or dependency |
