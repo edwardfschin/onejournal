@@ -1,6 +1,6 @@
 # Mac data-refresh capture preparation
 
-## Status: isolated setup prepared; installation and acquisition not authorized
+## Status: isolated setup installed and validated; authorized capture awaits date window
 
 Prepared on 2026-10-09 for the existing private single-owner `Primary` scope.
 The offline preparation command now produces fixed, private owner-side runner
@@ -10,11 +10,36 @@ broker evidence creation, transfer, database write or service restart was
 performed during preparation. Local private program files are not broker
 evidence and must not be committed.
 
+## Authorized installation receipt: 2026-10-11
+
+The owner explicitly instructed `Proceed` after the single bounded installation,
+five-GET, private transfer and offline-validation proposal. Approval identity
+`ONEJOURNAL-MAC-REFRESH-20261011-CAPTURE-01` now records that exact scope; it does
+not authorize token refresh, retries, live DB writes or service changes.
+
+The named separate environment and three prepared runners were installed under
+the approved existing private parents. All new directories are owner-only;
+programs, lock and wheels are `0600`. Installation used the five exact reviewed
+wheels, offline hash enforcement and a copied executable matching the base pin.
+Actual isolated-runtime validation passed: exact versions and origins, no
+shared/user-site inheritance, all three producer hashes, TLS CA loading,
+synthetic streamed response and package consistency. Shared Requests 2.31.0 and
+urllib3 2.0.7 remain unchanged. No broker client was imported, token read,
+provider request made, evidence transferred or service restarted.
+
+At 10:16 Singapore time, the date guard correctly rejected capture before the
+approved window opens at 12:00 on October 11. The installed acquisition
+directories remain empty. Continue the already-authorized five-request scope
+only within the fixed window and after fresh role/pin/acknowledgement checks;
+do not require a new approval for the same scope. No background schedule was
+created. If the window expires, stop and reprepare rather than backdating or
+silently changing approved identities/dates.
+
 ## Superseding preparation: 2026-10-11
 
 The October 9 scope is expired. The proposal below supersedes it; subsequent
 October 9 sections are historical evidence, not authority to run old commands.
-No remote installation, broker access or live update has occurred.
+This section records the preparation before the installation receipt above.
 
 Read-only checks on `one-prod` reconfirmed the configured active VPS role,
 expected OS user, unchanged auth/config/base-Python hashes and unchanged private
@@ -58,7 +83,7 @@ packages and matching Requests/urllib3 module origin/version before auth/token
 access. Original hash checks, credential ownership and acquisition profiles
 are preserved; no public contract is changed.
 
-Proposed approval: `ONEJOURNAL-MAC-REFRESH-20261011-CAPTURE-01` (not yet granted).
+Approval: `ONEJOURNAL-MAC-REFRESH-20261011-CAPTURE-01` (granted for the bounded scope above).
 
 | Order | New run identity | Scope | GETs |
 | --- | --- | --- | ---: |
