@@ -1,6 +1,73 @@
 # Mac data-refresh capture preparation
 
-## Status: capture, mapping and offline coverage complete; financial release pending
+## Status: position/history complete; quote capture incomplete; financial release pending
+
+### Approved five-GET quote attempt: 2026-10-11
+
+The owner approved the exact retained 50+14 instrument scope, three same-provider
+equity/option schedule requests for October 9/10/11, one conditional renewal of
+the existing OneBot-owned token, compatible refresh implementation and copy-only
+rehearsal, documentation, commit and push. No orders, live database writes,
+report activation, service restart or deployment were authorized.
+
+The pure `quote_capture_preparation.py` compiler prepares a fresh private runner
+from checksum-pinned reviewed quote and runtime-guard sources. It preserves
+OneBot credential ownership, isolated-runtime checks, exact scope and independent
+raw batches. Schedule dates come from the pinned proposal; quote dates come
+from provider timestamps, not the historical template or the snapshot date.
+Preparation itself has no provider, credential or filesystem-write capability.
+
+Owner execution renewed the expired confidential token **once**, using the
+existing owner client and store, with a single bounded OAuth POST and no redirect
+or fallback. The capture then made **two quote GETs**, returning exactly 50 and
+14 instruments. It stopped on second-batch semantic validation; **zero schedule
+GETs** were made and there was no retry. Both exact responses were transferred
+into the private Mac refresh root under `quotes/acquisition` with mode 0600.
+No token or credential was transferred.
+
+Actual evidence:
+
+- 60 instruments have provider quote timestamps dated October 9 in New York.
+- Four option instruments have `quoteTime=0`. Their last-trade timestamps do
+  not establish when the returned quote prices were observed: three are dated
+  October 9 and one September 28. No timestamp substitution was made.
+- Neither missing expiry fields nor an assumption that these instruments
+  expired explains the failure. The source-backed cause of rejection is the
+  unusable quote timestamp; provider-side reasons remain unknown.
+- Batch 1 SHA-256:
+  `ff37ead6c3eacfd3c14903c24c519055acdb9672384fddb19977f22d863f3002`.
+- Batch 2 SHA-256:
+  `1c30968b04953ce81a0b1e0950e7f4114c22d13f7e7f0b400c7957fc32e51415`.
+- Executed runner SHA-256:
+  `63790dfdf11b676174c9311c70a357659eafa3f35d7a048a06a33a0992c38f6f`.
+
+There is **no complete acquisition manifest**, accepted quote capture, v3
+financial assembly or refreshed report. The failed runner retained raw response
+bytes but not durable per-response timing receipts; filesystem times must not be
+invented as receipt evidence. The compiler now preserves a private request intent
+before each GET (preventing a duplicate even after transport failure), and a
+timing/hash receipt before semantic response validation. These sidecars stay
+outside the acquisition bundle. This source improvement was tested only; the
+failed private runner and response bytes were not overwritten or re-executed.
+
+Seventeen focused preparation tests pass, covering the five-GET plan,
+provider-derived dates, provenance/scope rejection, missing/zero/mixed timestamps,
+pre-validation receipts, transport-failure duplicate prevention and existing
+date/runtime/privacy guards. No broad application tests were run.
+
+The existing quote-envelope contract requires a valid timestamp and complete
+request/response membership. It cannot silently omit four returned instruments
+or treat epoch-zero as a current quote. The recommended next bounded change is
+an explicit unavailable-quote representation with preserved raw lineage and
+withheld valuations, not a last-trade-time fallback. That shared contract change
+and a fresh bounded acquisition need owner direction before execution. Then
+finish the compatible snapshot-history/report path and reconcile/rehearse it
+on a disposable database copy. No new financial acceptance is inferred.
+
+The accepted report, live database and protected site remain unchanged.
+P1-08 remains previously accepted; formal Phase 1 remains **8/12**. The pending
+maintenance refresh does not reopen P1-08 or complete P1-09 through P1-12.
+Rollback is a focused source revert; retain the immutable failed-run evidence.
 
 ### Approved offline correction and rehearsal: 2026-10-11
 
@@ -25,7 +92,7 @@ Implemented offline:
   The writer requires the exact migration checksum and exact artifact read-back.
 - Pure journal, execution and lifecycle calculations accept the new evidence.
   The legacy history-activation writer explicitly rejects v3 before opening a
-  database: its migration-0021 date constraint and v2 foreign-key lineage are
+  database: its migration-0021 date constraint and v2 persistence guard are
   not bypassed. A compatible history/report refresh writer remains outstanding.
 
 Copy-only rehearsal used the existing immutable schema-0026 pre-report-persist
