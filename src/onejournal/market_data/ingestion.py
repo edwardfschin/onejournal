@@ -29,6 +29,9 @@ from onejournal.market_data.quotes import (
 
 CAPTURE_CONTRACT_VERSION = "onejournal.market-data.quote-capture.v1"
 CAPTURE_CONTRACT_VERSION_V2 = "onejournal.market-data.quote-capture.v2"
+UNAVAILABLE_QUOTE_REASON_CODES = frozenset({
+    "unavailable_provider_quote_timestamp", "unavailable_provider_security_halted",
+})
 INITIAL_MARKET_TIMEZONE = ZoneInfo("America/New_York")
 _MACHINE_ID_RE = re.compile(r"[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}")
 _PROVIDER_RE = re.compile(r"[a-z][a-z0-9_]*")
@@ -51,7 +54,7 @@ class QuoteInstrumentRequest:
 
 @dataclass(frozen=True)
 class UnavailableQuoteEvidence:
-    """Value-free, explicitly mapped response whose observation time is absent."""
+    """Value-free mapped response excluded for an explicit provider-evidence reason."""
 
     instrument_key: str
     provider_instrument_id: str
@@ -228,7 +231,7 @@ def validate_quote_capture(
     for item in capture.unavailable:
         request = request_by_key.get(item.instrument_key)
         if (request is None or item.instrument_key in unavailable_keys or item.instrument_key in quote_by_key
-            or item.reason_code != "unavailable_provider_quote_timestamp"
+            or item.reason_code not in UNAVAILABLE_QUOTE_REASON_CODES
             or item.raw_sha256 != capture.source.raw_sha256
             or (item.provider_instrument_id, item.asset_class, item.currency)
                != (request.provider_instrument_id, request.asset_class, request.currency)):

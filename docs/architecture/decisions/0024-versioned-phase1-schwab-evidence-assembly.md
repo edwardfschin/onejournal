@@ -187,3 +187,31 @@ silently admitted. A disposable live-journal copy reached 0028 with all 81 old
 relation hashes/counts, accepted report and legacy realized fingerprint unchanged.
 This is schema/source validation, not fresh financial reconciliation or operational
 acceptance. No live write or runtime activation was performed.
+
+### Approved halted-price extension and private rehearsal: 2026-10-11
+
+The owner subsequently approved withholding the six exact provider-reported
+halted instruments. The credential-free multi-batch converter accepts at most
+six distinct explicitly mapped halted identities, disjoint from the at-most-four
+undated identities. Only an actual `Halted` state enters this branch; an unknown
+state is not inferred to be halted. Without this explicit scope, the strict
+adapter still rejects the response.
+
+Unavailable records carry `unavailable_provider_security_halted` or
+`unavailable_provider_quote_timestamp`, raw checksum and exact mapped identity,
+but no price or replacement quote timestamp. Capture validation, artifact
+read-back, persistence/replay and assembly exclusions preserve the distinct
+reason. Positions are retained; quote-dependent totals remain unavailable.
+The operator's repeatable `--halted-quote-symbol` option is limited to the v2
+multi-batch profile. `--require-valuation-allowed` still rejects any unavailable
+instrument before materialization. No legacy fingerprint or public API changes.
+
+Actual private saved-data rehearsal now verifies 54 available and ten unavailable
+quotes, exact-cutoff history activation/read-back/replay, bounded realized
+calculation, cross-version rollback, broker-current as-of-snapshot valuation and
+exact prospective report storage. It preserves the accepted release and every
+pre-existing base-table row. This establishes calculation and copy compatibility,
+not owner acceptance of the new fingerprints, a live report release or current
+quote completeness. The accepted live database and runtime are unchanged.
+The value-free evidence and remaining release boundary are recorded in
+`docs/mac_data_refresh_capture_plan.md`. Strategic maturity remains unchanged.

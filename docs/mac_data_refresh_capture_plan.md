@@ -1,6 +1,66 @@
 # Mac data-refresh capture preparation
 
-## Status: capture complete; normalization blocked by new halted states; release pending
+## Status: saved-data calculation and copy rehearsal complete; owner review and live release pending
+
+### Approved halted-price handling and financial rehearsal: 2026-10-11
+
+The owner approved extending the existing value-free unavailable treatment to
+the six exact provider-reported halted instruments, followed by saved-data
+calculation and disposable-copy rehearsal. No additional broker access, live
+write, owner financial acceptance, report activation or restart was authorized.
+
+Completed evidence:
+
+- All **64 positions** remain present. **54 independent quotes** qualify as
+  `market_closed_last`; **10 are unavailable**, with separate reasons for four
+  absent/zero quote timestamps and six provider-reported halted states. Neither
+  their prices nor substitute timestamps enter normalized quote evidence.
+- The checksum-bound v3 assembly contains nine contiguous history windows,
+  **609 transaction-authoritative fills**, 601 matched fills, three order-only
+  and eight transaction-only fills. Its New York snapshot date is October 10;
+  the exact cutoff is `2026-10-11T02:32:16.555819+00:00`. Later records remain
+  explicitly excluded, not assigned to a different trading day.
+- On a new disposable schema-0028 copy, exact assembly and both quote batches
+  passed persistence, replay and read-back. History activation reused **539**
+  existing fills and appended **70**, retaining **303 episodes**. All pre-existing
+  rows across **80 base tables** remained present and unchanged.
+- Bounded realized calculation admitted **257 allocations**, withholding **59
+  scopes**: 29 missing opening history, 17 lifecycle review required and 13
+  incomplete position reconciliation. The result is incomplete, not a complete
+  account-performance claim. Its fingerprint is
+  `2a155d04197d4dd711f53cada6346fa99067832fbdd24dc9dd9b8dd2984cf7be`.
+- Broker-current valuation reconciles basis, market value and unrealized P&L
+  for all **64 positions** using the separately sourced broker snapshot. This is
+  a historical **as-of-snapshot** calculation, evaluated at receipt time with
+  the previously accepted age limit and currency quanta; it is not a fresh live
+  quote valuation. Its fingerprint is
+  `41ce19324665341e28c96e093d88fef42bb3ae16c5c59189d19b88a95a5b5b0f`.
+  Complete independent-quote portfolio totals remain unavailable.
+- Cross-version rollback restored the old realized fingerprint exactly;
+  reactivation restored the new fingerprint. Every prospective realized report
+  amount fits the reporting table's `DECIMAL(38,27)` without rounding. The
+  accepted report and its audit rows remained unchanged.
+
+The private preview is explicitly **unaccepted**, not an owner-accepted report
+release or authorization file. Its assembly fingerprint is
+`c2abb32876ec83ccb5a6e85277e755e7370b84d0db0afb413bf73db84aa26c8e`.
+Exact private artifacts and the value-free financial rehearsal audit are retained
+under the Mac refresh root's `rehearsal-01` directory. The reference schema copy
+and live file remained byte-for-byte unchanged. No further broker request,
+credential operation, live write or service restart occurred.
+
+The focused follow-up suite passed **26 tests** across unavailable evidence,
+snapshot/multi-batch integration and quote ingestion. It covers explicit halted
+scope, duplicate/unmapped/over-limit/overlapping approval rejection, unavailable
+reason roundtrip and persistence, legacy preservation and actual downstream
+assembly exclusion. No broad website or whole-repository test run was needed.
+
+Remaining work is review/acceptance of these changed financial results, followed
+by a separately authorized live release chunk. The live-report writer still
+requires schema 0026 and must gain exact schema-0028 support before that chunk;
+the completed copy rehearsal does not authorize bypassing it. Formal Phase 1
+remains **8/12**. This maintenance refresh does not reopen accepted P1-08 or
+complete a later roadmap item.
 
 ### Approved unavailable-price correction and fresh capture: 2026-10-11
 
@@ -22,10 +82,10 @@ The earlier failed run remains immutable evidence, not an accepted capture.
 The new response still contains four zero quote timestamps. It additionally
 contains **six provider-reported `Halted` security states**, which the existing
 adapter rejects; it does not prove the cause or duration of a market halt.
-Private normalization stopped without treating those states as normal prices.
-Extending the unavailable scope to these six requires owner direction. No fresh
-private v3 assembly, financial calculation or report release has been produced.
-No further broker call is needed to review this already saved evidence.
+At this earlier checkpoint, private normalization stopped without treating those
+states as normal prices. Owner direction was then required. The subsequent
+approval and completed financial rehearsal are recorded above; this stopped-run
+evidence remains intact. No additional broker call was needed.
 
 Implemented safeguards:
 

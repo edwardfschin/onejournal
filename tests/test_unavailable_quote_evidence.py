@@ -77,6 +77,43 @@ class UnavailableQuoteTests(unittest.TestCase):
         self.assertEqual([u.provider_instrument_id for u in unavailable],['B'])
         with self.assertRaises(SchwabQuoteAdapterError): normalized_quotes_with_unavailable_from_payload(payload,requests=requests,allowed_unavailable_symbols=frozenset(),**context)
 
+    def test_halted_quote_never_uses_valid_timestamp_or_price_and_requires_exact_approval(self):
+        t=int(datetime(2026,10,9,20,tzinfo=UTC).timestamp()*1000)
+        payload={'HALTED':{'symbol':'HALTED','assetMainType':'EQUITY','realtime':True,
+            'quote':{'quoteTime':t,'securityStatus':'Halted','bidPrice':1,'askPrice':2,'lastPrice':1}}}
+        requests=(SchwabQuoteRequest('HALTED','stock|HALTED','stock','USD'),)
+        context=dict(connection_uid='synthetic-owner',asof=date(2026,10,9),received_at=datetime(2026,10,11,3,tzinfo=UTC),raw_path='data/raw/schwab/test.json',raw_sha256='a'*64)
+        with self.assertRaises(SchwabQuoteAdapterError):
+            normalized_quotes_with_unavailable_from_payload(payload,requests=requests,allowed_unavailable_symbols=frozenset({'HALTED'}),**context)
+        quotes,unavailable=normalized_quotes_with_unavailable_from_payload(payload,requests=requests,
+            allowed_unavailable_symbols=frozenset(),allowed_halted_symbols=frozenset({'HALTED'}),**context)
+        self.assertEqual(quotes,())
+        self.assertEqual(unavailable[0].reason_code,'unavailable_provider_security_halted')
+        self.assertFalse({'bid','ask','last','provider_quote_at'} & set(asdict(unavailable[0])))
+        capture=replace(self.original,contract_version=CAPTURE_CONTRACT_VERSION_V2,
+            requests=(QuoteInstrumentRequest('stock|HALTED','HALTED','stock','USD'),),quotes=(),unavailable=unavailable)
+        validate_quote_capture(capture,policy=self.helper.policy.freshness)
+        self.assertEqual(load_quote_capture_artifact_bytes(quote_capture_artifact_bytes(capture)),capture)
+        payload['HALTED']['quote']['securityStatus']='Unknown'
+        with self.assertRaises(SchwabQuoteAdapterError):
+            normalized_quotes_with_unavailable_from_payload(payload,requests=requests,
+                allowed_unavailable_symbols=frozenset(),allowed_halted_symbols=frozenset({'HALTED'}),**context)
+
+    def test_halted_reason_persists_without_any_normalized_price(self):
+        import duckdb
+        halted=replace(self.missing,reason_code='unavailable_provider_security_halted')
+        capture=replace(self.capture,unavailable=(halted,))
+        with tempfile.TemporaryDirectory() as directory:
+            db=Path(directory)/'copy.duckdb'
+            apply_schema_migrations(db,migrations_dir=ingestion_fixture.MIGRATIONS_DIR,target_version=12)
+            persist_quote_capture_result(db,capture,policy=self.helper.policy.freshness)
+            restored=load_quote_capture_run(db,quote_run_uid=capture.quote_run_uid,provider=capture.provider,
+                connection_uid=capture.connection_uid,asof=capture.asof,policy=self.helper.policy.freshness)
+            self.assertEqual(restored.unavailable,(halted,))
+            self.assertTrue(persist_quote_capture_result(db,capture,policy=self.helper.policy.freshness).was_replay)
+            with duckdb.connect(str(db)) as con:
+                self.assertEqual(con.execute('SELECT count(*) FROM normalized_market_quotes').fetchone()[0],1)
+
     def test_runner_allows_only_exact_named_zero_timestamp_instrument(self):
         helper=preparation_fixture.QuoteCapturePreparationTests(); helper.setUp()
         spec=replace(helper.spec,allowed_unavailable_symbol_sha256s=(sha256(b'B').hexdigest(),))

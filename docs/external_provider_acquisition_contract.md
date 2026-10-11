@@ -56,6 +56,19 @@ and returns one independent capture per response, in manifest order. It does
 not merge or synthesize raw JSON; each capture retains its own request UID,
 raw bytes, digest, capture identity and private manifest.
 
+Under explicit owner direction, multi-batch conversion may instead return
+quote-capture/artifact v2 with value-free unavailable evidence: at most four
+distinct mapped absent/zero-timestamp identities and at most six distinct mapped
+provider-reported halted identities. These scopes must be disjoint. The latter
+branch requires an actual `Halted` status, not an inferred state. Separate reason
+codes preserve the distinction; excluded prices and replacement timestamps never
+enter normalized quotes. Every requested identity remains accounted for and
+unsupported/unapproved states still fail closed. The credential-free operator
+accepts repeatable `--unavailable-quote-symbol` and `--halted-quote-symbol` options
+only for the v2 multi-batch profile. `--require-valuation-allowed` rejects any
+unavailable record before private materialization. Legacy strict behavior and
+fingerprints remain unchanged; this is not broker-access or financial authority.
+
 Market-hours conversion returns parsed schedule evidence whose combined
 lineage binds the external manifest digest and every response digest. An
 explicit normal-reference date and validity limit are required; neither is

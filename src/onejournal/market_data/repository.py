@@ -13,7 +13,7 @@ import duckdb
 
 from onejournal.brokers.normalized import NormalizedQuote
 from onejournal.market_data.ingestion import (
-    CAPTURE_CONTRACT_VERSION_V2, UnavailableQuoteEvidence,
+    CAPTURE_CONTRACT_VERSION_V2, UnavailableQuoteEvidence, UNAVAILABLE_QUOTE_REASON_CODES,
     QuoteCaptureEnvelope,
     QuoteEvidenceSource,
     QuoteInstrumentRequest,
@@ -585,7 +585,7 @@ def load_quote_capture_run(
     mapped = {item.instrument_key: item for item in requests}
     for item in unavailable:
         request = mapped[item.instrument_key]
-        if (item.reason_code != "unavailable_provider_quote_timestamp"
+        if (item.reason_code not in UNAVAILABLE_QUOTE_REASON_CODES
             or item.raw_sha256 != read_back.source.raw_sha256
             or (item.provider_instrument_id, item.asset_class, item.currency)
                != (request.provider_instrument_id, request.asset_class, request.currency)):

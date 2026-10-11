@@ -99,16 +99,17 @@ class SnapshotCutoffTests(unittest.TestCase):
         request = inputs(two_quotes=True)
         first, second = request['quotes']
         q, = second.capture.quotes
-        unavailable = UnavailableQuoteEvidence(q.instrument_key, q.provider_instrument_id, q.asset_class, q.currency, q.raw_sha256)
-        second = replace(second, capture=replace(second.capture, quotes=(), unavailable=(unavailable,), contract_version=CAPTURE_CONTRACT_VERSION_V2))
-        request['quotes'] = (first, second)
-        request['session_authorities'] = request['session_authorities'][:1]
-        assembly = build_schwab_phase1_evidence_assembly_v3(**request)
-        quotes = next(f for f in assembly.families if f.family == 'quotes')
-        self.assertEqual((quotes.source_record_count, quotes.normalized_record_count, quotes.excluded_record_count), (2, 1, 1))
-        self.assertEqual(quotes.exclusion_reasons, ('unavailable_provider_quote_timestamp',))
-        self.assertEqual(assembly.reconciliation.positions_without_quotes, 1)
-        self.assertEqual(load_schwab_phase1_evidence_assembly_bytes(schwab_phase1_evidence_assembly_bytes(assembly)), assembly)
+        for reason in ('unavailable_provider_quote_timestamp', 'unavailable_provider_security_halted'):
+            with self.subTest(reason=reason):
+                unavailable = UnavailableQuoteEvidence(q.instrument_key, q.provider_instrument_id, q.asset_class, q.currency, q.raw_sha256, reason)
+                request['quotes'] = (first, replace(second, capture=replace(second.capture, quotes=(), unavailable=(unavailable,), contract_version=CAPTURE_CONTRACT_VERSION_V2)))
+                request['session_authorities'] = request['session_authorities'][:1]
+                assembly = build_schwab_phase1_evidence_assembly_v3(**request)
+                quotes = next(f for f in assembly.families if f.family == 'quotes')
+                self.assertEqual((quotes.source_record_count, quotes.normalized_record_count, quotes.excluded_record_count), (2, 1, 1))
+                self.assertEqual(quotes.exclusion_reasons, (reason,))
+                self.assertEqual(assembly.reconciliation.positions_without_quotes, 1)
+                self.assertEqual(load_schwab_phase1_evidence_assembly_bytes(schwab_phase1_evidence_assembly_bytes(assembly)), assembly)
 
     def test_snapshot_history_exact_readback_replay_and_cross_version_rollback(self):
         fixture = history_fixture.SchwabHistoryRevisionTests()
@@ -259,6 +260,27 @@ class MultiBatchQuoteTests(unittest.TestCase):
         with self.assertRaisesRegex(ExternalProviderAcquisitionError,'exactly cover'):
             convert_external_schwab_multi_batch_quotes(acquisition,mappings=self.mappings[:1],
                 evaluated_at_utc=self.fixture.evaluated_at,freshness_policy=self.fixture.freshness_policy)
+
+    def test_halted_scope_is_explicit_disjoint_bounded_and_value_free(self):
+        requests=list(self.manifest.requests)
+        responses=dict(self.responses)
+        document=json.loads(responses[requests[0].response_filename])
+        document['AAPL']['quote']['securityStatus']='Halted'
+        body=(json.dumps(document,sort_keys=True,separators=(',',':'))+'\n').encode()
+        responses[requests[0].response_filename]=body
+        requests[0]=replace(requests[0],response_byte_count=len(body),response_sha256=sha256(body).hexdigest())
+        acquisition=self.fixture.load(manifest=replace(self.manifest,requests=tuple(requests)),responses=responses)
+        kwargs=dict(mappings=self.mappings,evaluated_at_utc=self.fixture.evaluated_at,freshness_policy=self.fixture.freshness_policy)
+        captures=convert_external_schwab_multi_batch_quotes(acquisition,allowed_halted_provider_symbols=('AAPL',),**kwargs)
+        self.assertEqual(captures[0].capture.quotes,())
+        self.assertEqual(captures[0].capture.unavailable[0].reason_code,'unavailable_provider_security_halted')
+        self.assertEqual(len(captures[1].capture.quotes),1)
+        for halted,undated in ((('AAPL','AAPL'),()),(('UNMAPPED',),()),
+                               (tuple(f'SYN{i}' for i in range(7)),()),(('AAPL',),('AAPL',))):
+            with self.subTest(halted=halted,undated=undated):
+                with self.assertRaisesRegex(ExternalProviderAcquisitionError,'halted approval'):
+                    convert_external_schwab_multi_batch_quotes(acquisition,allowed_halted_provider_symbols=halted,
+                        allowed_unavailable_provider_symbols=undated,**kwargs)
 
     def test_full_64_symbol_scope_and_operator_hash_only_audit(self):
         template = json.loads(acquisition_fixture.batch_quote_body())['AAPL']

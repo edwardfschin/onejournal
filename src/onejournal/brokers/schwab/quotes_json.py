@@ -48,9 +48,10 @@ class SchwabQuoteAdapterError(ValueError):
 
 def normalized_quotes_with_unavailable_from_payload(
     payload: Mapping[str, Any], *, requests: tuple[SchwabQuoteRequest, ...],
-    allowed_unavailable_symbols: frozenset[str], **context: Any,
+    allowed_unavailable_symbols: frozenset[str],
+    allowed_halted_symbols: frozenset[str] = frozenset(), **context: Any,
 ) -> tuple[tuple[NormalizedQuote, ...], tuple[UnavailableQuoteEvidence, ...]]:
-    """Account for every response without using undated prices or trade times."""
+    """Account for every response without using undated or approved halted prices."""
     indexed = _payload_by_symbol(payload)
     expected = {request.provider_symbol.upper() for request in requests}
     if len(expected) != len(requests) or set(indexed) != expected:
@@ -61,13 +62,18 @@ def normalized_quotes_with_unavailable_from_payload(
         raw_key, item = indexed[symbol]
         quote = item.get("quote") if isinstance(item, Mapping) else None
         timestamp = quote.get("quoteTime") if isinstance(quote, Mapping) else "invalid"
-        if timestamp is None or (not isinstance(timestamp, bool) and timestamp == 0):
-            if (symbol not in allowed_unavailable_symbols or not isinstance(item, Mapping)
+        missing_time = timestamp is None or (not isinstance(timestamp, bool) and timestamp == 0)
+        status = quote.get("securityStatus") if isinstance(quote, Mapping) else None
+        halted = isinstance(status, str) and status.strip().upper() == "HALTED"
+        if missing_time or halted:
+            approved = symbol in (allowed_halted_symbols if halted else allowed_unavailable_symbols)
+            if (not approved or not isinstance(item, Mapping)
                 or _symbol_key(item.get("symbol"), "symbol") != symbol
                 or _ASSET_CLASS_BY_PROVIDER_TYPE.get(item.get("assetMainType")) != request.asset_class):
                 raise SchwabQuoteAdapterError("unavailable quote is outside its explicit identity approval")
             unavailable.append(UnavailableQuoteEvidence(request.instrument_key, request.provider_symbol,
-                request.asset_class, request.currency, context["raw_sha256"]))
+                request.asset_class, request.currency, context["raw_sha256"],
+                "unavailable_provider_security_halted" if halted else "unavailable_provider_quote_timestamp"))
         else:
             available_requests.append(request)
             available_payload[raw_key] = item

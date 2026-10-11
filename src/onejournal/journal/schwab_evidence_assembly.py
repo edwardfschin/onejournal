@@ -924,7 +924,7 @@ def build_schwab_phase1_evidence_assembly(
             source_record_count=sum(len(item.capture.requests) for item in converted_quotes),
             records=tuple(asdict(item) for item in all_quotes),
             excluded_record_count=len(unavailable_quotes),
-            exclusion_reasons=("unavailable_provider_quote_timestamp",) if unavailable_quotes else (),
+            exclusion_reasons=tuple(sorted({item.reason_code for item in unavailable_quotes})),
         ),
         _family(
             "sessions",

@@ -94,6 +94,8 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--schedule-valid-until", required=True, type=_instant)
     parser.add_argument("--unavailable-quote-symbol", action="append", default=[],
         help="Explicitly approved instrument whose absent/zero quote timestamp must withhold valuation (v2 only; at most four)")
+    parser.add_argument("--halted-quote-symbol", action="append", default=[],
+        help="Explicitly approved provider-reported halted instrument whose valuation must be withheld (v2 only; at most six)")
     parser.add_argument(
         "--quote-mapping",
         action="append",
@@ -282,16 +284,17 @@ def main(argv: Sequence[str] | None = None) -> int:
         if acquisition.manifest.profile == SCHWAB_MULTI_BATCH_QUOTES_EXTERNAL_ACQUISITION_PROFILE:
             captures = convert_external_schwab_multi_batch_quotes(acquisition, mappings=batches,
                 evaluated_at_utc=args.evaluated_at, freshness_policy=freshness_policy,
-                allowed_unavailable_provider_symbols=tuple(args.unavailable_quote_symbol))
+                allowed_unavailable_provider_symbols=tuple(args.unavailable_quote_symbol),
+                allowed_halted_provider_symbols=tuple(args.halted_quote_symbol))
         else:
-            if args.unavailable_quote_symbol:
+            if args.unavailable_quote_symbol or args.halted_quote_symbol:
                 raise ExternalAcquisitionOperatorError("unavailable approval requires multi-batch profile v2")
             if len(batches) != 1:
                 raise ExternalAcquisitionOperatorError("batch profile v1 requires exactly one mapping")
             captures = (convert_external_schwab_batch_quotes(acquisition, mapping=batches[0],
                 evaluated_at_utc=args.evaluated_at, freshness_policy=freshness_policy),)
     else:
-        if args.unavailable_quote_symbol:
+        if args.unavailable_quote_symbol or args.halted_quote_symbol:
             raise ExternalAcquisitionOperatorError("unavailable approval requires multi-batch profile v2")
         mappings, scope_by_request_uid = _mappings(args.quote_mapping)
         captures = convert_external_schwab_quotes(acquisition, mappings=mappings,

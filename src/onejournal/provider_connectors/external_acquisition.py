@@ -1261,6 +1261,7 @@ def convert_external_schwab_multi_batch_quotes(
     evaluated_at_utc: datetime,
     freshness_policy: QuoteFreshnessPolicy,
     allowed_unavailable_provider_symbols: tuple[str, ...] = (),
+    allowed_halted_provider_symbols: tuple[str, ...] = (),
 ) -> tuple[ConvertedExternalQuoteCapture, ...]:
     """Preserve each of at most two disjoint batch responses as its own capture."""
     if acquisition.manifest.profile != SCHWAB_MULTI_BATCH_QUOTES_EXTERNAL_ACQUISITION_PROFILE:
@@ -1275,8 +1276,12 @@ def convert_external_schwab_multi_batch_quotes(
     scope = {instrument.provider_instrument_id for batch in mappings for instrument in batch.instruments}
     if len(allowed) != len(allowed_unavailable_provider_symbols) or len(allowed) > 4 or not allowed <= scope:
         raise ExternalProviderAcquisitionError("unavailable approval must name at most four distinct mapped instruments")
+    halted = frozenset(allowed_halted_provider_symbols)
+    if (len(halted) != len(allowed_halted_provider_symbols) or len(halted) > 6
+        or not halted <= scope or halted & allowed):
+        raise ExternalProviderAcquisitionError("halted approval must name at most six distinct separately mapped instruments")
     return tuple(_convert_batch_quote_request(acquisition, by_uid[item.request_uid], item,
-                 evaluated_at_utc.astimezone(UTC), freshness_policy, allowed) for item in requests)
+                 evaluated_at_utc.astimezone(UTC), freshness_policy, allowed, halted) for item in requests)
 
 
 def _convert_batch_quote_request(
@@ -1286,6 +1291,7 @@ def _convert_batch_quote_request(
     evaluated: datetime,
     freshness_policy: QuoteFreshnessPolicy,
     allowed_unavailable_symbols: frozenset[str] = frozenset(),
+    allowed_halted_symbols: frozenset[str] = frozenset(),
 ) -> ConvertedExternalQuoteCapture:
     if mapping.request_uid != request.request_uid:
         raise ExternalProviderAcquisitionError(
@@ -1335,9 +1341,10 @@ def _convert_batch_quote_request(
         raw_sha256=raw_digest,
     )
     payload = load_quotes_json_bytes(raw_body)
-    if allowed_unavailable_symbols:
+    if allowed_unavailable_symbols or allowed_halted_symbols:
         quotes, unavailable = normalized_quotes_with_unavailable_from_payload(payload,
-            requests=adapter_requests, allowed_unavailable_symbols=allowed_unavailable_symbols, **adapter_context)
+            requests=adapter_requests, allowed_unavailable_symbols=allowed_unavailable_symbols,
+            allowed_halted_symbols=allowed_halted_symbols, **adapter_context)
     else:
         quotes = normalized_quotes_from_payload(payload, requests=adapter_requests, **adapter_context)
         unavailable = ()
