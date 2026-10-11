@@ -274,7 +274,12 @@ Python and the existing pinned dependencies, but no checkout or Node runtime.
 The wheel carries the exact SQL definitions for migration checksum validation;
 startup never applies migrations automatically.
 The installed Mac release and retained rollback procedure are documented in
-`docs/operator_quickstart.md`; no journal migration or financial refresh is included.
+`docs/operator_quickstart.md`. The separately owner-reviewed maintenance release
+was published on 2026-10-11 after verified backup and copy rehearsal, with prior
+journal/report records preserved. Exact financial receipts remain private.
+The installed source is `fc80998`; the frontend is unchanged, saved passkeys are
+retained and anonymous exports remain blocked. Saved values are dated snapshots,
+not live prices. Sign in again after the controlled restart.
 Hosted deployment, final security/operations/quality acceptance and Phase 1
 owner acceptance remain outstanding. Phase 1 remains 8/12. Streamlit remains
 an internal workflow-validation surface until verified parity and its explicit

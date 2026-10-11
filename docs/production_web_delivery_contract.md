@@ -305,9 +305,9 @@ acceptance gates are met. No second website, new feature scope, routine approval
 ceremony or independent certification process is introduced.
 
 The separately prepared financial refresh is maintenance of completed P1-08.
-Review and exact acceptance of its changed results precede release preparation
-and any separately authorized live update. Its pending publication neither
-reopens P1-08 nor prevents the local work above.
+The owner-reviewed bounded publication completed on 2026-10-11 as recorded below;
+it neither reopens P1-08 nor completes a later package. Changed results continue
+to require exact acceptance before a deliberately authorized live update.
 
 This sequencing preserves the product vision, spreadsheet-to-capability mapping
 and maturity boundaries; no strategic or operational maturity is advanced by
@@ -585,10 +585,9 @@ consistent release/selection lineage and matching metric availability fields.
 The private CSV and its financial contents remain outside Git. This closes the
 bounded Mac handover check; it is not a new financial reconciliation, freshness
 claim, hosted acceptance or final Phase 1 acceptance. Phase 1 remains 8/12;
-the pending financial refresh and remaining security, operations, quality and
-final owner-acceptance work remain separate.
-
-The web delivery packages map to Phase 1 as follows:
+the financial refresh and remaining security, operations, quality and final
+owner-acceptance work were separate at this handover checkpoint. The subsequent
+approved financial publication is recorded below.
 
 ### Installed migration-resource correction: 2026-10-11
 
@@ -601,8 +600,40 @@ retain the existing repository path, installed runs use their own prefix.
 The public source archive includes those tracked SQL inputs; operator scripts,
 private state and credentials remain excluded. No SQL, financial calculation,
 checksum requirement or startup migration behavior changes. Three focused
-resource-routing checks passed; installed-wheel and exact financial-copy
-validation remain required before the controlled publication.
+resource-routing checks passed. The corrected `fc80998` public artifact was
+installed in a separate permanent environment; every authoritative SQL file
+matched its source bytes and the static frontend remained byte-identical.
+Installed API/export validation on a disposable copy also passed before live
+publication. These checks preserve checksum guards rather than bypass them.
+
+### Owner-reviewed Mac maintenance publication: 2026-10-11
+
+The owner reviewed the private refreshed results and approved the recommended
+bounded publication. A verified fresh backup and copy rehearsal preceded exact
+migrations 0027/0028, append-only history/financial/report persistence and a
+controlled protected restart with new exact authorizations. Previous journal,
+report and audit rows are retained; exact financial evidence and configuration
+locations are recorded only in private receipts.
+
+The new installed runtime uses source `fc80998` and the unchanged static
+frontend. Installed-copy checks matched portfolio, breakdowns, history and CSV
+decimals, with outside-coverage unavailable behavior. Live checks verified the
+trusted HTTPS shell, retained enrollment, one loopback Python listener, no
+separate API listener and anonymous export denial. The denial added one normal
+value-free access-audit event; no authenticated live financial read was made.
+Owner sign-in after this restart has not yet been confirmed. Saved passkeys,
+TLS and security policy are unchanged; no additional broker requests, orders,
+canonical synchronization or hosting work occurred.
+
+Old configuration, history/report authorities, installed environments and two
+verified Mac backups remain private rollback evidence. Existing encrypted USB
+images retain their earlier dated scope. Saved values remain dated snapshots;
+unavailable and withheld financial scopes are not silently filled. Publication
+closes maintenance, not production security/operations/quality or final owner
+acceptance. Phase 1 remains 8/12. Current start/rollback instructions are in
+`docs/operator_quickstart.md`.
+
+The web delivery packages map to Phase 1 as follows:
 
 | Phase 1 need | Required web package or dependency |
 |---|---|

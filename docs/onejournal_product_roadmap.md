@@ -97,8 +97,10 @@ Phase 1 progress: **8 of 12 work packages complete**.
 verifiable parts of P1-09 through P1-12 before VPS work. This does not redefine
 Phase 1 as local-only or turn Mac preparation into production acceptance. See
 the Mac-first sequence in `docs/production_web_delivery_contract.md`. P1-08 is
-already complete; publishing the separately rehearsed financial refresh is
-maintenance with its own exact financial/live-update boundary.
+already complete; the owner-reviewed maintenance publication completed on
+2026-10-11 after fresh backup and copy rehearsal, with prior journal/report
+records preserved. Exact financial scope remains in private receipts. This
+does not advance the count or establish live-price/hosted acceptance.
 
 This tracker is the authoritative Phase 1 completion record. Update the row and
 evidence whenever a package changes state. A broader PNL, UXJ, WEB, or OPS item
@@ -458,8 +460,8 @@ preparation. The order below is a delivery sequence, not additional gates:
 
 1. Preserve completed P1-01 through P1-08 and the recorded Mac passkey and
    dated USB-recovery evidence. Do not repeat unchanged tests or recovery
-   ceremonies. Keep review/publication of the prepared financial refresh
-   separate; unseen changed figures are not accepted by this direction.
+   ceremonies. The separately reviewed maintenance publication is now complete;
+   this sequencing direction did not itself accept unseen financial figures.
 2. Close locally verifiable P1-09 security gaps and P1-11 critical-journey,
    accessibility and performance work using privacy-safe fixtures. Resolve
    unchosen budgets/policies before treating them as acceptance criteria.
@@ -612,7 +614,12 @@ supersede ADR-0018's private production acceptance gate.
   confirmed real-device passkey sign-in and Portfolio navigation, and supplied
   a Reports current-positions CSV that passed focused structure, lineage and
   metric-availability checks. The bounded Mac handover check is complete;
-  fresh financial publication and broader Phase 1 acceptance remain separate.
+  broader Phase 1 acceptance remains separate. The subsequent owner-reviewed
+  maintenance publication uses installed source `fc80998`, with migration
+  resources verified, exact installed-copy API/export parity, preserved prior
+  records/backups and protected loopback restart. Financial receipts stay
+  private; owner sign-in after this restart remains to be confirmed. This does
+  not imply a refreshed off-device backup or complete P1-10.
   See `docs/operator_quickstart.md` for start and rollback.
   Approve the private
   host/environment and production-state design, then rehearse PostgreSQL

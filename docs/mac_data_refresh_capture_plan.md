@@ -1,6 +1,41 @@
 # Mac data-refresh capture preparation
 
-## Status: saved-data calculation and copy rehearsal complete; owner review and live release pending
+## Status: owner-reviewed maintenance release published on the protected Mac site
+
+### Approved publication close-out: 2026-10-11
+
+The owner reviewed the private results and approved the recommended bounded
+publication. A fresh verified backup and disposable-copy rehearsal preceded
+the exact additive migrations and publication. Every previous journal row and
+report release was preserved, and the new release passed exact read-back.
+The detailed financial identities, dates, counts, hashes and private locations
+remain in private publication receipts; they are not added to Git here.
+
+The public installed source is `fc80998`. All authoritative migration SQL
+resources were verified byte-for-byte in its separate environment; the static
+frontend bytes are unchanged from the previous installed release. Installed
+API verification on a separate disposable database matched the authorized
+portfolio, account/symbol breakdowns, realized history and both exact-decimal
+CSV exports, including outside-coverage unavailable behavior.
+
+The protected Mac site now selects the new exact authorizations at startup.
+Trusted HTTPS, retained enrollment, a single loopback Python listener and
+anonymous export denial passed. Restart cleared sessions, not saved passkeys;
+owner sign-in after this restart has not yet been confirmed. Publication made
+no additional broker requests, credential changes or orders, and changed no
+hosting or security policy. The canonical checkout and earlier environments
+remain unchanged.
+
+Saved financial data remain dated snapshots, not live prices; previously
+disclosed unavailable and withheld scopes remain explicit. The old report,
+history, configuration and verified pre-migration/pre-report backups are
+retained privately. Existing encrypted USB images keep their earlier dated
+scope; a fresh Mac backup is not a refreshed off-device image. Start/rollback
+instructions are in `docs/operator_quickstart.md`.
+
+This closes the approved maintenance publication, not a later Phase 1 package;
+formal Phase 1 remains **8/12**. The checkpoints below record their historical
+scope and must not be read as current publication blockers.
 
 ### Guarded release-path close-out: 2026-10-11
 

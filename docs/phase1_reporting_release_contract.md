@@ -11,6 +11,35 @@ Phase 1 account/symbol breakdown, date-filtered realized-P&L history, and CSV
 exports. It does not itself authorize a calculation, database change, value
 release, API activation, hosting, or deployment.
 
+## Subsequent Mac publication close-out: 2026-10-11
+
+The owner reviewed the private refreshed figures and approved the recommended
+bounded backup, migration, append-only publication and protected Mac restart.
+Fresh backup validation and exact disposable-copy rehearsal passed before
+the live journal reached migration 0028. The new immutable report was appended
+with separate changed-result acceptance records and explicit predecessor
+authority; previous journal rows and report/audit records remain unchanged.
+Exact financial fingerprints, acceptance identities, coverage and counts are
+recorded only in the private publication receipts, not repeated in Git here.
+
+Installed source `fc80998` verified the portfolio, account/symbol breakdowns,
+realized history and both CSV exports on a separate copy, including exact
+decimal parity and outside-coverage unavailable behavior. Its bundled SQL
+resources preserve the existing checksum guards without automatic migration.
+The live protected origin serves the same frontend bytes, retains enrollment
+and denies anonymous exports. No authenticated live financial read is claimed;
+owner sign-in after this restart remains to be confirmed.
+
+Previously disclosed unavailable quote and realized scopes remain explicit.
+Saved current values are historical snapshot values, not fresh live prices or
+complete account-performance evidence. Verified pre-migration and pre-report
+backups, prior history activation and prior authorization files remain private
+rollback evidence. Existing USB backups retain their earlier dated scope.
+Publication made no new broker requests or orders. P1-08 remains complete,
+Phase 1 remains 8/12, and hosted/final acceptance is not inferred. Historical
+checkpoints follow; earlier pending-publication descriptions apply only to
+their recorded checkpoint.
+
 ## Verified starting state
 
 At contract approval, the private operational journal was at migration 0023.

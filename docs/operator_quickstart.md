@@ -11,19 +11,23 @@ cancel, replace, or modify broker orders or auto-trade.
 ## Current protected Mac website
 
 The owner-approved site uses trusted `https://localhost:4173` and passkey login.
-The 2026-10-11 Mac handover installs the public wheel/static release from
-`19b0bd8` in a separate permanent environment. One Python process now serves
+The current 2026-10-11 public wheel/static release is built from `fc80998`
+and installed in a separate permanent environment. One Python process serves
 the static website and protected API together on loopback HTTPS; no Node
-runtime or listener on port 8765 is needed. The existing private configuration,
-journal, exact release authorizations, passkeys and certificate are reused.
+runtime or listener on port 8765 is needed. The approved maintenance publication
+advanced the existing journal to 0028 and selected new exact authorizations.
+Saved passkeys, certificate and security policy are unchanged.
 
-To start the installed release after stopping its own existing terminal:
+To start the installed release after stopping its own existing terminal, set
+`OJ_WEB_CONFIG` to the active private configuration recorded in the private
+publication receipts. Do not silently use the earlier authorization config:
 
 ```bash
-OJ_RELEASE="$HOME/.onejournal/releases/mac-static-20261011"
+OJ_RELEASE="$HOME/.onejournal/releases/mac-static-20261011-refresh"
 OJ_ACCESS="$HOME/.onejournal/passkey-access"
+test -n "${OJ_WEB_CONFIG:?Set the active private configuration path first}"
 "$OJ_RELEASE/python-env/bin/onejournal-mac-site" --owner-local \
-  --web-config "$OJ_ACCESS/local-web.json" \
+  --web-config "$OJ_WEB_CONFIG" \
   --security-db "$OJ_ACCESS/access.duckdb" \
   --tls-cert "$OJ_ACCESS/localhost-cert.pem" \
   --tls-key "$OJ_ACCESS/localhost-key.pem" \
@@ -36,23 +40,23 @@ sessions, not saved passkeys. Sign in again in the external browser that holds
 your passkey. No migration, data refresh, provisioning or recovery occurs.
 Do not start the legacy launcher below to bypass a login problem.
 
-Rollback: stop only the installed service, then use the retained protected
-source launcher/environment and the same private files:
+Financial rollback is deliberate, not an automatic latest-release switch.
+Stop only the owned service, then select the retained previous private
+configuration with the current installed runtime, which carries the SQL
+resources required by the migrated journal. An old report selection does not
+itself roll back trade history; that requires the explicitly recorded prior
+history revision. Do not delete appended evidence or reviews. Full restoration
+requires a separate deliberate recovery while quiescent, preserving subsequent
+owner work. The verified pre-migration and pre-report backups and their exact
+scope are recorded privately. No rollback occurs during normal startup.
+The earlier `19b0bd8` installed environment lacks the new checksum resources
+and must not be used against the migrated journal.
 
-```bash
-OJ_ACCESS="$HOME/.onejournal/passkey-access"
-"$OJ_ACCESS/python-env/bin/python" \
-  "$HOME/Projects/OneJournal/scripts/web/run_mac_passkey_prototype.py" serve \
-  --owner-local --web-config "$OJ_ACCESS/local-web.json" \
-  --security-db "$OJ_ACCESS/access.duckdb" \
-  --tls-cert "$OJ_ACCESS/localhost-cert.pem" --tls-key "$OJ_ACCESS/localhost-key.pem"
-```
-
-The canonical source checkout at `cc1fa8a` and its Node environment are retained
-unchanged for this rollback, not used by the new release. Do not run both
-versions together. The owner verified passkey sign-in, Portfolio navigation and
-Reports current-positions export on 2026-10-11. This is a completed bounded Mac
-handover check, not hosted/Phase 1 completion. See
+The canonical checkout at `cc1fa8a`, prior environments and original private
+configuration remain unchanged. Do not run two versions together or bypass
+passkey protection. The owner verified the earlier installed-release handover;
+sign-in after the financial-publication restart is not yet confirmed. This is
+bounded Mac operation, not Phase 1 completion. See
 `docs/mac_passkey_access_contract.md`.
 
 ## Legacy local website launcher: one terminal
@@ -166,11 +170,13 @@ The 2026-10-09 review found local v2 assemblies dated 2026-09-04, not a newer
 assembled update. The first-release-only operator gap was then corrected
 locally; that correction does not acquire data or refresh the running site.
 
-The next bounded capture preparation is recorded in
-`docs/mac_data_refresh_capture_plan.md`. It defines the missing history windows
-and position-request budget, distinguishes candidate dates from actual capture
-authority, and records the unresolved owner-side runner dependency. It is not
-an executable broker command or permission to reuse an old capture approval.
+The approved capture/rehearsal/publication close-out is recorded in
+`docs/mac_data_refresh_capture_plan.md`. Exact financial scope and new
+configuration/authorizations are retained only in private publication receipts.
+The displayed state remains a saved snapshot, not continuous refresh. Existing
+encrypted USB images are older dated backups and were not refreshed by this
+publication. Another capture requires its own explicit scope; do not reuse
+historical approvals.
 
 For a subsequent release, both `prepare_phase1_reporting_release.py` and
 `persist_phase1_reporting_release.py` require the additional

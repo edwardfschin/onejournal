@@ -29,6 +29,17 @@ changing the accepted runtime. Use the current installed start/rollback commands
 in `operator_quickstart.md`. The source development launcher now invokes
 Vite directly; its existing trusted-HTTPS/API-proxy procedure below is retained.
 
+The subsequent owner-reviewed maintenance publication on 2026-10-11 activates
+the corrected installed source `fc80998` with new exact private financial
+authorizations and the migrated journal. It does not change localhost RP, TLS,
+passkey enrollment, session, CSRF or other security policy. The same static
+frontend bytes are served. Trusted HTTPS, retained enrollment and anonymous
+export denial passed; owner login after the controlled restart is not yet
+confirmed. Restart removes sessions, not saved passkeys. Use the current
+private configuration described in `operator_quickstart.md`, not an older
+authorization config. Publication receipts/backups remain private; this is
+neither new security acceptance nor Phase 1 completion.
+
 ## Data and request flow
 
 Offline provisioning -> dedicated security store and expiring enrollment file
