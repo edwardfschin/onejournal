@@ -644,6 +644,9 @@ def build_schwab_phase1_evidence_assembly(
         if v3 and any(item.provider_quote_at > snapshot.retrieved_at for item in current.quotes):
             raise SchwabEvidenceAssemblyError("quote evidence is after snapshot cutoff")
     all_quotes = tuple(item for converted in converted_quotes for item in converted.capture.quotes)
+    unavailable_quotes = tuple(item for converted in converted_quotes for item in converted.capture.unavailable)
+    if unavailable_quotes and not v3:
+        raise SchwabEvidenceAssemblyError("unavailable quote evidence requires snapshot assembly v3")
     if len({item.instrument_key for item in all_quotes}) != len(all_quotes):
         raise SchwabEvidenceAssemblyError("quote captures contain duplicate instruments")
     evaluation_by_quote = {item.quote_uid: converted.capture.evaluated_at
@@ -920,6 +923,8 @@ def build_schwab_phase1_evidence_assembly(
             source_raw_sha256s=quote_raw,
             source_record_count=sum(len(item.capture.requests) for item in converted_quotes),
             records=tuple(asdict(item) for item in all_quotes),
+            excluded_record_count=len(unavailable_quotes),
+            exclusion_reasons=("unavailable_provider_quote_timestamp",) if unavailable_quotes else (),
         ),
         _family(
             "sessions",

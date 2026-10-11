@@ -18,6 +18,7 @@ from typing import Any, Mapping
 
 from onejournal.brokers.normalized import NormalizedQuote
 from onejournal.market_data.quotes import build_quote_uid, validate_normalized_quote
+from onejournal.market_data.ingestion import UnavailableQuoteEvidence
 
 
 ADAPTER_VERSION = "schwab-quote-json-v2"
@@ -43,6 +44,35 @@ _MARKET_SESSION_BY_PROVIDER_VALUE = {
 
 class SchwabQuoteAdapterError(ValueError):
     """Raised when a Schwab quote payload cannot be normalized safely."""
+
+
+def normalized_quotes_with_unavailable_from_payload(
+    payload: Mapping[str, Any], *, requests: tuple[SchwabQuoteRequest, ...],
+    allowed_unavailable_symbols: frozenset[str], **context: Any,
+) -> tuple[tuple[NormalizedQuote, ...], tuple[UnavailableQuoteEvidence, ...]]:
+    """Account for every response without using undated prices or trade times."""
+    indexed = _payload_by_symbol(payload)
+    expected = {request.provider_symbol.upper() for request in requests}
+    if len(expected) != len(requests) or set(indexed) != expected:
+        raise SchwabQuoteAdapterError("partial-capable response does not match exact mapped scope")
+    available_requests, available_payload, unavailable = [], {}, []
+    for request in requests:
+        symbol = request.provider_symbol.upper()
+        raw_key, item = indexed[symbol]
+        quote = item.get("quote") if isinstance(item, Mapping) else None
+        timestamp = quote.get("quoteTime") if isinstance(quote, Mapping) else "invalid"
+        if timestamp is None or (not isinstance(timestamp, bool) and timestamp == 0):
+            if (symbol not in allowed_unavailable_symbols or not isinstance(item, Mapping)
+                or _symbol_key(item.get("symbol"), "symbol") != symbol
+                or _ASSET_CLASS_BY_PROVIDER_TYPE.get(item.get("assetMainType")) != request.asset_class):
+                raise SchwabQuoteAdapterError("unavailable quote is outside its explicit identity approval")
+            unavailable.append(UnavailableQuoteEvidence(request.instrument_key, request.provider_symbol,
+                request.asset_class, request.currency, context["raw_sha256"]))
+        else:
+            available_requests.append(request)
+            available_payload[raw_key] = item
+    quotes = normalized_quotes_from_payload(available_payload, requests=tuple(available_requests), **context) if available_requests else ()
+    return quotes, tuple(unavailable)
 
 
 @dataclass(frozen=True)

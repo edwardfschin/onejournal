@@ -30,6 +30,7 @@ class QuoteCapturePreparation:
     auth_sha256: str
     conf_sha256: str
     runtime_sha256: str
+    allowed_unavailable_symbol_sha256s: tuple[str, ...] = ()
 
 
 def prepare_quote_capture_runner(source: bytes, guards_source: bytes,
@@ -43,6 +44,10 @@ def prepare_quote_capture_runner(source: bytes, guards_source: bytes,
     if (sha256(source).hexdigest() != spec.reviewed_source_sha256
         or sha256(guards_source).hexdigest() != spec.reviewed_guards_sha256):
         raise CapturePreparationError("reviewed quote runner or capture guards changed")
+    if (len(spec.allowed_unavailable_symbol_sha256s) > 4
+        or len(set(spec.allowed_unavailable_symbol_sha256s)) != len(spec.allowed_unavailable_symbol_sha256s)
+        or any(not re.fullmatch(r"[0-9a-f]{64}", digest) for digest in spec.allowed_unavailable_symbol_sha256s)):
+        raise CapturePreparationError("at most four exact unavailable instrument digests may be approved")
     for value in (spec.run_uid, spec.approval_id):
         if not isinstance(value, str) or not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_.:-]{7,127}", value):
             raise CapturePreparationError("fresh safe run and approval identities are required")
@@ -97,7 +102,8 @@ def prepare_quote_capture_runner(source: bytes, guards_source: bytes,
     if len(guard_nodes) != 3:
         raise CapturePreparationError("reviewed runtime guards are incomplete")
     tree.body[tree.body.index(functions["main"]):tree.body.index(functions["main"])] = [
-        ast.parse(f"_REFRESH_ASOF = {spec.asof.isoformat()!r}").body[0], *guard_nodes]
+        *ast.parse(f"_REFRESH_ASOF = {spec.asof.isoformat()!r}\n_REFRESH_ALLOWED_UNAVAILABLE = {spec.allowed_unavailable_symbol_sha256s!r}").body,
+        *guard_nodes]
     scope = ast.parse(r'''
 def _scope(body):
     document = _finite_json(body, "quote scope")
@@ -138,6 +144,10 @@ def _validated_response(*, operation, body, status_code, content_type, symbols, 
             item = payload[symbol]
             quote = item.get("quote") if isinstance(item, dict) else None
             timestamp = quote.get("quoteTime") if isinstance(quote, dict) else None
+            if (isinstance(item, dict) and item.get("symbol") == symbol and isinstance(quote, dict)
+                and (timestamp is None or (not isinstance(timestamp, bool) and timestamp == 0))
+                and sha256(symbol.encode()).hexdigest() in _REFRESH_ALLOWED_UNAVAILABLE):
+                continue
             if (not isinstance(item, dict) or item.get("symbol") != symbol
                 or isinstance(timestamp, bool) or not isinstance(timestamp, int) or timestamp <= 0):
                 raise CaptureError("quote identity or provider timestamp is invalid")
@@ -179,6 +189,12 @@ def _validated_response(*, operation, body, status_code, content_type, symbols, 
             node.value = str(node.value).removesuffix("v1") + "v2"
     if dicts_changed != 3:
         raise CapturePreparationError("reviewed capture contract/count declarations changed")
+    contract_assignments = [n for n in ast.walk(main) if isinstance(n, ast.Assign)
+                            and any(isinstance(t, ast.Name) and t.id == "source_contract" for t in n.targets)]
+    if len(contract_assignments) != 1 or not isinstance(contract_assignments[0].value, ast.Dict):
+        raise CapturePreparationError("reviewed source contract changed")
+    contract_assignments[0].value.keys.append(ast.Constant("allowed_unavailable_symbol_sha256s"))
+    contract_assignments[0].value.values.append(ast.Name(id="_REFRESH_ALLOWED_UNAVAILABLE", ctx=ast.Load()))
     plan = ast.parse('''
 requests_plan = tuple(
     (f"quote_batch_{i + 1}", "quote", QUOTES_URL,

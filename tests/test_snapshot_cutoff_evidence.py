@@ -24,9 +24,11 @@ from onejournal.journal.schwab_snapshot_evidence_repository import (
 from onejournal.journal.schwab_journal_lifecycle_reconciliation import build_schwab_journal_lifecycle_reconciliation
 from onejournal.journal.schwab_execution_projection import build_schwab_execution_projection_from_assembly
 from onejournal.journal.schwab_history_revision import persist_schwab_history_revision
+from onejournal.journal.schwab_history_revision import activate_prior_history_revision
+import test_schwab_history_revision as history_fixture
 from onejournal.market_data.quotes import build_quote_uid
 from onejournal.market_data.sessions import build_provider_session_authority_uid
-from onejournal.market_data.ingestion import QuoteInstrumentRequest
+from onejournal.market_data.ingestion import QuoteInstrumentRequest, UnavailableQuoteEvidence, CAPTURE_CONTRACT_VERSION_V2
 from onejournal.provider_connectors.external_acquisition import (
     SCHWAB_MULTI_BATCH_QUOTES_EXTERNAL_ACQUISITION_PROFILE,
     SCHWAB_BATCH_QUOTES_EXTERNAL_ACQUISITION_PROFILE,
@@ -93,6 +95,43 @@ def inputs(*, two_quotes=False, late=False, events=False):
 
 
 class SnapshotCutoffTests(unittest.TestCase):
+    def test_unavailable_quotes_are_counted_without_values_or_session_substitution(self):
+        request = inputs(two_quotes=True)
+        first, second = request['quotes']
+        q, = second.capture.quotes
+        unavailable = UnavailableQuoteEvidence(q.instrument_key, q.provider_instrument_id, q.asset_class, q.currency, q.raw_sha256)
+        second = replace(second, capture=replace(second.capture, quotes=(), unavailable=(unavailable,), contract_version=CAPTURE_CONTRACT_VERSION_V2))
+        request['quotes'] = (first, second)
+        request['session_authorities'] = request['session_authorities'][:1]
+        assembly = build_schwab_phase1_evidence_assembly_v3(**request)
+        quotes = next(f for f in assembly.families if f.family == 'quotes')
+        self.assertEqual((quotes.source_record_count, quotes.normalized_record_count, quotes.excluded_record_count), (2, 1, 1))
+        self.assertEqual(quotes.exclusion_reasons, ('unavailable_provider_quote_timestamp',))
+        self.assertEqual(assembly.reconciliation.positions_without_quotes, 1)
+        self.assertEqual(load_schwab_phase1_evidence_assembly_bytes(schwab_phase1_evidence_assembly_bytes(assembly)), assembly)
+
+    def test_snapshot_history_exact_readback_replay_and_cross_version_rollback(self):
+        fixture = history_fixture.SchwabHistoryRevisionTests()
+        fixture.setUp()
+        self.addCleanup(fixture.doCleanups)
+        legacy = persist_schwab_history_revision(fixture.db_path, fixture.v2,
+            predecessor_materialization_uid=fixture.legacy.materialization_uid)
+        assembly = build_schwab_phase1_evidence_assembly_v3(**inputs())
+        persist_schwab_snapshot_evidence(fixture.db_path, assembly)
+        kwargs = dict(predecessor_materialization_uid=build_schwab_journal_lifecycle_reconciliation(fixture.v2).source_materialization_uid)
+        result = persist_schwab_history_revision(fixture.db_path, assembly, **kwargs)
+        self.assertTrue(result.created)
+        self.assertTrue(persist_schwab_history_revision(fixture.db_path, assembly, **kwargs).replayed)
+        activate_prior_history_revision(fixture.db_path, revision_uid=legacy.revision_uid)
+        with duckdb.connect(str(fixture.db_path)) as con:
+            self.assertEqual(con.execute('SELECT revision_uid FROM phase1_journal_current_revision_ids').fetchone()[0], legacy.revision_uid)
+            self.assertEqual(con.execute('SELECT count(*) FROM phase1_journal_history_revisions').fetchone()[0], 2)
+        activate_prior_history_revision(fixture.db_path, revision_uid=result.revision_uid)
+        with duckdb.connect(str(fixture.db_path)) as con:
+            con.execute("UPDATE phase1_journal_snapshot_history_revision_executions SET commission = commission + 1")
+        with self.assertRaisesRegex(ValueError, 'content differs'):
+            persist_schwab_history_revision(fixture.db_path, assembly, **kwargs)
+
     def test_weekend_dates_two_sources_and_exact_roundtrip(self):
         assembly = build_schwab_phase1_evidence_assembly_v3(**inputs(two_quotes=True))
         self.assertEqual(assembly.asof,date(2026,9,5))
@@ -185,7 +224,7 @@ class SnapshotCutoffTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError,'checksum'):
                 load_schwab_snapshot_evidence(db,assembly_uid=assembly.assembly_uid)
         absent = Path('/private/tmp/onejournal-test-never-created-v3.duckdb')
-        with self.assertRaisesRegex(ValueError,'evidence-only'):
+        with self.assertRaisesRegex(ValueError,'pre-existing non-symlink file'):
             persist_schwab_history_revision(absent,assembly,predecessor_materialization_uid='synthetic-predecessor')
         self.assertFalse(absent.exists())
 

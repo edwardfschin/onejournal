@@ -244,6 +244,27 @@ class Phase1ReportingCalculationTests(unittest.TestCase):
             ],
         )
 
+    def test_exact_utc_cutoff_admits_boundary_and_excludes_later_same_day_fill(self) -> None:
+        with duckdb.connect(str(self.db_path)) as con:
+            con.execute("UPDATE phase1_journal_history_revisions SET history_window_end = DATE '2026-02-01'")
+            con.execute("UPDATE normalized_fills SET symbol = 'XYZ' WHERE fill_uid = 'unmatched-1'")
+            con.execute("CREATE VIEW phase1_journal_all_history_revisions AS SELECT *, '2026-02-01T02:00:00+00:00' AS snapshot_cutoff_utc FROM phase1_journal_history_revisions")
+            for suffix in ('episodes', 'episode_fills', 'executions'):
+                con.execute(f"CREATE VIEW phase1_journal_all_history_revision_{suffix} AS SELECT * FROM phase1_journal_history_revision_{suffix}")
+            con.execute("UPDATE normalized_fills SET filled_at_utc = '2026-02-01T02:00:00+00:00', asof_date = DATE '2026-02-01' WHERE fill_uid = 'close-1'")
+            later = list(self._fill('later-1', episode_uid='resolved-episode', side='BUY', open_close='OPEN', price='10', filled_at='2026-02-01T02:00:00.000001Z'))
+            later[6] = date(2026, 2, 1)
+            con.execute('INSERT INTO normalized_fills VALUES (' + ', '.join('?' for _ in later) + ')', later)
+        result = calculate_bounded_realized_result(self.db_path)
+        self.assertEqual(len(result.items), 1)
+        self.assertEqual(result.coverage_end_date, date(2026, 1, 31))
+        self.assertEqual(result.items[0].closed_at_utc, datetime(2026, 2, 1, 2, tzinfo=UTC))
+        self.assertIn('snapshot-cutoff-history-v2', result.calculation_version)
+        with duckdb.connect(str(self.db_path)) as con:
+            con.execute("UPDATE normalized_fills SET filled_at_utc = '2026-02-01T01:59:59+00:00' WHERE fill_uid = 'later-1'")
+        with self.assertRaisesRegex(Phase1RealizedCalculationError, 'stale'):
+            calculate_bounded_realized_result(self.db_path)
+
     def test_calculation_is_read_only_deterministic_and_explicitly_incomplete(self) -> None:
         before = sha256(self.db_path.read_bytes()).hexdigest()
         first = calculate_bounded_realized_result(

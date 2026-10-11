@@ -1,6 +1,68 @@
 # Mac data-refresh capture preparation
 
-## Status: position/history complete; quote capture incomplete; financial release pending
+## Status: capture complete; normalization blocked by new halted states; release pending
+
+### Approved unavailable-price correction and fresh capture: 2026-10-11
+
+The owner approved explicit value-free unavailable evidence for the four undated
+instruments, a fresh bounded five-GET capture, compatible local implementation,
+disposable-copy rehearsal, commit and push. Live writes, financial acceptance,
+report activation, restart, orders and deployment remain excluded.
+
+Capture `ONEJOURNAL-MAC-REFRESH-20261011-QUOTES-02` completed two quote requests
+(50+14 instruments) and three equity/option schedule requests for October 9/10/11.
+There was no token renewal, retry or extra broker request. Twenty exact private
+files, including request intents and response receipts, were retained on the Mac.
+Manifest SHA-256:
+`0f5711b1829ba84a4a222e1bf661f4b747dec0338150ce93957654a4a27b89be`.
+Executed runner SHA-256:
+`3311f167580f2a31801b16823b7e79f282b189ca282a35b0628a44a1afdf4c6d`.
+The earlier failed run remains immutable evidence, not an accepted capture.
+
+The new response still contains four zero quote timestamps. It additionally
+contains **six provider-reported `Halted` security states**, which the existing
+adapter rejects; it does not prove the cause or duration of a market halt.
+Private normalization stopped without treating those states as normal prices.
+Extending the unavailable scope to these six requires owner direction. No fresh
+private v3 assembly, financial calculation or report release has been produced.
+No further broker call is needed to review this already saved evidence.
+
+Implemented safeguards:
+
+- Quote-capture/artifact v2 accounts for every requested instrument using either
+  a validated quote or an explicitly mapped value-free unavailable record.
+  Four exact approved identities may omit a missing/zero quote timestamp. Raw
+  evidence is retained; no price or replacement timestamp enters that record.
+  Legacy v1 bytes/fingerprints and default strict adapter behavior are preserved.
+- Migration 0028 adds exact-cutoff history tables and cross-generation activation
+  history, with unified current readers and unchanged public view shapes. It does
+  not update old financial rows or activate a history revision. The writer verifies
+  full header/child read-back, stable fill economics, replay and explicit rollback.
+- The realized calculator binds UTC cutoff separately from New York dates and
+  preserves its legacy fingerprint. The new result/calculation version admits
+  boundary-instant activity and excludes later activity, without relabelling dates.
+- Report preparation and copy rehearsal support exact migration 0028 and preserve
+  predecessor releases/audit rows. The guarded live-report persistence command
+  still requires 0026; extending that live command is not included in this pass.
+  Changed financial fingerprints still need their own exact owner acceptance.
+
+An actual disposable copy of the quiescent live schema-0026 journal reached 0028.
+All **81 existing table/view content hashes and counts**, the accepted report,
+and realized fingerprint
+`bd05ac8f87e58b9fdc57792cd19f763ee40a136dcd692e8e0399d19227566063`
+were preserved. Migration replay passed. Source database SHA-256 remained
+`a2d85e2aacb39231a7a94c9f845a61a3e5a2f4dc22e683f0524298522ffbc721`.
+No new private history was activated even on this copy. Synthetic history/report
+checks cover activation, cross-version rollback, complete read-back, tampering,
+boundary cutoffs, report replay and preservation of the live-write restriction.
+The final focused suite passed **68 tests** across only the changed quote,
+acquisition, assembly, history, realized-calculation and report-rehearsal paths.
+
+The accepted website/report remain unchanged. P1-08 is already accepted and
+formal Phase 1 remains **8/12**; this maintenance refresh does not change maturity
+or strategic scope. Rollback is a focused source revert and/or explicit prior
+revision activation in an approved database, never deletion of raw evidence.
+The copy and value-free schema audit remain private rehearsal evidence.
 
 ### Approved five-GET quote attempt: 2026-10-11
 

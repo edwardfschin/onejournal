@@ -181,6 +181,23 @@ replacement-import warning are in `docs/operator_quickstart.md`.
 
 ## Impact map
 
+### Snapshot-history compatibility preparation: 2026-10-11
+
+Report preparation and disposable-copy rehearsal accept exact additive migration
+0028, whose unified history views preserve legacy readers. A copy already at
+0028 stays at 0028; older 0025/0026 rehearsal behavior and package formats remain
+unchanged. Package validation binds the receipt to the exact rehearsal version.
+The accepted release, prior audit content, account alias and independent financial
+acceptance identities remain required and preserved.
+
+The realized calculator uses a separate fingerprint-bound exact-UTC-cutoff
+authority and calculation version for new snapshot history, preserving all legacy
+result fingerprints. Financially changed inputs cannot reuse old acceptances.
+No new private financial release or acceptance was created in this pass.
+The live persistence command intentionally still rejects migration 0028; extending
+that command and actual live migration/persistence require the later bounded live
+scope. Copy rehearsal support must not be mistaken for live readiness.
+
 | Area | Contracted impact |
 |---|---|
 | Authoritative current source | Exact owner-accepted WEB-W07 broker-current valuation run |

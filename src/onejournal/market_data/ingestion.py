@@ -28,6 +28,7 @@ from onejournal.market_data.quotes import (
 
 
 CAPTURE_CONTRACT_VERSION = "onejournal.market-data.quote-capture.v1"
+CAPTURE_CONTRACT_VERSION_V2 = "onejournal.market-data.quote-capture.v2"
 INITIAL_MARKET_TIMEZONE = ZoneInfo("America/New_York")
 _MACHINE_ID_RE = re.compile(r"[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}")
 _PROVIDER_RE = re.compile(r"[a-z][a-z0-9_]*")
@@ -46,6 +47,18 @@ class QuoteInstrumentRequest:
     provider_instrument_id: str
     asset_class: str
     currency: str
+
+
+@dataclass(frozen=True)
+class UnavailableQuoteEvidence:
+    """Value-free, explicitly mapped response whose observation time is absent."""
+
+    instrument_key: str
+    provider_instrument_id: str
+    asset_class: str
+    currency: str
+    raw_sha256: str
+    reason_code: str = "unavailable_provider_quote_timestamp"
 
 
 @dataclass(frozen=True)
@@ -73,6 +86,7 @@ class QuoteCaptureEnvelope:
     adapter_version: str
     quotes: tuple[NormalizedQuote, ...]
     contract_version: str = CAPTURE_CONTRACT_VERSION
+    unavailable: tuple[UnavailableQuoteEvidence, ...] = ()
 
 
 def _utc(value: datetime, field_name: str) -> datetime:
@@ -133,8 +147,10 @@ def validate_quote_capture(
 ) -> None:
     """Validate a complete batch without calling a provider or writing state."""
 
-    if capture.contract_version != CAPTURE_CONTRACT_VERSION:
+    if capture.contract_version not in {CAPTURE_CONTRACT_VERSION, CAPTURE_CONTRACT_VERSION_V2}:
         raise QuoteCaptureContractError("unsupported quote-capture contract_version")
+    if capture.unavailable and capture.contract_version != CAPTURE_CONTRACT_VERSION_V2:
+        raise QuoteCaptureContractError("unavailable evidence requires capture v2")
     if not _MACHINE_ID_RE.fullmatch(capture.quote_run_uid):
         raise QuoteCaptureContractError("quote_run_uid must be an opaque machine identifier")
     if not _PROVIDER_RE.fullmatch(capture.provider):
@@ -208,13 +224,26 @@ def validate_quote_capture(
                 "quote provider time does not match the America/New_York market date"
             )
 
-    if set(quote_by_key) != set(request_by_key):
-        missing = sorted(set(request_by_key) - set(quote_by_key))
-        unexpected = sorted(set(quote_by_key) - set(request_by_key))
+    unavailable_keys: set[str] = set()
+    for item in capture.unavailable:
+        request = request_by_key.get(item.instrument_key)
+        if (request is None or item.instrument_key in unavailable_keys or item.instrument_key in quote_by_key
+            or item.reason_code != "unavailable_provider_quote_timestamp"
+            or item.raw_sha256 != capture.source.raw_sha256
+            or (item.provider_instrument_id, item.asset_class, item.currency)
+               != (request.provider_instrument_id, request.asset_class, request.currency)):
+            raise QuoteCaptureContractError("unavailable quote identity, reason or raw lineage is invalid")
+        unavailable_keys.add(item.instrument_key)
+    accounted_keys = set(quote_by_key) | unavailable_keys
+    if accounted_keys != set(request_by_key):
+        missing = sorted(set(request_by_key) - accounted_keys)
+        unexpected = sorted(accounted_keys - set(request_by_key))
         raise QuoteCaptureContractError(
             f"quote capture scope mismatch; missing={missing}, unexpected={unexpected}"
         )
     for instrument_key, request in request_by_key.items():
+        if instrument_key in unavailable_keys:
+            continue
         quote = quote_by_key[instrument_key]
         if (
             quote.provider_instrument_id != request.provider_instrument_id
@@ -269,7 +298,10 @@ def build_quote_capture_fingerprint(capture: QuoteCaptureEnvelope) -> str:
     payload["quotes"] = sorted(
         payload["quotes"], key=lambda row: (row["instrument_key"], row["quote_uid"])
     )
+    if capture.contract_version == CAPTURE_CONTRACT_VERSION_V2:
+        payload["unavailable"] = sorted((asdict(item) for item in capture.unavailable),
+                                        key=lambda row: row["instrument_key"])
     digest = sha256(
         json.dumps(payload, sort_keys=True, separators=(",", ":")).encode("utf-8")
     ).hexdigest()
-    return f"{CAPTURE_CONTRACT_VERSION}:{digest}"
+    return f"{capture.contract_version}:{digest}"

@@ -113,6 +113,30 @@ unapproved label.
 
 ## Interim one-app evidence bridge
 
+### Explicit unavailable evidence: 2026-10-11
+
+The approved multi-batch refresh may explicitly name at most four mapped
+instruments whose quote timestamp is absent or zero. The separate partial-capable
+adapter creates a value-free record with instrument identity, currency, raw
+checksum and reason `unavailable_provider_quote_timestamp`. It never substitutes
+last-trade time, receipt time or an inferred date. Other malformed or unsupported
+responses still fail closed; this does not admit `Halted` as a normal quote.
+
+Capture/artifact v2 binds valid quotes and unavailable records to the entire
+request scope, with no overlap, duplicates or dropped identities. V1 encoding,
+fingerprints and strict adapter behavior remain unchanged. Persistence uses
+version-tagged structured `notes` metadata only for capture v2, without a schema
+change or reinterpretation of historical free-form notes. Its audit counts include
+all responses, valid accepted quotes and unavailable rejections separately.
+An `ok` ingestion means complete accounting, not complete valuation coverage.
+Read-back/replay verify this metadata, identities and checksums.
+
+Assembly v3 retains the raw response lineage and quote exclusion counts/reason.
+Unpriced positions remain present and quote-dependent values remain unavailable.
+Separately accepted broker-current position values are a different authority;
+they must not be relabelled as independent quote-derived valuations. Financial
+acceptance, live persistence and activation are not implied by this contract.
+
 For the current bounded evidence step, OneBot's guarded exporter is the only
 component permitted to own or read the Schwab token for quote retrieval. It can
 produce one private bundle containing exactly:

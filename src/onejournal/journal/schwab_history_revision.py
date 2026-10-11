@@ -1,6 +1,6 @@
 """Append-only Schwab history materialization revisions.
 
-The module consumes an already validated assembly-v2 object.  It has no broker,
+The module consumes persisted assembly-v2 or exact-cutoff assembly-v3 evidence. It has no broker,
 credential, filesystem discovery, deletion, or in-place rewrite capability.
 Existing normalized fills are reused only when their stable economics match;
 new fills and complete revision snapshots are appended atomically.
@@ -39,6 +39,9 @@ from onejournal.journal.schwab_journal_lifecycle_reconciliation import (
 HISTORY_REVISION_CONTRACT_VERSION = (
     "onejournal.history-materialization-revision.v1"
 )
+SNAPSHOT_HISTORY_REVISION_CONTRACT_VERSION = "onejournal.history-materialization-revision.v2"
+SNAPSHOT_MIGRATION_PATH = (
+    Path(__file__).resolve().parents[3] / "scripts/journal/migrations/0028_add_snapshot_history_revisions.sql")
 MIGRATION_VERSION = "0021"
 MIGRATION_PATH = (
     Path(__file__).resolve().parents[3]
@@ -100,6 +103,19 @@ def _database_contract(con: duckdb.DuckDBPyConnection) -> None:
     ).fetchone()
     if row != ("add_append_only_history_revisions", expected, "applied"):
         raise ValueError("database migration 0021 ledger does not match repository")
+    if "phase1_journal_snapshot_history_revisions" in tables:
+        if con.execute("SELECT migration_name, file_checksum, status FROM schema_migrations WHERE version = '0028'").fetchone() != (
+            "add_snapshot_history_revisions", sha256(SNAPSHOT_MIGRATION_PATH.read_bytes()).hexdigest(), "applied"):
+            raise ValueError("database snapshot history requires exact migration 0028")
+
+
+def _history_read_table(con, suffix: str = "") -> str:
+    if suffix not in {"", "episodes", "episode_fills", "instruments", "executions"}:
+        raise ValueError("unsupported history relation")
+    upgraded = con.execute("SELECT COUNT(*) FROM information_schema.tables WHERE table_name = 'phase1_journal_all_history_revisions'").fetchone()[0] == 1
+    if not suffix:
+        return "phase1_journal_all_history_revisions" if upgraded else "phase1_journal_history_revisions"
+    return ("phase1_journal_all_history_revision_" if upgraded else "phase1_journal_history_revision_") + suffix
 
 
 def _stable_fill_row(fill: Any) -> tuple[Any, ...]:
@@ -207,7 +223,7 @@ def _current_activation(
     row = con.execute(
         """
         SELECT a.activation_uid, a.revision_uid, a.activation_sequence
-        FROM phase1_journal_history_revision_activations a
+        FROM phase1_journal_current_revision_ids a
         WHERE a.source_broker = 'schwab' AND a.source_account_id = ?
         ORDER BY a.activation_sequence DESC LIMIT 1
         """,
@@ -238,9 +254,20 @@ def _insert_activation(
         revision_uid=revision_uid,
         reason=reason,
     )
+    upgraded = _history_read_table(con) == "phase1_journal_all_history_revisions"
+    table = "phase1_journal_snapshot_history_activations" if upgraded else "phase1_journal_history_revision_activations"
+    if upgraded:
+        target = con.execute("SELECT source_broker, source_account_id FROM " + _history_read_table(con) + " WHERE revision_uid = ?", [revision_uid]).fetchall()
+        current = _current_activation(con, account_id=account_id)
+        if target != [("schwab", account_id)] or (sequence, previous_activation_uid) != ((current[2] + 1, current[0]) if current else (1, None)):
+            raise ValueError("activation target or cross-generation predecessor differs")
+        legacy_target = con.execute("SELECT COUNT(*) FROM phase1_journal_history_revisions WHERE revision_uid = ?", [revision_uid]).fetchone()[0] == 1
+        legacy_predecessor = previous_activation_uid is None or con.execute("SELECT COUNT(*) FROM phase1_journal_history_revision_activations WHERE activation_uid = ?", [previous_activation_uid]).fetchone()[0] == 1
+        if legacy_target and legacy_predecessor:
+            table = "phase1_journal_history_revision_activations"
     con.execute(
-        """
-        INSERT INTO phase1_journal_history_revision_activations (
+        f"""
+        INSERT INTO {table} (
             activation_uid, source_broker, source_account_id,
             activation_sequence, revision_uid, previous_activation_uid,
             activation_reason, activated_at
@@ -467,6 +494,15 @@ def _bootstrap_legacy_revision(
     return revision_uid, activation_uid
 
 
+def _revision_rows(con, table, revision_uid, rows, *, verify_only):
+    if verify_only:
+        stored = con.execute(f"SELECT * FROM {table} WHERE revision_uid = ?", [revision_uid]).fetchall()
+        if len(stored) != len(rows) or set(stored) != set(tuple(row) for row in rows):
+            raise ValueError("stored history revision content differs from reconstructed evidence")
+    elif rows:
+        con.executemany(f"INSERT INTO {table} VALUES (" + ", ".join("?" for _ in rows[0]) + ")", rows)
+
+
 def _insert_new_revision(
     con: duckdb.DuckDBPyConnection,
     *,
@@ -477,7 +513,11 @@ def _insert_new_revision(
     revision_uid: str,
     fingerprint: str,
     created_at: datetime,
+    verify_only: bool = False,
 ) -> tuple[int, int]:
+    snapshot = assembly.contract_version == SCHWAB_PHASE1_EVIDENCE_ASSEMBLY_V3
+    header_table = "phase1_journal_snapshot_history_revisions" if snapshot else "phase1_journal_history_revisions"
+    prefix = "phase1_journal_snapshot_history_revision_" if snapshot else "phase1_journal_history_revision_"
     new_fills = 0
     for fill in materialization.fills:
         stored = _stored_stable_fill_row(con, fill.fill_uid)
@@ -485,6 +525,8 @@ def _insert_new_revision(
             new_fills += 1
         elif stored != _stable_fill_row(fill):
             raise ValueError("existing normalized fill differs from reconstructed evidence")
+    if verify_only and new_fills:
+        raise ValueError("stored history revision has missing normalized fills")
     if new_fills:
         con.execute(
             """
@@ -500,13 +542,9 @@ def _insert_new_revision(
             if _stored_stable_fill_row(con, fill.fill_uid) is None:
                 _insert_fill(con, fill, import_run_id=revision_uid)
 
-    con.execute(
-        "INSERT INTO phase1_journal_history_revisions VALUES ("
-        + ", ".join("?" for _ in range(30))
-        + ")",
-        [
+    _revision_rows(con, header_table, revision_uid, [[
             revision_uid,
-            HISTORY_REVISION_CONTRACT_VERSION,
+            SNAPSHOT_HISTORY_REVISION_CONTRACT_VERSION if snapshot else HISTORY_REVISION_CONTRACT_VERSION,
             "schwab",
             assembly.source_account_id,
             assembly.assembly_uid,
@@ -535,8 +573,7 @@ def _insert_new_revision(
             "history_reconstruction",
             fingerprint,
             _utc_naive(created_at),
-        ],
-    )
+        ] + ([assembly.snapshot_cutoff_utc.isoformat()] if snapshot else [])], verify_only=verify_only)
     projected_by_episode = {item.episode_uid: item for item in projection.episodes}
     states_by_episode = {item.episode_uid: item for item in lifecycle.states}
     fill_fingerprints = dict(materialization.source_record_fingerprints)
@@ -598,31 +635,11 @@ def _insert_new_revision(
             )
             for index, fill_uid in enumerate(item.fill_uids, start=1)
         )
-    con.executemany(
-        "INSERT INTO phase1_journal_history_revision_episodes VALUES ("
-        + ", ".join("?" for _ in range(37))
-        + ")",
-        episode_rows,
-    )
-    con.executemany(
-        "INSERT INTO phase1_journal_history_revision_episode_fills VALUES (?, ?, ?, ?, ?)",
-        fill_rows,
-    )
-    con.executemany(
-        """
-        INSERT INTO phase1_journal_history_revision_instruments VALUES (
-          ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
-        )
-        """,
-        [(revision_uid, *tuple(asdict(item).values())) for item in projection.instruments],
-    )
-    con.executemany(
-        """
-        INSERT INTO phase1_journal_history_revision_executions VALUES (
-          ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, TRUE, ?
-        )
-        """,
-        [
+    _revision_rows(con, prefix + "episodes", revision_uid, episode_rows, verify_only=verify_only)
+    _revision_rows(con, prefix + "episode_fills", revision_uid, fill_rows, verify_only=verify_only)
+    _revision_rows(con, prefix + "instruments", revision_uid,
+        [(revision_uid, *tuple(asdict(item).values())) for item in projection.instruments], verify_only=verify_only)
+    _revision_rows(con, prefix + "executions", revision_uid, [
             (
                 revision_uid,
                 item.episode_uid,
@@ -640,11 +657,11 @@ def _insert_new_revision(
                 item.currency,
                 item.schwab_net_cash_movement,
                 item.calculated_net_cash_movement,
+                True,
                 item.execution_projection_fingerprint,
             )
             for item in projection.executions
-        ],
-    )
+        ], verify_only=verify_only)
     return new_fills, len(materialization.fills) - new_fills
 
 
@@ -657,8 +674,7 @@ def persist_schwab_history_revision(
 ) -> HistoryRevisionResult:
     """Append and activate one exact reconstruction, bootstrapping legacy once."""
 
-    if assembly.contract_version == SCHWAB_PHASE1_EVIDENCE_ASSEMBLY_V3:
-        raise ValueError("snapshot assembly v3 is evidence-only; history activation requires its own compatible revision writer")
+    snapshot = assembly.contract_version == SCHWAB_PHASE1_EVIDENCE_ASSEMBLY_V3
     timestamp = created_at or datetime.now(UTC)
     materialization = build_schwab_journal_materialization_plan(assembly)
     projection = build_schwab_execution_projection_from_assembly(
@@ -669,7 +685,7 @@ def persist_schwab_history_revision(
         raise ValueError("lifecycle and materialization plans differ")
     fingerprint = _digest(
         {
-            "contract_version": HISTORY_REVISION_CONTRACT_VERSION,
+            "contract_version": SNAPSHOT_HISTORY_REVISION_CONTRACT_VERSION if snapshot else HISTORY_REVISION_CONTRACT_VERSION,
             "assembly": assembly.result_fingerprint,
             "materialization": materialization.result_fingerprint,
             "projection": projection.result_fingerprint,
@@ -681,14 +697,19 @@ def persist_schwab_history_revision(
         raise ValueError("database must be a pre-existing non-symlink file")
     with duckdb.connect(str(db_path)) as con:
         _database_contract(con)
-        evidence = con.execute(
-            "SELECT result_fingerprint FROM phase1_schwab_evidence_v2_import_runs WHERE assembly_uid = ?",
-            [assembly.assembly_uid],
-        ).fetchone()
-        if evidence != (assembly.result_fingerprint,):
-            raise ValueError("exact assembly v2 must be persisted before revision")
+        if snapshot:
+            if _history_read_table(con) != "phase1_journal_all_history_revisions":
+                raise ValueError("snapshot history requires additive migration 0028")
+            from onejournal.journal.schwab_snapshot_evidence_repository import _contract, _read
+            _contract(con)
+            if _read(con, assembly.assembly_uid) != assembly:
+                raise ValueError("exact snapshot assembly must be persisted before revision")
+        else:
+            evidence = con.execute("SELECT result_fingerprint FROM phase1_schwab_evidence_v2_import_runs WHERE assembly_uid = ?", [assembly.assembly_uid]).fetchone()
+            if evidence != (assembly.result_fingerprint,):
+                raise ValueError("exact assembly v2 must be persisted before revision")
         existing = con.execute(
-            "SELECT source_account_id, result_fingerprint FROM phase1_journal_history_revisions WHERE revision_uid = ?",
+            "SELECT source_account_id, result_fingerprint FROM " + _history_read_table(con) + " WHERE revision_uid = ?",
             [revision_uid],
         ).fetchone()
         current = _current_activation(con, account_id=assembly.source_account_id)
@@ -697,6 +718,11 @@ def persist_schwab_history_revision(
                 raise ValueError("history revision identity conflict")
             if current is None or current[1] != revision_uid:
                 raise ValueError("existing revision is not current; explicit rollback is required")
+            if snapshot:
+                stored_time = con.execute("SELECT created_at FROM phase1_journal_snapshot_history_revisions WHERE revision_uid = ?", [revision_uid]).fetchone()[0]
+                _insert_new_revision(con, assembly=assembly, materialization=materialization,
+                    projection=projection, lifecycle=lifecycle, revision_uid=revision_uid,
+                    fingerprint=fingerprint, created_at=stored_time.replace(tzinfo=UTC), verify_only=True)
             return HistoryRevisionResult(
                 revision_uid=revision_uid,
                 activation_uid=current[0],
@@ -711,6 +737,10 @@ def persist_schwab_history_revision(
                 replayed=True,
             )
 
+        if current is not None:
+            current_contract = con.execute("SELECT contract_version FROM " + _history_read_table(con) + " WHERE revision_uid = ?", [current[1]]).fetchone()[0]
+            if not snapshot and current_contract == SNAPSHOT_HISTORY_REVISION_CONTRACT_VERSION:
+                raise ValueError("legacy history requires explicit rollback from snapshot history")
         con.execute("BEGIN TRANSACTION")
         try:
             predecessor_revision_uid: str | None
@@ -727,7 +757,7 @@ def persist_schwab_history_revision(
             else:
                 predecessor_revision_uid = current[1]
                 predecessor_materialization = con.execute(
-                    "SELECT materialization_uid FROM phase1_journal_history_revisions WHERE revision_uid = ?",
+                    "SELECT materialization_uid FROM " + _history_read_table(con) + " WHERE revision_uid = ?",
                     [predecessor_revision_uid],
                 ).fetchone()
                 if predecessor_materialization != (predecessor_materialization_uid,):
@@ -743,6 +773,10 @@ def persist_schwab_history_revision(
                 fingerprint=fingerprint,
                 created_at=timestamp,
             )
+            if snapshot:
+                _insert_new_revision(con, assembly=assembly, materialization=materialization,
+                    projection=projection, lifecycle=lifecycle, revision_uid=revision_uid,
+                    fingerprint=fingerprint, created_at=timestamp, verify_only=True)
             sequence = current[2] + 1
             activation_uid = _insert_activation(
                 con,
@@ -784,7 +818,7 @@ def activate_prior_history_revision(
     with duckdb.connect(str(db_path)) as con:
         _database_contract(con)
         target = con.execute(
-            "SELECT source_account_id FROM phase1_journal_history_revisions WHERE revision_uid = ?",
+            "SELECT source_account_id FROM " + _history_read_table(con) + " WHERE revision_uid = ?",
             [revision_uid],
         ).fetchone()
         if target is None:

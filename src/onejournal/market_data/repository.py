@@ -13,6 +13,7 @@ import duckdb
 
 from onejournal.brokers.normalized import NormalizedQuote
 from onejournal.market_data.ingestion import (
+    CAPTURE_CONTRACT_VERSION_V2, UnavailableQuoteEvidence,
     QuoteCaptureEnvelope,
     QuoteEvidenceSource,
     QuoteInstrumentRequest,
@@ -72,6 +73,7 @@ class QuoteCaptureReadBack:
     contract_version: str
     input_fingerprint: str
     quotes: tuple[NormalizedQuote, ...]
+    unavailable: tuple[UnavailableQuoteEvidence, ...] = ()
 
 
 def _utc_text(value: datetime, field_name: str) -> str:
@@ -274,19 +276,22 @@ def persist_quote_capture_result(
     fingerprint = build_quote_capture_fingerprint(capture)
     scope_json = request_scope_json(capture)
     quotes = capture.quotes
+    unavailable_json = (json.dumps({"schema": "onejournal.market-data.unavailable-quotes.v1",
+        "records": [asdict(item) for item in capture.unavailable]}, sort_keys=True, separators=(",", ":"))
+        if capture.contract_version == CAPTURE_CONTRACT_VERSION_V2 else None)
     con = duckdb.connect(str(db_path))
     try:
         con.execute("BEGIN TRANSACTION")
         existing = con.execute(
             """
-            SELECT input_fingerprint, ingestion_contract_version
+            SELECT input_fingerprint, ingestion_contract_version, notes
             FROM market_quote_ingestion_runs
             WHERE quote_run_uid = ?
             """,
             [capture.quote_run_uid],
         ).fetchone()
         if existing is not None:
-            if existing != (fingerprint, capture.contract_version):
+            if existing != (fingerprint, capture.contract_version, unavailable_json):
                 raise ValueError(
                     f"quote capture identity conflict for {capture.quote_run_uid}: envelope changed"
                 )
@@ -341,13 +346,13 @@ def persist_quote_capture_result(
                 _utc_text(capture.started_at, "started_at"),
                 _utc_text(capture.evaluated_at, "evaluated_at"),
                 len(capture.requests),
+                len(capture.requests) if capture.contract_version == CAPTURE_CONTRACT_VERSION_V2 else len(quotes),
                 len(quotes),
-                len(quotes),
-                0,
+                len(capture.unavailable),
                 fingerprint,
                 capture.adapter_version,
                 "ok",
-                None,
+                unavailable_json,
                 capture.contract_version,
                 _utc_text(capture.received_at, "received_at"),
                 scope_json,
@@ -450,7 +455,7 @@ def load_quote_capture_run(
                    accepted_quote_count, rejected_quote_count,
                    input_fingerprint, adapter_version, status,
                    ingestion_contract_version, request_scope_json,
-                   source_storage_kind, source_locator, source_raw_sha256
+                   source_storage_kind, source_locator, source_raw_sha256, notes
             FROM market_quote_ingestion_runs
             WHERE quote_run_uid = ? AND provider = ? AND connection_uid = ?
               AND asof_date = ?
@@ -505,12 +510,21 @@ def load_quote_capture_run(
             )
         )
     quotes = tuple(_quote_from_row(row) for row in quote_rows)
+    unavailable = ()
+    if run[14] == CAPTURE_CONTRACT_VERSION_V2:
+        try:
+            document = json.loads(run[19])
+            if set(document) != {"schema", "records"} or document["schema"] != "onejournal.market-data.unavailable-quotes.v1" or not isinstance(document["records"], list):
+                raise ValueError("invalid unavailable metadata")
+            unavailable = tuple(UnavailableQuoteEvidence(**row) for row in document["records"])
+        except (TypeError, ValueError) as exc:
+            raise ValueError("stored unavailable quote evidence is invalid") from exc
     expected_count = len(quotes)
     if (
         run[7] != len(requests)
-        or run[8] != expected_count
+        or run[8] != expected_count + len(unavailable)
         or run[9] != expected_count
-        or run[10] != 0
+        or run[10] != len(unavailable)
     ):
         raise ValueError("stored quote capture audit counts are inconsistent")
     read_back = QuoteCaptureReadBack(
@@ -531,6 +545,7 @@ def load_quote_capture_run(
         quotes=quotes,
         contract_version=str(run[14]),
         input_fingerprint=str(run[11]),
+        unavailable=unavailable,
     )
     for quote in read_back.quotes:
         validate_normalized_quote(quote)
@@ -550,9 +565,12 @@ def load_quote_capture_run(
         or len(quote_keys) != len(read_back.quotes)
     ):
         raise ValueError("stored quote capture contains duplicate instrument scope")
-    if request_keys != quote_keys:
+    unavailable_keys = {item.instrument_key for item in unavailable}
+    if request_keys != quote_keys | unavailable_keys:
         raise ValueError("stored quote capture scope is incomplete")
     for request in read_back.requests:
+        if request.instrument_key in unavailable_keys:
+            continue
         quote = next(
             item for item in read_back.quotes if item.instrument_key == request.instrument_key
         )
@@ -562,6 +580,16 @@ def load_quote_capture_run(
             or quote.currency != request.currency
         ):
             raise ValueError("stored normalized quote identity differs from request scope")
+    if len(unavailable_keys) != len(unavailable) or unavailable_keys & quote_keys:
+        raise ValueError("stored unavailable quote scope is duplicate or overlapping")
+    mapped = {item.instrument_key: item for item in requests}
+    for item in unavailable:
+        request = mapped[item.instrument_key]
+        if (item.reason_code != "unavailable_provider_quote_timestamp"
+            or item.raw_sha256 != read_back.source.raw_sha256
+            or (item.provider_instrument_id, item.asset_class, item.currency)
+               != (request.provider_instrument_id, request.asset_class, request.currency)):
+            raise ValueError("stored unavailable quote identity or lineage differs from request")
     return read_back
 
 

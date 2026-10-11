@@ -281,6 +281,7 @@ def persist_durable_quote_capture(
         or read_back.adapter_version != loaded.capture.adapter_version
         or read_back.contract_version != loaded.capture.contract_version
         or read_back.quotes != loaded.capture.quotes
+        or read_back.unavailable != loaded.capture.unavailable
     ):
         raise DurableQuoteIngestionError("persisted quote fields differ from private source")
     return DurableQuoteIngestionAudit(

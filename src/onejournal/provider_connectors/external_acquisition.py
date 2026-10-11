@@ -52,12 +52,15 @@ from onejournal.brokers.schwab.market_hours_resolver import (
     SchwabScheduleEvidence,
 )
 from onejournal.brokers.schwab.quotes_json import (
+    ADAPTER_VERSION as SCHWAB_QUOTE_ADAPTER_VERSION,
+    normalized_quotes_with_unavailable_from_payload,
     SchwabQuoteRequest,
     load_quotes_json_bytes,
     normalized_quotes_from_payload,
 )
 from onejournal.market_data.capture_artifact import quote_capture_artifact_bytes
 from onejournal.market_data.ingestion import (
+    CAPTURE_CONTRACT_VERSION, CAPTURE_CONTRACT_VERSION_V2,
     QuoteCaptureEnvelope,
     QuoteEvidenceSource,
     QuoteInstrumentRequest,
@@ -1257,6 +1260,7 @@ def convert_external_schwab_multi_batch_quotes(
     mappings: tuple[ExternalSchwabBatchQuoteMapping, ...],
     evaluated_at_utc: datetime,
     freshness_policy: QuoteFreshnessPolicy,
+    allowed_unavailable_provider_symbols: tuple[str, ...] = (),
 ) -> tuple[ConvertedExternalQuoteCapture, ...]:
     """Preserve each of at most two disjoint batch responses as its own capture."""
     if acquisition.manifest.profile != SCHWAB_MULTI_BATCH_QUOTES_EXTERNAL_ACQUISITION_PROFILE:
@@ -1267,8 +1271,12 @@ def convert_external_schwab_multi_batch_quotes(
     by_uid = {item.request_uid: item for item in mappings}
     if len(by_uid) != len(mappings) or set(by_uid) != {item.request_uid for item in requests}:
         raise ExternalProviderAcquisitionError("mappings must exactly cover every quote batch")
+    allowed = frozenset(allowed_unavailable_provider_symbols)
+    scope = {instrument.provider_instrument_id for batch in mappings for instrument in batch.instruments}
+    if len(allowed) != len(allowed_unavailable_provider_symbols) or len(allowed) > 4 or not allowed <= scope:
+        raise ExternalProviderAcquisitionError("unavailable approval must name at most four distinct mapped instruments")
     return tuple(_convert_batch_quote_request(acquisition, by_uid[item.request_uid], item,
-                 evaluated_at_utc.astimezone(UTC), freshness_policy) for item in requests)
+                 evaluated_at_utc.astimezone(UTC), freshness_policy, allowed) for item in requests)
 
 
 def _convert_batch_quote_request(
@@ -1277,6 +1285,7 @@ def _convert_batch_quote_request(
     request: ExternalAcquisitionRequest,
     evaluated: datetime,
     freshness_policy: QuoteFreshnessPolicy,
+    allowed_unavailable_symbols: frozenset[str] = frozenset(),
 ) -> ConvertedExternalQuoteCapture:
     if mapping.request_uid != request.request_uid:
         raise ExternalProviderAcquisitionError(
@@ -1315,9 +1324,7 @@ def _convert_batch_quote_request(
         )
         for instrument in mapping.instruments
     )
-    quotes = normalized_quotes_from_payload(
-        load_quotes_json_bytes(raw_body),
-        requests=adapter_requests,
+    adapter_context = dict(
         connection_uid=acquisition.manifest.connection_uid,
         asof=request.approved_market_date,
         received_at=request.received_at_utc,
@@ -1327,6 +1334,13 @@ def _convert_batch_quote_request(
         ),
         raw_sha256=raw_digest,
     )
+    payload = load_quotes_json_bytes(raw_body)
+    if allowed_unavailable_symbols:
+        quotes, unavailable = normalized_quotes_with_unavailable_from_payload(payload,
+            requests=adapter_requests, allowed_unavailable_symbols=allowed_unavailable_symbols, **adapter_context)
+    else:
+        quotes = normalized_quotes_from_payload(payload, requests=adapter_requests, **adapter_context)
+        unavailable = ()
     capture = QuoteCaptureEnvelope(
         quote_run_uid=quote_run_uid,
         provider="schwab",
@@ -1337,8 +1351,10 @@ def _convert_batch_quote_request(
         evaluated_at=evaluated,
         requests=mapping.instruments,
         source=source,
-        adapter_version=quotes[0].adapter_version,
+        adapter_version=SCHWAB_QUOTE_ADAPTER_VERSION,
         quotes=quotes,
+        unavailable=unavailable,
+        contract_version=CAPTURE_CONTRACT_VERSION_V2 if unavailable else CAPTURE_CONTRACT_VERSION,
     )
     validate_quote_capture(capture, policy=freshness_policy)
     capture_bytes = quote_capture_artifact_bytes(capture)

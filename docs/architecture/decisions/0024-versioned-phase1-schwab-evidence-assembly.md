@@ -161,3 +161,29 @@ runtime changes. No fresh quote/session evidence or private v3 financial
 release exists yet. Product strategy, financial methodology, accepted reporting
 scope and Phase 1 maturity remain unchanged. Before live use, rollback is a
 focused source revert; existing immutable evidence is never deleted.
+
+### Approved history compatibility follow-up: 2026-10-11
+
+The next approved local implementation adds migration 0028 and history-revision
+contract v2 for exact-cutoff assembly v3. Separate physical revision/child tables
+retain the old schema and accepted rows; unified current views retain existing
+public column shapes. A cross-generation activation ledger supports explicit
+rollback, with transactional account/target/predecessor checks. Migration does
+not activate a revision. The writer verifies all reconstructed rows before commit
+and on replay; replacing snapshot history with legacy history requires rollback.
+
+The realized-result/calculation version changes only on snapshot authorities:
+the exact UTC cutoff is fingerprint-bound and checked against UTC query end and
+New York snapshot date. Boundary instants are included and later activity excluded.
+Date coverage describes dates overlapping the bounded source window, not proof of
+complete account history or full boundary-day sessions. Legacy calculation and
+assembly fingerprints remain unchanged.
+
+Quote-capture/artifact v2 can preserve four explicitly approved unavailable
+responses without prices or inferred timestamps. Assembly v3 records those quote
+exclusions while keeping positions and raw lineage. New unsupported provider
+states still stop normalization; six `Halted` states in the fresh capture are not
+silently admitted. A disposable live-journal copy reached 0028 with all 81 old
+relation hashes/counts, accepted report and legacy realized fingerprint unchanged.
+This is schema/source validation, not fresh financial reconciliation or operational
+acceptance. No live write or runtime activation was performed.

@@ -357,6 +357,30 @@ class Phase1ReportingPersistenceOperatorTests(unittest.TestCase):
         self.assertFalse(replay.created)
         self.assertEqual((replay.release_count, replay.audit_count), (2, 1))
 
+    def test_0028_preparation_and_copy_rehearsal_preserve_live_persistence_boundary(self):
+        first, _, predecessor = self._seed_existing_release()
+        apply_schema_migrations(self.db, migrations_dir=MIGRATIONS, target_version='0028')
+        self.db.chmod(0o600)
+        second = self._prepare(release_uid='report-release-cutoff', predecessor=predecessor,
+                               acceptance_uid='report-acceptance-cutoff')
+        before = file_sha256(self.db)
+        rehearsal = rehearse_reporting_release(source_db_path=self.db,
+            rehearsal_db_path=self.root/'cutoff-rehearsal.duckdb', release=second,
+            predecessor_authorization=predecessor)
+        self.assertEqual(rehearsal.migration_version, '0028')
+        self.assertEqual((rehearsal.release_count, rehearsal.audit_count), (2, 1))
+        with duckdb.connect(str(self.root/'cutoff-rehearsal.duckdb'), read_only=True) as con:
+            self.assertEqual(load_reporting_release(con, report_release_uid=first.report_release_uid), first)
+        package = self.root/'cutoff-package'
+        write_private_release_package(output_dir=package, release=second, rehearsal=rehearsal)
+        with self._preparation_context():
+            self.assertEqual(prepare_reporting_release_from_package(db_path=self.db,
+                broker_current_authorization_path=self.authorization_path, package_dir=package,
+                predecessor_authorization=predecessor), second)
+        with self.assertRaisesRegex(Phase1ReportingPersistenceOperatorError, 'exactly at migration 0026'):
+            self._authorized_execution(second, predecessor)
+        self.assertEqual(file_sha256(self.db), before)
+
     def test_update_requires_explicit_exact_predecessor_and_new_report_acceptance(self) -> None:
         _, _, predecessor = self._seed_existing_release()
         before = file_sha256(self.db)

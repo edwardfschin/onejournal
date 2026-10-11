@@ -14,6 +14,7 @@ from typing import Any, Mapping
 
 from onejournal.brokers.normalized import NormalizedQuote
 from onejournal.market_data.ingestion import (
+    CAPTURE_CONTRACT_VERSION, CAPTURE_CONTRACT_VERSION_V2, UnavailableQuoteEvidence,
     QuoteCaptureEnvelope,
     QuoteEvidenceSource,
     QuoteInstrumentRequest,
@@ -21,6 +22,7 @@ from onejournal.market_data.ingestion import (
 
 
 QUOTE_CAPTURE_ARTIFACT_SCHEMA = "onejournal.market-data.quote-capture-artifact.v1"
+QUOTE_CAPTURE_ARTIFACT_SCHEMA_V2 = "onejournal.market-data.quote-capture-artifact.v2"
 MAX_QUOTE_CAPTURE_ARTIFACT_BYTES = 2 * 1024 * 1024
 
 
@@ -95,7 +97,8 @@ def quote_capture_artifact_bytes(capture: QuoteCaptureEnvelope) -> bytes:
         row["asof"] = quote.asof.isoformat()
         quotes.append(row)
     payload = {
-        "schema": QUOTE_CAPTURE_ARTIFACT_SCHEMA,
+        "schema": (QUOTE_CAPTURE_ARTIFACT_SCHEMA_V2 if capture.contract_version == CAPTURE_CONTRACT_VERSION_V2
+                   else QUOTE_CAPTURE_ARTIFACT_SCHEMA),
         "capture_contract_version": capture.contract_version,
         "quote_run_uid": capture.quote_run_uid,
         "provider": capture.provider,
@@ -109,6 +112,8 @@ def quote_capture_artifact_bytes(capture: QuoteCaptureEnvelope) -> bytes:
         "adapter_version": capture.adapter_version,
         "quotes": quotes,
     }
+    if capture.contract_version == CAPTURE_CONTRACT_VERSION_V2:
+        payload["unavailable"] = [asdict(item) for item in capture.unavailable]
     body = json.dumps(payload, sort_keys=True, separators=(",", ":")).encode("utf-8")
     if len(body) > MAX_QUOTE_CAPTURE_ARTIFACT_BYTES:
         raise QuoteCaptureArtifactError("quote capture artifact exceeds the size limit")
@@ -126,6 +131,7 @@ def load_quote_capture_artifact_bytes(body: bytes) -> QuoteCaptureEnvelope:
         payload = json.loads(body.decode("utf-8"))
     except (UnicodeDecodeError, json.JSONDecodeError) as exc:
         raise QuoteCaptureArtifactError("quote capture artifact is not valid JSON") from exc
+    v2 = isinstance(payload, dict) and payload.get("schema") == QUOTE_CAPTURE_ARTIFACT_SCHEMA_V2
     payload = _mapping(
         payload,
         "artifact",
@@ -143,9 +149,10 @@ def load_quote_capture_artifact_bytes(body: bytes) -> QuoteCaptureEnvelope:
             "source",
             "adapter_version",
             "quotes",
-        },
+        } | ({"unavailable"} if v2 else set()),
     )
-    if payload["schema"] != QUOTE_CAPTURE_ARTIFACT_SCHEMA:
+    if (payload["schema"] not in {QUOTE_CAPTURE_ARTIFACT_SCHEMA, QUOTE_CAPTURE_ARTIFACT_SCHEMA_V2}
+        or payload["capture_contract_version"] != (CAPTURE_CONTRACT_VERSION_V2 if v2 else CAPTURE_CONTRACT_VERSION)):
         raise QuoteCaptureArtifactError("unsupported quote capture artifact schema")
     raw_requests = payload["requests"]
     raw_quotes = payload["quotes"]
@@ -229,6 +236,12 @@ def load_quote_capture_artifact_bytes(body: bytes) -> QuoteCaptureEnvelope:
             )
         )
 
+    unavailable = payload.get("unavailable", [])
+    if not isinstance(unavailable, list):
+        raise QuoteCaptureArtifactError("unavailable evidence must be an array")
+    unavailable = tuple(UnavailableQuoteEvidence(**_mapping(item, "unavailable quote", {
+        "instrument_key", "provider_instrument_id", "asset_class", "currency", "raw_sha256", "reason_code"}))
+        for item in unavailable)
     return QuoteCaptureEnvelope(
         contract_version=_string(
             payload["capture_contract_version"], "capture_contract_version"
@@ -244,4 +257,5 @@ def load_quote_capture_artifact_bytes(body: bytes) -> QuoteCaptureEnvelope:
         source=source,
         adapter_version=_string(payload["adapter_version"], "adapter_version"),
         quotes=tuple(quotes),
+        unavailable=unavailable,
     )

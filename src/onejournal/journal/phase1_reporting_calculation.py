@@ -22,6 +22,7 @@ from onejournal.journal.pnl_repository import (
     load_approved_lifecycle_events,
     load_normalized_fills,
 )
+from onejournal.journal.schwab_history_revision import _history_read_table
 from onejournal.journal.phase1_reporting_repository import (
     RealizedHistoryItem,
     ReportingOmission,
@@ -41,6 +42,7 @@ REALIZED_CALCULATION_VERSION = (
     "+active-history-v1"
 )
 NEW_YORK = ZoneInfo("America/New_York")
+SNAPSHOT_REALIZED_CALCULATION_VERSION = REALIZED_CALCULATION_VERSION.removesuffix("active-history-v1") + "snapshot-cutoff-history-v2"
 
 
 class Phase1RealizedCalculationError(ValueError):
@@ -65,6 +67,7 @@ class ActiveHistoryAuthority:
     open_count: int
     review_required_count: int
     lifecycle_final_status: str
+    snapshot_cutoff_utc: datetime | None = None
 
 
 @dataclass(frozen=True)
@@ -212,8 +215,10 @@ def _required_tables(con: duckdb.DuckDBPyConnection) -> None:
 def _load_authorities(
     con: duckdb.DuckDBPyConnection,
 ) -> tuple[ActiveHistoryAuthority, ...]:
+    relation = _history_read_table(con)
+    cutoff_column = "r.snapshot_cutoff_utc" if relation == "phase1_journal_all_history_revisions" else "NULL"
     rows = con.execute(
-        """
+        f"""
         SELECT r.revision_uid, r.result_fingerprint, r.source_broker,
                r.source_account_id, r.history_window_start,
                r.history_window_end, r.asof_date, r.fill_count,
@@ -221,15 +226,15 @@ def _load_authorities(
                r.lifecycle_resolved_scope_count,
                r.review_required_scope_count, r.closed_count,
                r.open_count, r.review_required_count,
-               r.lifecycle_final_status
+               r.lifecycle_final_status, {cutoff_column}
         FROM phase1_journal_current_revision_ids c
-        JOIN phase1_journal_history_revisions r USING (revision_uid)
+        JOIN {relation} r USING (revision_uid)
         ORDER BY r.source_broker, r.source_account_id
         """
     ).fetchall()
     if not rows:
         raise Phase1RealizedCalculationError("no active history revision is available")
-    authorities = tuple(ActiveHistoryAuthority(*row) for row in rows)
+    authorities = tuple(ActiveHistoryAuthority(*row[:16], _utc(datetime.fromisoformat(row[16])) if row[16] is not None else None) for row in rows)
     if len({(x.source_broker, x.source_account_id) for x in authorities}) != len(
         authorities
     ):
@@ -240,7 +245,11 @@ def _load_authorities(
         not x.revision_uid
         or len(x.result_fingerprint) != 64
         or set(x.result_fingerprint) - set("0123456789abcdef")
-        or not x.history_window_start <= x.history_window_end <= x.asof_date
+        or not x.history_window_start <= x.history_window_end
+        or (x.snapshot_cutoff_utc is None and x.history_window_end > x.asof_date)
+        or (x.snapshot_cutoff_utc is not None and (
+            x.history_window_end != x.snapshot_cutoff_utc.date()
+            or x.asof_date != x.snapshot_cutoff_utc.astimezone(NEW_YORK).date()))
         for x in authorities
     ):
         raise Phase1RealizedCalculationError("active history authority is invalid")
@@ -251,14 +260,14 @@ def _load_episode_scopes(
     con: duckdb.DuckDBPyConnection,
 ) -> tuple[dict[tuple[str, str], _EpisodeScope], dict[str, tuple[str, str]]]:
     rows = con.execute(
-        """
+        f"""
         SELECT e.revision_uid, e.episode_uid, e.source_broker,
                e.source_account_id, e.scope_uid, e.primary_symbol,
                e.lifecycle_quality,
                e.materialization_lifecycle_quality, e.reconciled_status,
                e.reason_code, e.materialization_reason_code,
                e.position_reconciliation_status
-        FROM phase1_journal_history_revision_episodes e
+        FROM {_history_read_table(con, 'episodes')} e
         JOIN phase1_journal_current_revision_ids c USING (revision_uid)
         ORDER BY e.revision_uid, e.episode_uid
         """
@@ -269,9 +278,9 @@ def _load_episode_scopes(
             "active history contains duplicate episode scope"
         )
     fill_rows = con.execute(
-        """
+        f"""
         SELECT f.revision_uid, f.episode_uid, f.fill_uid
-        FROM phase1_journal_history_revision_episode_fills f
+        FROM {_history_read_table(con, 'episode_fills')} f
         JOIN phase1_journal_current_revision_ids c USING (revision_uid)
         ORDER BY f.revision_uid, f.episode_uid, f.leg_index
         """
@@ -326,10 +335,10 @@ def _validate_active_history(
             )
 
     execution_rows = con.execute(
-        """
+        f"""
         SELECT x.revision_uid, x.episode_uid, x.fill_uid,
                x.net_amount_reconciled
-        FROM phase1_journal_history_revision_executions x
+        FROM {_history_read_table(con, 'executions')} x
         JOIN phase1_journal_current_revision_ids c USING (revision_uid)
         ORDER BY x.revision_uid, x.episode_uid, x.fill_uid
         """
@@ -410,11 +419,12 @@ def _validate_active_history(
 
 def _result_payload(result: BoundedRealizedResult) -> dict[str, Any]:
     return {
-        "contract_version": REALIZED_RESULT_CONTRACT_VERSION,
+        "contract_version": "onejournal.phase1-realized-result.v2" if any(x.snapshot_cutoff_utc is not None for x in result.authorities) else REALIZED_RESULT_CONTRACT_VERSION,
         "calculation_version": result.calculation_version,
         "coverage_start_date": result.coverage_start_date,
         "coverage_end_date": result.coverage_end_date,
-        "authorities": [asdict(x) for x in result.authorities],
+        "authorities": [{key: value for key, value in asdict(x).items()
+                         if key != "snapshot_cutoff_utc" or value is not None} for x in result.authorities],
         "fill_input_fingerprint": result.fill_input_fingerprint,
         "lifecycle_input_fingerprint": result.lifecycle_input_fingerprint,
         "items": [asdict(x) for x in result.items],
@@ -443,7 +453,7 @@ def calculate_bounded_realized_result(
             scopes=scopes,
             fill_episode=fill_episode,
         )
-        asof = max(x.asof_date for x in authorities)
+        asof = max(x.history_window_end if x.snapshot_cutoff_utc is not None else x.asof_date for x in authorities)
         all_fills = load_normalized_fills(con, asof=asof)
         fills = [fill for fill in all_fills if fill.fill_uid in fill_episode]
         if {fill.fill_uid for fill in fills} != set(fill_episode):
@@ -463,7 +473,8 @@ def calculate_bounded_realized_result(
                 )
             )
             is not None
-            and fill.asof <= authority.asof_date
+            and (_utc(fill.filled_at) <= authority.snapshot_cutoff_utc if authority.snapshot_cutoff_utc is not None
+                 else fill.asof <= authority.asof_date)
         }
         if eligible_normalized_fill_uids != set(fill_episode):
             raise Phase1RealizedCalculationError(
@@ -483,8 +494,8 @@ def calculate_bounded_realized_result(
             )
             if (
                 authority is not None
-                and event.effective_at.astimezone(NEW_YORK).date()
-                <= authority.asof_date
+                and (_utc(event.effective_at) <= authority.snapshot_cutoff_utc if authority.snapshot_cutoff_utc is not None
+                     else event.effective_at.astimezone(NEW_YORK).date() <= authority.asof_date)
             ):
                 events.append(event)
 
@@ -597,11 +608,12 @@ def calculate_bounded_realized_result(
             )
         )
 
-    coverage_start = min(x.history_window_start for x in authorities)
-    coverage_end = max(x.history_window_end for x in authorities)
+    coverage_start = min(datetime.combine(x.history_window_start, datetime.min.time(), tzinfo=UTC).astimezone(NEW_YORK).date()
+                         if x.snapshot_cutoff_utc is not None else x.history_window_start for x in authorities)
+    coverage_end = max(x.asof_date if x.snapshot_cutoff_utc is not None else x.history_window_end for x in authorities)
     provisional = BoundedRealizedResult(
         calculation_run_id="",
-        calculation_version=REALIZED_CALCULATION_VERSION,
+        calculation_version=SNAPSHOT_REALIZED_CALCULATION_VERSION if any(x.snapshot_cutoff_utc is not None for x in authorities) else REALIZED_CALCULATION_VERSION,
         calculated_at_utc=_utc(calculated_at or datetime.now(UTC)),
         coverage_start_date=coverage_start,
         coverage_end_date=coverage_end,

@@ -50,7 +50,7 @@ REHEARSAL_SCHEMA = "onejournal.phase1-report-release-rehearsal.v1"
 UPDATE_PACKAGE_SCHEMA = "onejournal.phase1-report-release-package.v2"
 UPDATE_REHEARSAL_SCHEMA = "onejournal.phase1-report-release-rehearsal.v2"
 PERSISTENCE_AUDIT_SCHEMA = "onejournal.phase1-report-release-persistence-audit.v1"
-SUPPORTED_SOURCE_MIGRATION_VERSIONS = {"0025", "0026"}
+SUPPORTED_SOURCE_MIGRATION_VERSIONS = {"0025", "0026", "0028"}
 REHEARSAL_MIGRATION_VERSION = "0026"
 PERSISTENCE_MIGRATION_VERSION = "0026"
 AUTHORIZATION_FILENAME = "report-release-authorization.json"
@@ -423,6 +423,8 @@ def rehearse_reporting_release(
         source, release, predecessor_authorization=predecessor_authorization,
         source_preparation=True,
     )
+    with duckdb.connect(str(source), read_only=True) as con:
+        rehearsal_target_version = "0028" if _latest_migration(con) == "0028" else REHEARSAL_MIGRATION_VERSION
     shutil.copy2(source, target)
     target.chmod(0o600)
     copy_before = _sha256_file(target)
@@ -453,7 +455,7 @@ def rehearse_reporting_release(
             name: int(con.execute(f"SELECT count(*) FROM {name}").fetchone()[0])
             for name in names
         }
-    apply_schema_migrations(target, target_version=REHEARSAL_MIGRATION_VERSION)
+    apply_schema_migrations(target, target_version=rehearsal_target_version)
 
     with duckdb.connect(str(target)) as con:
         persist_reporting_release(con, release)
@@ -482,9 +484,9 @@ def rehearse_reporting_release(
         raise Phase1ReportingPersistenceOperatorError(
             "rehearsal reporting table counts do not match the release"
         )
-    if migration_version != REHEARSAL_MIGRATION_VERSION:
+    if migration_version != rehearsal_target_version:
         raise Phase1ReportingPersistenceOperatorError(
-            "rehearsal copy did not reach migration 0026"
+            "rehearsal copy did not reach its exact target migration"
         )
     if data_counts_after != data_counts_before:
         raise Phase1ReportingPersistenceOperatorError(
@@ -724,6 +726,8 @@ def prepare_reporting_release_from_package(
             "prepared package does not match the rebuilt exact release"
         )
     rehearsal = manifest["rehearsal"]
+    with duckdb.connect(str(db_path), read_only=True) as con:
+        rehearsal_target_version = "0028" if _latest_migration(con) == "0028" else REHEARSAL_MIGRATION_VERSION
     _, _, existing_counts, existing_fingerprint = _inspect_persistence_target(
         db_path, release, predecessor_authorization=predecessor_authorization,
         source_preparation=True,
@@ -743,7 +747,7 @@ def prepare_reporting_release_from_package(
         or rehearsal.get("omission_count") != expected_counts[3]
         or rehearsal.get("audit_count") != expected_counts[4]
         or rehearsal.get("identical_replay_verified") is not True
-        or rehearsal.get("migration_version") != REHEARSAL_MIGRATION_VERSION
+        or rehearsal.get("migration_version") != rehearsal_target_version
     ):
         raise Phase1ReportingPersistenceOperatorError(
             "prepared package rehearsal evidence is invalid"
@@ -777,6 +781,9 @@ def _inspect_persistence_target(
             raise Phase1ReportingPersistenceOperatorError(
                 "database must be exactly at migration 0026"
             )
+        if migration == "0028":
+            from onejournal.journal.schwab_history_revision import _database_contract
+            _database_contract(con)
         counts = _reporting_counts(con)
         existing_uids = [
             row[0] for row in con.execute(
@@ -796,7 +803,7 @@ def _inspect_persistence_target(
                 "existing reporting state requires an explicit predecessor authorization"
             )
         if predecessor_authorization is not None:
-            if migration != PERSISTENCE_MIGRATION_VERSION:
+            if migration not in {"0026", "0028"}:
                 raise Phase1ReportingPersistenceOperatorError(
                     "subsequent releases require migration 0026"
                 )
