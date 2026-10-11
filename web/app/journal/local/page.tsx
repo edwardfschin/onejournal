@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import type { SyntheticEvent } from 'react';
-import Link from 'next/link';
+import Link from '@/lib/navigation';
 import {
   Activity, ArrowRight, BookOpenText, BriefcaseBusiness, CheckCircle2,
   ChevronDown, ChevronRight, Database, FileChartColumn, LayoutDashboard, LoaderCircle,

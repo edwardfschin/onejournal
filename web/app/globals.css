@@ -17,6 +17,7 @@
 }
 
 :root {
+  --font-geist-sans: 'Geist'; --font-geist-mono: 'Geist Mono';
   color-scheme: dark;
   --background: #071017; --foreground: #ecf4f6; --card: #0d1821; --card-foreground: #ecf4f6;
   --primary: #8ae7de; --primary-foreground: #06201e; --secondary: #14232d;

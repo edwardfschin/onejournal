@@ -3,7 +3,7 @@ import {
   CircleAlert, CircleCheck, Command, Database, FileChartColumn, LayoutDashboard,
   Menu, Search, Settings, Sparkles, WalletCards,
 } from 'lucide-react';
-import Link from 'next/link';
+import Link from '@/lib/navigation';
 import { DEMO_ROUTES } from '@/lib/routes';
 
 const navItems = [

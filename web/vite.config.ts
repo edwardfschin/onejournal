@@ -1,110 +1,69 @@
-import { sites } from '@openai/sites-vite-plugin';
+import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/postcss';
-import vinext from 'vinext';
-import { defineConfig, type ViteDevServer } from 'vite';
+import { defineConfig, type Plugin, type Connect } from 'vite';
 import { readFileSync } from 'node:fs';
-import hostingConfig from './.openai/hosting.json';
+import { fileURLToPath } from 'node:url';
+import { DEMO_ROUTES, LOCAL_ROUTES, LEGACY_ROUTE_REDIRECTS } from './lib/routes';
 
-const SITE_CREATOR_PLACEHOLDER_DATABASE_ID =
-  '00000000-0000-4000-8000-000000000000';
-
-const { d1, r2 } = hostingConfig;
-
-// macOS Seatbelt blocks FSEvents, so Codex previews need polling for HMR.
-const isCodexSeatbeltSandbox = process.env.CODEX_SANDBOX === 'seatbelt';
-const localOwnerApiTarget = process.env.ONEJOURNAL_LOCAL_API_URL;
-
-const localBindingConfig = {
-  main: 'vinext/server/fetch-handler',
-  compatibility_flags: ['nodejs_compat'],
-  d1_databases: d1
-    ? [
-        {
-          binding: d1,
-          database_name: 'site-creator-d1',
-          database_id: SITE_CREATOR_PLACEHOLDER_DATABASE_ID,
-        },
-      ]
-    : [],
-  r2_buckets: r2
-    ? [
-        {
-          binding: r2,
-          bucket_name: 'site-creator-r2',
-        },
-      ]
-    : [],
+const securityHeaders = {
+  'Cache-Control': 'no-store',
+  'X-Frame-Options': 'DENY',
+  'Content-Security-Policy': "frame-ancestors 'none'; base-uri 'self'; form-action 'self'",
+  'Referrer-Policy': 'no-referrer',
+  'Permissions-Policy': 'publickey-credentials-get=(self), publickey-credentials-create=(self)',
+  'X-Content-Type-Options': 'nosniff',
 };
 
-export default defineConfig(async () => {
+function routeContract(apiTarget: string | undefined): Plugin {
+  const middleware: Connect.NextHandleFunction = (request, response, next) => {
+    const url = new URL(request.url ?? '/', 'http://localhost');
+    const redirect = LEGACY_ROUTE_REDIRECTS.find(({ source }) => source === url.pathname);
+    if (redirect) {
+      response.statusCode = 307;
+      response.setHeader('Location', redirect.destination + url.search);
+      response.end();
+    } else if (url.pathname.startsWith('/api/') && !apiTarget) {
+      // An unavailable API must not become an HTML success response.
+      response.statusCode = 404;
+      response.setHeader('Content-Type', 'application/json');
+      response.end('{"detail":"Private API unavailable"}');
+    } else next();
+  };
+  return {
+    name: 'onejournal-static-route-contract',
+    configureServer(server) { server.middlewares.use(middleware); },
+    configurePreviewServer(server) { server.middlewares.use(middleware); },
+    generateBundle() {
+      this.emitFile({ type: 'asset', fileName: 'onejournal-static-web.json', source: JSON.stringify({
+        contract_version: 'onejournal.static-web.v1', passkey_required: true,
+        routes: [...Object.values(DEMO_ROUTES), ...Object.values(LOCAL_ROUTES)], redirects: LEGACY_ROUTE_REDIRECTS,
+      }, null, 2) + '\n' });
+    },
+  };
+}
+
+export default defineConfig(({ command, isPreview }) => {
   const passkeyMode = process.env.ONEJOURNAL_PASSKEY_MODE === '1';
-  if (passkeyMode && (!process.env.ONEJOURNAL_TEST_TLS_CERT || !process.env.ONEJOURNAL_TEST_TLS_KEY)) {
+  const apiTarget = command === 'serve' && !isPreview ? process.env.ONEJOURNAL_LOCAL_API_URL : undefined;
+  const privateDev = command === 'serve' && !isPreview && passkeyMode;
+  if (privateDev && (!process.env.ONEJOURNAL_TEST_TLS_CERT || !process.env.ONEJOURNAL_TEST_TLS_KEY)) {
     throw new Error('The passkey prototype requires explicit localhost HTTPS; no HTTP fallback.');
   }
-  const passkeyHeaders = {
-    'Cache-Control': 'no-store',
-    'X-Frame-Options': 'DENY',
-    'Content-Security-Policy': "frame-ancestors 'none'; base-uri 'self'; form-action 'self'",
-    'Referrer-Policy': 'no-referrer',
-    'Permissions-Policy': 'publickey-credentials-get=(self), publickey-credentials-create=(self)',
-  };
-  // Keep Wrangler and Miniflare state project-local. These are non-secret tool
-  // settings; application environment belongs in ignored `.env*` files.
-  process.env.WRANGLER_WRITE_LOGS ??= 'false';
-  process.env.WRANGLER_LOG_PATH ??= '.wrangler/logs';
-  process.env.MINIFLARE_REGISTRY_PATH ??= '.wrangler/registry';
-
-  // Wrangler snapshots its log path while the Cloudflare plugin is imported.
-  const { cloudflare } = await import('@cloudflare/vite-plugin');
-
   return {
-    // Non-secret opt-in mode only; no private configuration enters the bundle.
-    define: { 'process.env.ONEJOURNAL_PASSKEY_MODE': JSON.stringify(passkeyMode ? '1' : '0') },
+    resolve: { alias: { '@': fileURLToPath(new URL('.', import.meta.url)) } },
+    define: { 'import.meta.env.VITE_ONEJOURNAL_PASSKEY_MODE': JSON.stringify(passkeyMode ? '1' : '0') },
     css: { postcss: { plugins: [tailwindcss()] } },
     server: {
-      host: '127.0.0.1',
-      // Never hop to another port: the canonical URL and API pairing must agree.
-      strictPort: true,
-      ...(passkeyMode ? { https: {
-        cert: readFileSync(process.env.ONEJOURNAL_TEST_TLS_CERT!),
-        key: readFileSync(process.env.ONEJOURNAL_TEST_TLS_KEY!),
-      }, headers: passkeyHeaders } : {}),
-      ...(isCodexSeatbeltSandbox
-        ? { watch: { useFsEvents: false, usePolling: true } }
-        : {}),
-      ...(localOwnerApiTarget
-        ? {
-            proxy: {
-              '/api/v5/local-owner': {
-                target: localOwnerApiTarget,
-                changeOrigin: false,
-              },
-              '/api/v1/local-owner': {
-                target: localOwnerApiTarget,
-                changeOrigin: false,
-              },
-            },
-          }
-        : {}),
+      host: '127.0.0.1', port: 4173, strictPort: true, headers: securityHeaders,
+      ...(privateDev ? { https: { cert: readFileSync(process.env.ONEJOURNAL_TEST_TLS_CERT!), key: readFileSync(process.env.ONEJOURNAL_TEST_TLS_KEY!) } } : {}),
+      ...(process.env.CODEX_SANDBOX === 'seatbelt' ? { watch: { useFsEvents: false, usePolling: true } } : {}),
+      ...(apiTarget ? { proxy: {
+        '/api/v1/local-owner': { target: apiTarget, changeOrigin: false },
+        '/api/v5/local-owner': { target: apiTarget, changeOrigin: false },
+      } } : {}),
     },
-    plugins: [
-      {
-        name: 'onejournal-passkey-response-headers',
-        configureServer(server: ViteDevServer) {
-          // Vinext handles SSR before Vite's standard header middleware.
-          if (passkeyMode) server.middlewares.use((_request, response, next) => {
-            for (const [name, value] of Object.entries(passkeyHeaders)) response.setHeader(name, value);
-            next();
-          });
-        },
-      },
-      vinext(),
-      sites(),
-      cloudflare({
-        viteEnvironment: { name: 'rsc', childEnvironments: ['ssr'] },
-        config: localBindingConfig,
-        inspectorPort: false,
-      }),
-    ],
+    // Fixture/demo preview only; private builds are served by the Python app.
+    preview: { host: '127.0.0.1', port: 4187, strictPort: true, headers: securityHeaders, proxy: {} },
+    plugins: [react(), routeContract(apiTarget)],
   };
 });

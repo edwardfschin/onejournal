@@ -316,6 +316,11 @@ revert; implementation changes retain their own scoped rollback methods.
 
 ### Mac frontend packaging rehearsal: 2026-10-11
 
+Historical feasibility evidence below applies to commit `cc1fa8a`. The owner
+subsequently approved alignment with ADR-0017; the static implementation below
+supersedes this Node-server candidate and its packaging command. It is retained
+as evidence, not a current operator procedure.
+
 `npm run package:mac-preview` prepares a movable frontend-only feasibility
 candidate after a fresh build in a disposable copy of tracked public `web/`
 source. It does not package the Python API, journal, security store, TLS files,
@@ -379,6 +384,90 @@ changes. Rollback is a focused source revert and discarding this generated
 candidate, not restoring any database. P1-10 remains incomplete and Phase 1
 remains 8/12. The pending financial refresh still needs owner review and exact
 acceptance before separately authorized publication.
+
+### Approved static alignment and Mac preparation: 2026-10-11
+
+The owner approved implementation of the already accepted ADR-0017 static
+React/Vite plus Python API design, preserving the existing UI and financial
+contracts, with local validation, commit and push but no live changes. This is
+implementation conformance, not a new stack/policy decision or release acceptance.
+It does not change the vision, spreadsheet mapping or capability maturity.
+
+Impact map:
+
+- Source: tracked React screens and `web/lib/routes.ts`; the existing Python
+  API and passkey gate remain financial/access authorities.
+- Producer: pinned Vite/React build; `web/dist` contains only static HTML,
+  lazy page modules, CSS, existing locally packaged Geist fonts and a versioned
+  route manifest. No raw/private data, TLS files, credentials or Node packages.
+- Changed components: browser entry/navigation, build configuration and locked
+  dependency pruning; development launchers now invoke Vite directly.
+- Consumers: the 14 unchanged canonical demo/local screens and their existing
+  same-origin APIs. The Python adapter validates the generated route contract,
+  serves exact public shell/assets and mounts the unchanged protected API.
+- Persisted state: none for this preparation. The prepared serving command
+  uses existing private journal/release/security/TLS state only when separately
+  activated; normal API writes/security audits retain their existing semantics.
+- Validation: clean locked install, build/type/lint checks, route and API-client
+  contracts, disposable signed access/CSRF/logout/expiry and static isolation,
+  relocated public browser rendering at desktop/tablet/phone sizes.
+- Rollback: revert this source change. The watched canonical checkout and
+  active services were deliberately left unchanged, so no live rollback occurs.
+
+`npm ci --ignore-scripts --no-audit --no-fund` and `npm run build` in `web/`
+produce the portable artifact. Copy the **entire** `dist` directory, not a
+subset. A clean destination needs the locked Python/security application
+environment, not frontend source or Node packages. Fonts are the existing
+cached Google Fonts Geist/Geist Mono binaries, unmodified and redistributed
+with their SIL OFL 1.1 notice; runtime/build font downloading is no longer needed.
+Recharts remains unchanged; the separate ECharts conformance question is not
+silently included in this framework alignment.
+
+Every built `/local/` page always checks the existing passkey session before
+its child view mounts. Native links preserve history, keyboard and new-tab
+behavior, checking access afresh at each private destination. Legacy paths
+redirect to the mode-first canonical route and preserve the query string;
+the browser entry additionally preserves fragments. Unknown API/export paths
+never receive an HTML shell. Missing/incompatible manifests or an unprotected
+backend fail before serving; only assets/fonts/favicon and exact shell paths
+are public. Local Host/Origin checks and no-store/frame/privacy headers apply.
+The adapter propagates the protected API lifespan, including session revocation
+and security-store closure on shutdown. No server rendering is involved.
+
+Prepared activation entry point, **not executed against owner state in this
+pass**; uppercase values are placeholders, not commands to run literally:
+
+```text
+python scripts/web/run_mac_static_site.py --owner-local --web-config PRIVATE_CONFIG --security-db PRIVATE_SECURITY_DB --tls-cert PRIVATE_LOCALHOST_CERT --tls-key PRIVATE_LOCALHOST_KEY --static-dir ABSOLUTE_COPIED_DIST
+```
+
+It serves the static frontend and protected Python API in one loopback HTTPS
+process at the configured existing website port, with the same localhost RP,
+cookie origin and release authority. It does not provision access, migrate a
+database, fetch a broker, select a new financial release, install dependencies
+or terminate another process. Occupied ports fail; Ctrl-C stops this process
+only. The legacy development launcher remains available with direct Vite and
+its existing loopback API proxy. Vite preview is only a public/demo check,
+not the private release server ([Vite deployment guidance](https://vite.dev/guide/static-deploy.html)).
+
+Scoped evidence: 18 focused frontend tests and 29 Python route/launcher/static
+integration tests passed; one pre-existing opt-in full launcher process smoke
+was not run. Locked build, TypeScript and lint passed. Real signed synthetic
+WebAuthn verified private reads/exports, CSRF rejection/acceptance, logout,
+idle expiry, headers, origin/host rejection, asset traversal isolation and API
+shutdown. The copied static artifact rendered via Python with no Node server:
+Reports at 1440x1000, portfolio at 820x1180 and 390x844, with no measured page
+overflow at tablet/phone sizes. A private Reports URL with no connected access
+service remained locked and displayed no financial view. These browser checks
+were public-only HTTP fixtures; HTTPS/security integration used disposable
+TestClient state, not an owner device or live private browser journey.
+
+Remaining: authorized Mac handover with trusted HTTPS and an owner-device
+private navigation/export check; the Python/service release packaging and
+remaining operations/quality/security acceptance. No live journal/security
+write, accepted website change, restart, broker call or financial refresh
+publication was performed. Formal Phase 1 remains 8/12; changed financial
+results still require exact owner acceptance before publication.
 
 The web delivery packages map to Phase 1 as follows:
 

@@ -1,7 +1,6 @@
 'use client';
 
-import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import Link, { usePathname } from '@/lib/navigation';
 import { LOCAL_ROUTES } from '@/lib/routes';
 
 export function LocalWorkspaceNavigation() {

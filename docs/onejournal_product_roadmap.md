@@ -597,8 +597,12 @@ supersede ADR-0018's private production acceptance gate.
   incident procedures. Local dependency triage is not hosted clearance.
 - **P1-10 — operations:** resolve production packaging and same-origin API
   routing against ADR-0017; ADR-0030 documents the current Vinext/Node preview
-  versus the accepted static frontend topology. Do not silently adopt that
-  difference or rewrite the framework without a decision. Approve the private
+  versus the accepted static frontend topology. The owner-approved 2026-10-11
+  static React/Vite alignment now builds all 14 existing screens as portable
+  files, with a prepared same-origin protected Python serving command and
+  disposable access/layout evidence. The watched canonical checkout and live
+  site remain unchanged; trusted-HTTPS Mac handover/private owner journeys and
+  backend/service release packaging remain outstanding. Approve the private
   host/environment and production-state design, then rehearse PostgreSQL
   migration where the accepted hosted topology requires it, deployment,
   rollback, observability and restoration. Decide recovery objectives, backup

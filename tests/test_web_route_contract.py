@@ -65,11 +65,14 @@ class WebRouteContractTests(unittest.TestCase):
                 self.assertNotIn(legacy_route, source, f"{page_path}: {legacy_route}")
 
     def test_legacy_paths_are_centralized_as_redirects(self) -> None:
-        next_config = (WEB_ROOT / "next.config.ts").read_text(encoding="utf-8")
+        build_config = (WEB_ROOT / "vite.config.ts").read_text(encoding="utf-8")
+        entrypoint = (WEB_ROOT / "main.tsx").read_text(encoding="utf-8")
         routes = (WEB_ROOT / "lib" / "routes.ts").read_text(encoding="utf-8")
 
-        self.assertIn("LEGACY_ROUTE_REDIRECTS", next_config)
-        self.assertIn("async redirects()", next_config)
+        self.assertIn("LEGACY_ROUTE_REDIRECTS", build_config)
+        self.assertIn("onejournal-static-web.json", build_config)
+        self.assertIn("LEGACY_ROUTE_REDIRECTS", entrypoint)
+        self.assertIn("window.location.replace", entrypoint)
         self.assertIn("source: '/portfolio/local'", routes)
         self.assertIn("destination: LOCAL_ROUTES.portfolio", routes)
         self.assertIn("source: '/journal/local'", routes)

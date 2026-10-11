@@ -9,7 +9,18 @@ acceptance is distinct from that implementation/activation authority.
 Use disposable journal/security state and separate ports for tests. Never copy private
 credentials, enrollment secrets, TLS keys or security databases into Git/chat.
 No financial method, journal schema, release fingerprint or broker authority
-changes. The original local launcher remains unchanged and is not hosted-ready.
+changes. The local development launcher is not hosted-ready.
+
+The 2026-10-11 owner-approved static frontend alignment is prepared, not live
+activated. `run_mac_static_site.py` can serve the copied static artifact and
+the existing protected API together on the same loopback HTTPS origin, without
+a Node server or an API proxy. It requires explicit `--owner-local`, the
+existing private configuration/security/TLS files and a compatible static build;
+it does not provision, migrate, recover or select a release. Session, passkey,
+RP, CSRF and financial authority policies are unchanged. Follow the scoped
+preparation/activation boundary in `production_web_delivery_contract.md` before
+switching the accepted runtime. The source development launcher now invokes
+Vite directly; its existing trusted-HTTPS/API-proxy procedure below is retained.
 
 ## Data and request flow
 

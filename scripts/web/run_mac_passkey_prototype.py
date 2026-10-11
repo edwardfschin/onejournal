@@ -77,7 +77,7 @@ def main(argv=None):
             api = session.spawn([sys.executable, str(Path(__file__).resolve()), "api", "--web-config", str(args.web_config),
                                  "--security-db", str(args.security_db), *(["--owner-local"] if args.owner_local else [])], ROOT, env)
             session.ready(api, config.api_port, "protected API")
-            web = session.spawn([node, str(cli), "dev", "--hostname", "127.0.0.1", "--port", str(config.web_port)], ROOT / "web", env)
+            web = session.spawn([node, str(cli), "--host", "127.0.0.1", "--port", str(config.web_port)], ROOT / "web", env)
             # Test TLS must be trusted by the test client/browser explicitly.
             # Do not disable certificate verification or modify system trust.
             opener = build_opener(ProxyHandler({}), HTTPSHandler(context=ssl.create_default_context(cafile=str(args.tls_cert))))

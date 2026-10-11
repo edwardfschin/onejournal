@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import Link from 'next/link';
+import Link from '@/lib/navigation';
 import { ArrowRight, CircleAlert, RefreshCw } from 'lucide-react';
 import { LocalWorkspaceNavigation } from '@/components/local-workspace-navigation';
 import { fetchSavedWorkspace, fetchWorkspaceSession, type SavedWorkspace, type WorkspaceSession } from '@/lib/local-owner-workspace';

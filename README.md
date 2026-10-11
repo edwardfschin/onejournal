@@ -259,10 +259,17 @@ vendor-neutral. See the
 for the visible WBS, design direction, data modes, security gates, and
 acceptance boundaries.
 
-The selected foundation is policy only: no frontend workspace, API,
-authentication, hosted database, hosting target, deployment, or private web
-runtime exists yet. Streamlit remains an internal workflow-validation surface
-until the production website reaches verified parity.
+The Mac workspace, versioned Python APIs and bounded owner passkey access are
+implemented. The approved static React/Vite alignment now produces `web/dist`
+and has a prepared same-origin Python serving entry point; its live Mac
+switchover has not been performed. Build with `npm ci` then `npm run build` in
+`web/`; Node is a build/development dependency, not a static release server.
+`npm start` is a loopback public/demo preview only, not private deployment.
+See the delivery contract for scoped validation and activation instructions.
+Hosted deployment, final security/operations/quality acceptance and Phase 1
+owner acceptance remain outstanding. Phase 1 remains 8/12. Streamlit remains
+an internal workflow-validation surface until verified parity and its explicit
+retain/retire decision.
 
 ## Working standards
 

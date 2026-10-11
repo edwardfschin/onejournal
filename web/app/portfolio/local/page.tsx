@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import Link from 'next/link';
+import Link from '@/lib/navigation';
 import {
   Activity, BookOpenText, BriefcaseBusiness, CheckCircle2, CircleAlert,
   Database, FileChartColumn, LayoutDashboard, LoaderCircle, LockKeyhole,

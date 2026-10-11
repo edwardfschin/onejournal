@@ -143,7 +143,7 @@ def node_runtime(project_root: Path) -> tuple[str, Path]:
             raise ValueError
     except (OSError, ValueError, subprocess.SubprocessError):
         raise LocalWebError("Node.js 22.13 or newer is required; check ONEJOURNAL_NODE.") from None
-    cli = project_root / "web/node_modules/vinext/dist/cli.js"
+    cli = project_root / "web/node_modules/vite/bin/vite.js"
     if not cli.is_file():
         raise LocalWebError("Website dependencies are missing. Run npm ci in the web folder; the launcher never installs packages automatically.")
     return node, cli
@@ -243,7 +243,7 @@ def run_session(config: LocalWebConfig, config_path: Path, project_root: Path, *
         api = session.spawn([sys.executable, str(project_root / "scripts/web/run_local_owner_website.py"),
                              "--config", str(config_path), "--api-child"], project_root, env)
         session.ready(api, config.api_port, "API")
-        web = session.spawn([node, str(cli), "dev", "--port", str(config.web_port), "--hostname", "127.0.0.1"], project_root / "web", env)
+        web = session.spawn([node, str(cli), "--port", str(config.web_port), "--host", "127.0.0.1"], project_root / "web", env)
         session.ready(web, config.web_port, "website", config.start_page)
         if api.poll() is not None or web.poll() is not None:
             raise LocalWebError("A service stopped during startup; both managed services were stopped.")

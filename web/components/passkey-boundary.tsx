@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
-import { usePathname } from 'next/navigation';
+import { usePathname } from '@/lib/navigation';
 import { accessJson, ACCESS_REQUIRED_EVENT, credentialJson, decodeBase64url, expireAccessIfDue, listenForAccessRevocation, revokeAccessAcrossTabs, setAccessSession } from '@/lib/local-owner-access';
 import './passkey-boundary.css';
 

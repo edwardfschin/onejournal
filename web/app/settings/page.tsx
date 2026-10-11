@@ -3,7 +3,7 @@ import {
   FileChartColumn, Globe2, KeyRound, LayoutDashboard, LockKeyhole, Menu, MonitorCog,
   Search, Settings, ShieldCheck, Sparkles, UserRound,
 } from 'lucide-react';
-import Link from 'next/link';
+import Link from '@/lib/navigation';
 import { DEMO_ROUTES } from '@/lib/routes';
 
 const navItems = [
