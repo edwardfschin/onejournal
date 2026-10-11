@@ -16,7 +16,10 @@ activated. `run_mac_static_site.py` can serve the copied static artifact and
 the existing protected API together on the same loopback HTTPS origin, without
 a Node server or an API proxy. It requires explicit `--owner-local`, the
 existing private configuration/security/TLS files and a compatible static build;
-it does not provision, migrate, recover or select a release. Session, passkey,
+it does not provision, migrate, recover or select a release. The same service
+is now installable as `onejournal-mac-site` from the public wheel/static release
+archive; no checkout or Node runtime is needed. This packaging remains
+preparation, not activation or owner-device acceptance. Session, passkey,
 RP, CSRF and financial authority policies are unchanged. Follow the scoped
 preparation/activation boundary in `production_web_delivery_contract.md` before
 switching the accepted runtime. The source development launcher now invokes

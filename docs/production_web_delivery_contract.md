@@ -467,11 +467,53 @@ API a JSON 404. Headers were verified before redirects/API handling, not just
 on served files; a focused regression check preserves this ordering.
 
 Remaining: authorized Mac handover with trusted HTTPS and an owner-device
-private navigation/export check; the Python/service release packaging and
+private navigation/export check; installed Python/service packaging rehearsal and
 remaining operations/quality/security acceptance. No live journal/security
 write, accepted website change, restart, broker call or financial refresh
 publication was performed. Formal Phase 1 remains 8/12; changed financial
 results still require exact owner acceptance before publication.
+
+### Installed Mac release packaging: 2026-10-11
+
+The next approved preparation moves the existing static-service orchestration
+into `onejournal.mac_static_site`, with the installed `onejournal-mac-site`
+entry point. The source command remains a thin compatibility wrapper. The
+unchanged API factory validates the existing migrated journal and exact
+financial authorizations; no migration scripts are needed on its serving path.
+
+Impact: committed Python/React source and existing locks are authoritative;
+`scripts/web/package_mac_release.py` builds a wheel and complete static website
+from one clean HEAD snapshot. Its consumers are a separate Python environment
+and the existing same-origin browser/API contracts. No persisted owner state,
+financial method, dependency version or access policy is changed. Private files
+must stay outside both public code and the static artifact. Validation covers
+non-overwrite/privacy guards and a relocated installed HTTPS service with
+synthetic access/journal state. Rollback preserves the previous environment and
+launcher; this preparation leaves the running Mac services untouched.
+
+From a clean committed checkout, with existing build dependencies installed:
+
+```text
+python scripts/web/package_mac_release.py --destination NEW_EXTERNAL_RELEASE.tar.gz
+```
+
+The destination must be a new `.tar.gz` file in an existing directory outside
+Git. The producer snapshots **tracked HEAD only**, builds in a disposable
+directory, and refuses links, private-key/token signatures or overwrite. It
+does not copy ignored `.env`, old build output or untracked public assets.
+The archive contains one application wheel, both existing Python lock files,
+the entire static build, installation instructions and SHA-256 file hashes
+bound to the source commit. Checksums detect changes, not signer authenticity.
+No private configuration, journal, access store, TLS material, broker evidence
+or operator/migration scripts are included.
+
+Install the pinned requirements and wheel into a **new** Python 3.11–3.13
+environment, following `INSTALL.txt` in the archive. Dependency installation
+requires package-index or cache access; this is not an offline Python/runtime
+bundle. The installed service requires neither Node nor a source checkout.
+Its serving arguments and explicit Mac activation boundary are unchanged.
+No Linux/VPS portability, hosted deployment, production security clearance or
+owner-device acceptance is claimed. Phase 1 remains 8/12.
 
 The web delivery packages map to Phase 1 as follows:
 

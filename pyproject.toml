@@ -20,5 +20,8 @@ dependencies = [
 [tool.setuptools.packages.find]
 where = ["src"]
 
+[project.scripts]
+onejournal-mac-site = "onejournal.mac_static_site:main"
+
 [project.optional-dependencies]
 security = ["webauthn>=3.0.1,<4"]

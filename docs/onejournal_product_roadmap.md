@@ -601,8 +601,12 @@ supersede ADR-0018's private production acceptance gate.
   static React/Vite alignment now builds all 14 existing screens as portable
   files, with a prepared same-origin protected Python serving command and
   disposable access/layout evidence. The watched canonical checkout and live
-  site remain unchanged; trusted-HTTPS Mac handover/private owner journeys and
-  backend/service release packaging remain outstanding. Approve the private
+  site remain unchanged. The installed Python/static candidate now has a
+  public wheel, complete static artifact, existing dependency locks and
+  commit-bound file checksums, built from clean committed source only.
+  Relocated installed-service rehearsal is the current checkpoint;
+  trusted-HTTPS Mac handover/private owner journeys remain outstanding.
+  Approve the private
   host/environment and production-state design, then rehearse PostgreSQL
   migration where the accepted hosted topology requires it, deployment,
   rollback, observability and restoration. Decide recovery objectives, backup

@@ -266,6 +266,10 @@ switchover has not been performed. Build with `npm ci` then `npm run build` in
 `web/`; Node is a build/development dependency, not a static release server.
 `npm start` is a loopback public/demo preview only, not private deployment.
 See the delivery contract for scoped validation and activation instructions.
+`scripts/web/package_mac_release.py` prepares a public wheel/static archive
+from clean committed source. The installed `onejournal-mac-site` command needs
+Python and the existing pinned dependencies, but no checkout or Node runtime.
+This is preparation only: the running Mac site has not been switched.
 Hosted deployment, final security/operations/quality acceptance and Phase 1
 owner acceptance remain outstanding. Phase 1 remains 8/12. Streamlit remains
 an internal workflow-validation surface until verified parity and its explicit
