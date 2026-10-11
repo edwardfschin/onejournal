@@ -16,6 +16,9 @@ const securityHeaders = {
 
 function routeContract(apiTarget: string | undefined): Plugin {
   const middleware: Connect.NextHandleFunction = (request, response, next) => {
+    // Run before redirects and the development API proxy, not only Vite's
+    // file-serving middleware. Every response retains the private headers.
+    for (const [name, value] of Object.entries(securityHeaders)) response.setHeader(name, value);
     const url = new URL(request.url ?? '/', 'http://localhost');
     const redirect = LEGACY_ROUTE_REDIRECTS.find(({ source }) => source === url.pathname);
     if (redirect) {

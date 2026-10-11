@@ -47,3 +47,8 @@ test('locally packaged font URLs have no network or workstation dependency', () 
   }
   assert.match(readFileSync(new URL('public/fonts/OFL.txt', root), 'utf8'), /SIL OPEN FONT LICENSE Version 1.1/);
 });
+
+test('development response headers are applied before redirects and API handling', () => {
+  const config = readFileSync(new URL('vite.config.ts', root), 'utf8');
+  assert.match(config, /const middleware:[\s\S]*Object\.entries\(securityHeaders\)[\s\S]*response\.setHeader\(name, value\)[\s\S]*const url = new URL/);
+});

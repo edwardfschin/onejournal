@@ -450,7 +450,7 @@ only. The legacy development launcher remains available with direct Vite and
 its existing loopback API proxy. Vite preview is only a public/demo check,
 not the private release server ([Vite deployment guidance](https://vite.dev/guide/static-deploy.html)).
 
-Scoped evidence: 18 focused frontend tests and 29 Python route/launcher/static
+Scoped evidence: 19 focused frontend tests and 29 Python route/launcher/static
 integration tests passed; one pre-existing opt-in full launcher process smoke
 was not run. Locked build, TypeScript and lint passed. Real signed synthetic
 WebAuthn verified private reads/exports, CSRF rejection/acceptance, logout,
@@ -461,6 +461,10 @@ overflow at tablet/phone sizes. A private Reports URL with no connected access
 service remained locked and displayed no financial view. These browser checks
 were public-only HTTP fixtures; HTTPS/security integration used disposable
 TestClient state, not an owner device or live private browser journey.
+The direct Vite development entry point also started on an isolated port:
+the canonical page returned 200, the query-preserving alias 307 and the absent
+API a JSON 404. Headers were verified before redirects/API handling, not just
+on served files; a focused regression check preserves this ordering.
 
 Remaining: authorized Mac handover with trusted HTTPS and an owner-device
 private navigation/export check; the Python/service release packaging and
