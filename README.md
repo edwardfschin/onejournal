@@ -261,15 +261,17 @@ acceptance boundaries.
 
 The Mac workspace, versioned Python APIs and bounded owner passkey access are
 implemented. The approved static React/Vite alignment now produces `web/dist`
-and has a prepared same-origin Python serving entry point; its live Mac
-switchover has not been performed. Build with `npm ci` then `npm run build` in
+and has an installed same-origin Python serving entry point. The 2026-10-11
+Mac handover uses that static release; the real-device private journey check
+is still required. Build with `npm ci` then `npm run build` in
 `web/`; Node is a build/development dependency, not a static release server.
 `npm start` is a loopback public/demo preview only, not private deployment.
 See the delivery contract for scoped validation and activation instructions.
 `scripts/web/package_mac_release.py` prepares a public wheel/static archive
 from clean committed source. The installed `onejournal-mac-site` command needs
 Python and the existing pinned dependencies, but no checkout or Node runtime.
-This is preparation only: the running Mac site has not been switched.
+The installed Mac release and retained rollback procedure are documented in
+`docs/operator_quickstart.md`; no journal migration or financial refresh is included.
 Hosted deployment, final security/operations/quality acceptance and Phase 1
 owner acceptance remain outstanding. Phase 1 remains 8/12. Streamlit remains
 an internal workflow-validation surface until verified parity and its explicit

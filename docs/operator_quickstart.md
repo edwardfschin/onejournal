@@ -11,10 +11,47 @@ cancel, replace, or modify broker orders or auto-trade.
 ## Current protected Mac website
 
 The owner-approved site uses trusted `https://localhost:4173` and passkey login.
-Use the owner-local procedure in `docs/mac_passkey_access_contract.md` to start
-that protected pair. The launcher below is the older, unauthenticated route;
-it is not the normal restart procedure for the protected site. Do not start
-both pairs or substitute the legacy launcher to bypass a login problem.
+The 2026-10-11 Mac handover installs the public wheel/static release from
+`19b0bd8` in a separate permanent environment. One Python process now serves
+the static website and protected API together on loopback HTTPS; no Node
+runtime or listener on port 8765 is needed. The existing private configuration,
+journal, exact release authorizations, passkeys and certificate are reused.
+
+To start the installed release after stopping its own existing terminal:
+
+```bash
+OJ_RELEASE="$HOME/.onejournal/releases/mac-static-20261011"
+OJ_ACCESS="$HOME/.onejournal/passkey-access"
+"$OJ_RELEASE/python-env/bin/onejournal-mac-site" --owner-local \
+  --web-config "$OJ_ACCESS/local-web.json" \
+  --security-db "$OJ_ACCESS/access.duckdb" \
+  --tls-cert "$OJ_ACCESS/localhost-cert.pem" \
+  --tls-key "$OJ_ACCESS/localhost-key.pem" \
+  --static-dir "$OJ_RELEASE/onejournal-mac-release/static"
+```
+
+Keep that terminal open; Ctrl-C stops this process only. Existing listeners
+block startup; recently closed TCP connections do not. Restart clears browser
+sessions, not saved passkeys. Sign in again in the external browser that holds
+your passkey. No migration, data refresh, provisioning or recovery occurs.
+Do not start the legacy launcher below to bypass a login problem.
+
+Rollback: stop only the installed service, then use the retained protected
+source launcher/environment and the same private files:
+
+```bash
+OJ_ACCESS="$HOME/.onejournal/passkey-access"
+"$OJ_ACCESS/python-env/bin/python" \
+  "$HOME/Projects/OneJournal/scripts/web/run_mac_passkey_prototype.py" serve \
+  --owner-local --web-config "$OJ_ACCESS/local-web.json" \
+  --security-db "$OJ_ACCESS/access.duckdb" \
+  --tls-cert "$OJ_ACCESS/localhost-cert.pem" --tls-key "$OJ_ACCESS/localhost-key.pem"
+```
+
+The canonical source checkout at `cc1fa8a` and its Node environment are retained
+unchanged for this rollback, not used by the new release. Do not run both
+versions together. This is Mac-only activation, not owner-device acceptance or
+hosted/Phase 1 completion. See `docs/mac_passkey_access_contract.md`.
 
 ## Legacy local website launcher: one terminal
 

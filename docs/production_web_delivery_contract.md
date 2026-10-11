@@ -534,6 +534,55 @@ the actual owner-device navigation/export handover.
 No Linux/VPS portability, hosted deployment, production security clearance or
 owner-device acceptance is claimed. Phase 1 remains 8/12.
 
+### Approved Mac installed-release handover: 2026-10-11
+
+Following the packaging checkpoint, the owner instructed the next controlled
+Mac switchover. The corrected public release from `19b0bd8` is installed in a
+new permanent environment outside Git and private evidence, and now serves
+both static frontend and protected API at the existing
+`https://localhost:4173`. It has one loopback Python listener and no Node
+runtime or separate listener on port 8765. Existing localhost RP, certificate,
+private configuration, journal and exact financial authorizations are reused.
+
+Impact: the committed wheel/static artifact is the release input; the existing
+journal and release authorizations remain financial authorities. Only the
+inspected OneJournal process groups were stopped gracefully, followed by the
+owned replacement process. No source synchronization, schema migration,
+financial release selection/publication, enrollment/recovery, broker access,
+hosting or security-policy change was included. Restart removes volatile
+sessions, not saved passkeys. Normal value-free access auditing is retained.
+
+The first startup was refused. Inspection and a disposable socket reproduction
+identified a restart defect: plain bind failed with `EADDRINUSE` on a recently
+closed connection while Uvicorn-compatible
+`SO_REUSEADDR` succeeded. The minimal correction retains refusal of actual
+listeners; six focused packaging/admission checks passed, including immediate
+restart and an active listener already using `SO_REUSEADDR`. The corrected
+release was built from clean committed source and installed separately; neither
+previous environment was patched in place.
+
+Read-only preflight validated the artifact hashes, installed module, existing
+schema/release authority, private permissions and TLS. Live checks verified
+HTTPS shell/assets, query-preserving canonical redirect, existing-passkey
+session state and anonymous CSV denial. The journal, exact authorizations,
+private configuration and TLS files remained byte-identical. Two intentional
+anonymous export checks across the temporary/corrected static processes each
+added one normal value-free access-denial event; no financial endpoint was
+admitted and no journal read-audit or manual write was requested.
+
+The canonical checkout at `cc1fa8a` and its original environment are preserved
+unchanged for rollback. The installed public artifact/environment are
+permanent, not served from a temporary folder. The current start and protected
+rollback commands are in `docs/operator_quickstart.md`; stop only the owned
+installed process before rollback, never overwrite private state or bypass
+authentication. No daemon, scheduler or automatic-login service was added.
+
+Real-device passkey sign-in, private navigation and CSV export confirmation are
+still pending owner verification. Public/anonymous checks and earlier synthetic
+signed-credential evidence do not constitute that acceptance. Phase 1 remains
+8/12; the pending financial refresh and remaining security, operations, quality
+and final owner-acceptance work remain separate.
+
 The web delivery packages map to Phase 1 as follows:
 
 | Phase 1 need | Required web package or dependency |

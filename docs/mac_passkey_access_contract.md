@@ -11,18 +11,19 @@ credentials, enrollment secrets, TLS keys or security databases into Git/chat.
 No financial method, journal schema, release fingerprint or broker authority
 changes. The local development launcher is not hosted-ready.
 
-The 2026-10-11 owner-approved static frontend alignment is prepared, not live
-activated. `run_mac_static_site.py` can serve the copied static artifact and
+The 2026-10-11 owner-approved static frontend alignment and subsequent Mac
+handover serve the installed static artifact and
 the existing protected API together on the same loopback HTTPS origin, without
 a Node server or an API proxy. It requires explicit `--owner-local`, the
 existing private configuration/security/TLS files and a compatible static build;
 it does not provision, migrate, recover or select a release. The same service
-is now installable as `onejournal-mac-site` from the public wheel/static release
-archive; no checkout or Node runtime is needed. This packaging remains
-preparation, not activation or owner-device acceptance. Session, passkey,
+is installed as `onejournal-mac-site` from the public wheel/static release
+archive; no checkout or Node runtime is needed. Mac activation is separate from
+the remaining owner-device navigation/export acceptance. Session, passkey,
 RP, CSRF and financial authority policies are unchanged. Follow the scoped
 preparation/activation boundary in `production_web_delivery_contract.md` before
-switching the accepted runtime. The source development launcher now invokes
+changing the accepted runtime. Use the current installed start/rollback commands
+in `operator_quickstart.md`. The source development launcher now invokes
 Vite directly; its existing trusted-HTTPS/API-proxy procedure below is retained.
 
 ## Data and request flow
