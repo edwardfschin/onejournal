@@ -608,9 +608,12 @@ supersede ADR-0018's private production acceptance gate.
   synthetic passkey and protected, replay-safe journal read/write/logout;
   The subsequent 2026-10-11 approved Mac handover activates the installed
   `19b0bd8` release on the existing HTTPS origin, with unchanged journal,
-  authorizations and passkeys and no Node runtime. The real-device private
-  navigation/export confirmation remains outstanding; no broader acceptance
-  is inferred from activation. See `docs/operator_quickstart.md` for start and rollback.
+  authorizations and passkeys and no Node runtime. The owner subsequently
+  confirmed real-device passkey sign-in and Portfolio navigation, and supplied
+  a Reports current-positions CSV that passed focused structure, lineage and
+  metric-availability checks. The bounded Mac handover check is complete;
+  fresh financial publication and broader Phase 1 acceptance remain separate.
+  See `docs/operator_quickstart.md` for start and rollback.
   Approve the private
   host/environment and production-state design, then rehearse PostgreSQL
   migration where the accepted hosted topology requires it, deployment,

@@ -577,11 +577,16 @@ rollback commands are in `docs/operator_quickstart.md`; stop only the owned
 installed process before rollback, never overwrite private state or bypass
 authentication. No daemon, scheduler or automatic-login service was added.
 
-Real-device passkey sign-in, private navigation and CSV export confirmation are
-still pending owner verification. Public/anonymous checks and earlier synthetic
-signed-credential evidence do not constitute that acceptance. Phase 1 remains
-8/12; the pending financial refresh and remaining security, operations, quality
-and final owner-acceptance work remain separate.
+The owner completed the installed-release device check on 2026-10-11: real
+passkey sign-in and opening Portfolio worked in the external browser. The
+owner-supplied Reports current-positions CSV matched the exporter schema, with
+consistent row widths, no duplicate position keys, valid decimal/date fields,
+consistent release/selection lineage and matching metric availability fields.
+The private CSV and its financial contents remain outside Git. This closes the
+bounded Mac handover check; it is not a new financial reconciliation, freshness
+claim, hosted acceptance or final Phase 1 acceptance. Phase 1 remains 8/12;
+the pending financial refresh and remaining security, operations, quality and
+final owner-acceptance work remain separate.
 
 The web delivery packages map to Phase 1 as follows:
 

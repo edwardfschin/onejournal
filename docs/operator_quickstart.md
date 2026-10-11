@@ -50,8 +50,10 @@ OJ_ACCESS="$HOME/.onejournal/passkey-access"
 
 The canonical source checkout at `cc1fa8a` and its Node environment are retained
 unchanged for this rollback, not used by the new release. Do not run both
-versions together. This is Mac-only activation, not owner-device acceptance or
-hosted/Phase 1 completion. See `docs/mac_passkey_access_contract.md`.
+versions together. The owner verified passkey sign-in, Portfolio navigation and
+Reports current-positions export on 2026-10-11. This is a completed bounded Mac
+handover check, not hosted/Phase 1 completion. See
+`docs/mac_passkey_access_contract.md`.
 
 ## Legacy local website launcher: one terminal
 

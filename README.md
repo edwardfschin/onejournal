@@ -262,8 +262,9 @@ acceptance boundaries.
 The Mac workspace, versioned Python APIs and bounded owner passkey access are
 implemented. The approved static React/Vite alignment now produces `web/dist`
 and has an installed same-origin Python serving entry point. The 2026-10-11
-Mac handover uses that static release; the real-device private journey check
-is still required. Build with `npm ci` then `npm run build` in
+Mac handover uses that static release; the owner verified real-device passkey
+sign-in, Portfolio navigation and Reports current-positions export.
+Build with `npm ci` then `npm run build` in
 `web/`; Node is a build/development dependency, not a static release server.
 `npm start` is a loopback public/demo preview only, not private deployment.
 See the delivery contract for scoped validation and activation instructions.

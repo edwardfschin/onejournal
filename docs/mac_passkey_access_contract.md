@@ -18,8 +18,11 @@ a Node server or an API proxy. It requires explicit `--owner-local`, the
 existing private configuration/security/TLS files and a compatible static build;
 it does not provision, migrate, recover or select a release. The same service
 is installed as `onejournal-mac-site` from the public wheel/static release
-archive; no checkout or Node runtime is needed. Mac activation is separate from
-the remaining owner-device navigation/export acceptance. Session, passkey,
+archive; no checkout or Node runtime is needed. On 2026-10-11 the owner confirmed
+real-device passkey sign-in and Portfolio navigation; the supplied Reports
+current-positions CSV passed focused export-contract checks. This completes the
+bounded installed-release Mac handover check, not broader security or Phase 1
+acceptance. Session, passkey,
 RP, CSRF and financial authority policies are unchanged. Follow the scoped
 preparation/activation boundary in `production_web_delivery_contract.md` before
 changing the accepted runtime. Use the current installed start/rollback commands
