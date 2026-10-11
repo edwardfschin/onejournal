@@ -35,6 +35,7 @@ class CapturePreparation:
     runtime_sha256: str
     window_start: date | None = None
     window_end: date | None = None
+    capture_python: PurePosixPath | None = None
 
 
 def _path_expression(path: PurePosixPath) -> ast.expr:
@@ -57,6 +58,11 @@ def prepare_capture_runner(source: bytes, spec: CapturePreparation) -> bytes:
     root = spec.owner_run_root
     if not root.is_absolute() or len(root.parts) < 4 or ".." in root.parts:
         raise CapturePreparationError("a named absolute owner run directory is required")
+    python = spec.capture_python
+    if python is not None and (not python.is_absolute() or ".." in python.parts
+        or len(python.parts) < 6 or python.parts[-2:] != ("bin", "python3.12")
+        or root == python.parents[1] or root in python.parents):
+        raise CapturePreparationError("isolated Python must name a separate absolute environment's bin/python3.12")
     if spec.kind == "history":
         if (spec.window_start is None or spec.window_end is None
             or not 1 <= (spec.window_end - spec.window_start).days + 1 <= 30
@@ -85,6 +91,8 @@ def prepare_capture_runner(source: bytes, spec: CapturePreparation) -> bytes:
                 "EXPECTED_AUTH_SHA256", "EXPECTED_CONF_SHA256", "EXPECTED_PYTHON_SHA256"}
     if spec.kind == "history":
         required |= {"WINDOW_START", "WINDOW_END", "START_TIMESTAMP", "END_TIMESTAMP"}
+    if python is not None:
+        required.add("PYTHON_EXECUTABLE")
     if not required <= assignments.keys() or not {"main", "_fetch"} <= functions.keys():
         raise CapturePreparationError("runner structure differs from the reviewed template")
     if any(name.startswith("_REFRESH_") for name in (*assignments, *functions)):
@@ -108,6 +116,8 @@ def prepare_capture_runner(source: bytes, spec: CapturePreparation) -> bytes:
         "EXPECTED_CONF_SHA256": ast.Constant(spec.conf_sha256),
         "EXPECTED_PYTHON_SHA256": ast.Constant(spec.runtime_sha256),
     }
+    if python is not None:
+        replacements["PYTHON_EXECUTABLE"] = _path_expression(python)
     if spec.kind == "history":
         assert spec.window_start is not None and spec.window_end is not None
         replacements.update({
@@ -154,6 +164,28 @@ def _REFRESH_require_transport():
     main_index = tree.body.index(functions["main"])
     tree.body[main_index:main_index] = guard
     functions["main"].body[0:0] = ast.parse("_REFRESH_require_capture_day(datetime.now(UTC))\n_REFRESH_require_transport()").body
+    if python is not None:
+        isolation_guard = ast.parse('''
+def _REFRESH_require_isolated_runtime():
+    import site
+    expected = PYTHON_EXECUTABLE.parent.parent
+    if (not sys.flags.isolated or site.ENABLE_USER_SITE is not False
+        or Path(sys.executable) != PYTHON_EXECUTABLE
+        or Path(sys.prefix) != expected or sys.prefix == sys.base_prefix
+        or expected.is_symlink() or stat.S_IMODE(expected.stat().st_mode) != 0o700):
+        raise CaptureError("Run only with the approved private isolated Python using -I -B; stop before credentials or GETs.")
+    configuration = (expected / "pyvenv.cfg").read_text()
+    settings = dict(line.split("=", 1) for line in configuration.splitlines() if "=" in line)
+    if {key.strip(): value.strip().lower() for key, value in settings.items()}.get("include-system-site-packages") != "false":
+        raise CaptureError("Capture runtime must not inherit shared packages.")
+    import requests, urllib3
+    from importlib.metadata import version
+    for name, module in (("requests", requests), ("urllib3", urllib3)):
+        if not Path(module.__file__).resolve().is_relative_to(expected.resolve()) or module.__version__ != version(name):
+            raise CaptureError("Capture HTTP module origin/version differs from the isolated runtime.")
+''').body[0]
+        tree.body.insert(tree.body.index(functions["main"]), isolation_guard)
+        functions["main"].body.insert(1, ast.parse("_REFRESH_require_isolated_runtime()").body[0])
     # Check immediately before each GET and after its response. Crossing a date
     # boundary leaves incomplete evidence; it cannot produce a complete manifest.
     fetch = functions["_fetch"]

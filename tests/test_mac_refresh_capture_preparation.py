@@ -20,6 +20,7 @@ from onejournal.provider_connectors.capture_preparation import (
 SOURCE = b'''
 from datetime import UTC, datetime
 from pathlib import Path
+import stat
 import sys
 RUN_UID = "synthetic-old-run"
 APPROVAL_ID = "synthetic-old-approval"
@@ -30,6 +31,7 @@ RUNNER_PATH = RUN_ROOT / "old.py"
 EXPECTED_AUTH_SHA256 = "old-auth"
 EXPECTED_CONF_SHA256 = "old-conf"
 EXPECTED_PYTHON_SHA256 = "old-runtime"
+PYTHON_EXECUTABLE = Path("/synthetic/bin/python3.12")
 OWNER_UID = "synthetic-owner"
 OWNER_EPOCH_UID = "synthetic-epoch"
 EXPECTED_ACK_SHA256 = "synthetic-ack"
@@ -151,6 +153,47 @@ class MacRefreshCapturePreparationTests(unittest.TestCase):
         prepared = prepare_capture_runner(SOURCE, specification())
         with self.assertRaisesRegex(CapturePreparationError, "retained source"):
             prepare_capture_runner(prepared, replace(specification(), reviewed_source_sha256=sha256(prepared).hexdigest()))
+
+    def test_isolated_runtime_rebinds_only_the_explicit_executable_and_rejects_shared_runtime(self):
+        python = PurePosixPath("/synthetic/private/capture-runtime/python-env/bin/python3.12")
+        prepared = prepare_capture_runner(SOURCE, replace(specification(), capture_python=python))
+        values = namespace(prepared)
+        self.assertEqual(str(values["PYTHON_EXECUTABLE"]), str(python))
+        main = next(node for node in ast.parse(prepared).body if isinstance(node, ast.FunctionDef) and node.name == "main")
+        self.assertEqual([node.value.func.id for node in main.body[:3]],
+                         ["_REFRESH_require_capture_day", "_REFRESH_require_isolated_runtime", "_REFRESH_require_transport"])
+        with self.assertRaises(values["CaptureError"]):
+            values["_REFRESH_require_isolated_runtime"]()
+        for invalid in (PurePosixPath("relative/bin/python3.12"), PurePosixPath("/synthetic/private/captures/new-run/bin/python3.12")):
+            with self.assertRaises(CapturePreparationError):
+                prepare_capture_runner(SOURCE, replace(specification(), capture_python=invalid))
+
+    def test_current_proposed_windows_and_expired_previous_day(self):
+        spec = replace(specification("history"), asof=date(2026, 10, 11), window_start=date(2026, 10, 5), window_end=date(2026, 10, 11))
+        values = namespace(prepare_capture_runner(SOURCE, spec))
+        self.assertEqual(values["END_TIMESTAMP"], "2026-10-11T23:59:59.999Z")
+        guard = values["_REFRESH_require_capture_day"]
+        guard(datetime(2026, 10, 11, 4, tzinfo=UTC))
+        for instant in (datetime(2026, 10, 11, 2, tzinfo=UTC), datetime(2026, 10, 12, 0, tzinfo=UTC)):
+            with self.assertRaises(values["CaptureError"]): guard(instant)
+
+    def test_isolated_runtime_accepts_only_private_no_shared_packages_and_matching_module_origins(self):
+        from types import SimpleNamespace
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary).resolve()
+            python = root / "bin/python3.12"
+            configuration = root / "pyvenv.cfg"
+            configuration.write_text("include-system-site-packages = false\n")
+            values = namespace(prepare_capture_runner(SOURCE, replace(specification(), capture_python=PurePosixPath(str(python)))))
+            requests = SimpleNamespace(__file__=str(root / "lib/requests/__init__.py"), __version__="2.33.0")
+            urllib3 = SimpleNamespace(__file__=str(root / "lib/urllib3/__init__.py"), __version__="2.8.0")
+            with patch("sys.flags", SimpleNamespace(isolated=1)), patch("sys.executable", str(python)), patch("sys.prefix", str(root)), patch("site.ENABLE_USER_SITE", False), patch.dict("sys.modules", {"requests": requests, "urllib3": urllib3}), patch("importlib.metadata.version", side_effect=lambda name: {"requests":"2.33.0","urllib3":"2.8.0"}[name]):
+                values["_REFRESH_require_isolated_runtime"]()
+                requests.__file__ = "/synthetic/shared/requests/__init__.py"
+                with self.assertRaises(values["CaptureError"]): values["_REFRESH_require_isolated_runtime"]()
+                requests.__file__ = str(root / "lib/requests/__init__.py")
+                configuration.write_text("include-system-site-packages = true\n")
+                with self.assertRaises(values["CaptureError"]): values["_REFRESH_require_isolated_runtime"]()
 
     def test_operator_writes_private_source_once_and_rejects_overwrite(self):
         with tempfile.TemporaryDirectory() as temporary:

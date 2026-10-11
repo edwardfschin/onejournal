@@ -34,6 +34,8 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--auth-sha256", required=True)
     parser.add_argument("--conf-sha256", required=True)
     parser.add_argument("--runtime-sha256", required=True)
+    parser.add_argument("--capture-python", type=PurePosixPath,
+        help="Reviewed separate capture environment's absolute bin/python3.12; not installed by this command")
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args(argv)
     try:
@@ -52,6 +54,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             reviewed_source_sha256=args.reviewed_source_sha256, auth_sha256=args.auth_sha256,
             conf_sha256=args.conf_sha256, runtime_sha256=args.runtime_sha256,
             window_start=args.window_start, window_end=args.window_end,
+            capture_python=args.capture_python,
         ))
         descriptor = os.open(args.output, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
         with os.fdopen(descriptor, "wb") as handle:

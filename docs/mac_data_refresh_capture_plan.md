@@ -1,6 +1,6 @@
 # Mac data-refresh capture preparation
 
-## Status: command preparation validated; execution blocked on HTTP runtime
+## Status: isolated setup prepared; installation and acquisition not authorized
 
 Prepared on 2026-10-09 for the existing private single-owner `Primary` scope.
 The offline preparation command now produces fixed, private owner-side runner
@@ -9,6 +9,90 @@ authorization or a new provider policy. No provider call, credential read,
 broker evidence creation, transfer, database write or service restart was
 performed during preparation. Local private program files are not broker
 evidence and must not be committed.
+
+## Superseding preparation: 2026-10-11
+
+The October 9 scope is expired. The proposal below supersedes it; subsequent
+October 9 sections are historical evidence, not authority to run old commands.
+No remote installation, broker access or live update has occurred.
+
+Read-only checks on `one-prod` reconfirmed the configured active VPS role,
+expected OS user, unchanged auth/config/base-Python hashes and unchanged private
+acknowledgement/binding pins. The acknowledgement validates against current
+policy/time without renewal. The shared runtime still has Requests 2.31.0 and
+urllib3 2.0.7; it must not run the capture. Python 3.12's `venv` module and pip
+24.0 are available. No client was imported or token read during these checks.
+
+The separate runtime root is the retained position runner's existing private
+`OUTPUT_PARENT` plus `ONEJOURNAL-MAC-CAPTURE-RUNTIME-20261011-01`, with environment
+child `python-env`. It and all proposed run roots are absent; their existing
+owner-side parents are non-symlink `0700` directories. After authorization,
+create only these named roots using a private umask. Use the inspected base
+Python's `venv --copies --without-pip`, without inherited system packages.
+Existing pip's `--python` target installs only into the new environment.
+Do not upgrade shared OneBot packages, install OS packages, change services,
+change credential paths or copy a token.
+
+`config/mac_refresh_capture_requirements.lock` pins five universal wheels and
+official PyPI hashes: Requests 2.33.0, urllib3 2.8.0, certifi 2026.7.22,
+charset-normalizer 3.5.2 and idna 3.20. Metadata supports Python 3.12 and includes
+all non-extra Requests dependencies. All five were downloaded locally with hash
+enforcement; an isolated process imported the exact wheel bytes, loaded their
+CA bundle and read a synthetic streamed response without network I/O. This is
+not proof of the uninstalled VPS environment.
+
+Transfer only reviewed wheels and the lock file into the named new runtime root.
+Install with `--no-index --find-links`, `--require-hashes` and
+`--only-binary=:all:`; do not fetch or compile other packages remotely. Before
+broker access, validate its private permissions, absent shared/user package
+inheritance, exact versions/module origins, installation consistency, capture
+guards and one synthetic response. The copied non-symlink executable must match
+the inspected base binary SHA-256 or execution stops for re-review. Recheck the
+existing auth/config and private acknowledgement/binding pins without opening
+the token store during setup validation.
+
+The preparer's optional `--capture-python` explicitly rebinds the isolated
+`bin/python3.12`. Launch with `-I -B`. Added guards enforce isolated mode,
+disabled user site, exact executable/prefix, `0700` environment, no system
+packages and matching Requests/urllib3 module origin/version before auth/token
+access. Original hash checks, credential ownership and acquisition profiles
+are preserved; no public contract is changed.
+
+Proposed approval: `ONEJOURNAL-MAC-REFRESH-20261011-CAPTURE-01` (not yet granted).
+
+| Order | New run identity | Scope | GETs |
+| --- | --- | --- | ---: |
+| 1 | `ONEJOURNAL-MAC-REFRESH-20261011-POSITION-01` | Complete existing-account positions | 1 |
+| 2 | `ONEJOURNAL-MAC-REFRESH-20261011-HISTORY-W01-01` | Orders then transactions, September 5–October 4 | 2 |
+| 3 | `ONEJOURNAL-MAC-REFRESH-20261011-HISTORY-W02-01` | Orders then transactions, October 5–11 | 2 |
+
+Each new run stays under its retained runner's existing private `OUTPUT_PARENT`.
+Use only the known account binding; no discovery, quotes, order writes, retry,
+redirect or OAuth refresh. Expired tokens stop, without a refresh or owner
+change. Write manifests last; preserve incomplete evidence on failure.
+
+The fixed UTC/New York date guard allows capture from **12:00 Singapore time
+on October 11 until before 08:00 on October 12**. Do not schedule automatically
+or roll the date forward. October 11 is Sunday: receipt time is not a new market
+session, current prices or full-day financial acceptance. Keep actual timestamps
+and existing cutoff rules.
+
+New private Mac destination, confirmed absent:
+`/Users/edward/Projects/Private/OneJournal/mac-refresh/ONEJOURNAL-MAC-REFRESH-20261011-01`.
+Transfer only separate acquisition bundles, producer programs and required
+lineage, preserving checksums and `0700`/`0600` permissions. Never transfer the
+environment, token or private account-binding source. Use existing credential-free
+intake validation; do not overwrite old evidence or persist journal state.
+
+Twelve focused tests pass, including isolated-runtime acceptance/rejection,
+module-origin/shared-package guards and the new dates. The three updated private
+programs compile on owner Python 3.12.3 in memory without execution. The largest
+coherent next approval can cover this named installation, five broker GETs
+conditional on its validation, new evidence, Mac transfer and offline validation.
+It excludes live DB writes, report release, API/site restart, trading, shared
+OneBot changes or another capture after failure/expiry. Setup rollback is to
+leave the new environment unused; no shared state needs restoration. Preserve
+incomplete evidence; deletion is not automatically authorized.
 
 The accepted report covers 2026-03-06 through 2026-09-04. The reviewed local v2
 assemblies have a 2026-09-04 snapshot; a newer assembled update was not found.
@@ -256,7 +340,7 @@ synthetic tests and operator documentation; downstream
 intake, assembly, history revision, financial calculation and report-release
 contracts are unchanged. No persisted state or user-facing runtime is changed.
 Validation is the offline date-window calculation, source/profile comparison,
-nine focused tests and documentation/Git diff checks. No broad test run or
-provider probe is needed. Rollback is a focused source revert; uninstalled
+twelve focused tests, exact locked-wheel synthetic check and documentation/Git
+diff checks. No broad test run or provider probe is needed. Rollback is a focused source revert; uninstalled
 private prepared programs do not affect the running system. Do not delete
 retained private evidence as part of rollback.
