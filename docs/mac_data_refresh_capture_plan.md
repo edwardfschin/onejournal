@@ -2,6 +2,63 @@
 
 ## Status: capture, mapping and offline coverage complete; financial release pending
 
+### Next bounded correction proposal: 2026-10-11
+
+This section is a proposal, not approved contract policy or broker authority.
+Read-only preparation from the validated 64-position binding created a new
+private `quote-preparation-01/scope-proposal.json` below the Mac refresh root.
+It contains the exact sorted provider symbols and two disjoint batches of
+**50 and 14**; membership, uniqueness, ordering and recombination were checked.
+No instrument is dropped because it lacks fill-history eligibility. Proposal
+SHA-256: `fd149f54a86fa17ca62206a07d3f1bd74acd2189637dc46b62ed819f32a3bcdd`.
+The proposal is explicitly non-executable and unaccepted financially.
+
+The existing code has three concrete compatibility blockers:
+
+1. The batch acquisition profile and converter accept exactly one quote batch
+   of at most 50 instruments. The assembly also accepts one converted quote
+   capture. They cannot express the complete 64-instrument scope. The proposed
+   additive path allows two disjoint batches, each retaining the existing
+   50-symbol ceiling and independent immutable response lineage.
+2. Assembly builder and read-back compare UTC history-window end dates with
+   the position's New York date. October 11 UTC history and the October 10
+   snapshot therefore fail `lifecycle evidence extends beyond asof`. This
+   exact guard was reproduced offline. Migration 0020 also encodes the same
+   date comparison in its run-table CHECK constraint; changing only Python
+   would leave persistence broken. The proposed versioned correction preserves
+   actual UTC query dates and bounds admitted financial activity by the exact
+   snapshot receipt instant, with explicit exclusions for later rows.
+3. Quote capture validation correctly requires a quote's `asof` to match its
+   provider timestamp in New York. Assembly currently requires that date to
+   equal the snapshot date. A last-session October 9 quote therefore cannot
+   accompany an October 10 snapshot. This is a structural incompatibility, not
+   evidence that newly fetched quotes necessarily have October 9 timestamps.
+   The proposed correction keeps quote date, snapshot date and evaluation
+   instant distinct, relying on existing same-provider session/freshness
+   authority. It does not relabel a quote, infer a session or loosen freshness.
+
+The exact candidate request scope is two quote GETs with
+`fields=quote,reference`, plus three same-provider equity/option market-hours
+GETs for October 9, 10 and 11: **five GETs total**, no retry, account discovery,
+order write or credential transfer. October 9 is only a proposed normal
+reference and must be confirmed by returned provider schedule evidence. Actual
+quote/evaluation dates must be covered by those responses. The proposed
+schedule validity ends October 12 at 00:00 UTC. Expired or insufficient scope
+requires repreparation; no invented trading calendar, waiting rule or timestamp
+change is permitted. No new broker GET is approved or performed here.
+
+One coherent implementation approval should cover the additive acquisition and
+assembly contracts, affected conversion/read-back/materialization consumers,
+necessary additive migration preparation, focused synthetic regressions,
+disposable-copy rehearsal where evidence permits, documentation, commit and
+push to `codex/pnl-02-market-data-contract`. Preserve v1/v2 fingerprints,
+accepted releases and all eight unresolved positions. Live migration,
+persistence, broker access, deployment and runtime changes remain excluded.
+The impact is the credential-free evidence pipeline and its private persistence
+format, not the frontend or a new provider/security policy. Rollback retains
+the accepted September release and old contracts. No source, schema, financial
+policy or live state was changed during this proposal-only investigation.
+
 ### Date correction: 2026-10-11
 
 The noon Singapore restriction was introduced by OneJournal's preparer, not
