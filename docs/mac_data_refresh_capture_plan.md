@@ -2,6 +2,31 @@
 
 ## Status: saved-data calculation and copy rehearsal complete; owner review and live release pending
 
+### Guarded release-path close-out: 2026-10-11
+
+The owner's request to proceed with the next close-out steps covered local
+release-path preparation, focused validation and source delivery, not acceptance
+of unseen financial values or a live write/restart. The persistence command now
+supports an explicit `--expected-migration-version 0028`; its unchanged default
+still requires 0026. Exact 0027/0028 checksums are required and rechecked at the
+write boundary, with existing authorization, predecessor, private backup,
+quiescence, append/read-back and no-provider/no-restart guards intact.
+
+Nineteen focused synthetic operator tests passed. New checks cover explicit
+schema selection, append/replay/preservation and mismatched or changed schema
+ledgers. This removes the source compatibility blocker; it does not authorize
+the prepared results. A read-only run on the actual schema-0028 financial
+rehearsal copy validated the **existing accepted September report**, preserving
+its 230 items, 57 omissions and 49 retained audit rows; source-copy and live
+database bytes were unchanged. It did not accept or persist the refreshed
+257-allocation result. The private `release-writer-readonly-audit.json` records
+that exact scope. The private `owner-review.html` presents the actual saved
+snapshot and bounded realized figures without creating an acceptance record.
+Review of changed financial results and a separately bounded live update remain
+outstanding. P1-08 is already complete; this maintenance refresh is not a
+prerequisite for beginning P1-09 security preparation, and does not establish
+P1-09 acceptance or change the formal **8/12** count.
+
 ### Approved halted-price handling and financial rehearsal: 2026-10-11
 
 The owner approved extending the existing value-free unavailable treatment to
@@ -56,9 +81,9 @@ reason roundtrip and persistence, legacy preservation and actual downstream
 assembly exclusion. No broad website or whole-repository test run was needed.
 
 Remaining work is review/acceptance of these changed financial results, followed
-by a separately authorized live release chunk. The live-report writer still
-requires schema 0026 and must gain exact schema-0028 support before that chunk;
-the completed copy rehearsal does not authorize bypassing it. Formal Phase 1
+by a separately authorized live release chunk. At this earlier checkpoint, the
+live writer required schema 0026; the explicit 0028 extension is recorded above.
+Neither source preparation nor copy rehearsal authorizes live use. Formal Phase 1
 remains **8/12**. This maintenance refresh does not reopen accepted P1-08 or
 complete a later roadmap item.
 

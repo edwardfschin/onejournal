@@ -358,7 +358,7 @@ class Phase1ReportingPersistenceOperatorTests(unittest.TestCase):
         self.assertEqual((replay.release_count, replay.audit_count), (2, 1))
 
     def test_0028_preparation_and_copy_rehearsal_preserve_live_persistence_boundary(self):
-        first, _, predecessor = self._seed_existing_release()
+        first, prior_path, predecessor = self._seed_existing_release()
         apply_schema_migrations(self.db, migrations_dir=MIGRATIONS, target_version='0028')
         self.db.chmod(0o600)
         second = self._prepare(release_uid='report-release-cutoff', predecessor=predecessor,
@@ -380,6 +380,89 @@ class Phase1ReportingPersistenceOperatorTests(unittest.TestCase):
         with self.assertRaisesRegex(Phase1ReportingPersistenceOperatorError, 'exactly at migration 0026'):
             self._authorized_execution(second, predecessor)
         self.assertEqual(file_sha256(self.db), before)
+        from scripts.journal.persist_phase1_reporting_release import main
+        output=StringIO()
+        with self._preparation_context(), redirect_stdout(output):
+            self.assertEqual(main([
+                '--db',str(self.db),'--broker-current-authorization',str(self.authorization_path),
+                '--prepared-package',str(package),'--expected-database-sha256',before,
+                '--expected-report-fingerprint',second.report_release_fingerprint,
+                '--predecessor-report-authorization',str(prior_path),
+                '--expected-migration-version','0028',
+            ]),0)
+        self.assertFalse(json.loads(output.getvalue())['write_requested'])
+        self.assertEqual(json.loads(output.getvalue())['migration_version'],'0028')
+        self.assertEqual(file_sha256(self.db),before)
+        backup=self._backup()
+        common=dict(release=second,authorization_path=package/AUTHORIZATION_FILENAME,
+            expected_report_release_fingerprint=second.report_release_fingerprint,
+            predecessor_authorization=predecessor,expected_migration_version='0028',persist=True)
+        execution=execute_reporting_release_persistence(self.db,**common,
+            expected_database_sha256=before,verified_backup_path=backup)
+        self.assertTrue(execution.created)
+        self.assertEqual(execution.privacy_safe_audit()['migration_version'],'0028')
+        self.assertEqual((execution.release_count,execution.audit_count),(2,1))
+        self.assertEqual(file_sha256(backup),before)
+        with duckdb.connect(str(self.db),read_only=True) as con:
+            self.assertEqual(load_reporting_release(con,report_release_uid=first.report_release_uid),first)
+            self.assertEqual(load_reporting_release(con,report_release_uid=second.report_release_uid),second)
+            self.assertEqual(con.execute('SELECT count(*) FROM phase1_reporting_api_audit_events').fetchone()[0],1)
+        replay_backup=self.root/'cutoff-replay-backup.duckdb'
+        shutil.copy2(self.db,replay_backup)
+        replay=execute_reporting_release_persistence(self.db,**common,
+            expected_database_sha256=file_sha256(self.db),verified_backup_path=replay_backup)
+        self.assertTrue(replay.replayed)
+        self.assertEqual((replay.release_count,replay.audit_count),(2,1))
+
+    def test_0028_pin_and_exact_snapshot_ledgers_reject_before_write(self):
+        _, second, package, _, predecessor, _=self._update_package()
+        common=dict(release=second,authorization_path=package/AUTHORIZATION_FILENAME,
+            expected_report_release_fingerprint=second.report_release_fingerprint,
+            predecessor_authorization=predecessor)
+        before=file_sha256(self.db)
+        with self.assertRaisesRegex(ValueError,'exactly at migration 0028'):
+            execute_reporting_release_persistence(self.db,**common,
+                expected_database_sha256=before,expected_migration_version='0028')
+        with self.assertRaisesRegex(ValueError,'exactly 0026 or 0028'):
+            execute_reporting_release_persistence(self.db,**common,
+                expected_database_sha256=before,expected_migration_version='0027')
+        self.assertEqual(file_sha256(self.db),before)
+        apply_schema_migrations(self.db,migrations_dir=MIGRATIONS,target_version='0028')
+        for version in ('0027','0028'):
+            with self.subTest(version=version):
+                with duckdb.connect(str(self.db)) as con:
+                    checksum=con.execute('SELECT file_checksum FROM schema_migrations WHERE version=?',[version]).fetchone()[0]
+                    con.execute('UPDATE schema_migrations SET file_checksum=? WHERE version=?',['0'*64,version])
+                before=file_sha256(self.db)
+                with self.assertRaisesRegex(ValueError,'exact migration '+version):
+                    execute_reporting_release_persistence(self.db,**common,
+                        expected_database_sha256=before,expected_migration_version='0028')
+                self.assertEqual(file_sha256(self.db),before)
+                with duckdb.connect(str(self.db)) as con:
+                    con.execute('UPDATE schema_migrations SET file_checksum=? WHERE version=?',[checksum,version])
+
+    def test_0028_ledger_is_rechecked_at_write_boundary(self):
+        import onejournal.journal.phase1_reporting_persistence_operator as operator
+        _, second, package, _, predecessor, _=self._update_package()
+        apply_schema_migrations(self.db,migrations_dir=MIGRATIONS,target_version='0028')
+        before=file_sha256(self.db)
+        backup=self._backup()
+        inspect=operator._inspect_persistence_target
+        def change_after_inspection(*args,**kwargs):
+            result=inspect(*args,**kwargs)
+            with duckdb.connect(str(self.db)) as con:
+                con.execute("UPDATE schema_migrations SET file_checksum=? WHERE version='0028'",['0'*64])
+            return result
+        with patch.object(operator,'_inspect_persistence_target',side_effect=change_after_inspection):
+            with self.assertRaisesRegex(ValueError,'exact migration 0028'):
+                execute_reporting_release_persistence(self.db,release=second,
+                    authorization_path=package/AUTHORIZATION_FILENAME,
+                    expected_database_sha256=before,expected_report_release_fingerprint=second.report_release_fingerprint,
+                    predecessor_authorization=predecessor,expected_migration_version='0028',
+                    persist=True,verified_backup_path=backup)
+        with duckdb.connect(str(self.db),read_only=True) as con:
+            self.assertEqual(con.execute('SELECT count(*) FROM phase1_reporting_releases').fetchone()[0],1)
+        self.assertEqual(file_sha256(backup),before)
 
     def test_update_requires_explicit_exact_predecessor_and_new_report_acceptance(self) -> None:
         _, _, predecessor = self._seed_existing_release()

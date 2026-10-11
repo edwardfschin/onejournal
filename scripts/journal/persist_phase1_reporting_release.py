@@ -44,6 +44,10 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--expected-database-sha256", required=True)
     parser.add_argument("--expected-report-fingerprint", required=True)
     parser.add_argument(
+        "--expected-migration-version", choices=("0026", "0028"), default="0026",
+        help="Pin the approved target schema; snapshot-history releases require explicit 0028",
+    )
+    parser.add_argument(
         "--predecessor-report-authorization", type=Path,
         help="Exact private predecessor authorization matching an update's v2 prepared package",
     )
@@ -94,6 +98,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             persist=args.persist,
             verified_backup_path=args.verified_backup,
             predecessor_authorization=predecessor,
+            expected_migration_version=args.expected_migration_version,
         )
     except (OSError, ValueError, RuntimeError) as exc:
         raise SystemExit(f"FAIL: {exc}") from exc

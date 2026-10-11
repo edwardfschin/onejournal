@@ -158,7 +158,7 @@ full report/audit-state fingerprint. The v1 financial release and authorization
 contracts are unchanged. Without the explicit predecessor, unrelated existing
 state remains rejected; an exact existing target can be verified as a replay.
 
-Updates require migration 0026, the same account/alias scope, a new report owner
+Updates require explicitly pinned migration 0026 or 0028, the same account/alias scope, a new report owner
 acceptance and a new financial acceptance whenever its fingerprint changes.
 Acceptance identities cannot be recycled for different values from any prior
 release. The predecessor is named explicitly, not inferred from timestamp or
@@ -194,9 +194,37 @@ The realized calculator uses a separate fingerprint-bound exact-UTC-cutoff
 authority and calculation version for new snapshot history, preserving all legacy
 result fingerprints. Financially changed inputs cannot reuse old acceptances.
 No new private financial release or acceptance was created in this pass.
-The live persistence command intentionally still rejects migration 0028; extending
-that command and actual live migration/persistence require the later bounded live
-scope. Copy rehearsal support must not be mistaken for live readiness.
+At that preparation checkpoint, the live command still rejected migration 0028.
+The subsequent guarded extension below supports it explicitly; actual live
+migration/persistence still require a separate bounded scope.
+
+### Explicit snapshot-schema persistence preparation: 2026-10-11
+
+The owner requested the next local close-out steps. The guarded write command
+now supports `--expected-migration-version 0028`, while omission retains the old
+0026 default and rejects a 0028 target. Only these two versions are supported.
+The additive execution argument has the same default. Its value-free audit
+reports the actual pinned/verified version, rather than always reporting 0026.
+Package, financial release, authorization and API contracts remain unchanged.
+
+The 0028 path requires the snapshot evidence/history relations and exact 0027
+and 0028 ledger checksums, alongside the existing history contract. Version and
+snapshot checks run before inspection and again at the writable boundary.
+Existing exact database/report hashes, separate financial acceptances, explicit
+predecessor, account alias, unchanged prior report/audit state, quiescence,
+distinct byte-identical backup, append-only write and exact read-back guards
+remain mandatory. The command cannot migrate, call brokers or restart services.
+
+Nineteen focused operator tests passed on synthetic temporary databases. They
+cover the explicit 0028 dry-run, backed-up append/replay, old-default rejection,
+wrong-version/checksum rejection, checksum changes before writing, unchanged
+prior reports/audit and existing 0026/package/precision/authorization behavior.
+The saved financial rehearsal does not create acceptance of changed results.
+An actual schema-0028 rehearsal-copy dry-run verified the existing accepted
+September release with the explicit version pin. It reported the preserved
+230 items, 57 omissions and 49 audit rows, and both copy and live file hashes
+remained unchanged. This was not a refreshed financial release or its acceptance.
+No live migration, report write or runtime activation occurred in this step.
 
 | Area | Contracted impact |
 |---|---|

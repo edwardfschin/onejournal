@@ -139,8 +139,13 @@ For a subsequent release, both `prepare_phase1_reporting_release.py` and
 release authorization file. The predecessor is explicit, never automatically
 selected as "latest." Preparation writes a v2 package binding that predecessor
 and the existing report/audit state; persistence must use the same predecessor.
-The update requires migration 0026, an unchanged account/alias scope and a fresh
-report acceptance. Changed financial fingerprints also require fresh financial
+The update requires migration 0026 by default. A snapshot-history target already
+at exact migration 0028 requires explicit `--expected-migration-version 0028`
+on the persistence command; it never migrates the database implicitly. A version
+mismatch or mismatched 0027/0028 schema ledger fails before a write, and the exact
+version and snapshot contracts are rechecked at the write boundary. The audit
+reports the selected, verified version. An unchanged account/alias scope and a
+fresh report acceptance are still required. Changed financial fingerprints also require fresh financial
 acceptance identities. Existing unchanged financial results can retain their
 existing acceptance. Initial-release v1 packages remain supported without the
 new option; unrelated existing releases still block that initial-release path.

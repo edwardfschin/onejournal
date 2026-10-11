@@ -53,6 +53,7 @@ PERSISTENCE_AUDIT_SCHEMA = "onejournal.phase1-report-release-persistence-audit.v
 SUPPORTED_SOURCE_MIGRATION_VERSIONS = {"0025", "0026", "0028"}
 REHEARSAL_MIGRATION_VERSION = "0026"
 PERSISTENCE_MIGRATION_VERSION = "0026"
+SUPPORTED_PERSISTENCE_MIGRATION_VERSIONS = {"0026", "0028"}
 AUTHORIZATION_FILENAME = "report-release-authorization.json"
 MANIFEST_FILENAME = "manifest.json"
 _DIGEST_RE = re.compile(r"[0-9a-f]{64}")
@@ -104,6 +105,7 @@ class ReportingReleasePersistenceExecution:
     realized_item_count: int
     omission_count: int
     audit_count: int
+    migration_version: str = PERSISTENCE_MIGRATION_VERSION
 
     def privacy_safe_audit(self) -> dict[str, object]:
         """Return persistence evidence without values or private identities."""
@@ -121,7 +123,7 @@ class ReportingReleasePersistenceExecution:
             "available_count": len(self.release.items),
             "unavailable_count": len(self.release.omissions),
             "quality": "incomplete" if self.release.omissions else "valid",
-            "migration_version": PERSISTENCE_MIGRATION_VERSION,
+            "migration_version": self.migration_version,
             "target_state_before": self.target_state_before,
             "database_sha256_before": self.database_sha256_before,
             "database_sha256_after": self.database_sha256_after,
@@ -765,25 +767,42 @@ def prepare_reporting_release_from_package(
     return release
 
 
+def _require_snapshot_reporting_contract(con: duckdb.DuckDBPyConnection) -> None:
+    from onejournal.journal.schwab_history_revision import _database_contract
+    from onejournal.journal.schwab_snapshot_evidence_repository import _contract
+
+    required = {
+        "phase1_schwab_snapshot_evidence_imports",
+        "phase1_journal_snapshot_history_revisions",
+        "phase1_journal_all_history_revisions",
+    }
+    if not required <= {row[0] for row in con.execute("SHOW TABLES").fetchall()}:
+        raise Phase1ReportingPersistenceOperatorError(
+            "snapshot reporting requires migration 0027/0028 relations"
+        )
+    _contract(con)
+    _database_contract(con)
+
+
 def _inspect_persistence_target(
     target: Path, release: ReportingRelease,
     *,
     predecessor_authorization: ReportingReleaseAuthorization | None = None,
     source_preparation: bool = False,
+    expected_migration_version: str = PERSISTENCE_MIGRATION_VERSION,
 ) -> tuple[str, tuple[int, int, int, int, int], tuple[int, int, int, int, int], str]:
     with duckdb.connect(str(target), read_only=True) as con:
         migration = _latest_migration(con)
         supported = (
             SUPPORTED_SOURCE_MIGRATION_VERSIONS if source_preparation
-            else {PERSISTENCE_MIGRATION_VERSION}
+            else {expected_migration_version}
         )
         if migration not in supported:
             raise Phase1ReportingPersistenceOperatorError(
-                "database must be exactly at migration 0026"
+                f"database must be exactly at migration {expected_migration_version}"
             )
         if migration == "0028":
-            from onejournal.journal.schwab_history_revision import _database_contract
-            _database_contract(con)
+            _require_snapshot_reporting_contract(con)
         counts = _reporting_counts(con)
         existing_uids = [
             row[0] for row in con.execute(
@@ -870,9 +889,14 @@ def execute_reporting_release_persistence(
     persist: bool = False,
     verified_backup_path: Path | None = None,
     predecessor_authorization: ReportingReleaseAuthorization | None = None,
+    expected_migration_version: str = PERSISTENCE_MIGRATION_VERSION,
 ) -> ReportingReleasePersistenceExecution:
     """Validate by default; persist only with exact hashes and a backup."""
 
+    if expected_migration_version not in SUPPORTED_PERSISTENCE_MIGRATION_VERSIONS:
+        raise Phase1ReportingPersistenceOperatorError(
+            "expected migration must be exactly 0026 or 0028"
+        )
     target = _require_private_file(db_path, "database")
     expected_database_digest = _require_digest(
         expected_database_sha256, "expected database SHA-256"
@@ -918,7 +942,8 @@ def execute_reporting_release_persistence(
         )
 
     target_state, counts, existing_counts, existing_fingerprint = _inspect_persistence_target(
-        target, release, predecessor_authorization=predecessor_authorization
+        target, release, predecessor_authorization=predecessor_authorization,
+        expected_migration_version=expected_migration_version,
     )
     if not persist:
         after_digest = _sha256_file(target)
@@ -939,13 +964,16 @@ def execute_reporting_release_persistence(
             realized_item_count=counts[2],
             omission_count=counts[3],
             audit_count=counts[4],
+            migration_version=expected_migration_version,
         )
 
     with duckdb.connect(str(target)) as con:
-        if _latest_migration(con) != PERSISTENCE_MIGRATION_VERSION:
+        if _latest_migration(con) != expected_migration_version:
             raise Phase1ReportingPersistenceOperatorError(
                 "database migration changed before persistence"
             )
+        if expected_migration_version == "0028":
+            _require_snapshot_reporting_contract(con)
         current_counts = _reporting_counts(con)
         if (
             current_counts != counts
@@ -999,6 +1027,7 @@ def execute_reporting_release_persistence(
         realized_item_count=counts_after[2],
         omission_count=counts_after[3],
         audit_count=counts_after[4],
+        migration_version=expected_migration_version,
     )
 
 
