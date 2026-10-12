@@ -37,6 +37,37 @@ This closes the approved maintenance publication, not a later Phase 1 package;
 formal Phase 1 remains **8/12**. The checkpoints below record their historical
 scope and must not be read as current publication blockers.
 
+### Copy-only website-history and assignment reconciliation: 2026-10-12
+
+The owner approved the proposed saved-history comparison, assignment/share
+linkage and disposable-copy financial review. The pure diagnostic described in
+`docs/schwab_web_history_review.md` compares exact exported execution economics
+with the saved verified-history assembly and nonconflicting retained archive
+candidates. Repeated economics and source/date/cost differences are classified
+explicitly; an unmatched row is not labelled a missing trade or given a new ID.
+
+Explicit assignment actions now link to their short-option predecessors and
+strike-priced share deliveries, including call assignments recorded as short
+stock. Same-day reductions are resolved only where one prior lot proves the
+same predecessor and proportional premium regardless of intraday order. No
+timestamp, display-order policy or deliverable multiplier was guessed.
+
+The two requested isolated share/put chains were recalculated from actual
+recorded cash, including net option premiums and disposal fees. Statement
+basis/result checks agree. Separate strategy trades and unproven event charges
+are not silently included or treated as zero. Exact values, source rows,
+comparison counts, fingerprints and remaining execution/basis gaps remain in
+private receipts and a human-readable review, not Git.
+
+Focused synthetic tests and actual order-independent replay passed. The source
+and disposable database stayed byte-identical, and the base financial result
+remained exact. This completes the bounded diagnostic/cash review, not an
+authoritative revised journal/report calculation. The earlier recovered preview
+remains held until native lifecycle/source admission is resolved. No canonical
+fills, approved lifecycle events, financial acceptance, report authorization,
+broker request, live write or runtime change occurred. Formal Phase 1 remains
+**8/12**.
+
 ### Owner correction and authenticated website history export: 2026-10-12
 
 The owner corrected an opening's classification and requested all available

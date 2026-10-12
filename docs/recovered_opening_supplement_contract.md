@@ -28,6 +28,12 @@ they do not discover omitted lifecycle evidence from an external website export.
 The source-extension approval and historical validation below remain recorded,
 but do not override the new evidence or confer financial/publication acceptance.
 
+Subsequent copy-only review linked the explicit assignment, predecessor premium
+and delivered shares and checked the isolated recorded cash result against the
+broker statements. `docs/schwab_web_history_review.md` describes that diagnostic
+boundary. It does not lift this hold, mutate the original supplement, fabricate
+timestamps or make the current ordinary-opening route a lifecycle importer.
+
 ## Evidence and identity
 
 The authoritative parent is one exact, stored snapshot assembly v3 and its
