@@ -37,6 +37,25 @@ This closes the approved maintenance publication, not a later Phase 1 package;
 formal Phase 1 remains **8/12**. The checkpoints below record their historical
 scope and must not be read as current publication blockers.
 
+### Offline older-history gap review: 2026-10-12
+
+The owner instructed a saved-record review of missing history before another
+download. It used the retained publication verification copy, exact accepted
+result lineage and a checksum-verified same-account statement. Existing local
+statement rows contain useful exact-contract candidates; identifying them is
+not an import, accepted opening fill or reconciled P&L. Spread leg costs,
+opening/closing chains and statement timezone still require verification.
+Some scopes remain unmatched in the reviewed statement, while terminal-event
+review and position-quantity reconciliation are distinct issues rather than
+uniformly missing older history. The private review retains the exact scopes,
+source rows, saved transaction-file inventory and required evidence.
+
+No source record, live database, active report or runtime was changed and no
+broker request was made. A complete-account-history claim additionally requires
+the account start/oldest-complete-evidence boundary and independent source
+coverage reconciliation. Phase 1 remains 8/12; this maintenance review does not
+reopen accepted P1-08 or approve new financial values/publication.
+
 ### Guarded release-path close-out: 2026-10-11
 
 The owner's request to proceed with the next close-out steps covered local
