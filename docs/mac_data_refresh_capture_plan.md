@@ -158,6 +158,43 @@ amounts, fingerprints, programs and receipts remain private and outside Git.
 Review of remaining evidence and the exact bounded candidate precedes any
 decision to publish changed financial results. Formal Phase 1 remains **8/12**.
 
+### Exact legacy-opening and identity review: 2026-10-12
+
+The owner instructed the next saved-evidence review. Remaining opening gaps
+were checked against exact equity or option identities, not just a shared
+underlying ticker. Some archived opening trades form plausible quantity chains
+with the verified candidate fills and the unchanged complete position snapshot;
+another chain still has a closing deficit and does not reconcile to that
+snapshot. Incoming transferred shares with zero price/cost fields are not
+treated as free purchases or proof of original acquisition basis. These are
+offline candidates, not imported fills, admitted allocations or accepted P&L.
+
+The archive also exposes an existing source-identity limitation: generated fill
+IDs include position references and transaction-item indexes that can change
+between retained versions of an economically identical provider activity.
+Importing every version unchanged could duplicate a trade. Remaining instrument
+name variants agree on explicit broker instrument IDs and execution economics,
+but this does not approve an alias mapping, choose a preferred version or waive
+deliverable checks. No existing fill ID or contract was changed. Duplicate-safe
+legacy intake and explicit source-version treatment must be settled before
+archive materialization; provenance must remain labelled as recovered evidence,
+not retroactively fabricated provider acquisition receipts.
+
+The retained historical backfill CSV reports were dry runs, not database-import
+receipts. Their producer groups files by filename end date and invokes the daily
+converter with that date; transaction normalization then filters to that single
+day. An `ok` row therefore does not establish conversion or import of every day
+in a multi-day filename window. No retired credentialed fetcher or old backfill
+operator was executed or adopted as a recovery path.
+
+Private checksum-bound diagnostics retain exact contracts, source versions,
+quantity checks, report evidence and the missing original transfer/basis and
+account-start inputs. Earlier underlying-only stock diagnostics are expressly
+not substitutes for the exact option-scope review. The original archive and
+candidate database are unchanged. There were no broker calls, token operations,
+database writes, new financial calculations, publication or service changes.
+Formal Phase 1 remains **8/12**; lifetime-history completeness is not claimed.
+
 ### Guarded release-path close-out: 2026-10-11
 
 The owner's request to proceed with the next close-out steps covered local
