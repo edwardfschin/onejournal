@@ -138,6 +138,90 @@ def compare_web_history_to_fills(rows, normalized_rows, *, currency):
     return tuple(results)
 
 
+def compare_web_execution_groups(rows, normalized_rows, *, currency):
+    """Reconcile complete dated bundles, without merging or identifying fills.
+
+    Website rows can consolidate partial executions or distribute per-row fees
+    differently. Complete quantity, net cash and known fees must agree exactly.
+    Distinct source-date alternatives, mixed deliverables and reuse remain
+    ambiguous. No rounding/tolerance, subset selection or winning ID is used.
+    """
+    web = defaultdict(list)
+    fills = {'execution_market_date': defaultdict(list), 'normalized_asof': defaultdict(list)}
+    ids, accounts = set(), set()
+    for fill in normalized_rows:
+        uid = fill['source_fill_id']
+        if uid in ids or fill['currency'] != currency:
+            raise WebHistoryReviewError('group fill identity or currency differs')
+        ids.add(uid); accounts.add((fill['source_broker'], fill['source_account_id']))
+        identity = (('option', fill['underlying_symbol'], str(fill['expiry']),
+            _decimal(fill['strike']), fill['option_type']) if fill['asset_class'] == 'option'
+            else ('equity', fill['symbol']))
+        side = str(fill['side']).upper()
+        if side not in {'BUY', 'SELL'}:
+            raise WebHistoryReviewError('normalized fill side is unsupported')
+        effect = fill['open_close'].lower() if fill['asset_class'] == 'option' else ''
+        stamp = datetime.fromisoformat(str(fill['filled_at']).replace('Z', '+00:00'))
+        if stamp.tzinfo is None:
+            raise WebHistoryReviewError('canonical execution timezone is missing')
+        for kind, day in [('execution_market_date', stamp.astimezone(ZoneInfo('America/New_York')).date()),
+                          ('normalized_asof', date.fromisoformat(str(fill['asof'])))]:
+            fills[kind][(identity, side, effect, day)].append(fill)
+    if len(accounts) > 1:
+        raise WebHistoryReviewError('group comparison requires one broker account')
+    for row in rows:
+        if row.action in TRADE_ACTIONS:
+            side = 'BUY' if row.action.startswith('Buy') else 'SELL'
+            effect = ('open' if row.action.endswith('Open') else 'close') if row.identity[0] == 'option' else ''
+            web[(row.identity, side, effect, row.posting_date, row.asof_date)].append(row)
+    result, owners = [], defaultdict(list)
+    with localcontext() as context:
+        context.prec = 80
+        for (identity, side, effect, posted, asof), members in web.items():
+            web_quantity = sum((row.quantity for row in members), Decimal(0))
+            web_cash = sum((row.amount for row in members), Decimal(0))
+            web_fees = sum((row.fees for row in members), Decimal(0)) if all(row.fees is not None for row in members) else None
+            alternatives = {}
+            for kind, groups in fills.items():
+                for day in {posted, asof} - {None}:
+                    candidates = groups[(identity, side, effect, day)]
+                    if not candidates:
+                        continue
+                    multipliers = {(_decimal(fill['multiplier']) if identity[0] == 'option'
+                                    else Decimal(1)) for fill in candidates}
+                    if len(multipliers) != 1:
+                        continue
+                    if any(_decimal(fill['quantity']) <= 0 or _decimal(fill['fill_price']) < 0
+                           or _decimal(fill['commission']) < 0 or _decimal(fill['fees']) < 0
+                           for fill in candidates) or next(iter(multipliers)) <= 0:
+                        raise WebHistoryReviewError('invalid group fill economics')
+                    quantity = sum((_decimal(fill['quantity']) for fill in candidates), Decimal(0))
+                    costs = sum((_decimal(fill['commission']) + _decimal(fill['fees']) for fill in candidates), Decimal(0))
+                    if quantity <= 0 or costs < 0:
+                        raise WebHistoryReviewError('invalid group economics')
+                    gross = sum((_decimal(fill['quantity']) * _decimal(fill['fill_price']) * next(iter(multipliers))
+                                 for fill in candidates), Decimal(0))
+                    cash = (gross if side == 'SELL' else -gross) - costs
+                    if quantity == web_quantity and cash == web_cash and (web_fees is None or costs == web_fees):
+                        candidate_ids = tuple(sorted(fill['source_fill_id'] for fill in candidates))
+                        alternatives.setdefault(candidate_ids, []).append((kind, day.isoformat()))
+            item = {'source_rows': sorted(row.source_row for row in members),
+                    'status': 'group_economic_match' if len(alternatives) == 1 else
+                              'ambiguous_date_groups' if alternatives else 'not_matched',
+                    'candidate_fill_groups': [{'source_fill_ids': list(uids),
+                                              'date_evidence': sorted(set(dates))}
+                                             for uids, dates in sorted(alternatives.items())],
+                    'row_identity_proven': False, 'canonical_import_authority': False}
+            for uid in {uid for candidate_ids in alternatives for uid in candidate_ids}:
+                owners[uid].append(item)
+            result.append(item)
+    for matches in owners.values():
+        if len(matches) > 1:
+            for item in matches:
+                item['status'] = 'ambiguous_source_reuse'
+    return tuple(sorted(result, key=lambda item: item['source_rows']))
+
+
 def _short_predecessors(rows, target):
     relevant = [row for row in rows if row.identity == target.identity
                 and row.posting_date <= target.posting_date and row.action in

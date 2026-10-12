@@ -3,7 +3,7 @@ from copy import deepcopy
 import pytest
 
 from onejournal.brokers.schwab.web_history_review import (
-    WebHistoryReviewError, compare_web_history_to_fills, isolated_put_assignment_cash_review,
+    WebHistoryReviewError, compare_web_history_to_fills, compare_web_execution_groups, isolated_put_assignment_cash_review,
     parse_web_history, review_assignment_links,
 )
 
@@ -158,3 +158,63 @@ def test_blank_trade_amount_nonfinite_or_float_fail_closed():
     for field,value in [('Amount',''), ('Price','NaN'), ('Quantity',100.0)]:
         document = example(); document['BrokerageTransactions'][0][field] = value
         with pytest.raises(WebHistoryReviewError): parse_web_history(document)
+
+
+def grouped_fills():
+    return [dict(normalized(), source_fill_id='part-a', source_broker='schwab',source_account_id='test',
+                 quantity='40',commission='0',fees='0.04'),
+            dict(normalized(), source_fill_id='part-b',source_broker='schwab',source_account_id='test',
+                 quantity='60',commission='0',fees='0.06')]
+
+
+def test_partial_executions_match_exact_complete_bundle_without_merging():
+    fills=grouped_fills(); original=deepcopy(fills)
+    rows=parse_web_history(example())
+    result=compare_web_execution_groups(rows,fills,currency='USD')
+    assert result[0]['status']=='group_economic_match'
+    assert result[0]['candidate_fill_groups'][0]['source_fill_ids']==['part-a','part-b']
+    assert result[0]['row_identity_proven'] is False and result[0]['canonical_import_authority'] is False
+    assert result==compare_web_execution_groups(tuple(reversed(rows)),tuple(reversed(fills)),currency='USD')
+    assert fills==original
+
+
+def test_duplicate_display_rows_preserve_multiplicity_at_bundle_level():
+    record=raw('02/20/2024','Sell','TEST','50','$45.00','$0.05','$2,249.95')
+    rows=parse_web_history({'BrokerageTransactions':[record,deepcopy(record)]})
+    result=compare_web_execution_groups(rows,grouped_fills(),currency='USD')[0]
+    assert result['source_rows']==[1,2] and result['status']=='group_economic_match'
+    assert result['row_identity_proven'] is False
+
+
+@pytest.mark.parametrize('field,value',[('fees','0.07'),('quantity','61'),('fill_price','45.0001')])
+def test_group_cash_fees_quantity_differences_are_not_rounded_away(field,value):
+    fills=grouped_fills();fills[1][field]=value
+    assert compare_web_execution_groups(parse_web_history(example()),fills,currency='USD')[0]['status']=='not_matched'
+
+
+def test_date_alternatives_or_reused_sources_are_ambiguous_not_preferred():
+    record=raw('02/21/2024 as of 02/20/2024','Sell','TEST','100','$45.00','$0.10','$4,499.90')
+    fill=dict(normalized(),source_broker='schwab',source_account_id='test')
+    other=dict(fill,source_fill_id='other-date',filled_at='2024-02-21T16:00:00+00:00',asof='2024-02-21')
+    result=compare_web_execution_groups(parse_web_history({'BrokerageTransactions':[record]}),[fill,other],currency='USD')
+    assert result[0]['status']=='ambiguous_date_groups'
+    rows=parse_web_history({'BrokerageTransactions':[record,raw('02/20/2024','Sell','TEST','100','$45.00','$0.10','$4,499.90')]})
+    assert all(item['status']=='ambiguous_source_reuse' for item in compare_web_execution_groups(rows,[fill],currency='USD'))
+
+
+def test_group_comparison_rejects_mixed_accounts_and_duplicate_provider_ids():
+    fills=grouped_fills();fills[1]['source_account_id']='other'
+    with pytest.raises(WebHistoryReviewError,match='account'):
+        compare_web_execution_groups(parse_web_history(example()),fills,currency='USD')
+    fills=grouped_fills();fills[1]['source_fill_id']=fills[0]['source_fill_id']
+    with pytest.raises(WebHistoryReviewError,match='identity'):
+        compare_web_execution_groups(parse_web_history(example()),fills,currency='USD')
+
+
+def test_exact_cash_does_not_waive_mixed_option_deliverables():
+    fills=[dict(fill,asset_class='option',underlying_symbol='TEST',expiry='2024-03-15',
+        strike='50',option_type='CALL',open_close='open',side='buy',quantity='1',fill_price='4',
+        multiplier=multiplier,fees='0.50') for fill,multiplier in zip(grouped_fills(),('100','10'))]
+    rows=parse_web_history({'BrokerageTransactions':[
+        raw('02/20/2024','Buy to Open','TEST 03/15/2024 50.00 C','2','$2.20','$1.00','-$441.00')]})
+    assert compare_web_execution_groups(rows,fills,currency='USD')[0]['status']=='not_matched'

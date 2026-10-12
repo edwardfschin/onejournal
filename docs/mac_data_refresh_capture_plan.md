@@ -37,6 +37,36 @@ This closes the approved maintenance publication, not a later Phase 1 package;
 formal Phase 1 remains **8/12**. The checkpoints below record their historical
 scope and must not be read as current publication blockers.
 
+### Execution grouping comparison fix: 2026-10-12
+
+The owner instructed `Proceed to fix` after the unresolved execution review.
+Saved evidence demonstrated the main comparison limitation: a website row can
+aggregate multiple API executions, and displayed per-row fees need not have the
+same distribution. The diagnostic now checks complete dated bundles with exact
+quantity, net cash and costs while preserving all original fills and row
+multiplicity. Multiple date alternatives, source reuse and mixed deliverables
+remain ambiguous. No source record, price or financial rounding policy changed.
+
+Further private review checked all retained activity versions, including those
+excluded from the earlier archive fill candidates. Cash agreement can be shown
+without preferring changed fill/item identities or admitting a conflicting
+economic version. Broker-confirmed settled cash is distinguished from arithmetic
+using price and fractional quantity. Remaining cash-only, source/version, date,
+execution and basis gaps are reported rather than declared missing trades.
+
+Focused synthetic tests and order-independent actual replay passed. The exact
+quiescent source/disposable database bytes, base financial fingerprint, assignment
+links and the requested isolated recorded cash reviews stayed unchanged. Exact
+counts, amounts, source identities and receipts remain private. The new review
+supersedes the earlier one-row comparison for aggregate execution coverage, not
+the underlying evidence or financial authority.
+
+This fixes a demonstrated comparison defect and closes the bounded copy-only
+batch. It does not finish native historical import or grant new financial
+acceptance/publication authority. No canonical insert, broker access, credential
+change, live write, runtime restart or hosting change occurred. The recovered
+financial preview remains held and formal Phase 1 remains **8/12**.
+
 ### Copy-only website-history and assignment reconciliation: 2026-10-12
 
 The owner approved the proposed saved-history comparison, assignment/share

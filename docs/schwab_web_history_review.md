@@ -25,7 +25,7 @@ runtime, native journal row or accepted reporting authorization changes.
 ## Economic comparison
 
 The review preserves every row, including non-execution activities; only explicit
-trade actions enter the fill comparison. Matching requires exact supported
+trade actions enter the fill comparison. Individual matching requires exact supported
 instrument fields, side, option opening/closing effect, quantity, price, net cash
 and recorded costs. Provider side capitalization is normalized for comparison,
 not changed in the source. Posting and broker as-of dates remain separate and
@@ -35,6 +35,31 @@ A one-to-one economic match is a diagnostic candidate, not proof that provider
 activity identities are equal. Repeated website economics or multiple candidate
 fills are marked ambiguous rather than deduplicated or preferred. Candidate
 lists are deterministically sorted without choosing a winning identity.
+
+The second comparison operates on **complete dated execution bundles**. Website
+rows may combine partial fills or distribute displayed fees differently between
+rows, while API records retain individual fills. Bundle matching requires the
+same supported instrument, side, option effect, explicit currency, one consistent
+deliverable multiplier, exact total quantity, net cash and known total costs.
+It compares the complete source group, not a hand-picked subset. It preserves
+every original fill and website-row multiplicity; no merged fill is created.
+
+Posting/as-of and existing execution-date alternatives remain visible. Different
+valid source groups or reuse of one source group across website date groups are
+ambiguous, not resolved by preference. A reconciled bundle does not prove which
+website row represents an individual provider activity. Displayed prices are
+not patched or used to conceal a net-cash difference. No tolerance or rounding
+rule is added to achieve a match.
+
+Private raw-activity review additionally compares every retained economic version
+for the same actual provider activity. Identical economics with changed item or
+position references can corroborate cash without granting a new fill identity.
+Conflicting economic versions remain excluded. A single-instrument raw cash
+group must reconcile actual security cash and explicit currency charges to the
+broker's net amount before it is compared with website quantity/cash/cost totals.
+Confirmed settled cash is kept distinct from calculations using price and
+fractional quantity; it does not silently change execution price, cost-basis or
+financial rounding policy. Cash-only corroboration is not canonical admission.
 
 Unmatched rows are not automatically missing trades. The private follow-up
 distinguishes execution-detail differences, cost/cash differences, date
@@ -80,7 +105,10 @@ The earlier ordinary recovered-opening preview remains held.
 Synthetic tests cover exact cash, separate dates, lowercase/uppercase sides,
 repeat ambiguity, input-order replay, costs and quantity conflicts, partial
 option closes, short-stock call delivery, same-day invariant reductions,
-competing lots, transfers, missing inputs and non-finite values. Actual private
+competing lots, transfers, missing inputs and non-finite values. Bundle tests
+also cover partial fills, repeated-row multiplicity, exact cash/cost/quantity
+differences, source reuse, date alternatives, mixed accounts and deliverables.
+Actual private
 replay verifies pinned sources, unchanged database bytes and unchanged base
 financial results. No broad regression suite or dependency installation is
 needed because the diagnostic is not connected to existing runtime consumers.
