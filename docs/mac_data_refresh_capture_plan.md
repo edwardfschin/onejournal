@@ -37,6 +37,30 @@ This closes the approved maintenance publication, not a later Phase 1 package;
 formal Phase 1 remains **8/12**. The checkpoints below record their historical
 scope and must not be read as current publication blockers.
 
+### Older-history source corroboration: 2026-10-12
+
+The owner instructed `proceed next` for the saved-evidence follow-up. Relevant
+legacy-provider statements corroborate the early website-only trade fields,
+including month-end trades carried in the next settlement month's statement.
+The private comparison preserves trade versus settlement dates, wrapped table
+fields, explicit costs and unknown absent cost lines. Exact source/checksum,
+page/row links, counts and financial details remain outside Git.
+
+The cash-only review distinguishes matching archived economics with changed
+generated fill IDs from asset-classification exclusions and outstanding
+execution/cash-arithmetic differences. Neither cash agreement nor a matching
+statement authorizes duplicate admission or a new provider fill identity.
+Conflicting raw versions remain withheld. The private close-out lists the
+statement-backed candidates separately from the remaining source differences
+and from the still-unapproved native admission work.
+
+Validation used exact pinned evidence and a focused comparison replay, not a
+broad application suite. There was no application-code/dependency change,
+canonical import, live database access/write, report recalculation, broker
+request, credential operation or runtime restart. Originals and prior reviews
+remain intact. Rollback is to stop using the new diagnostic; no live restoration
+is needed. The recovered preview remains held and formal Phase 1 stays **8/12**.
+
 ### Execution grouping comparison fix: 2026-10-12
 
 The owner instructed `Proceed to fix` after the unresolved execution review.

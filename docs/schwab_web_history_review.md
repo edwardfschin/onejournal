@@ -67,6 +67,35 @@ differences, repeated economics and absence from the currently admitted or
 nonconflicting archive candidates. Split execution, withheld archive versions,
 aliases, corporate actions and transfers still require source reconciliation.
 
+## Legacy statement corroboration
+
+Retained legacy-provider monthly statements can corroborate website-only
+history without manufacturing canonical fills. The private review verifies
+each PDF against its acquisition receipt, extracts the account-activity table
+by its displayed columns, and checks the relevant layout visually. Wrapped
+quantities and option opening/closing descriptions are preserved. Exact
+instrument, action, quantity, displayed price and signed amount must agree.
+Explicit commission/fee and regulatory-fee components are compared when present;
+an absent cost line stays unknown rather than becoming zero.
+
+Trade and settlement dates remain separate. A month-end trade can appear in
+the following month's statement because of settlement. The caller checks that
+neighboring statement rather than treating a calendar-month mismatch as lost
+history. Repeated economics and reuse of one statement observation remain
+ambiguous. Local page/row references identify an evidence location, not a
+provider execution ID.
+
+Statement agreement proves corroborated source fields, not a normalized fill,
+an intraday UTC instant, independent currency evidence, lifetime completeness
+or financial-release eligibility. Statement-backed candidates remain separate
+from native import admission. Changed generated archive IDs remain withheld
+even when retained economic versions agree. Price-derived cash differences and
+unsupported asset classifications are not waived by corroborated settled cash.
+
+The review consumes existing private PDFs/JSON and produces only new private
+diagnostic artifacts. It adds no PDF dependency to the application, importer,
+API or website and changes no financial, identity or timestamp contract.
+
 ## Assignment and recorded cash review
 
 An assignment must have explicit option identity and positive contracts. The
