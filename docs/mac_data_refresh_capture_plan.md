@@ -56,6 +56,35 @@ the account start/oldest-complete-evidence boundary and independent source
 coverage reconciliation. Phase 1 remains 8/12; this maintenance review does not
 reopen accepted P1-08 or approve new financial values/publication.
 
+### Recovered older-source validation: 2026-10-12
+
+A retained legacy raw archive was located and checked offline against the
+current account and the exact response hashes recorded in the accepted assembly.
+The recovered database candidates inspected so far contain only small subsets;
+the original full legacy journal has not been located. The owner's recollection
+of a migration date remains a search lead, not an account-start or completeness
+boundary.
+
+The archive review distinguishes byte-identical copies, repeated provider IDs,
+reordered transaction items, changing reference-price/display metadata and
+remaining source-version differences. Execution quantities, prices and costs
+were compared separately from instrument-name changes. No source version was
+silently preferred; changed identities and deliverable evidence still require
+reconciliation. Earlier exact-instrument candidates extend the statement review
+but are not accepted opening fills or completed trade chains.
+
+Private receipts retain the source checksums, duplicate/version classifications,
+exact candidate scopes and an offline chunk plan for the apparent gap between
+archived and current captures. Filename date ranges and empty responses do not
+prove complete acquisition. Official website history availability has not been
+equated with API lookback support; current API availability remains unverified.
+Existing credential ownership and approved acquisition boundaries remain intact.
+
+No broker request, token operation, import, live database write, financial
+recalculation, publication or restart occurred. This is maintenance evidence
+recovery, not a new financial acceptance or Phase 1 completion claim. Formal
+Phase 1 remains **8/12**.
+
 ### Guarded release-path close-out: 2026-10-11
 
 The owner's request to proceed with the next close-out steps covered local
