@@ -524,9 +524,13 @@ denial passed; journal/configuration/authorizations/TLS bytes were unchanged.
 The private start shortcut selects the new release explicitly and the previous
 environment/shortcut remain available for UI-only rollback. No migration,
 financial publication, broker call, policy change or canonical sync occurred.
-Owner sign-in after this restart is not yet confirmed; native zoom,
-screen-reader speech, supported-browser/device
-choices, agreed budgets and final acceptance remain open. P1-11/WEB-W11 are
+The owner confirmed sign-in and the updated site after this restart. A bounded
+native Chrome 200% zoom check using only synthetic responses passed: enlarged
+Reports remained readable and history submission rendered the synthetic result.
+The native accessibility tree exposed named tables, headers and filter controls;
+this does not establish screen-reader speech. VoiceOver could not be controlled
+through the connection and remains unverified. Supported-browser/device choices,
+agreed budgets and final acceptance remain open. P1-11/WEB-W11 are
 now IN PROGRESS for approved local work, not COMPLETE; Phase 1 remains 8/12.
 
 Local evidence added on 2026-10-11: focused JSX accessibility checks for control

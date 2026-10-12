@@ -72,10 +72,23 @@ shortcut is retained with the private handover receipt. The new shortcut selects
 
 The canonical checkout at `cc1fa8a`, prior environments and original private
 configuration remain unchanged. Do not run two versions together or bypass
-passkey protection. The owner verified the earlier installed-release handover;
-sign-in after the current UI-only restart is not yet confirmed. This is
+passkey protection. The owner verified the earlier installed-release handover
+and confirmed sign-in and the site after the current UI-only restart. This is
 bounded Mac operation, not Phase 1 completion. See
 `docs/mac_passkey_access_contract.md`.
+
+### Reloading saved data versus fetching fresh broker data
+
+On the protected website, open **Data** and choose **Reload saved data**.
+It rereads the currently active accepted report from the local API, including
+its saved snapshot date and history coverage. It does not download broker data,
+refresh credentials, recalculate P&L from new evidence or publish a new release. Reloading
+the browser likewise does not make an old snapshot current.
+
+Website-triggered broker refresh is not implemented. Fresh evidence currently
+uses the separately scoped operator capture, reconciliation, review and
+publication workflow below. No new broker request or financial acceptance is
+implied by clicking Reload saved data.
 
 ## Legacy local website launcher: one terminal
 

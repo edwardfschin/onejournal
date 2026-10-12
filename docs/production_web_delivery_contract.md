@@ -701,10 +701,30 @@ explicitly. The previous environment/static artifact and shortcut are retained
 for UI-only rollback using the same current private configuration. There was
 no migration, financial publication/calculation, broker call, passkey recovery,
 policy change, canonical synchronization, daemon or hosted deployment. Detailed
-receipts and private file locations stay outside Git. Owner passkey sign-in after
-this restart remains unconfirmed; earlier synthetic visual/keyboard validation
+receipts and private file locations stay outside Git. The owner confirmed
+passkey sign-in and the updated site after this restart; earlier synthetic visual/keyboard validation
 is not repeated or relabeled as owner acceptance. P1-11 remains in progress and
 Phase 1 remains 8/12.
+
+### Bounded native-browser follow-up: 2026-10-12
+
+The owner instructed the next accessibility checks. A separate Chrome window
+served the current installed static artifact with synthetic responses on an
+isolated loopback port, not the private API. Native Chrome reported 200% page
+zoom; the enlarged Reports heading/navigation/action layout remained readable,
+and Load history rendered the synthetic 300-row result with explicit partial
+coverage. The native accessibility tree exposed table names, column/row headers
+and labeled date/account/symbol controls. No source defect was established by
+this bounded check, so no implementation change or broad suite was added.
+
+VoiceOver activation/control could not be established through the connection;
+read-only process inspection confirmed it was not running. Screen-reader speech
+is still unverified, not a passed test. This is one native Chrome check, not
+an approved full browser/device matrix or blanket accessibility conformance.
+Browser control was interrupted during cleanup; the temporary test window may
+remain open. Only the owned synthetic server was stopped; the protected site
+was not restarted and no broker/data publication was requested. Phase 1 remains
+8/12 with P1-11 in progress.
 
 The web delivery packages map to Phase 1 as follows:
 

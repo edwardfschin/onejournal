@@ -45,8 +45,8 @@ from a separate permanent environment on the same protected HTTPS origin.
 Existing journal/configuration/financial authorizations/TLS are byte-identical;
 passkey enrollment is retained and sessions require fresh sign-in. Anonymous
 financial denial passed, adding its normal value-free access audit event. No
-enrollment/recovery or security policy changed. Owner sign-in after this restart
-is not yet confirmed. Start and UI-only rollback use `operator_quickstart.md`;
+enrollment/recovery or security policy changed. The owner confirmed sign-in and
+the updated site after this restart. Start and UI-only rollback use `operator_quickstart.md`;
 the prior installed environment and private shortcut remain available.
 
 ## Data and request flow

@@ -283,7 +283,7 @@ layout. Financial data and authority, saved passkeys and TLS are unchanged;
 anonymous financial access remains blocked. The private start shortcut selects
 the new release, with the prior environment retained for UI-only rollback.
 Saved values are dated snapshots, not live prices. Sign in again after the
-controlled restart; owner sign-in after this update is not yet confirmed.
+controlled restart; the owner confirmed sign-in and the updated site work.
 Hosted deployment, final security/operations/quality acceptance and Phase 1
 owner acceptance remain outstanding. Phase 1 remains 8/12. Streamlit remains
 an internal workflow-validation surface until verified parity and its explicit
