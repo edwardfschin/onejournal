@@ -77,6 +77,100 @@ and confirmed sign-in and the site after the current UI-only restart. This is
 bounded Mac operation, not Phase 1 completion. See
 `docs/mac_passkey_access_contract.md`.
 
+### Read-only release and connection check
+
+Use the locked security Python environment and the reviewed source checkout:
+
+```text
+python scripts/web/check_mac_release.py --release-dir ABSOLUTE_PUBLIC_RELEASE --manifest-sha256 PINNED_MANIFEST_SHA256 --source-commit PINNED_SOURCE_COMMIT --site-origin https://localhost:4173
+```
+
+Uppercase values are placeholders, not literal arguments. Obtain both pins from
+the separately retained verified release receipt/original artifact, not by
+hashing an untrusted directory and treating that as proof. Preserve the pins
+independently when packaging or accepting a release. A checksum is not a publisher
+signature. The release directory is the public `onejournal-mac-release` folder,
+not its enclosing Python environment or any private-data directory.
+
+The check verifies the existing v1 manifest, exact source commit, every file
+checksum, complete inventory and static-route contract. Links, extra/missing
+files or mismatches fail with a nonzero exit and a value-free error. It never
+extracts an archive, installs packages or repairs files. Omit `--site-origin`
+for file-only validation. The optional connection check makes only two
+cookie-free GETs: the exact Reports shell and existing anonymous access-status
+endpoint. It requires verified HTTPS, matching public shell bytes,
+privacy/frame headers and already-enrolled anonymous access status. There are
+no redirects, proxy settings, retries, TLS exceptions or authenticated/financial
+requests. Source inspection and a disposable integration check establish that
+the status endpoint creates no ceremony/session or audit event in this flow.
+
+Python's default TLS store is not assumed to import Mac Keychain trust. If the
+approved localhost setup needs explicit certificate trust, also pass
+`--tls-cert EXISTING_APPROVED_CERTIFICATE --tls-cert-sha256 PIN_FROM_SETUP_RECEIPT`.
+Both options are required together and only with `--site-origin`; use the
+certificate, never the private key. The exact original bytes must match the
+separate setup/handover receipt before connecting. This reuses the established
+localhost trust used by installed-release checks; it does not accept a replacement
+certificate or install a trust root. Hostname, signature and validity verification
+remain enabled. Never use an insecure-client exception to make the check pass.
+
+Success means artifact integrity and, if requested, bounded transport/access
+status only. It does not prove owner sign-in, financial freshness/reconciliation,
+dependency security, recovery, browser accessibility or hosted acceptance.
+It checks the public wheel/static files, not every installed Python module or
+dependency; retain the separate installation/source and dependency receipts.
+The command opens no journal/security database and changes no configuration,
+credential, source file or runtime. It is an on-demand operator check, not an
+automatically enabled monitor or adopted availability/alert policy.
+
+### When a check fails
+
+- **Connection refused:** the foreground service is not reachable at that origin.
+  Check its existing Terminal first; start only the protected command above
+  when deliberately authorized. Do not start a duplicate or legacy fallback.
+- **TLS failure:** check the existing certificate's validity and intended SSL
+  trust. Do not click through a warning, disable verification or regenerate
+  trust material automatically. Certificate replacement needs its own exact
+  setup/recovery update.
+- **Artifact mismatch:** retain the files and original receipt, and investigate
+  the exact changed/missing component. Do not re-hash altered files into a new
+  accepted manifest, overwrite the environment or automatically roll back.
+- **Login/access failure:** use the external browser holding the passkey.
+  If access is genuinely lost, use the stopped-service offline recovery in
+  `mac_passkey_access_contract.md`; never restore revoked credentials/counters.
+- **Suspected private-data exposure or incorrect displayed figures:** stop only
+  the owned protected foreground process, preserve private evidence/audit and
+  investigate. Do not bypass authentication or patch database/generated values.
+  Any recovery, publication or reactivation follows its existing exact authority.
+
+These are existing fail-closed operating actions, not a new response-time,
+notification, retention or disaster-recovery policy. Journal/release, access/TLS
+setup, and evidence/audit recovery images have different scopes; use their
+recorded exact manifests and restore into new private locations only. A later
+live restoration must preserve work since the backup and requires explicit
+authority. Do not repeat dated successful USB restoration merely to generate
+another PASS.
+
+### Release export, corrections and closure limits
+
+Reports CSV exports cover the same currently authorized financial selection;
+they are not a full journal narrative, lifetime-history or disaster-recovery
+export. Preserve the displayed selection, as-of and incomplete/unavailable
+state when reviewing an export. Never publish private CSV files into Git.
+
+Journal entries are corrected through their existing append-only revision
+boundary; previous revisions remain evidence. Financial/import corrections
+require source reconciliation and a separately reviewed exact result, not a
+manual database edit or an assumed newest release. Historical evidence migration
+0029 remains source/disposable-copy work and is not activated by this runbook.
+
+No implemented general financial-history deletion, full-account closure or
+retention-expiry command is claimed. Before such work, identify the selected
+private files, recovery images, audit requirements and approved retention scope;
+do not delete data or revoke credentials under a general closure request. Streamlit
+remains the retained internal prototype, not the protected release or a login
+fallback. No destructive retirement or new retention policy is adopted here.
+
 ### Reloading saved data versus fetching fresh broker data
 
 On the protected website, open **Data** and choose **Reload saved data**.

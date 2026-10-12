@@ -726,6 +726,65 @@ remain open. Only the owned synthetic server was stopped; the protected site
 was not restarted and no broker/data publication was requested. Phase 1 remains
 8/12 with P1-11 in progress.
 
+### P1-09–12 Mac completion checkpoint: 2026-10-13
+
+The owner directed resuming P1-09 through P1-12 on the Mac, keeping history
+recovery separate and reusing unchanged evidence. This authorizes ordinary
+local implementation, critical validation, documentation, commit and push;
+it does not activate a new release, accept financial figures, change policy,
+perform live restoration or authorize hosting/broker operations.
+
+One missing operational component is now implemented:
+`scripts/web/check_mac_release.py` delegates to the reusable
+`onejournal.mac_release_check`. It consumes an existing public v1 release,
+independent manifest/source pins and optionally the exact localhost HTTPS
+origin. It verifies file inventory/hashes and the static route contract, then
+reads only the public shell and cookie-free access status. It opens no
+database, logs no response body, authenticates no owner, creates no session or
+audit event in the inspected status flow, and performs no automatic repair.
+Integrity pins must come from a separately trusted receipt; this is not signer
+authentication or package-vulnerability clearance. Failure is value-free and
+nonzero, never an HTML-200-only readiness claim.
+
+Nine focused checks passed: immutable file validation, independent pins,
+missing/extra/changed/link/traversal/scope rejection, system-verified TLS settings,
+exact two cookie-free GETs, response/header and enrollment failure, non-local
+origin refusal, paired independent certificate pins with verification retained,
+value-free CLI failure and a disposable status read without
+financial access or security-state mutation. No frontend source changed, so
+no frontend rebuild, layout cycle or unchanged full suite was repeated.
+
+The current installed public files matched the independently retained original
+archive and prior handover source identity. The initial live connection check
+received connection refusal; it did not establish HTTPS/access readiness and
+did not start, repair or switch the service. A subsequent authorized start/check,
+if performed, is recorded separately; source checks are not runtime acceptance.
+Detailed artifact pins and operating receipts remain private.
+
+`docs/operator_quickstart.md` now provides the on-demand check, bounded
+failure/recovery actions and truthful export/correction/closure limitations.
+These are existing fail-closed mechanisms, not newly adopted service/retention
+budgets. There is no automatic scheduler, silent restore, legacy fallback,
+credential reset, deletion or Streamlit retirement.
+
+The release preparation uses existing evidence as follows:
+
+| Package | Mac evidence reused or delivered | Still required; do not invent or claim passed |
+|---|---|---|
+| P1-09 | Installed protected passkey boundary; owner sign-in/logout/two-tab lock; offline revocation/re-enrollment; existing dependency reachability review; source-pinned artifact/access-status check. | Candidate-specific dependency/security disposition before exposure; owner-approved audit/incident/retention choices; actual host/RP/TLS/enrollment/proxy/abuse verification. |
+| P1-10 | Installed static/Python package and retained rollback; dated encrypted access, journal/release and evidence/audit image restoration; on-demand integrity/connection check and actionable runbook. | Backup cadence/retention, recovery objectives and alert/incident choices; another-Mac/host restore and target-dependent state/migration/deployment/rollback verification. |
+| P1-11 | Existing keyboard/reflow/contrast, synthetic failure/export/session and local timing evidence; native Chrome 200% zoom/table semantics; unchanged frontend not retested. | Chosen browser/device scope and performance budgets; actual screen-reader speech and only uncovered critical journeys; final target checks. |
+| P1-12 | Exact current artifact/configuration/release identity remains in private receipts; limitations and operator export/correction/closure procedures are explicit; history expansion and advanced features are separate. | Approved retention/deletion/closure and Streamlit disposition; dated final operating scope, target-dependent end-to-end verification and owner acceptance. |
+
+This is the finite remaining list, not a new certification programme. Resolve
+the owner choices once as a coherent operating scope, reuse dated valid
+evidence and run only checks affected by the eventual target or changed code.
+Do not make complete lifetime history or continuous website broker refresh a
+Phase 1 prerequisite. Formal Phase 1 remains 8/12; Mac preparation is not
+hosted acceptance. The product vision, strategy mapping and maturity claims
+are unchanged. Rollback is a focused source revert; no private restoration or
+runtime change is needed to undo this source-only delivery.
+
 The web delivery packages map to Phase 1 as follows:
 
 | Phase 1 need | Required web package or dependency |
@@ -772,8 +831,8 @@ if a switch is recommended.
 | WEB-W09 | UXJ-05, UXJ-06, WEB-07 | LATER | Post-Phase 1 attachments, goals, habits and recurring review experience | Complete the private review workflow beyond Phase 1 entries and reviews | Attachment privacy/retention/recovery and financial-evaluation dependencies pass | Sol High for privacy policy; Terra Medium for implementation |
 | WEB-W10 | WEB-06 | IN PROGRESS | Authentication, authorization, secure sessions, recovery and audit | Sign in to an isolated environment and verify owner-only navigation | ADR-0031's protected Mac pair, owner login/logout and bounded recovery checks are recorded. The 2026-10-09 source/dependency-reachability review found no additional confirmed critical defect in the inspected Mac owner workflow, without clearing all dependency alerts. Hosted domain/RP/TLS and recovery, production packaging/dependencies, proxy/abuse/access verification, and OPS-06 security-state/audit/incident procedures remain open. This is not hosted/production or Phase 1 acceptance. See `docs/mac_passkey_access_contract.md` | Sol High |
 | WEB-W11 | WEB-08 | IN PROGRESS | End-to-end quality, accessibility, performance and browser/device coverage | Use the accepted flows on supported desktop, tablet and mobile targets | Mac-first keyboard/reflow corrections and scoped synthetic checks are recorded; agreed browser/device matrix, performance budgets, remaining accessibility and final environment acceptance are still required | Terra Medium; Luna Low for routine regression maintenance |
-| WEB-W12 | OPS-01 through OPS-06 | BLOCKED | Environment, hosting, PostgreSQL migration, deployment, observability, backup and recovery | Use a synthetic staging URL, then a separately approved private-owner staging release | Staging identity, deployment/rollback, security, monitoring, restore and migration evidence pass | Sol High for architecture/security/migration; Terra Medium for automation |
-| WEB-W13 | WEB-09, OPS-07 | BLOCKED | Production acceptance and Streamlit transition | Use the private production website for every accepted initial journey | Owner acceptance, financial parity, export/correction procedures, runbook and rollback pass; Streamlit disposition recorded | Sol High for final critical review; Luna Low for release-record maintenance |
+| WEB-W12 | OPS-01 through OPS-06 | IN PROGRESS | Environment, hosting, PostgreSQL migration, deployment, observability, backup and recovery | Use the existing Mac installed release and recovery/check tooling; hosted staging remains separate | Mac packaging/recovery/integrity evidence recorded; operating-policy choices and actual target state/deployment/restore/rollback acceptance remain | Sol High for architecture/security/migration; Terra Medium for automation |
+| WEB-W13 | WEB-09, OPS-07 | IN PROGRESS | Production acceptance and Streamlit transition | Prepare the exact existing Mac scope and explicit limitations without changing financial authority | Export/correction/closure limits and reused evidence recorded; retention/disposition decisions, final target verification and dated owner acceptance remain | Sol High for final critical review; Luna Low for release-record maintenance |
 
 ## Delivery sequence and PNL-03 coordination
 

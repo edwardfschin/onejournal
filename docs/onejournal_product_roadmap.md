@@ -37,8 +37,10 @@ The repository already has:
 - A documented read-only boundary between journal and future execution planes.
 - Reproducible locked dependencies, automated tests, and a local clean-CI
   workflow.
-- An accepted open-source production web foundation and visible vertical
-  delivery contract; implementation has not started.
+- An accepted open-source web foundation, installed static React/Vite frontend
+  and same-origin protected Python API for the bounded Mac owner scope.
+- Owner-verified Mac passkey/navigation/export journeys, retained release
+  rollback and dated encrypted journal/access/evidence recovery receipts.
 
 The repository does not yet have:
 
@@ -46,8 +48,10 @@ The repository does not yet have:
   portfolio scope.
 - Continuous provider-backed acquisition and PNL-03-approved valuation marks
   for real portfolio use.
-- Time-period reporting and export workflows that reconcile to canonical P&L.
-- Production web implementation, authentication, hosted runtime, or deployment.
+- Complete-lifetime financial history; accepted bounded date-filtered reporting
+  and exports already exist and incomplete scopes remain explicit.
+- Hosted production acceptance of the implemented website/authentication,
+  operating controls, quality targets and final release.
 - Hosted-CI execution evidence from the GitHub workflow.
 - Paper or live trading within the OneJournal architecture.
 
@@ -116,10 +120,10 @@ is not complete merely because its required Phase 1 slice is complete.
 | P1-06 | COMPLETE | Deliver the private local-owner trade and journal vertical slice through the new application boundary. | Completed and owner-accepted on 2026-09-07 for the current local release scope. WEB-W06 uses a loopback-only FastAPI boundary and a server-selected `0600` local-owner DuckDB with no Streamlit or provider call. The operational journal is at migration 0021 with clean read-only integrity and an active 267-lifecycle/539-execution history revision; the prior 217-lifecycle/430-execution revision remains append-only rollback evidence. ADR-0025 preserves terminal-event and complete-current-position reconciliation, ADR-0026 preserves 63 privacy-safe vertical presentation pairs, and ADR-0027 preserves source-derived phases, exact option-to-stock links, and reason-coded expiration stories without promoting review-required outcomes. Reviews and journal entries remain append-only, linked stock cards are presentation-de-duplicated without merging records, ambiguous relationships fail closed, provider identities remain private, and no P&L authority is introduced. The owner accepts the current local journal experience for this release scope; further visual refinement remains enhancement backlog and does not reopen P1-06. |
 | P1-07 | COMPLETE | Approve and deliver canonical current positions, cost basis, marks, market value, and unrealized P&L. | Completed and owner-accepted on 2026-09-07 for the demonstrated private single-owner local-only WEB-W07 scope. The exact accepted broker-current result is persisted in the mode-`0600` operational journal through migration 0023 as one run, 58 position snapshots, 58 valuations, and one complete-total row. The loopback API and canonical `/local/portfolio` route preserve explicit as-of, source/run/snapshot/fingerprint/acceptance lineage, currency quantum, 58/58/58 independent metric availability, and complete-total gates. Desktop, tablet, and mobile browser checks passed without horizontal overflow; an unavailable API produced the explicit fail-closed UI with no cached, synthetic, or historical FIFO substitution. Exactly one value-free accepted-read audit row was written. The mode-first URL correction, all 525 tests, the frontend production build, focused frontend lint, private authorization checks, journal integrity, and automatic-trading-disabled checks passed. This acceptance does not include continuous provider acquisition, credential ownership, authentication, hosting, VPS work, deployment, broader or realized P&L, or trading. No commit or push is included. |
 | P1-08 | COMPLETE | Deliver the bounded Phase 1 current portfolio, account/symbol breakdown, date-filtered P&L history, CSV export, and complete quality states for displayed metrics. | Completed and owner-accepted on 2026-10-05 for the demonstrated private single-owner local-only reporting scope, acceptance `ONEJOURNAL-WEB-W08-GATE4-OWNER-ACCEPTANCE-20261005-01`. Exact release `ONEJOURNAL-WEB-W08-REPORT-RELEASE-20260909-01`, fingerprint `506a4b49810e4da77f3880818a83425c835eb9cd25d08b1503dd95ed9d6ddb2c`, preserves one `Primary` account, 230 admitted allocations, 57 withheld scopes, 287 processed and zero pending, covering 2026-03-06 through 2026-09-04. PR #13 delivered implementation `c62531c` into canonical merge `eba4a4c`. The activated loopback API and `/local/reports` expose reconciled account/symbol breakdowns, date/account/symbol filters, explicit quality/count/reason and snapshot/provenance states, and exact-decimal CSV exports. Private JSON/CSV read-back matched accepted state; valid-empty and outside-coverage selections behaved correctly; desktop/tablet/mobile and keyboard/table access passed. Verification added 11 privacy-safe read-audit rows within the approved 16-row bound; row counts and contents of all 81 other compared tables/views were unchanged. No complete portfolio realized/total P&L, continuous acquisition, authentication, hosting, or trading is accepted. See `docs/phase1_reporting_release_contract.md` for the exact acceptance evidence and limitations. |
-| P1-09 | IN PROGRESS | Implement and accept owner authentication, authorization, secure sessions, recovery, and audit. | ADR-0031's protected Mac pair, owner login/logout checks and bounded recovery evidence are recorded. The 2026-10-09 source and dependency-reachability review found no additional confirmed critical defect in the inspected Mac owner workflow; it is not blanket dependency clearance. Remaining hosted work: domain/RP/TLS and recovery, production packaging/dependencies, proxy/abuse/access verification, and security-state/audit/incident procedures with OPS-06. See `docs/mac_passkey_access_contract.md`; full security/production acceptance remains open. |
-| P1-10 | BLOCKED | Establish approved environments, private HTTPS hosting, production state, deployment/rollback, observability, encrypted backup, and tested restoration. | WEB-W12 and required OPS gates still need production operating acceptance. The bounded Mac journal image has a verified owner USB receipt with all 82 tables/views and exact releases; the separate access-setup image remains present. On 2026-10-06 the owner created a third encrypted USB image for all 27 files matching the persisted Phase 1 Schwab v1/v2 source lineage (25 distinct fingerprints) and 20 value-free security audit events; disposable restoration, USB encryption and owner-only permissions passed. The protected Mac site was restarted, its HTTPS Reports page returned 200, and the owner confirmed passkey sign-in. These are point-in-time Mac-only recoveries, not recurring backup, another-Mac restore or hosted/VPS operating acceptance. See `docs/mac_journal_recovery.md` and `docs/mac_evidence_audit_recovery.md`. |
+| P1-09 | IN PROGRESS | Implement and accept owner authentication, authorization, secure sessions, recovery, and audit. | ADR-0031's installed protected Mac boundary, owner login/logout/two-tab checks and bounded offline recovery are recorded. Existing source/dependency-reachability evidence is reused, not blanket security clearance. The 2026-10-13 pinned release/access-status checker and failure runbook add no authentication policy or financial access. Candidate dependency disposition, audit/incident/retention choices and actual hosted domain/RP/TLS/enrollment/proxy/abuse checks remain. See `docs/mac_passkey_access_contract.md` and the P1-09–12 checkpoint in `docs/production_web_delivery_contract.md`. |
+| P1-10 | IN PROGRESS | Establish approved environments, private HTTPS hosting, production state, deployment/rollback, observability, encrypted backup, and tested restoration. | Mac implementation proceeds without waiting for VPS: installed public wheel/static topology, retained protected rollback, dated access/journal/evidence USB recovery and the owner-verified 2026-10-12 refresh are recorded. The 2026-10-13 on-demand check verifies independently pinned file inventory/hashes and optionally bounded trusted localhost transport; failures are value-free/nonzero and no repair occurs. Backup cadence/retention, recovery objectives, monitoring/incident choices and target-dependent state/deployment/restore/rollback acceptance remain. See `docs/operator_quickstart.md`, `docs/mac_journal_recovery.md` and `docs/mac_evidence_audit_recovery.md`. No recurring backup, cross-Mac/host recovery or production acceptance is claimed. |
 | P1-11 | IN PROGRESS | Complete production accessibility, responsive, browser/device, performance, visual-regression, and end-to-end validation. | Owner-approved Mac-first work added consistent keyboard skip links and corrected a narrow Trades/Journal header overflow. Focused regressions, scoped lint/build and isolated synthetic keyboard/reflow/failure checks passed. A local performance baseline is recorded, not an approved budget. Actual browser/device choices, native zoom/screen-reader checks, agreed budgets and final environment acceptance remain open; see `docs/production_web_delivery_contract.md`. |
-| P1-12 | BLOCKED | Execute and accept the end-to-end private production release. | WEB-W13 produces a dated acceptance pack identifying artifact, environment, owner scope, supported instruments, data routes, calculations, quality/freshness, limitations, recovery, and rollback; the owner explicitly accepts Phase 1 and Streamlit disposition is recorded. |
+| P1-12 | IN PROGRESS | Execute and accept the end-to-end private production release. | Mac release preparation consolidates existing exact artifact/configuration/financial identities in private receipts and explicit limitations/export/correction/closure procedures in the operator runbook. Historical expansion remains separate; no general deletion/closure command or Streamlit retirement is claimed. Retention/closure/disposition decisions, target-dependent end-to-end verification and explicit dated final owner acceptance remain. No package completion is inferred from this preparation. |
 
 ### Phase 1 exit gate
 
@@ -389,8 +393,8 @@ whenever a package changes state.
 | WEB-W09 | LATER | Deliver post-Phase 1 attachments and recurring review workflows after UXJ-05 and UXJ-06 privacy/dependency gates. |
 | WEB-W10 | IN PROGRESS | Implement and accept authentication, authorization, sessions, recovery, and audit. ADR-0031's Mac login/logout and bounded 2026-10-09 source/dependency review are recorded. The 2026-10-11 packaging correction separates the component generator/build CSS dependency and its proxy chain from application dependencies without changing versions or the live Mac installation; other dependency disposition and concrete hosted-release requirements remain open in `docs/mac_passkey_access_contract.md`. |
 | WEB-W11 | IN PROGRESS | Mac-first scoped keyboard/reflow corrections and synthetic performance evidence are recorded; complete accessibility, performance, browser/device, visual-regression and end-to-end acceptance remains open. |
-| WEB-W12 | BLOCKED | Establish environments, hosted state, deployment, observability, backup, recovery, and private staging acceptance. |
-| WEB-W13 | BLOCKED | Obtain private production acceptance and record the Streamlit transition. |
+| WEB-W12 | IN PROGRESS | Mac packaging, dated recovery and read-only integrity/transport tooling are implemented; operating-policy choices and actual hosted state/deployment/restore/rollback acceptance remain. |
+| WEB-W13 | IN PROGRESS | Mac release scope/limitations and export/correction/closure preparation are recorded; final target verification, owner acceptance and Streamlit disposition remain. |
 
 ### Queue 5 exit gate
 
@@ -451,6 +455,26 @@ approval and successful completion of every prior safety gate.
 | LIV-05 | COMPLETE | Expand automation only through separately approved stages backed by operating evidence. | Expansion governance validator and decision log are complete and signed off by owner. |
 
 ## Immediate execution order
+
+### Current owner-directed scope: P1-09–12 on the Mac, 2026-10-13
+
+History recovery is parked as a separate track. P1-08 remains complete; complete
+lifetime history, migration 0029 activation and continuous website broker
+refresh are not prerequisites for completing the remaining bounded release.
+The finite Mac/host/owner-choice list and reused evidence are in the P1-09–12
+checkpoint of `docs/production_web_delivery_contract.md`. Do not reopen earlier
+stack decisions, repeat unchanged USB/login/build suites, add speculative
+monitoring infrastructure or invent unresolved budgets/policies.
+
+Nine focused integrity/no-state-change tests passed for the new release
+checker. The installed public artifact matches its retained archive and prior
+handover source identity. The initial localhost connection was refused; no live
+transport PASS, restart or repair is inferred. Operator failure/recovery and
+export/correction/closure limits are now explicit. Any later authorized start
+and check has its own operating receipt. Commit/push publishes these local
+source changes, not a new installed release or acceptance. All four remaining
+packages have active Mac work and are IN PROGRESS, not COMPLETE; the formal
+count remains 8/12. Strategic scope and operational maturity are unchanged.
 
 ### Current owner-approved direction: Mac first, 2026-10-11
 
