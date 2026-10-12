@@ -29,14 +29,16 @@ FAMILY_TABLES = (
     "phase1_schwab_evidence_import_families",
     "phase1_schwab_evidence_v2_import_families",
 )
+SNAPSHOT_TABLE = "phase1_schwab_snapshot_evidence_imports"
 AUDIT_ACTIONS = frozenset({"offline_provision", "offline_recovery", "request", "register_options", "register", "login", "logout"})
 AUDIT_OUTCOMES = frozenset({"accepted", "denied"})
 DIGEST = re.compile(r"[0-9a-f]{64}\Z")
 README = """OneJournal Mac source-evidence and security-audit recovery
 
 This encrypted image contains only the original JSON files whose SHA-256
-fingerprints are recorded in the journal's persisted Phase 1 Schwab v1/v2
-evidence families, and the value-free security event history at capture time.
+fingerprints are recorded in the journal's persisted Phase 1 Schwab v1/v2/v3
+evidence families, the exact persisted v3 assembly artifacts, and the value-free
+security event history at capture time. Unpersisted evidence is not included.
 It does not contain a journal, access setup, passkeys, security database,
 enrollment grant, broker credential or live session. Keep the separate journal
 and access images and their passwords. This is Mac-only, point-in-time recovery.
@@ -76,12 +78,12 @@ def source_digests(journal: Path) -> set[str]:
     private_file(journal, "journal")
     values: set[str] = set()
     with duckdb.connect(str(journal), read_only=True) as con:
-        family_count = 0
+        lineage_count = 0
         for table in FAMILY_TABLES:
             rows = con.execute(
                 f"SELECT source_manifest_sha256s_json, source_raw_sha256s_json FROM {table}"
             ).fetchall()
-            family_count += len(rows)
+            lineage_count += len(rows)
             for row in rows:
                 for encoded in row:
                     items = json.loads(encoded)
@@ -91,7 +93,29 @@ def source_digests(journal: Path) -> set[str]:
                         if not isinstance(value, str) or DIGEST.fullmatch(value) is None:
                             raise ValueError("Persisted source lineage contains an invalid fingerprint.")
                         values.add(value)
-    if family_count == 0 or not values:
+        tables = {row[0] for row in con.execute(
+            "SELECT table_name FROM information_schema.tables WHERE table_schema='main'"
+        ).fetchall()}
+        if SNAPSHOT_TABLE not in tables:
+            if "schema_migrations" in tables and con.execute(
+                "SELECT 1 FROM schema_migrations WHERE version='0027' AND status='applied'"
+            ).fetchone():
+                raise ValueError("Persisted snapshot source lineage is missing.")
+        else:
+            from onejournal.journal.schwab_snapshot_evidence_repository import load_schwab_snapshot_evidence
+            rows = con.execute(f"SELECT assembly_uid, artifact_sha256 FROM {SNAPSHOT_TABLE}").fetchall()
+            lineage_count += len(rows)
+            for assembly_uid, artifact_digest in rows:
+                # Reuse the authoritative checksum, metadata and family validator;
+                # never trust an arbitrary JSON document as a backup allowlist.
+                assembly = load_schwab_snapshot_evidence(journal, assembly_uid=assembly_uid)
+                if not isinstance(artifact_digest, str) or DIGEST.fullmatch(artifact_digest) is None:
+                    raise ValueError("Persisted snapshot artifact fingerprint is invalid.")
+                values.add(artifact_digest)
+                for family in assembly.families:
+                    values.update(family.source_manifest_sha256s)
+                    values.update(family.source_raw_sha256s)
+    if lineage_count == 0 or not values:
         raise ValueError("No persisted Phase 1 source lineage is available.")
     return values
 

@@ -465,11 +465,12 @@ preparation. The order below is a delivery sequence, not additional gates:
 2. Close locally verifiable P1-09 security gaps and P1-11 critical-journey,
    accessibility and performance work using privacy-safe fixtures. Resolve
    unchosen budgets/policies before treating them as acceptance criteria.
-3. Prepare P1-10 packaging, migration, start/deployment/rollback, monitoring and
-   recovery on the Mac. The current Vinext/Node preview versus ADR-0017 static
-   topology still needs an explicit decision before any framework transition
-   or production adoption. Do not build competing websites or silently choose
-   hosting, retention, backup or incident policy.
+3. Continue P1-10 start/deployment/rollback, monitoring and recovery preparation
+   on the Mac, reusing the approved installed static/Python topology and existing
+   packaging evidence. The static alignment decision and Mac handover are
+   complete; do not reopen the earlier Vinext/Node comparison or build competing
+   websites. Hosted state migration still needs its actual target. Do not
+   silently choose hosting, retention, backup or incident policy.
 4. Prepare the P1-12 release scope, limitations, operating procedures and
    Streamlit disposition. Consolidate existing evidence, not another repeated
    whole-project check.
@@ -481,6 +482,17 @@ Mac preparation can progress while the formal hosted packages remain incomplete.
 Do not inflate the 8/12 count, infer live write/restart/broker authority, or ask
 for repeated approval of routine local steps already covered by the owner's
 instruction. The historical checkpoints below retain their original scope.
+
+Local recovery preparation on 2026-10-12 corrected one actual gap: the evidence
+backup now includes validated persisted snapshot assemblies and their complete
+source families, not only legacy family rows. Focused checks and a read-only
+current-source availability check passed. The owner-password-controlled USB
+refresh remains pending until its journal and evidence/audit images pass their
+own restoration checks. Existing images and unchanged access setup are retained;
+no recurring backup/retention policy, security change or hosted acceptance is
+introduced. See `docs/mac_evidence_audit_recovery.md` and
+`docs/mac_journal_recovery.md`. Continue remaining Mac-first security/quality
+and operational preparation without repeating unchanged login checks.
 
 Local evidence added on 2026-10-11: focused JSX accessibility checks for control
 labels and ARIA properties passed on the passkey boundary, Reports, shared

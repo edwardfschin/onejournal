@@ -6,8 +6,10 @@ the operational database and exact release files. Neither contains the original
 external raw files or the separate security audit.
 
 `scripts/web/backup_mac_evidence_audit.py` selects only JSON files whose SHA-256
-fingerprints appear in the journal's persisted Phase 1 Schwab v1/v2 evidence
-family records. It fails if any recorded fingerprint is missing or a matched
+fingerprints appear in the journal's persisted Phase 1 Schwab v1/v2 family
+records or validated v3 snapshot assemblies, including the exact v3 artifact
+itself and every family's manifest/raw lineage (quotes and sessions included).
+It fails if a recorded fingerprint is missing or a matched
 file is not owner-private. It exports only the security store's timestamp,
 fixed action and fixed outcome audit fields. It checks the store's existing
 owner/journal/localhost binding and requires a clean, unlocked store. It never
@@ -64,7 +66,35 @@ passkey enrollment rather than restoring old security state.
   the owner runs the command, and its USB restoration succeeds.
 - This scope does not assert that all unimported private evidence or future
   broker/market-data captures are backed up. It covers the explicitly
-  persisted Phase 1 Schwab v1/v2 assembly lineage only.
+  persisted Phase 1 Schwab v1/v2/v3 assembly lineage only.
+
+## Refreshed-release backup preparation: 2026-10-12
+
+The owner requested the remaining useful Mac-first work and an updated
+off-device backup. The earlier evidence selector covered only legacy family
+tables; a new image would silently omit newer persisted snapshot evidence.
+The focused correction unions legacy lineage with exact validated snapshot
+artifacts and all their source families. It reuses the authoritative migration,
+checksum and artifact validator, refuses missing snapshot lineage when its
+migration is applied, and leaves source state unchanged. Images keep the same
+manifest format; earlier images remain verifiable. No financial calculation,
+migration, credential or security-policy change is included.
+
+Five focused synthetic checks cover legacy privacy behavior, missing files and
+locked audit refusal, complete new/legacy lineage, artifact tampering and
+missing applied-schema lineage. A read-only check located every required file
+for the current persisted evidence, without changing the source journal.
+Encryption is unchanged and will be validated by actual owner-operated image
+creation, not a repeated native test cycle. Detailed receipts remain private.
+
+Create new journal and evidence/audit images using the **active publication
+configuration**, not the older default. Stop only the protected site's owned
+process for capture and restart the same installed release/configuration
+afterwards. Enter passwords only in the owner's Terminal. Preserve existing
+images; no overwrite or retention cleanup is authorized. The unchanged
+access/TLS image does not need recreation merely because financial data
+advanced. No lasting refreshed image is claimed until both owner-operated USB
+restoration checks succeed.
 
 ## Owner USB receipt: 2026-10-06
 

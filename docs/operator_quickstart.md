@@ -139,6 +139,20 @@ the access image and does not overwrite live state or restart services. Creating
 the lasting encrypted USB journal image requires the owner's private Terminal
 password entry; a temporary rehearsal is not a lasting backup.
 
+For the current backup refresh, explicitly select the active publication
+configuration for both journal and evidence/audit commands. The latter now
+includes validated snapshot evidence as well as legacy lineage. Use new image
+destinations and retain the previous set. Stop only this site's own service
+for the audit capture, then start the same protected installed release; no
+passkey replacement or data restore is part of taking a backup.
+
+If the browser says the site cannot be reached, first distinguish a stopped
+foreground service from a login problem. This installed Mac service does not
+automatically start after closing its terminal or restarting the Mac. Start
+the protected command above with the active config, keep its terminal open and
+sign in with the existing passkey. Do not run a second server, the old
+unauthenticated launcher, enrollment or database repair merely to reach the page.
+
 The sections below retain the legacy Streamlit/import operator procedures;
 they are not required merely to start the local website.
 

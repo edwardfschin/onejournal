@@ -15,6 +15,13 @@ from onejournal.mac_evidence_audit_backup import (audit_history, create_backup,
     exact_evidence, snapshot, source_digests, verify_backup)
 from onejournal.mac_journal_backup import file_hash
 from onejournal.passkey_access import CONTRACT
+from onejournal.journal.migrations import apply_schema_migrations
+from onejournal.journal.schwab_evidence_assembly import (
+    SCHWAB_PHASE1_EVIDENCE_ASSEMBLY_V2, build_schwab_phase1_evidence_assembly_v3,
+    schwab_phase1_evidence_assembly_bytes,
+)
+from onejournal.journal.schwab_snapshot_evidence_repository import persist_schwab_snapshot_evidence
+from onejournal.journal.schwab_evidence_v2_repository import persist_schwab_phase1_evidence_assembly_v2
 
 
 PROJECT = Path(__file__).resolve().parents[1]
@@ -80,6 +87,45 @@ class EvidenceAuditBackupTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "unavailable"):
                 audit_history(self.security, self.journal, "https://localhost:4173")
         self.assertFalse(any(self.stage.iterdir()))
+
+    def snapshot_journal(self):
+        import test_snapshot_cutoff_evidence as snapshot_fixture
+        import test_schwab_phase1_evidence_import as legacy_fixture
+        journal = self.root / "snapshot-journal.duckdb"
+        apply_schema_migrations(journal)
+        journal.chmod(0o600)
+        legacy = legacy_fixture.synthetic_assembly(assembly_version=SCHWAB_PHASE1_EVIDENCE_ASSEMBLY_V2)
+        persist_schwab_phase1_evidence_assembly_v2(journal, legacy)
+        assembly = build_schwab_phase1_evidence_assembly_v3(**snapshot_fixture.inputs(two_quotes=True))
+        persist_schwab_snapshot_evidence(journal, assembly)
+        return journal, legacy, assembly
+
+    def test_snapshot_lineage_includes_artifact_all_families_and_legacy(self):
+        journal, legacy, assembly = self.snapshot_journal()
+        before = file_hash(journal)
+        expected = {hashlib.sha256(schwab_phase1_evidence_assembly_bytes(assembly)).hexdigest()}
+        for item in (legacy, assembly):
+            for family in item.families:
+                expected.update(family.source_manifest_sha256s)
+                expected.update(family.source_raw_sha256s)
+        self.assertEqual(source_digests(journal), expected)
+        self.assertEqual(file_hash(journal), before)
+        with self.assertRaisesRegex(ValueError, "missing"):
+            exact_evidence(self.raw, expected)
+
+    def test_snapshot_artifact_tampering_fails_before_selection(self):
+        journal, _, _ = self.snapshot_journal()
+        with duckdb.connect(str(journal)) as con:
+            con.execute("UPDATE phase1_schwab_snapshot_evidence_imports SET artifact_json=artifact_json || ' '")
+        with self.assertRaisesRegex(ValueError, "checksum"):
+            source_digests(journal)
+
+    def test_applied_snapshot_schema_cannot_silently_lose_lineage(self):
+        with duckdb.connect(str(self.journal)) as con:
+            con.execute("CREATE TABLE schema_migrations (version VARCHAR, status VARCHAR)")
+            con.execute("INSERT INTO schema_migrations VALUES ('0027', 'applied')")
+        with self.assertRaisesRegex(ValueError, "lineage is missing"):
+            source_digests(self.journal)
 
     @unittest.skipUnless(sys.platform == "darwin", "Native encrypted image requires macOS")
     def test_encrypted_round_trip_and_no_overwrite(self):

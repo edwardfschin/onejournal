@@ -58,13 +58,16 @@ erases a drive, overwrites an existing image or detaches an unrelated mount.
 
 Use the existing isolated security Python environment; no installation or
 dependency change is required. Run from the checkout containing these commands.
-Default config is the existing private `.onejournal/passkey-access/local-web.json`
-under the owner's home directory. `--web-config` can choose an explicitly selected
-existing private config outside Git.
+The historical default is `.onejournal/passkey-access/local-web.json` under
+the owner's home directory. After publication switches authorizations, use
+`--web-config` with the **active private publication configuration** recorded in
+the private receipts. Otherwise a valid backup can contain the complete journal
+but select an older financial release on restoration. Do not infer the active
+configuration from an existing default filename.
 
 ```text
 python scripts/web/backup_mac_journal.py rehearse
-python scripts/web/backup_mac_journal.py create --destination NEW_USB_JOURNAL_IMAGE.dmg
+python scripts/web/backup_mac_journal.py create --web-config ACTIVE_PRIVATE_CONFIG --destination NEW_USB_JOURNAL_IMAGE.dmg
 python scripts/web/backup_mac_journal.py verify --destination EXISTING_USB_JOURNAL_IMAGE.dmg
 ```
 
@@ -153,3 +156,15 @@ The subsequent owner USB image described in
 Schwab v1/v2 source fingerprints and a point-in-time, value-free security-audit
 export. It does not alter this journal image or turn either image into a
 recurring, cross-Mac or hosted disaster-recovery policy. P1-10 remains open.
+
+## Current-release refresh preparation: 2026-10-12
+
+The owner approved refreshing the off-device backup after the reviewed Mac
+maintenance publication. The source-evidence selector now supports validated
+snapshot assemblies alongside legacy lineage; see
+`docs/mac_evidence_audit_recovery.md`. Create new images without overwriting the
+earlier set, with the active private configuration explicitly selected for both
+commands. Password entry and successful USB unlock/disposable restoration are
+still required before claiming a lasting refresh. The unchanged TLS/access
+setup is reused, not reprovisioned. No recurring schedule, retention policy,
+live restore or hosted recovery acceptance is introduced.
