@@ -573,6 +573,7 @@ export default function LocalOwnerJournalPage({ activeSection = 'Journal' }: Loc
 
   return (
     <main className="app-shell local-journal-route">
+      <a className="workspace-skip-link" href="#workspace-content">Skip to content</a>
       <aside className="desktop-rail" aria-label="Primary navigation">
         <div className="brand-mark"><span className="brand-glyph">1</span><span className="brand-wordmark">OneJournal</span></div>
         <nav className="nav-stack">{navItems.map(([itemLabel, Icon, href]) => <Link className={`nav-item ${itemLabel === activeSection ? 'is-active' : ''}`} href={href} key={itemLabel} aria-current={itemLabel === activeSection ? 'page' : undefined}><Icon aria-hidden="true" /><span>{itemLabel}</span></Link>)}</nav>
@@ -585,7 +586,7 @@ export default function LocalOwnerJournalPage({ activeSection = 'Journal' }: Loc
           <div className="topbar-actions"><span className="local-pill"><LockKeyhole aria-hidden="true" /> Loopback only</span></div>
         </header>
         <output className="mode-banner"><span><ShieldCheck aria-hidden="true" /> Private historical journal</span><p>This is trade history, not a list of current holdings. Lifecycle status comes from Schwab fills, terminal events, and the reconciled position snapshot. No demo fallback.</p></output>
-        <div className="content-frame">
+        <div className="content-frame" id="workspace-content" tabIndex={-1}>
           <div className="page-heading"><div><p className="eyebrow">{activeSection} · local owner</p><h1>{activeSection === 'Trades' ? 'Inspect historical trades and their evidence.' : 'Review historical trades and their decisions.'}</h1><p className="heading-copy">Closed trades remain here as history. Search durable journal state, inspect its reconciled lifecycle status, then append a review or reflection without changing financial evidence.</p></div><button className="outline-action" type="button" onClick={() => void loadInitial()} disabled={loading}><RefreshCw aria-hidden="true" /> Refresh</button></div>
 
           {serviceError ? <section className="panel local-state local-state-error" role="alert"><LockKeyhole aria-hidden="true" /><div><strong>Local journal unavailable</strong><p>{serviceError}</p></div><button className="quiet-button" type="button" onClick={() => void loadInitial()}>Try again</button></section> : null}

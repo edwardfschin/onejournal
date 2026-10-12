@@ -157,6 +157,7 @@ export default function LocalOwnerPortfolioPage() {
 
   return (
     <main className="app-shell local-portfolio-route">
+      <a className="workspace-skip-link" href="#workspace-content">Skip to content</a>
       <aside className="desktop-rail" aria-label="Primary navigation">
         <div className="brand-mark">
           <span className="brand-glyph">1</span>
@@ -216,7 +217,7 @@ export default function LocalOwnerPortfolioPage() {
           </p>
         </output>
 
-        <div className="content-frame">
+        <div className="content-frame" id="workspace-content" tabIndex={-1}>
           <div className="page-heading portfolio-heading">
             <div>
               <p className="eyebrow">Portfolio · private local owner</p>

@@ -218,6 +218,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 @media (prefers-reduced-motion:reduce) { *,*::before,*::after { scroll-behavior: auto !important; transition-duration: .01ms !important; } }
 
 /* Bounded Mac overview pages and complete private navigation. */
+.local-journal-route .search-box { min-width: 0; }
 .report-navigation a { display: inline-flex; align-items: center; min-height: 44px; }
 .report-navigation a[aria-current="page"] { color: var(--signal-cyan); text-decoration: underline; text-underline-offset: 6px; }
 .local-mobile-menu { display: none; }

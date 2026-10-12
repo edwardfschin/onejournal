@@ -146,13 +146,14 @@ export default function LocalReportsPage() {
 
   return (
     <main className="app-shell local-reports-route">
+      <a className="workspace-skip-link" href="#workspace-content">Skip to content</a>
       <section className="workspace">
         <header className="topbar">
           <div className="brand-mark"><span className="brand-glyph">1</span><span className="brand-wordmark">OneJournal</span></div>
           <LocalWorkspaceNavigation />
         </header>
         <div className="mode-banner local-portfolio-banner"><span><FileSpreadsheet aria-hidden="true" /> Private reports</span><p>Saved snapshots and accepted history. Updates are manually released.</p></div>
-        <div className="content-frame">
+        <div className="content-frame" id="workspace-content" tabIndex={-1}>
           <div className="page-heading"><div><p className="eyebrow">Reports</p><h1>Your results, with the full context.</h1><p className="heading-copy">Current holdings and realized history show their own dates and coverage.</p></div></div>
           {loading ? <section className="panel local-portfolio-state" aria-live="polite"><RefreshCw className="local-spinner" aria-hidden="true" /><div><strong>Loading your saved reports</strong><p>Checking the accepted release.</p></div></section> : null}
           {error ? <section className="panel local-portfolio-state is-unavailable" role="alert"><CircleAlert aria-hidden="true" /><div><strong>Reporting unavailable</strong><p>{error}</p></div></section> : null}
