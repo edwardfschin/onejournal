@@ -168,3 +168,15 @@ commands. Password entry and successful USB unlock/disposable restoration are
 still required before claiming a lasting refresh. The unchanged TLS/access
 setup is reused, not reprovisioned. No recurring schedule, retention policy,
 live restore or hosted recovery acceptance is introduced.
+
+## Owner-verified refreshed image: 2026-10-12
+
+The owner supplied the new journal image's successful USB unlock, exact-file,
+schema/count and authorized-release restoration receipt. The matching updated
+evidence/audit image also passed restoration. Both encrypted owner-private
+images were independently observed; the earlier set remains present.
+The wrapper's separate failed source-byte guard and corrected shutdown wait
+are documented in `docs/mac_evidence_audit_recovery.md`; do not misreport that
+guard as passed or repeat the successful images merely to remove its warning.
+The protected site is running again. Detailed recovery evidence remains private;
+this dated refresh does not adopt recurring/retention policy or complete P1-10.

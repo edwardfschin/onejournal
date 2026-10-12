@@ -40,6 +40,17 @@ sessions, not saved passkeys. Sign in again in the external browser that holds
 your passkey. No migration, data refresh, provisioning or recovery occurs.
 Do not start the legacy launcher below to bypass a login problem.
 
+For daily Mac startup, an owner-private `StartOneJournal.command` shortcut is
+available under `~/.onejournal/launchers`. Double-click it in Finder when the
+site is stopped, then keep its Terminal open. It invokes the same installed
+foreground command with the current exact configuration; it does not install
+software, select a newer release, migrate, recover, contact a broker or run at
+Mac login. The underlying command still refuses an occupied port. Leave an
+already running service alone rather than starting a duplicate.
+The shortcut contains machine-private file locations and stays outside Git.
+After a deliberate future release/configuration switch, update it explicitly;
+do not fall back to an older authorization file.
+
 Financial rollback is deliberate, not an automatic latest-release switch.
 Stop only the owned service, then select the retained previous private
 configuration with the current installed runtime, which carries the SQL
@@ -145,6 +156,12 @@ includes validated snapshot evidence as well as legacy lineage. Use new image
 destinations and retain the previous set. Stop only this site's own service
 for the audit capture, then start the same protected installed release; no
 passkey replacement or data restore is part of taking a backup.
+
+The owner's 2026-10-12 receipts and independent encryption checks complete the
+dated journal/evidence USB refresh. The extra wrapper byte-guard warning was
+recorded separately rather than erasing it or repeating successful image tests;
+see `docs/mac_evidence_audit_recovery.md`. Passwords remain private and previous
+images are retained. This does not create a backup schedule or retention policy.
 
 If the browser says the site cannot be reached, first distinguish a stopped
 foreground service from a login problem. This installed Mac service does not

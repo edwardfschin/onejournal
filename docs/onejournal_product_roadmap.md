@@ -486,13 +486,25 @@ instruction. The historical checkpoints below retain their original scope.
 Local recovery preparation on 2026-10-12 corrected one actual gap: the evidence
 backup now includes validated persisted snapshot assemblies and their complete
 source families, not only legacy family rows. Focused checks and a read-only
-current-source availability check passed. The owner-password-controlled USB
-refresh remains pending until its journal and evidence/audit images pass their
-own restoration checks. Existing images and unchanged access setup are retained;
+current-source availability check passed. The owner then supplied successful
+USB creation/restoration receipts for both journal and evidence/audit images;
+independent checks confirmed encrypted owner-private files. The extra wrapper
+byte-guard warning remains distinct from those passed image checks, and its
+premature shutdown baseline was corrected with one synthetic regression.
+The same protected site is responding again. Existing images and unchanged
+access setup are retained;
 no recurring backup/retention policy, security change or hosted acceptance is
 introduced. See `docs/mac_evidence_audit_recovery.md` and
 `docs/mac_journal_recovery.md`. Continue remaining Mac-first security/quality
 and operational preparation without repeating unchanged login checks.
+
+A private double-click foreground start shortcut now selects the same installed
+runtime and active configuration, avoiding repetitive long commands for daily
+Mac operation. It adds no daemon, login item, scheduler or configuration policy;
+the underlying occupied-port/private-file guards remain intact. The private
+shortcut and detailed backup receipts stay outside Git. These close-out steps
+do not advance the formal **8/12** count; the remaining security, operations,
+quality and final acceptance boundaries still apply.
 
 Local evidence added on 2026-10-11: focused JSX accessibility checks for control
 labels and ARIA properties passed on the passkey boundary, Reports, shared

@@ -96,6 +96,30 @@ access/TLS image does not need recreation merely because financial data
 advanced. No lasting refreshed image is claimed until both owner-operated USB
 restoration checks succeed.
 
+## Owner-verified refresh receipt: 2026-10-12
+
+The owner supplied successful creation receipts for both new encrypted images:
+journal unlock/restoration, schema and exact release validation passed, and the
+evidence/audit image passed disposable restoration of its selected files and
+value-free events. Independent read-only checks confirmed both images are
+owner-private and encrypted. Earlier images remain present; no password was
+read and no redundant encryption/restoration cycle was run.
+
+The private convenience wrapper then reported "incomplete" because its extra
+whole-file byte comparison failed after both image verifications. That warning
+does not negate their successful restoration, but its original proof that all
+source bytes stayed unchanged is **not claimed**. Configuration, authorizations
+and TLS bytes matched; database bytes differed. Inspection identified an
+unsafe quiescence assumption: Uvicorn closes its listener before draining
+requests and the access store closes afterwards. The wrapper now waits for
+the owned process to finish before taking its byte baseline; one synthetic
+delayed-shutdown regression passed without touching the real service.
+
+The private completion receipt records the verified images and the failed
+wrapper proof separately. The same protected site restarted and its HTTPS page
+responded. This completes the dated off-device refresh, not recurring backup,
+retention policy, cross-Mac/hosted recovery or full Phase 1 acceptance.
+
 ## Owner USB receipt: 2026-10-06
 
 The owner entered a new password privately in Mac Terminal. The command
