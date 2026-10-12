@@ -37,6 +37,33 @@ This closes the approved maintenance publication, not a later Phase 1 package;
 formal Phase 1 remains **8/12**. The checkpoints below record their historical
 scope and must not be read as current publication blockers.
 
+### Residual source review and historical admission proposal: 2026-10-12
+
+The owner instructed `Proceed` for the remaining saved-source differences and
+safe import design. Private API review identifies unsupported provider asset
+classifications and retained economic conflicts without mapping or preferring
+them. Additional statement comparison preserves the provider's explicit
+settlement/process-date meaning; an execution-date comparison would create
+false gaps. Exact economic field matches and month-end neighboring statements
+are retained as corroboration, not canonical fill identity or trading timestamps.
+Detailed source outcomes, unresolved cases and receipts stay private.
+
+`docs/schwab_web_history_review.md` now contains an explicitly **proposed**, not
+implemented, historical activity admission design. An additive date-precision-
+aware evidence ledger avoids a broad rewrite of the existing fill/financial
+pipeline. Stable activity-bundle equivalence, duplicate handling, missing costs
+and currency, and date-only lifecycle ambiguity require a bounded new contract;
+the existing identity/correction contracts and held opening preview are not
+silently relaxed. The first implementation batch should be offline and
+disposable-copy-only, with prior fills, reviews and financial results preserved.
+
+This pass changes documentation and private diagnostics only. There is no new
+schema, canonical import, financial acceptance, provider request, credential
+change, live database access/write, runtime restart or website change. Focused
+source replay and failure checks replace a broad application test run. Original
+evidence and superseded attempts are preserved; rollback is to stop selecting
+the new review. Formal Phase 1 remains **8/12**.
+
 ### Older-history source corroboration: 2026-10-12
 
 The owner instructed `proceed next` for the saved-evidence follow-up. Relevant

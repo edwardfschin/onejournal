@@ -85,6 +85,15 @@ history. Repeated economics and reuse of one statement observation remain
 ambiguous. Local page/row references identify an evidence location, not a
 provider execution ID.
 
+The later-provider statement explicitly identifies its Date column as the
+settlement/process date. The review binds that footnote to the exact source
+PDF/page; it does not compare that column as an execution date. Exact
+instrument/action/quantity/price/cash/cost candidates may corroborate one unique
+statement observation while both original dates remain independently visible.
+No market calendar, guessed settlement schedule, nearest-date preference or
+one-to-four-day tolerance is used. Neighboring retained statements are inspected
+for month-end settlement, not used to fabricate a missing execution instant.
+
 Statement agreement proves corroborated source fields, not a normalized fill,
 an intraday UTC instant, independent currency evidence, lifetime completeness
 or financial-release eligibility. Statement-backed candidates remain separate
@@ -95,6 +104,66 @@ unsupported asset classifications are not waived by corroborated settled cash.
 The review consumes existing private PDFs/JSON and produces only new private
 diagnostic artifacts. It adds no PDF dependency to the application, importer,
 API or website and changes no financial, identity or timestamp contract.
+
+## Proposed historical admission design (not approved for implementation)
+
+The existing `NormalizedFill` requires an execution datetime, and materialization,
+FIFO lifecycle processing, snapshot cutoffs and reporting consume that instant.
+Date-only website/statement observations cannot safely be forced through it.
+The transaction-derived fill key also includes order/position/item references
+that can change between retained versions. ADR-0006 does not authorize economic
+deduplication of distinct source IDs, and broader correction governance in
+ADR-0010 remains proposed. The recovered-opening supplement is still held and
+is not a shortcut around these constraints.
+
+The recommended bounded design is an additive, broker-independent historical
+activity evidence ledger, separate from active normalized fills and reports:
+
+- Preserve every activity, including assignments, expirations, cash movements
+  and transfers, with immutable source-document hashes and row/page locations.
+  A document location is an observation identity, never a fabricated provider
+  fill ID. Separate exports remain deliveries; duplicate economics are not
+  silently discarded.
+- Preserve posting, reported trade/as-of and settlement dates separately;
+  timestamp precision is explicit and unknown execution instants remain null.
+  Keep native explicit currency, combined costs and missing values without
+  inventing a commission split, option deliverable or currency default.
+- For existing API evidence, retain the actual provider activity identity and
+  all original generated IDs. Propose a reviewed activity-bundle equivalence
+  link only when every retained economic version agrees and item multiplicity
+  is preserved. Ambiguous equal items, conflicting versions and changed
+  financial fields stay withheld. Existing fill keys are not renamed.
+- Link observations to an existing canonical execution only when unique source
+  reconciliation proves the relationship. Otherwise retain a historical
+  activity candidate, not an additional execution or accepted P&L input.
+- Support a date-granular lifecycle preview only where all possible intraday
+  orderings yield the same result. Same-day competing openings, unknown basis,
+  adjusted deliverables and incomplete transfers remain unavailable. Reuse
+  established decimal calculation rules; do not create a second permissive
+  P&L engine or change rounding to force cash agreement.
+
+Alternatives are to postpone all date-only history until native execution
+evidence is found, or to replace the existing fill contract with a precision-
+aware version throughout the application. The first prevents useful historical
+intake; the second has much wider migration and regression impact. Synthetic
+midnight timestamps and economics-only deduplication are not acceptable options.
+
+This is a proposal, not a durable admission/correction policy or schema change.
+One coherent next implementation approval can cover the explicitly bounded
+contract, additive migration preparation, offline loader, source/equivalence
+review, focused tests, disposable-copy rehearsal, documentation, commit and push.
+Live migration/import, report acceptance/publication and runtime activation
+remain excluded. No provider request or credential operation is required.
+
+The impact map is immutable exports/statements/API evidence -> offline adapter
+and historical ledger -> private reconciliation/lifecycle preview. A later
+application/API history reader must distinguish activity evidence from canonical
+executions. Existing active fills, notes, accepted reports and website responses
+remain untouched in the first implementation batch. Validation must prove exact
+replay, changed-ID non-duplication, conflict rejection, day-only ambiguity,
+assignment/share linkage, missing-value preservation and unchanged predecessor
+rows/results. Rollback is to discard the disposable candidate and stop selecting
+the new ledger; originals and accepted history are never deleted.
 
 ## Assignment and recorded cash review
 
