@@ -85,6 +85,41 @@ recalculation, publication or restart occurred. This is maintenance evidence
 recovery, not a new financial acceptance or Phase 1 completion claim. Formal
 Phase 1 remains **8/12**.
 
+### Approved older-history gap capture: 2026-10-12
+
+The owner approved one conditional renewal of the existing OneBot-owned Schwab
+token, four paired read-only history windows, checksum-preserving private Mac
+transfer and offline validation. Account discovery, retries, order mutations,
+journal imports, financial publication and service restarts were excluded.
+
+The initial launch omitted the established Schwab configuration loader and
+stopped at its precondition check, before any remote run directory, token
+operation or broker request. The launcher was corrected to use the inspected,
+checksum-verified existing loader; no OneBot source or configuration was changed.
+The existing separate capture runtime and private binding/acknowledgement were
+reused with fresh run identities and current source/runtime pins.
+
+The authorized capture completed with one owner-side OAuth renewal and eight
+read-only GETs, without retries or redirects. All four manifest-last bundles
+were transferred byte-for-byte and passed the existing credential-free account,
+window, acknowledgement and adapter validation. This proves retrieval of these
+exact historical windows, not a general API lookback guarantee or lifetime
+account-history completeness.
+
+Offline cross-window checks removed identical transaction replay without
+finding conflicting normalized fill replay. Order/accounting discrepancies
+remain explicitly pending. Together with the recovered archive and statement,
+the new capture provides earlier exact-instrument candidates for the reviewed
+missing-opening scopes; it does not establish opening intent, complete quantity
+chains, cost basis or accepted P&L. Detailed source identities, counts, hashes,
+candidate matches and execution/transfer receipts remain private and outside Git.
+
+The next useful checkpoint is saved-evidence reconciliation and disposable-copy
+rehearsal before any changed financial review or live update. The live journal,
+active report, website runtime, shared dependencies and OneBot services remain
+unchanged. Credential ownership was retained; only the explicitly approved
+token renewal occurred. Formal Phase 1 remains **8/12**.
+
 ### Guarded release-path close-out: 2026-10-11
 
 The owner's request to proceed with the next close-out steps covered local
