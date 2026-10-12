@@ -37,6 +37,44 @@ This closes the approved maintenance publication, not a later Phase 1 package;
 formal Phase 1 remains **8/12**. The checkpoints below record their historical
 scope and must not be read as current publication blockers.
 
+### Approved historical evidence implementation and copy rehearsal: 2026-10-12
+
+The owner instructed `Proceed` for one bounded implementation, critical-test,
+disposable-copy rehearsal, documentation, commit and push batch. The approved
+`onejournal.historical-activity-evidence.v1` contract and migration 0029 are
+implemented under `docs/schwab_web_history_review.md`. Saved website/API
+records and already-reviewed statement observations retain their original
+checksums, account scope, date meanings, row multiplicity and missing fields.
+No synthetic execution timestamp or canonical fill identity is created.
+
+The guarded public operator completed on a fresh copy of the exact quiescent
+schema-0028 saved database. It applied only migration 0029, imported the exact
+prepared evidence, verified idempotent replay and exact read-back, and preserved
+every predecessor table/view's schema and complete row multiset. A separate
+read-only comparison with a shared calculation timestamp verified every prior
+financial result field, allocation, omission and fingerprint unchanged. Existing
+assignment source links also remained unchanged. Detailed private counts,
+identities, fingerprints and receipts are not committed to Git.
+
+Nineteen focused synthetic tests pass; relevant source-review and installed
+migration-resource tests also passed. Real-data rehearsal identified UUID audit
+key support and the current DuckDB Python client's missing `pytz` read dependency;
+both are addressed and regression-covered. The dependency is declared and locked,
+and the rehearsal used an isolated temporary location rather than modifying the
+installed site environment. The first post-calculation check used different
+observation times; only that read-only check was repeated with a shared time,
+without reimporting the copy or weakening financial comparisons.
+
+This closes the approved evidence-loader batch, not native financial admission.
+Source-version conflicts, unsupported assets, independent currency/basis and
+date-only lifecycle eligibility remain explicit reconciliation work. The held
+recovered-opening preview and proposed ADR-0010 are not accepted by this batch.
+No live database access/write, broker call, credential change, financial
+publication, runtime restart, canonical sync or hosting change occurred.
+Rollback is a focused source revert and stopping selection of the disposable
+ledger; original evidence and accepted history remain intact. Strategic scope
+and operational maturity claims are unchanged. Formal Phase 1 remains **8/12**.
+
 ### Residual source review and historical admission proposal: 2026-10-12
 
 The owner instructed `Proceed` for the remaining saved-source differences and

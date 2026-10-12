@@ -1,7 +1,9 @@
-# Retained website-history diagnostic review
+# Historical activity evidence and retained website-history review
 
-This is a read-only maintenance review, not an importer, financial release or
-claim that lifetime account history is complete. Formal Phase 1 remains **8/12**.
+The original source review remains read-only. The separately approved historical
+activity evidence loader imports only into a disposable journal copy in this
+delivery; it does not admit canonical executions, publish financial results or
+claim lifetime completeness. Formal Phase 1 remains **8/12**.
 
 ## Source and data flow
 
@@ -105,7 +107,12 @@ The review consumes existing private PDFs/JSON and produces only new private
 diagnostic artifacts. It adds no PDF dependency to the application, importer,
 API or website and changes no financial, identity or timestamp contract.
 
-## Proposed historical admission design (not approved for implementation)
+## Approved bounded historical evidence contract
+
+Contract: `onejournal.historical-activity-evidence.v1`. The owner instructed
+`Proceed` after the implementation, critical validation, disposable-copy
+rehearsal, commit and push proposal. This approves that source-only batch, not
+live migration/import, financial acceptance/publication or runtime activation.
 
 The existing `NormalizedFill` requires an execution datetime, and materialization,
 FIFO lifecycle processing, snapshot cutoffs and reporting consume that instant.
@@ -116,7 +123,7 @@ deduplication of distinct source IDs, and broader correction governance in
 ADR-0010 remains proposed. The recovered-opening supplement is still held and
 is not a shortcut around these constraints.
 
-The recommended bounded design is an additive, broker-independent historical
+The implemented bounded design is an additive, broker-independent historical
 activity evidence ledger, separate from active normalized fills and reports:
 
 - Preserve every activity, including assignments, expirations, cash movements
@@ -148,12 +155,11 @@ aware version throughout the application. The first prevents useful historical
 intake; the second has much wider migration and regression impact. Synthetic
 midnight timestamps and economics-only deduplication are not acceptable options.
 
-This is a proposal, not a durable admission/correction policy or schema change.
-One coherent next implementation approval can cover the explicitly bounded
-contract, additive migration preparation, offline loader, source/equivalence
-review, focused tests, disposable-copy rehearsal, documentation, commit and push.
-Live migration/import, report acceptance/publication and runtime activation
-remain excluded. No provider request or credential operation is required.
+This is evidence admission, not canonical fill or financial admission. It does
+not accept the broader ADR-0010 correction, supersession, retention or activation
+proposal. There is no automatic choice of a current source version, canonical
+fill key, currency, lot basis, commission split or execution timestamp. No
+provider request or credential operation is required.
 
 The impact map is immutable exports/statements/API evidence -> offline adapter
 and historical ledger -> private reconciliation/lifecycle preview. A later
@@ -164,6 +170,94 @@ replay, changed-ID non-duplication, conflict rejection, day-only ambiguity,
 assignment/share linkage, missing-value preservation and unchanged predecessor
 rows/results. Rollback is to discard the disposable candidate and stop selecting
 the new ledger; originals and accepted history are never deleted.
+
+### Record and replay rules
+
+`src/onejournal/journal/historical_activity.py` validates, fingerprints, stores
+and reads the exact selected bundle. Migration `0029` adds only five
+`historical_activity_*` tables: import runs, source documents, observations,
+run/observation links and provider-activity bundle reviews. No active-history
+view, existing fill, journal review, accepted allocation or reporting table is
+modified. The migration runner is unchanged; installation's existing SQL glob
+packages the new authoritative artifact.
+
+Each import run has an explicit ID, account/broker scope, `asof`, aware UTC
+normalization-observation time and exact bundle fingerprint. This time is not a
+provider capture or trade instant. A different import run records a separate
+delivery even when content is unchanged; identical original file copies do not
+become invented provider retrievals.
+
+A document identity binds broker, opaque account, source kind and immutable
+raw checksum. The run preserves private source paths and exact scope/review
+proof paths and hashes. Observation identity binds document identity to its
+actual row/page location. Equal economics at different locations remain distinct.
+The same observation with changed interpretation is rejected, not overwritten.
+Exact run replay checks complete stored JSON, typed dates, document scope, links
+and review rows. A conflicting run ID or a partial read-back fails closed in a
+transaction. No latest-run selector is provided.
+
+Calendar fields are independently nullable `posting_date`, `asof_date`,
+`trade_date` and `settlement_date`. Precision is `day`, `instant` or `unknown`.
+Website/statement observations must have no provider activity ID or timestamp.
+An API accounting timestamp is explicitly `provider_transaction`, never
+relabelled as execution evidence. Missing currency/cost fields stay unknown;
+source decimal strings and combined costs are retained without a float or a
+commission/fee split.
+
+`src/onejournal/brokers/schwab/historical_activity.py` supplies credential-free
+website, raw-API, saved-assembly and already-reviewed statement adapters. Before
+copy writes, source observations are re-derived from their exact originals and
+pinned scope/review proofs. Statement observations must be exact members of the
+checksum-bound prior review; this adds no PDF dependency to the application.
+Raw API account validation uses the existing private binding. Repeated activity
+versions inside a saved assembly retain their immutable array locations; raw
+single-response duplicate activity IDs still fail. Original source records and
+instrument objects are retained, with raw account numbers left in the immutable
+source rather than duplicated in the projection.
+
+Provider reviews bind only the exact selected source set. Complete item
+multiplicity, source financial fields, instrument evidence and timestamps enter
+the version signature; order/position/item reference changes do not select a
+new fill. Released-scheme fill-key references are metadata, not proof of fill
+admission. Review statuses are `consistent_bundle`, `economic_conflict`,
+`ambiguous_security_items` and `unsupported_assets`. Missing instrument objects
+are explicit; a retained instrument object does not prove valid deliverables.
+Every status keeps financial admission false. A consistent selected bundle is
+not proof that lifetime history or all external retained versions were supplied.
+
+The copy preview reuses the existing narrow assignment/predecessor/share source
+review. It preserves unknown intraday ordering and unproven event charges; it
+does not create a second P&L engine, approved lifecycle allocations or a new
+report release. The recovered-opening financial preview remains held.
+
+### Guarded operator and validation
+
+`scripts/journal/rehearse_historical_activity_import.py` accepts exact
+`--source-db`, `--source-db-sha256`, `--bundle`, `--bundle-fingerprint` and a
+new `--rehearsal-dir`. The source and bundle must be private regular files;
+the source must be a quiescent schema-0028 saved copy. No writable target DB,
+broker, token, server or restart flag exists. The command creates a verified
+owner-only copy outside the repository, applies exactly migration 0029 there,
+imports/replays/reads back the bundle and writes private receipts. Existing
+output is never overwritten. Unexpected errors are value-free and nonzero.
+
+The declared and locked `pytz` dependency is required by the current DuckDB
+Python client when reading predecessor `TIMESTAMPTZ` values. OneJournal's domain
+date handling remains standard-library UTC/zoneinfo; this is client read-back
+compatibility, not a new timezone policy. Rehearsal can use an isolated temporary
+dependency location without modifying the installed site environment.
+
+The preservation check fingerprints every existing table/view's schema and
+complete row multiset, preserving decimals, UTC/date values, UUID audit keys,
+duplicate rows and legacy floating bits exactly. Only the new migration-ledger
+row is additive. Focused tests cover source re-derivation, incorrect account,
+missing data, exact decimals, fake timestamps, changed generated references,
+instrument/economic conflicts, repeated assembly captures, item ambiguity,
+unsupported assets, immutable replay, atomic conflict rejection, typed read-back,
+assignment ordering, prior notes and non-overwriting copy-only behavior.
+Actual replay must additionally preserve the prior financial fingerprint and
+all admitted allocations/omissions and existing assignment links. Detailed
+counts, values, paths, fingerprints and receipts stay private, never in Git.
 
 ## Assignment and recorded cash review
 
@@ -208,8 +302,8 @@ also cover partial fills, repeated-row multiplicity, exact cash/cost/quantity
 differences, source reuse, date alternatives, mixed accounts and deliverables.
 Actual private
 replay verifies pinned sources, unchanged database bytes and unchanged base
-financial results. No broad regression suite or dependency installation is
-needed because the diagnostic is not connected to existing runtime consumers.
+financial results. No broad regression suite or change to the installed site
+environment is needed because the diagnostic is not connected to runtime consumers.
 
 Original artifacts are never overwritten. Failed or superseded diagnostic
 attempts are retained with explicit replacement receipts. Rollback means stop

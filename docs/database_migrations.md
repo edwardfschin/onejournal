@@ -69,6 +69,16 @@ upgrade approval.
 
 ## Storage and naming
 
+Migration `0029_add_historical_activity_evidence.sql` adds five isolated
+historical-activity evidence tables under
+`docs/schwab_web_history_review.md`. It preserves real date precision, private
+source/checksum and import-delivery lineage without renaming fills, modifying
+accepted rows, changing active-history readers or publishing financial results.
+The owner approved source preparation and disposable-copy rehearsal only. It
+has not been applied to the operational journal. The copy rehearsal checks
+every predecessor table/view and financial result; live migration/import remains
+separately authorized.
+
 Migration artifacts live under:
 
 ```text
