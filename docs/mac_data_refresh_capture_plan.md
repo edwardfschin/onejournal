@@ -120,6 +120,44 @@ active report, website runtime, shared dependencies and OneBot services remain
 unchanged. Credential ownership was retained; only the explicitly approved
 token renewal occurred. Formal Phase 1 remains **8/12**.
 
+### Approved disposable-copy history reconciliation: 2026-10-12
+
+The owner instructed `Proceed` after the copy-only reconciliation proposal.
+The verified new history was combined with the exact previously published
+history bundles, retaining the same position snapshot, price evidence and
+cutoff. The retained publication verification database was reproduced exactly
+before creating a separate candidate copy; the live journal was never opened
+for writing or copied while in use.
+
+The existing assembly, append-only revision and bounded realized-result paths
+completed on that copy. Every previous base-table row and reporting table was
+preserved; the source verification database stayed byte-identical. Exact replay
+added no rows and reproduced the candidate result fingerprint. All previously
+admitted allocations remained identical. Additional admitted allocations were
+compared within the old report's date range, separately from the expanded older
+coverage, so wider totals and omission counts are not presented as like-for-like
+improvements.
+
+Fill-level lineage confirms that most original missing-opening scopes resolve
+with the new verified evidence, while some still require earlier history.
+Original terminal-event review and position-reconciliation scopes remain
+withheld. Newly exposed older unresolved scopes and changed episode boundaries
+remain explicit; an exact-instrument candidate is not treated as an accepted
+opening, closure or complete trade chain.
+
+The legacy archive was not promoted into authoritative acquisition history:
+its remaining provenance and instrument-version issues are preserved rather
+than bypassed. A private, human-readable unaccepted comparison records the
+same-period changes, retained allocations, outstanding evidence and unchanged
+snapshot. Diagnostic subtotals use sufficient decimal aggregation precision;
+no allocation fingerprint or financial rounding policy was changed.
+
+No report authorization, owner financial acceptance, live persistence,
+publication, broker request or runtime change occurred. Exact candidate counts,
+amounts, fingerprints, programs and receipts remain private and outside Git.
+Review of remaining evidence and the exact bounded candidate precedes any
+decision to publish changed financial results. Formal Phase 1 remains **8/12**.
+
 ### Guarded release-path close-out: 2026-10-11
 
 The owner's request to proceed with the next close-out steps covered local
