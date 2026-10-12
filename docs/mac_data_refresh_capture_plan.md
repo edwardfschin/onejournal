@@ -37,7 +37,50 @@ This closes the approved maintenance publication, not a later Phase 1 package;
 formal Phase 1 remains **8/12**. The checkpoints below record their historical
 scope and must not be read as current publication blockers.
 
-### Approved recovered-opening financial integration: 2026-10-12
+### Owner correction and authenticated website history export: 2026-10-12
+
+The owner corrected an opening's classification and requested all available
+same-account broker history. The earlier recovered-opening preview is now held
+for publication. Its ordinary-purchase description was too strong: a generic
+API trade description and the absence of a structured lifecycle field did not
+establish that the shares were independently purchased rather than delivered
+through assignment. Original preview and source artifacts remain unchanged;
+a private hold receipt binds the exact unaccepted preview fingerprint.
+
+After the owner signed in directly, a read-only website export used the visible
+`All` date range, no symbol filter and every transaction category selected.
+The complete JSON and CSV downloads were preserved privately, checksum-verified
+and compared across every exported row and shared field. The export contained
+more rows than the website's first displayed page. Query bounds are kept
+separate from actual returned posting dates, broker as-of dates and unknown
+account-opening/lifetime-completeness boundaries. No API lookback guarantee or
+historical acquisition manifest was inferred from the website export.
+
+The website's full retained-statement search was also downloaded and preserved
+byte-for-byte, including legacy-provider statements. The requested assignment
+actions and corresponding share postings are explicit in the new transaction
+export and supported by the relevant monthly statements. Exact account details,
+instruments, dates, counts, amounts, source rows, checksums and document receipts
+remain private and outside Git. Trade confirmations and tax forms were not
+downloaded in this pass; downloading statements is not a claim that every
+available broker document or lifetime transaction has been obtained.
+
+The new export lacks API provider activity IDs and intraday execution timestamps.
+It is additional raw evidence, not a ready-to-import canonical fill feed.
+Assignment/share linkage, duplicate-safe reconciliation against existing fills,
+date semantics and premium/basis treatment must be resolved before any revised
+financial calculation or publication. The old recovered-opening route cannot
+be used to bypass the newly confirmed lifecycle evidence.
+
+No broker token, order, canonical journal record, accepted financial release,
+runtime or security policy changed. This history recovery is maintenance, not a
+Phase 1 acceptance increase; formal Phase 1 remains **8/12**.
+
+### Historical recovered-opening financial integration: 2026-10-12
+
+**Current status: preview held following the owner correction and new broker
+assignment evidence above.** The following records the earlier rehearsal, not
+current eligibility for financial acceptance or publication.
 
 The owner approved the proposed labelled recovered-evidence source extension,
 integration of only the reviewed independent opening scopes, focused checks,

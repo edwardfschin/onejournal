@@ -7,6 +7,27 @@
 - Scope: at most two explicitly reviewed independent opening scopes. This is
   maintenance preparation, not a Phase 1 maturity or financial acceptance change.
 
+## Current evidence hold: 2026-10-12
+
+The initial private preview is held after an owner correction was confirmed by
+authenticated website transaction history and monthly statements. One selected
+share opening was assignment-delivered, despite its retained API record having
+only a generic trade description and no structured assignment field. Absence of
+such a field is not proof of an independent ordinary purchase.
+
+This bounded ordinary-opening route must not be used to admit the affected scope
+or publish the held preview. Existing immutable artifacts are retained, with an
+append-only private hold receipt identifying the exact fingerprint. No live
+release was changed. Newly retrieved website rows remain separate raw evidence;
+they are not silently converted to API provider identities or historical capture
+receipts. Explicit lifecycle/share linkage and premium/basis reconciliation are
+required before a revised financial candidate can be considered. The current
+calculator's checks cover lifecycle records already supplied by its parent;
+they do not discover omitted lifecycle evidence from an external website export.
+
+The source-extension approval and historical validation below remain recorded,
+but do not override the new evidence or confer financial/publication acceptance.
+
 ## Evidence and identity
 
 The authoritative parent is one exact, stored snapshot assembly v3 and its
