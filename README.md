@@ -277,9 +277,13 @@ The installed Mac release and retained rollback procedure are documented in
 `docs/operator_quickstart.md`. The separately owner-reviewed maintenance release
 was published on 2026-10-11 after verified backup and copy rehearsal, with prior
 journal/report records preserved. Exact financial receipts remain private.
-The installed source is `fc80998`; the frontend is unchanged, saved passkeys are
-retained and anonymous exports remain blocked. Saved values are dated snapshots,
-not live prices. Sign in again after the controlled restart.
+The current installed source is `c173b88`, following the 2026-10-12 UI-only
+update: consistent keyboard skip shortcuts and corrected narrow Trades/Journal
+layout. Financial data and authority, saved passkeys and TLS are unchanged;
+anonymous financial access remains blocked. The private start shortcut selects
+the new release, with the prior environment retained for UI-only rollback.
+Saved values are dated snapshots, not live prices. Sign in again after the
+controlled restart; owner sign-in after this update is not yet confirmed.
 Hosted deployment, final security/operations/quality acceptance and Phase 1
 owner acceptance remain outstanding. Phase 1 remains 8/12. Streamlit remains
 an internal workflow-validation surface until verified parity and its explicit

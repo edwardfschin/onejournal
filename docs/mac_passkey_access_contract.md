@@ -40,6 +40,15 @@ private configuration described in `operator_quickstart.md`, not an older
 authorization config. Publication receipts/backups remain private; this is
 neither new security acceptance nor Phase 1 completion.
 
+The 2026-10-12 owner-authorized UI-only installation now serves source `c173b88`
+from a separate permanent environment on the same protected HTTPS origin.
+Existing journal/configuration/financial authorizations/TLS are byte-identical;
+passkey enrollment is retained and sessions require fresh sign-in. Anonymous
+financial denial passed, adding its normal value-free access audit event. No
+enrollment/recovery or security policy changed. Owner sign-in after this restart
+is not yet confirmed. Start and UI-only rollback use `operator_quickstart.md`;
+the prior installed environment and private shortcut remain available.
+
 ## Data and request flow
 
 Offline provisioning -> dedicated security store and expiring enrollment file

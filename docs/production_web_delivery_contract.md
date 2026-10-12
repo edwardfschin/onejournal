@@ -677,6 +677,35 @@ in progress; supported browser/device choices, actual zoom/screen-reader checks,
 agreed performance budgets and final environment acceptance remain open.
 Phase 1 remains 8/12.
 
+### Approved Mac quality installation: 2026-10-12
+
+The owner instructed the next presented UI-only installation/restart. The
+public wheel/static package from clean pushed source `c173b88` was verified and
+installed into a new permanent Mac environment with the unchanged pinned
+dependencies. Exact artifact hashes, installed imports, dependency consistency,
+bundled migration SQL and read-only configuration/authority validation passed
+before interrupting the existing site.
+
+Only the identity-verified owned OneJournal listener was stopped gracefully.
+The handover waited for actual process completion, not merely a closed port,
+before recording the private unchanged-input baseline. The replacement serves
+the new keyboard/reflow corrections at the same protected loopback HTTPS origin.
+Trusted HTTPS, the exact new static shell/changed assets, retained enrollment,
+new-session requirement and anonymous financial denial passed. The journal,
+authorizations, active configuration and TLS files remained byte-identical.
+The denial produces its normal value-free security audit event; security-store
+byte identity is not claimed. No authenticated financial request was made.
+
+The private foreground startup shortcut now selects the new installed release
+explicitly. The previous environment/static artifact and shortcut are retained
+for UI-only rollback using the same current private configuration. There was
+no migration, financial publication/calculation, broker call, passkey recovery,
+policy change, canonical synchronization, daemon or hosted deployment. Detailed
+receipts and private file locations stay outside Git. Owner passkey sign-in after
+this restart remains unconfirmed; earlier synthetic visual/keyboard validation
+is not repeated or relabeled as owner acceptance. P1-11 remains in progress and
+Phase 1 remains 8/12.
+
 The web delivery packages map to Phase 1 as follows:
 
 | Phase 1 need | Required web package or dependency |

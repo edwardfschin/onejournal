@@ -11,7 +11,7 @@ cancel, replace, or modify broker orders or auto-trade.
 ## Current protected Mac website
 
 The owner-approved site uses trusted `https://localhost:4173` and passkey login.
-The current 2026-10-11 public wheel/static release is built from `fc80998`
+The current 2026-10-12 public wheel/static release is built from `c173b88`
 and installed in a separate permanent environment. One Python process serves
 the static website and protected API together on loopback HTTPS; no Node
 runtime or listener on port 8765 is needed. The approved maintenance publication
@@ -23,7 +23,7 @@ To start the installed release after stopping its own existing terminal, set
 publication receipts. Do not silently use the earlier authorization config:
 
 ```bash
-OJ_RELEASE="$HOME/.onejournal/releases/mac-static-20261011-refresh"
+OJ_RELEASE="$HOME/.onejournal/releases/mac-static-20261012-quality"
 OJ_ACCESS="$HOME/.onejournal/passkey-access"
 test -n "${OJ_WEB_CONFIG:?Set the active private configuration path first}"
 "$OJ_RELEASE/python-env/bin/onejournal-mac-site" --owner-local \
@@ -63,10 +63,17 @@ scope are recorded privately. No rollback occurs during normal startup.
 The earlier `19b0bd8` installed environment lacks the new checksum resources
 and must not be used against the migrated journal.
 
+UI-only rollback uses the retained `mac-static-20261011-refresh` environment
+and its matching static directory with the **same current** private configuration,
+security store and TLS files. Stop only the owned current process first; do not
+restore a database or select old financial authorizations. The previous private
+shortcut is retained with the private handover receipt. The new shortcut selects
+`mac-static-20261012-quality` explicitly; there is no automatic rollback.
+
 The canonical checkout at `cc1fa8a`, prior environments and original private
 configuration remain unchanged. Do not run two versions together or bypass
 passkey protection. The owner verified the earlier installed-release handover;
-sign-in after the financial-publication restart is not yet confirmed. This is
+sign-in after the current UI-only restart is not yet confirmed. This is
 bounded Mac operation, not Phase 1 completion. See
 `docs/mac_passkey_access_contract.md`.
 

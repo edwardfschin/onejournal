@@ -516,8 +516,16 @@ history submission, focus, semantic table structure, locked/unavailable views
 and desktop/tablet/phone reflow were checked. A single local candidate sample
 measured approximately 350 ms to report readiness and 26 ms for a 300-row
 synthetic history; this is a baseline, not a production budget. No private
-database or running-site change occurred. The candidate awaits a deliberate
-runtime update; native zoom, screen-reader speech, supported-browser/device
+database or running-site change occurred during that candidate validation.
+The subsequent owner-authorized UI-only handover installed clean pushed source
+`c173b88` separately and restarted only the verified owned protected Mac service.
+Trusted HTTPS, exact updated assets, retained enrollment and anonymous financial
+denial passed; journal/configuration/authorizations/TLS bytes were unchanged.
+The private start shortcut selects the new release explicitly and the previous
+environment/shortcut remain available for UI-only rollback. No migration,
+financial publication, broker call, policy change or canonical sync occurred.
+Owner sign-in after this restart is not yet confirmed; native zoom,
+screen-reader speech, supported-browser/device
 choices, agreed budgets and final acceptance remain open. P1-11/WEB-W11 are
 now IN PROGRESS for approved local work, not COMPLETE; Phase 1 remains 8/12.
 
