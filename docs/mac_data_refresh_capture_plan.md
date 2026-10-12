@@ -195,6 +195,53 @@ candidate database are unchanged. There were no broker calls, token operations,
 database writes, new financial calculations, publication or service changes.
 Formal Phase 1 remains **8/12**; lifetime-history completeness is not claimed.
 
+### Duplicate-safe archive staging rehearsal: 2026-10-12
+
+The owner instructed `proceed` after the duplicate-safe archive preparation and
+disposable-copy rehearsal proposal. The owner's recalled start month has two
+possible years. The earlier candidate month is retained for investigation,
+consistent with saved records, but neither an account-opening date nor lifetime
+coverage is confirmed.
+
+`src/onejournal/brokers/schwab/archive_review.py` is a pure diagnostic helper,
+not a new canonical import contract. It compares every retained normalized
+version of a provider activity, preserving item multiplicity, exact source IDs
+and raw/canonical-record hashes. It withholds changed generated IDs, changed
+normalized values or names, partial adapter exclusions and duplicate item IDs.
+It also compares existing history by provider activity, not just generated fill
+ID, so a known trade cannot re-enter under a different ID. No alias, preferred
+version, replacement ID or currency default is selected. Equivalent observations
+can produce a diagnostic candidate or verified existing replay only.
+
+The checksum-verified same-account archive passed this review against the exact
+verified history assembly. The previously identified unambiguous openings were
+staged in a separate diagnostic table on a new disposable journal copy; they
+were not inserted into `normalized_fills`, activated history or reporting tables.
+Identical staging replay added no rows, conflicting replay was rejected, and
+reversed observation order produced the same review. All prior base-table rows
+and the canonical realized-result fingerprint remained identical. The source
+database, archive and assembly stayed unchanged. Nine focused synthetic tests
+cover duplicate/version, existing-activity, multiplicity, scope and privacy
+failure behavior; no broad test suite or runtime dependency installation was
+needed.
+
+Private receipts retain the exact diagnostics, selected rows, source pins,
+disposable database and final delivered-helper preflight. Unknown original
+capture instants remain unknown, and no acquisition receipt was fabricated.
+This completes archive-review and isolated staging preparation, not canonical
+history materialization, financial acceptance or publication.
+
+The recommended next integration is a separately versioned recovered-evidence
+supplement tied to the exact verified assembly and explicitly reviewed opening
+scopes. It would retain existing fill IDs, withhold identity/name conflicts,
+preserve unknown acquisition provenance and keep supplemental older openings
+distinct from verified continuous-window coverage. That financial source-contract
+extension is proposed, not approved or implemented by this diagnostic work.
+Its writer/calculation compatibility must be rehearsed before changed figures
+are reviewed; the remaining transferred-lot basis/quantity evidence stays open.
+There were no broker calls, token operations, live writes or runtime changes.
+Formal Phase 1 remains **8/12**.
+
 ### Guarded release-path close-out: 2026-10-11
 
 The owner's request to proceed with the next close-out steps covered local
