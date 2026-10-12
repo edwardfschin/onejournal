@@ -432,6 +432,30 @@ def _result_payload(result: BoundedRealizedResult) -> dict[str, Any]:
     }
 
 
+def _ordinary_realized_item(allocation, close_fill) -> RealizedAllocationResult:
+    """Shared exact ordinary-fill item identity; no acceptance or persistence."""
+    lineage = {
+        "open_fill_uid": allocation.open_fill_uid,
+        "close_fill_uid": allocation.close_fill_uid,
+        "scope_key": allocation.scope_key,
+        "quantity": allocation.quantity,
+        "realized_pnl": allocation.realized_pnl,
+    }
+    return RealizedAllocationResult(
+        item_uid=f"realized-item:{_digest(lineage)}",
+        source_broker=allocation.scope_key[0], source_account_id=allocation.scope_key[1],
+        instrument_key=allocation.scope_key[2],
+        symbol=(close_fill.underlying_symbol or close_fill.symbol).upper(),
+        asset_class="option" if close_fill.asset_class.lower() == "option" else "equity",
+        close_market_date=allocation.closed_at.astimezone(NEW_YORK).date(),
+        closed_at_utc=_utc(allocation.closed_at), currency=allocation.scope_key[3],
+        realized_pnl=allocation.realized_pnl, direction=allocation.direction,
+        quantity=allocation.quantity, multiplier=allocation.multiplier,
+        open_fill_uid=allocation.open_fill_uid, close_fill_uid=allocation.close_fill_uid,
+        source_event_uid=allocation.source_event_uid,
+    )
+
+
 def calculate_bounded_realized_result(
     db_path: Path,
     *,
@@ -518,36 +542,7 @@ def calculate_bounded_realized_result(
         close_scope = fill_episode[allocation.close_fill_uid]
         if open_scope in unresolved or close_scope in unresolved:
             continue
-        close_fill = fill_by_uid[allocation.close_fill_uid]
-        lineage = {
-            "open_fill_uid": allocation.open_fill_uid,
-            "close_fill_uid": allocation.close_fill_uid,
-            "scope_key": allocation.scope_key,
-            "quantity": allocation.quantity,
-            "realized_pnl": allocation.realized_pnl,
-        }
-        items.append(
-            RealizedAllocationResult(
-                item_uid=f"realized-item:{_digest(lineage)}",
-                source_broker=allocation.scope_key[0],
-                source_account_id=allocation.scope_key[1],
-                instrument_key=allocation.scope_key[2],
-                symbol=(close_fill.underlying_symbol or close_fill.symbol).upper(),
-                asset_class=(
-                    "option" if close_fill.asset_class.lower() == "option" else "equity"
-                ),
-                close_market_date=allocation.closed_at.astimezone(NEW_YORK).date(),
-                closed_at_utc=_utc(allocation.closed_at),
-                currency=allocation.scope_key[3],
-                realized_pnl=allocation.realized_pnl,
-                direction=allocation.direction,
-                quantity=allocation.quantity,
-                multiplier=allocation.multiplier,
-                open_fill_uid=allocation.open_fill_uid,
-                close_fill_uid=allocation.close_fill_uid,
-                source_event_uid=allocation.source_event_uid,
-            )
-        )
+        items.append(_ordinary_realized_item(allocation, fill_by_uid[allocation.close_fill_uid]))
 
     for allocation in calculation.lifecycle_allocations:
         predecessor_scopes = {

@@ -301,6 +301,14 @@ Every source account in a release maps to one stable, owner-chosen alias.
 
 ## Realized-P&L eligibility
 
+The owner-approved copy-only recovered-opening calculation is defined separately
+in `docs/recovered_opening_supplement_contract.md`. Its labelled retained-file
+provenance, bounded scope, new preview version and exact parent lineage do not
+turn it into an active-history result or report-persistence authorization.
+Existing accepted reporting authorities remain unchanged. No live release writer
+or API consumes the new preview, and changed figures remain unaccepted until
+their exact owner review and compatible guarded publication are completed.
+
 Each admitted history item must be backed by an accepted allocation with:
 
 - exact source account and instrument identity;

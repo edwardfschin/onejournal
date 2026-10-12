@@ -37,6 +37,47 @@ This closes the approved maintenance publication, not a later Phase 1 package;
 formal Phase 1 remains **8/12**. The checkpoints below record their historical
 scope and must not be read as current publication blockers.
 
+### Approved recovered-opening financial integration: 2026-10-12
+
+The owner approved the proposed labelled recovered-evidence source extension,
+integration of only the reviewed independent opening scopes, focused checks,
+disposable-copy financial rehearsal, commit and push. Broker requests, live
+database changes and restarts remain excluded. The bounded contract is
+`docs/recovered_opening_supplement_contract.md`; it supersedes the earlier
+diagnostic checkpoint's pending policy decision for this exact scope only.
+
+The immutable supplement keeps original capture instants and acquisition
+receipts explicitly unknown. Every retained source version must agree, match
+the private account and reconcile execution cash including commissions and
+fees. Existing IDs are retained, identity/name conflicts remain excluded and
+transferred shares with unknown original basis are not treated as purchases.
+No retrospective acquisition manifest or continuous older-history window was
+created.
+
+The actual read-only calculation on a new disposable copy resolved the admitted
+opening chains, matched the unchanged position snapshot, preserved every prior
+candidate allocation and removed only fully covered missing-opening omissions.
+Exact replay reproduced the preview fingerprint. Source and disposable database
+bytes, archive files and parent assembly remained unchanged. Supplemental older
+openings did not expand verified report coverage; the newly calculable earlier
+allocation is distinguished from changes inside the published report period.
+All remaining lifecycle, quantity and opening/basis uncertainties stay withheld.
+
+Twenty-six focused synthetic tests passed, including equity and short-option
+fees/cash, source-version and scope rejection, unchanged coverage, quantity and
+other-review failures, legacy realized calculation and archive duplicate rules.
+No broad suite, runtime dependency change or schema migration was needed. Exact
+counts, values, fingerprints, source pins and the human financial review remain
+private and outside Git.
+
+This completes the approved recovered-source and financial-preview batch, not
+financial acceptance, canonical history activation or live publication. The
+current live release writer does not accept this separate preview contract;
+compatible durable publication and fresh acceptance of the changed result are
+still required before the website can use it. The running site, accepted report,
+operational journal and canonical checkout remain unchanged. Formal Phase 1
+remains **8/12**.
+
 ### Offline older-history gap review: 2026-10-12
 
 The owner instructed a saved-record review of missing history before another
