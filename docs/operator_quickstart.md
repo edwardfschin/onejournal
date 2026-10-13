@@ -1045,6 +1045,18 @@ authorization. Do not flatten history, infer missing transactions, fetch brokers
 or apply 0029. Synthetic rehearsal is not that real-state migration. Keep a
 single production journal writer after cutover; no two-way database sync.
 
+The owner subsequently approved and completed that **Mac disposable-copy
+rehearsal** on 2026-10-13. The existing snapshot routine obtained a read-only,
+WAL-free consistent copy of the configured journal and exact financial
+authorizations. The migration compared every table/view and the selected
+Portfolio, report account/symbol, CSV and journal API outputs against a second
+disposable DuckDB copy. Original journal bytes remained identical; the frozen
+copy was also unchanged. API audit writes were confined to disposable targets.
+The temporary PostgreSQL database was removed and its owned cluster stopped.
+Detailed hashes, private bindings and receipt stay outside Git. No history
+extension, live write, service restart or hosted transfer occurred. This is
+real-data rehearsal evidence, not authority to transfer or activate that data.
+
 On the eventual target, create independent non-owner runtime roles and private
 operator roles. Apply the **journal section only in the journal database** and
 the **security section only in the security database** of
@@ -1122,3 +1134,67 @@ preserving later journal entries/audits before any approved switch. No prepared
 script silently rewrites the live version pointer or runs a destructive down
 migration. Final owner acceptance still requires the actual target and dated
 private release; Phase 1 remains 8/12.
+
+### Combined hosted operating proposal — 2026-10-13
+
+**Recommendation for the eventual separate VPS, not activated policy.** Keep
+one production writer, immutable public release directories and the accepted
+Mac release available during cutover. Adopt the following together when the
+actual target, costs and private access are ready:
+
+| Choice | Recommended starting point | Practical limit |
+|---|---|---|
+| Off-server copies | A dedicated private Backblaze B2 bucket, storing only already-encrypted OneJournal backup images; independent OneJournal credentials restricted to that bucket. Keep the decryption password separately and an offline recovery copy. | Upload and remote checksum verification must finish before a backup counts as off-server. The current command does not upload; implement the narrow adapter once the destination is selected. Never use OneBot credentials or infrastructure. |
+| Schedule and loss target | Existing daily 03:00 UTC preparation, plus after accepted financial publication and before state-changing maintenance. Target no more than 24 hours of journal-entry loss under a healthy daily job. | Alert when the last verified off-server copy is older than 24 hours; a failed/missed job means the target is not met. No continuous replication or zero-loss claim. |
+| Recovery target | Restore and verify within four hours after the owner starts recovery with access and passwords available. | An attended objective to measure on the actual VPS, not a 24/7 staffed availability guarantee. |
+| Backup retention | Propose 30 daily copies and three month-end copies. Preserve the pre-cutover backup until hosted acceptance. | No retention rule or deletion is enabled now. Backup-copy retention does not authorize deleting source evidence, financial history or audit records. |
+| Failure notification | A separate Healthchecks.io check sends the owner email when the backup/verification heartbeat is late or explicitly fails. Send only generic success/failure signals. | Signal success only after remote verification. No paths, holdings, logs, account identifiers or backup credentials in notifications. The ping URL is a private secret. No messages/accounts/integrations were created. |
+| Incident handling | Freeze publication on reconciliation/backup failure; retain the last accepted report with its true date. Roll back compatible code if needed; restore state to fresh targets and reconcile before switching. | Never overwrite live state as the first repair attempt or reconnect OneBot services to resolve a OneJournal outage. |
+
+[Backblaze B2](https://www.backblaze.com/cloud-storage) offers S3-compatible
+storage and scoped keys; [Healthchecks documentation](https://healthchecks.io/docs/)
+describes missed-job notifications. This proposes two small managed services
+instead of maintaining another backup/monitoring server. Confirm region,
+current charges and owner email at target selection. Existing current-release
+source evidence outside PostgreSQL must be included in the approved encrypted
+backup set before promising full recovery; historical backfill stays separate.
+The already tested Mac recovery remains accepted. Actual off-server transfer,
+missed-job delivery and fresh-target recovery need one bounded hosted check.
+
+### Website refresh preparation — 2026-10-13
+
+The owner selected the existing OneBot-owned Schwab connection and deferred
+activation; IBKR is a later broker adapter. The Data page now has a separate
+refresh-request/status surface; reloading saved reports retains its old meaning.
+The additive API is `GET/POST /api/v1/local-owner/data-refresh`. POST accepts only
+a request UUID, behind the existing owner session/origin/CSRF gate. A bare
+unprotected API refuses enqueueing. The server selects the provider and the
+private connection; the browser cannot choose account, endpoint, credentials,
+history range or an order action.
+
+`onejournal.refresh_requests.RefreshRequests` provides the private durable
+handoff store, initialized explicitly outside Git/public assets with a 0700
+parent and 0600 file. Runtime never creates it. The journal API factory accepts
+an optional preconfigured store; existing Mac/hosted launchers deliberately do
+not bind one yet, so the shipped endpoint reports disabled and refuses POST.
+There is no misleading enabled button, automatic GET, scheduler or new token
+owner. Real connection wiring and activation remain outstanding.
+
+One active request is allowed. Repeated request UUIDs replay their recorded
+state. A credential-owner worker claims once, then uses the existing bounded
+current-position acquisition profile. A claimed request is never automatically
+redispatched after a crash: reconcile saved evidence and explicitly fail/close
+it first. The worker must pass the existing exact-byte/owner/epoch/terms validator
+before recording a capture; request/run, provider/profile and configured private
+connection must match. Receipt hashes remain private. `captured` means download
+received, not reconciled P&L or published reports. Existing validation, owner
+review, backup and release activation remain authoritative; unknown instruments
+or incomplete lifecycle evidence stay withheld. No historical acquisition is
+part of this request. Later incremental trades/transactions need a separate
+bounded scope; IBKR needs its own verified adapter/profile, not another UI.
+
+Before activation, wire the worker handoff without storing Schwab credentials in
+OneJournal, bind its account and capture authority, add the request store to the
+recovery procedure, and verify one bounded read-only capture. The current batch
+uses synthetic jobs and makes no broker calls or OneBot changes. No private
+configuration, request store, live journal or running website was changed.

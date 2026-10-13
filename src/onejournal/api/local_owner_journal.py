@@ -377,6 +377,7 @@ def create_local_owner_journal_app(
         BrokerCurrentFinancialReleaseAuthorization | None
     ) = None,
     reporting_authorization: ReportingReleaseAuthorization | None = None,
+    refresh_requests=None,
 ) -> FastAPI:
     """Build the private app with a server-selected, existing journal database.
 
@@ -571,6 +572,8 @@ def create_local_owner_journal_app(
             "or raw evidence."
         ),
     )
+    from onejournal.refresh_requests import register_routes
+    register_routes(app, refresh_requests)
     vertical_groups = load_schwab_vertical_presentation_groups(db_path)
     vertical_group_by_episode = {
         member.episode_uid: group

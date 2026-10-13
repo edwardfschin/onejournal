@@ -80,6 +80,27 @@ counts, omissions, and failures before any separately authorized write. The web
 experience does not silently refresh provider credentials or bypass operator
 approval boundaries.
 
+### Request fresh broker evidence
+
+The owner's 2026-10-13 direction keeps OneBot as the existing Schwab credential
+owner and defers activation. The prepared Data screen uses the versioned
+`onejournal.data-refresh.v1` request/status boundary. It accepts a request ID,
+not a broker URL, credentials, account selector or history range. A private
+durable handoff permits one active current-position request and requires a
+verified acquisition receipt before marking evidence captured. Request state
+does not authorize journal writes or publish financial results.
+
+The normal Mac and hosted launchers leave this capability disabled. A separately
+scoped worker integration, account/capture authority and queue recovery setup
+are needed before activation. Reloading saved data remains distinct from
+downloading fresh evidence. Historical backfill is separate.
+
+IBKR is a future provider adapter using the same request, evidence validation,
+reconciliation and publication boundaries. No IBKR connector, credential
+ownership, financial acceptance or broker access is selected by this change.
+This preserves the existing broker-independent foundation without expanding
+the single-owner Schwab Phase 1 scope.
+
 ### Produce a reproducible report
 
 The owner selects an account scope and period, sees exact as-of, source,

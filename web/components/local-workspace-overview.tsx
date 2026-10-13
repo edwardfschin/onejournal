@@ -6,6 +6,7 @@ import { ArrowRight, CircleAlert, RefreshCw } from 'lucide-react';
 import { LocalWorkspaceNavigation } from '@/components/local-workspace-navigation';
 import { fetchSavedWorkspace, fetchWorkspaceSession, type SavedWorkspace, type WorkspaceSession } from '@/lib/local-owner-workspace';
 import { LOCAL_ROUTES } from '@/lib/routes';
+import DataRefresh from '@/components/data-refresh';
 import type { ReportContext } from '@/lib/local-owner-reports';
 
 type View = 'today' | 'data' | 'settings';
@@ -92,7 +93,8 @@ function OverviewContent({ view, onReload }: { view: View; onReload: () => void 
           <article className="panel report-section"><p className="eyebrow">Journal</p><h2>What did I learn?</h2><p>Capture a reflection or lesson without changing financial evidence.</p><Link className="workspace-action" href={LOCAL_ROUTES.journal}>Open your journal <ArrowRight aria-hidden="true" /></Link></article>
         </section> : null}
         {view === 'data' ? <>
-          <section className="panel report-section"><h2>How new data reaches this workspace</h2><ol className="workspace-steps"><li>Capture a bounded set of fresh broker evidence through the existing OneBot-owned route.</li><li>Validate and reconcile it privately. Missing evidence stays withheld.</li><li>Accept the exact new results, append a release with a verified backup, then activate it.</li></ol><p>Fresh broker capture is not wired to this screen yet. There is no automatic sync or browser-to-broker connection. Reload reads the currently active saved release only.</p></section>
+          <DataRefresh />
+          <section className="panel report-section"><h2>How new data reaches this workspace</h2><ol className="workspace-steps"><li>Request current positions through your broker connection.</li><li>Validate and reconcile the new evidence. Missing evidence stays withheld.</li><li>Review the results before publishing a new saved release.</li></ol><p>The refresh connection must be activated before downloads are available. Reload saved data reads the currently active release only.</p></section>
           {saved ? <section className="panel report-section report-context"><h2>Release provenance</h2><dl><dt>Release</dt><dd>{saved.current.metadata.report_release_uid}</dd><dt>Prepared (UTC)</dt><dd>{saved.current.metadata.generated_at_utc}</dd><dt>Owner accepted (UTC)</dt><dd>{saved.current.metadata.owner_accepted_at_utc}</dd><dt>Calculation version</dt><dd>{saved.current.metadata.calculation_version}</dd></dl></section> : null}
         </> : null}
         {view === 'settings' ? <>

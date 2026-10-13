@@ -516,6 +516,30 @@ excluded from the deployed static package. Other Python findings above remain
 open. Revert the focused dependency commit and reinstall its matching lock to
 restore the previous candidate; do not downgrade an active environment.
 
+### Remaining hosted Python fixes: 2026-10-13
+
+The owner approved the remaining dependency disposition, operating proposal and
+real-journal disposable rehearsal. The hosted-only lock now additionally pins
+GitPython 3.1.62, Pillow 12.3.0, urllib3 2.8.0 and setuptools 83.0.0. Exact-version
+OSV queries returned no advisory matches for these four replacements. The
+upstream fixes cover [GitPython submodule containment](https://github.com/gitpython-developers/GitPython/security/advisories/GHSA-59cr-6r3x-644w),
+[Pillow parsing/encoding](https://github.com/python-pillow/Pillow/releases/tag/12.3.0),
+[urllib3 proxy TLS](https://github.com/urllib3/urllib3/security/advisories/GHSA-8988-9cw3-xx77)
+and [setuptools source-package exclusion](https://github.com/pypa/setuptools/security/advisories/GHSA-h35f-9h28-mq5c).
+The build-system upper bound admits setuptools 83; the Mac locks stay unchanged.
+The full declared closure is retained rather than removing Streamlit's transitive
+packages without a packaging redesign. GitPython/Pillow are not imported by the
+inspected hosted application paths; urllib3 is also used by the separately
+prepared acquisition runtime, whose independent pins are not changed here.
+
+All hosted pins match the isolated candidate, and dependency consistency passes.
+The actual private-copy PostgreSQL/API/CSV rehearsal passed in that patched
+environment. Wheel/static packaging validates the build-tool update. The prior
+four Python findings are dispositioned by patching this candidate, not by a
+blanket non-reachability waiver or a claim about the older running Mac release.
+The six high build-generator-chain findings remain open; no new audit loop or
+untrusted generator execution is added.
+
 ### Build-tool dependency separation: 2026-10-11
 
 The `shadcn` package is now a pinned development dependency, not an application

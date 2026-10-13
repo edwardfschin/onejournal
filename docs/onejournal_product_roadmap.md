@@ -152,6 +152,24 @@ parity. No real journal transfer, live activation, one-prod or history work was
 performed. See the operator quickstart and dependency contract. These are
 candidate preparation evidence; the formal count stays 8/12.
 
+**Further local preparation: 2026-10-13.** Four remaining reviewed Python
+dependency fixes are pinned in the isolated hosted candidate. The owner-approved
+real-journal rehearsal passed on frozen disposable copies: exact PostgreSQL
+table/view reconciliation and matching Portfolio/report/CSV/journal responses,
+with original and frozen journal bytes unchanged. Disposable PostgreSQL state
+was removed and the test cluster stopped. No live cutover is implied.
+
+The Data page now has disabled-by-default refresh request/status controls and a
+private durable handoff with duplicate prevention and protected-owner checks.
+Schwab will use the existing OneBot-owned connection; worker transport, capture
+authority and activation remain pending. IBKR is a future adapter behind the
+same broker-independent workflow, not an expansion of Phase 1 acceptance.
+No broker data was fetched. A combined off-server backup, retention, recovery
+and alerting proposal is in the operator quickstart; it is not active policy.
+Focused request/security tests and responsive synthetic preview checks passed.
+The unpatched build-generator dependency finding remains explicit. Live data,
+one-prod and history remain unchanged, and Phase 1 remains **8/12**.
+
 This tracker is the authoritative Phase 1 completion record. Update the row and
 evidence whenever a package changes state. A broader PNL, UXJ, WEB, or OPS item
 is not complete merely because its required Phase 1 slice is complete.

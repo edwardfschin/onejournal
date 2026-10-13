@@ -30,7 +30,9 @@ class HostedDependencyTests(unittest.TestCase):
         hosted = pins(hosted_path)
         self.assertEqual(set(hosted) - set(mac), {'psycopg', 'psycopg-binary'})
         self.assertEqual(set(mac) - set(hosted), set())
-        expected = {'anyio': '4.14.2', 'starlette': '1.3.1', 'python-multipart': '0.0.31'}
+        expected = {'anyio': '4.14.2', 'starlette': '1.3.1', 'python-multipart': '0.0.31',
+                    'gitpython': '3.1.62', 'pillow': '12.3.0', 'urllib3': '2.8.0',
+                    'setuptools': '83.0.0'}
         self.assertEqual({name: version for name, version in hosted.items()
                           if name in mac and version != mac[name]}, expected)
 
