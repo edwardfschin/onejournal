@@ -37,7 +37,7 @@ export default function DataRefresh() {
   const provider = status?.provider === 'schwab' ? 'Schwab' : status?.provider ?? 'Schwab';
   return <section className="panel report-section" aria-labelledby="refresh-heading">
     <h2 id="refresh-heading">Refresh from {provider}</h2>
-    <p>Request the latest current positions. Historical backfill is separate. A download does not automatically replace your saved reports.</p>
+    <p>Request a new dated position snapshot, keeping earlier snapshots and your journal. Position quantities are not added together across snapshots. No full rebuild or automatic publication. Historical backfill is separate.</p>
     <div className="report-filter-actions">
       <button className="report-download" type="button" disabled={busy || !status?.enabled || Boolean(pending) || Boolean(error)} onClick={() => void refresh()}>Refresh from {provider}</button>
       <button className="report-download" type="button" disabled={busy} onClick={() => void check()}>Check refresh status</button>

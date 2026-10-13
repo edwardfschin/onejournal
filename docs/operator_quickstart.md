@@ -260,7 +260,8 @@ its saved snapshot date and history coverage. It does not download broker data,
 refresh credentials, recalculate P&L from new evidence or publish a new release. Reloading
 the browser likewise does not make an old snapshot current.
 
-Website-triggered broker refresh is not implemented. Fresh evidence currently
+Website-triggered broker downloads are not activated; the prepared request/status
+controls are disabled by default. Fresh evidence currently
 uses the separately scoped operator capture, reconciliation, review and
 publication workflow below. No new broker request or financial acceptance is
 implied by clicking Reload saved data.
@@ -1166,6 +1167,14 @@ missed-job delivery and fresh-target recovery need one bounded hosted check.
 The owner selected the existing OneBot-owned Schwab connection and deferred
 activation; IBKR is a later broker adapter. The Data page now has a separate
 refresh-request/status surface; reloading saved reports retains its old meaning.
+The owner requires additive refresh, never a full journal rebuild: preserve old
+records/reviews/releases, deduplicate repeated activity, retain corrections as
+traceable revisions, and append complete dated position snapshots rather than
+sum snapshot quantities. Future transaction refresh resumes verified coverage
+with bounded overlap and advances it only after successful validated import.
+See the precise snapshot, replay and failure rules in the web delivery contract.
+These are activation requirements, not a claim that a live incremental worker
+already exists. No full/reset/replacement option is exposed.
 The additive API is `GET/POST /api/v1/local-owner/data-refresh`. POST accepts only
 a request UUID, behind the existing owner session/origin/CSRF gate. A bare
 unprotected API refuses enqueueing. The server selects the provider and the

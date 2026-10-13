@@ -2,6 +2,9 @@
 
 A separately activated credential-owner worker claims a request once. A crash
 leaves it claimed for operator reconciliation, never automatic redispatch.
+Refresh is additive: no reset/rebuild/replace mode is accepted. Current-position
+captures are complete dated observations, not quantities to add to older holdings.
+Financial append/deduplication remains the downstream import/release boundary.
 """
 from datetime import datetime, timezone
 from contextlib import contextmanager

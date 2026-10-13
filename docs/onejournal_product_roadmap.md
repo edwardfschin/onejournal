@@ -164,6 +164,11 @@ private durable handoff with duplicate prevention and protected-owner checks.
 Schwab will use the existing OneBot-owned connection; worker transport, capture
 authority and activation remain pending. IBKR is a future adapter behind the
 same broker-independent workflow, not an expansion of Phase 1 acceptance.
+The owner clarified that refresh must be additive: preserve prior journal and
+release history, deduplicate repeated activity, retain reviewed corrections and
+append dated position snapshots without summing holdings across snapshots.
+The web delivery contract records these requirements for both brokers; no full
+rebuild or incremental transaction worker is activated by the prepared controls.
 No broker data was fetched. A combined off-server backup, retention, recovery
 and alerting proposal is in the operator quickstart; it is not active policy.
 Focused request/security tests and responsive synthetic preview checks passed.

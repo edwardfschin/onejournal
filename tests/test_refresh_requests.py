@@ -48,6 +48,11 @@ class RefreshRequestTests(unittest.TestCase):
         reopened.request(next_uid)
         reopened.fail(next_uid)
         self.assertEqual(reopened.status()['latest']['state'], 'failed')
+        # A later request must not erase the earlier request or capture receipt.
+        self.assertEqual(reopened.request(uid)['state'], 'closed')
+        with reopened.connection() as con:
+            self.assertEqual(con.execute('SELECT count(*) FROM requests').fetchone()[0], 2)
+            self.assertEqual(con.execute('SELECT manifest_sha256 FROM requests WHERE id=?', (uid,)).fetchone()[0], verified.manifest_sha256)
         self.assertEqual(self.path.stat().st_mode & 0o777, 0o600)
         with self.assertRaises(ValueError):
             RefreshRequests(self.path, 'ibkr')
@@ -63,7 +68,8 @@ class RefreshRequestTests(unittest.TestCase):
         csrf = fixture.ready()
         self.assertEqual(fixture.client.post(PREFIX, json=body, headers={'Origin': access_fixture.ORIGIN}).status_code, 403)
         headers = {'Origin': access_fixture.ORIGIN, 'X-OneJournal-CSRF': csrf}
-        for extra in [{'provider': 'ibkr'}, {'account': 'other'}, {'url': 'https://attacker.invalid'}, {'from_date': '2000-01-01'}]:
+        for extra in [{'provider': 'ibkr'}, {'account': 'other'}, {'url': 'https://attacker.invalid'}, {'from_date': '2000-01-01'},
+                      {'mode': 'full'}, {'replace_existing': True}, {'reset': True}]:
             self.assertEqual(fixture.client.post(PREFIX, json={**body, **extra}, headers=headers).status_code, 422)
         self.assertEqual(fixture.client.post(PREFIX, json=body, headers=headers).status_code, 202)
         self.assertEqual(fixture.client.post(PREFIX, json=body, headers=headers).status_code, 202)

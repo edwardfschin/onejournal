@@ -90,6 +90,34 @@ durable handoff permits one active current-position request and requires a
 verified acquisition receipt before marking evidence captured. Request state
 does not authorize journal writes or publish financial results.
 
+**Owner clarification: refresh is always additive, never a full rebuild.**
+This applies to Schwab and future IBKR adapters:
+
+- Keep existing evidence, journal entries, reviews and accepted releases. A
+  refresh must not truncate, delete, reset or reconstruct the journal from scratch.
+- When incremental trades/transactions are implemented, resume from verified
+  import coverage with a bounded overlap to catch late records. Deduplicate by
+  stable provider/account/source-event identity and verified content, not merely
+  by timestamp, symbol or amount. An unchanged repeat is a no-op; a changed
+  source record must follow the existing source-reviewed correction/revision
+  process, retaining its predecessor rather than duplicating its financial effect.
+  Advance coverage only after a complete validated import commits; failures and
+  incomplete pages must not skip data on the next attempt. Adapter-specific
+  overlap and identity rules remain implementation work, not inferred constants.
+- Positions are different from transactions: acquire a complete current-position
+  observation and append a dated snapshot. Show the latest accepted complete
+  snapshot, retaining previous snapshots; never add their quantities together or
+  carry a closed position forward merely because it is absent from the new
+  complete snapshot. Incomplete observations cannot replace the accepted view.
+- Replaying identical evidence must not duplicate financial records or results.
+  A new observation time may create a new snapshot even if holdings are unchanged.
+  New accepted reports may supersede the displayed release without erasing it.
+
+The current request-only implementation rejects full/reset/replacement options
+and retains earlier request/receipt rows. It does not yet implement incremental
+transaction acquisition, import cursors or financial deduplication for a live
+worker. Those requirements must be satisfied before that broader scope activates.
+
 The normal Mac and hosted launchers leave this capability disabled. A separately
 scoped worker integration, account/capture authority and queue recovery setup
 are needed before activation. Reloading saved data remains distinct from
