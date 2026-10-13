@@ -984,6 +984,16 @@ firewall/cloud rules, TLS, resource usage and OneBot's unchanged operating state
 before a later production release; the earlier read-only inventory is not
 privileged security clearance.
 
+The prepared `onejournal.slice` limits the **combined** app, proxy, dedicated
+PostgreSQL cluster and backup work to one CPU core-equivalent and 2 GiB, with
+lower CPU/I/O weights. Per-service caps sit inside that shared budget; they are
+not additional full-core allowances. The proxy environment drop-in names a
+root-owned private environment file, never Git. Apply the PostgreSQL drop-in
+only to the exact new dedicated cluster instance after verifying its identity;
+never attach OneBot or a shared cluster to this slice. This reserves headroom
+on the reviewed two-core host but is not a production performance guarantee.
+All units/drop-ins remain uninstalled and inactive in this batch.
+
 `backup_hosted_store.py create --config <file> --image <new-absolute-file>`
 creates a streaming AES-GCM authenticated encrypted backup of PostgreSQL
 journal/security dumps and selected private configuration/authority companions.

@@ -1,0 +1,10 @@
+[Unit]
+Description=Combined OneJournal resource budget, separate from OneBot
+
+[Slice]
+CPUQuota=100%
+CPUWeight=25
+MemoryHigh=1536M
+MemoryMax=2G
+IOWeight=25
+TasksMax=256

@@ -4,6 +4,7 @@ After=postgresql.service
 
 [Service]
 Type=oneshot
+Slice=onejournal.slice
 ExecStart=/bin/sh /opt/onejournal/current/commands/run_hosted_backup.sh
 UMask=0077
 CPUQuota=25%
