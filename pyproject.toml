@@ -30,6 +30,7 @@ onejournal = ["hosted_schema.sql"]
 [project.scripts]
 onejournal-mac-site = "onejournal.mac_static_site:main"
 onejournal-hosted-site = "onejournal.hosted_site:main"
+onejournal-refresh-offline = "onejournal.refresh_intake:main"
 
 [project.optional-dependencies]
 security = ["webauthn>=3.0.1,<4"]

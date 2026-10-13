@@ -175,6 +175,15 @@ Focused request/security tests and responsive synthetic preview checks passed.
 The unpatched build-generator dependency finding remains explicit. Live data,
 one-prod and history remain unchanged, and Phase 1 remains **8/12**.
 
+**Offline refresh bridge: 2026-10-13.** The local installed command now connects
+one durable current-position request to the existing external Schwab validation
+and private receipt state. Exact replay is safe across restart/review closure;
+stale, wrong-account/owner, incomplete or conflicting evidence is rejected.
+Seven focused synthetic tests passed, including a network-blocked CLI run.
+Credential-owner transport, transaction increments, recovery integration and
+activation remain pending. No OneBot, historical backfill, live data or website
+change occurred; this does not advance the Phase 1 acceptance count.
+
 This tracker is the authoritative Phase 1 completion record. Update the row and
 evidence whenever a package changes state. A broader PNL, UXJ, WEB, or OPS item
 is not complete merely because its required Phase 1 slice is complete.

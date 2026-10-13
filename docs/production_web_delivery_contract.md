@@ -113,10 +113,24 @@ This applies to Schwab and future IBKR adapters:
   A new observation time may create a new snapshot even if holdings are unchanged.
   New accepted reports may supersede the displayed release without erasing it.
 
-The current request-only implementation rejects full/reset/replacement options
+The current request/intake implementation rejects full/reset/replacement options
 and retains earlier request/receipt rows. It does not yet implement incremental
 transaction acquisition, import cursors or financial deduplication for a live
 worker. Those requirements must be satisfied before that broader scope activates.
+
+The local `onejournal-refresh-offline` command now connects the durable request
+to existing external Schwab position validation. `claim` returns one
+credential-free `onejournal.refresh-handoff.v1` message and marks that request
+claimed before output; it never dispatches a process or contacts OneBot.
+`receive` revalidates transferred bytes, provider-use acknowledgement, exact
+request/approval/owner/epoch and private account/instrument binding. Captures
+predating the request and OAuth-refresh declarations are rejected by this
+zero-refresh intake scope. Only after a complete position conversion succeeds
+is the private receipt recorded. Identical receipt replay is a no-op, even after
+review closure; changed evidence cannot overwrite an existing receipt. Errors
+leave evidence and request state intact, with no private values in CLI output.
+This is local synthetic-tested wiring, not an activated transport or financial
+import. No database schema migration or public API shape change is required.
 
 The normal Mac and hosted launchers leave this capability disabled. A separately
 scoped worker integration, account/capture authority and queue recovery setup

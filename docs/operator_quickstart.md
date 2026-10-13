@@ -1202,8 +1202,52 @@ or incomplete lifecycle evidence stay withheld. No historical acquisition is
 part of this request. Later incremental trades/transactions need a separate
 bounded scope; IBKR needs its own verified adapter/profile, not another UI.
 
-Before activation, wire the worker handoff without storing Schwab credentials in
-OneJournal, bind its account and capture authority, add the request store to the
-recovery procedure, and verify one bounded read-only capture. The current batch
-uses synthetic jobs and makes no broker calls or OneBot changes. No private
-configuration, request store, live journal or running website was changed.
+#### Offline request-to-evidence wiring — 2026-10-13
+
+The installed `onejournal-refresh-offline` command (or source equivalent
+`python -m onejournal.refresh_intake`) bridges an **existing, explicitly selected**
+private request store to the existing position validator. It never creates a
+store, enables the website feature, executes a capture or contacts OneBot.
+
+- `--request-store <private-store> claim` claims at most one queued request and
+  emits a credential-free JSON handoff containing its UUID, provider, request
+  time and `current_positions` scope. `broker_execution_authorized` is false;
+  the message does not replace broker/account authority. With no queued work it
+  returns `request: null`. Repeated calls do not redispatch a claimed request.
+- `--request-store <private-store> receive` requires `--request-id`,
+  `--acquisition-root`, `--acknowledgement`, `--position-binding`,
+  `--usage-policy`, `--expected-approval-id`, `--expected-owner-uid` and
+  `--expected-owner-epoch-uid`. These are trusted operator/worker inputs, never
+  browser parameters. Use the request UUID as the acquisition run UID.
+- Intake checks owner-only files and bounds, exact manifest/response checksums,
+  provider-use authority, run/owner/epoch/approval, request timing and the private
+  account and complete instrument mapping. Unsupported/new instruments remain
+  blocked until existing identity-intake checks resolve them. Current positions
+  are converted in memory only: no holdings, P&L or journal data is written.
+- The supported intake declares zero OAuth refreshes. Credential renewal and
+  transport remain with the credential owner and are not activated here.
+- An identical manifest can be re-received after an uncertain CLI response or
+  restart without duplicating state or reopening a closed review. Conflicting
+  bytes for an already recorded request fail; the first receipt remains intact.
+  Different request IDs remain separate observations, not added quantities.
+- If a claim process dies before its output is delivered, its durable state
+  remains claimed. Reconcile owner-side evidence before explicitly resolving the
+  request; do not reset it or start a second capture automatically. If intake
+  fails, it exits nonzero with a fixed redacted message and leaves the claim and
+  original bundle intact. No fallback, automatic retry or publication occurs.
+
+Seven focused request/intake tests passed, including the command path with
+network connections blocked, exact replay after closure, changed evidence,
+wrong owner/account, stale capture, checksum/mapping rejection and duplicate
+claim handling. Only synthetic temporary stores/bundles were used. No real
+private configuration, request store, journal or running website was changed.
+
+Before activation, connect this handoff to an explicitly authorized
+credential-owner transport without storing Schwab credentials in OneJournal,
+bind its account and capture authority, include the request store and retained
+bundles in recovery, and verify one bounded read-only capture. Incremental
+transactions still need their own window/cursor/deduplication implementation;
+historical backfill remains separate. Existing financial validation, review and
+append-only publication remain required after capture. Rollback is the prior
+code release with the feature disabled; retain request rows and source bundles.
+No schema migration, live write, broker call or OneBot change is included.

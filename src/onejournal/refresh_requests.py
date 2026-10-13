@@ -83,6 +83,14 @@ class RefreshRequests:
             row = con.execute('SELECT id,provider,requested_at,state FROM requests ORDER BY rowid DESC LIMIT 1').fetchone()
         return {'contract_version': CONTRACT, 'enabled': True, 'provider': self.provider, 'latest': self.public(row)}
 
+    def get(self, request_id: str):
+        """Read an exact request for private intake, never fall back to latest."""
+        with self.connection() as con:
+            row = con.execute('SELECT id,provider,requested_at,state FROM requests WHERE id=?', (request_id,)).fetchone()
+        if row is None:
+            raise ValueError('Refresh request does not exist.')
+        return self.public(row)
+
     def request(self, request_id: str):
         if str(UUID(request_id)) != request_id:
             raise ValueError('Use a canonical request UUID.')
@@ -131,10 +139,15 @@ class RefreshRequests:
         if not re.fullmatch('[a-f0-9]{64}', manifest_sha256):
             raise ValueError('Exact acquisition receipt hash is required.')
         with self.connection() as con:
+            con.execute('BEGIN IMMEDIATE')
+            prior = con.execute('SELECT state,manifest_sha256 FROM requests WHERE id=?', (request_id,)).fetchone()
+            if prior and prior[0] in ('captured', 'closed') and prior[1] == manifest_sha256:
+                return False  # Exact receipt replay, including after review.
             changed = con.execute("UPDATE requests SET state='captured',manifest_sha256=? WHERE id=? AND state='capturing'",
                                   (manifest_sha256, request_id)).rowcount
             if changed != 1:
                 raise ValueError('Request must be claimed before recording capture.')
+            return True
 
     def fail(self, request_id: str):
         """Operator fails an interrupted request; never retry automatically.
