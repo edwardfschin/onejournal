@@ -476,6 +476,18 @@ source changes, not a new installed release or acceptance. All four remaining
 packages have active Mac work and are IN PROGRESS, not COMPLETE; the formal
 count remains 8/12. Strategic scope and operational maturity are unchanged.
 
+The owner subsequently authorized the same protected Mac release start and
+pending check on 2026-10-13. The retained `c173b88` shortcut/artifact/TLS setup
+matched independent receipts; one identified loopback process served the exact
+shell and anonymous enrolled access status under verified HTTPS. The check
+passed without financial requests, login, broker calls, migration or repair.
+The earlier refusal remains historical evidence. No new release or history
+ledger was installed/activated, and no unchanged test/build/restore suite was
+repeated. The combined browser/speed, backup/loss/recovery, retention/incident
+and Streamlit choices in `docs/production_web_delivery_contract.md` are a
+**proposal**, not accepted policy or final package completion. All four
+remaining packages are still IN PROGRESS; the formal count stays 8/12.
+
 ### Current owner-approved direction: Mac first, 2026-10-11
 
 Complete useful local work now; do not make VPS availability a prerequisite for

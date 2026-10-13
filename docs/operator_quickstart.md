@@ -79,6 +79,19 @@ bounded Mac operation, not Phase 1 completion. See
 
 ### Read-only release and connection check
 
+On 2026-10-13, the owner authorized starting the same installed `c173b88`
+release through its unchanged private shortcut. The pinned public artifact,
+owned loopback listener, verified HTTPS shell and anonymous enrolled access
+status passed the check below. No installation, migration, financial API request,
+broker call or passkey ceremony was performed. Keep that Terminal open and
+sign in with the existing passkey when needed; restart clears sessions, not
+enrollment. This is bounded transport verification, not fresh financial/login
+acceptance. The previous connection refusal remains recorded separately.
+
+The combined Mac operating profile in `production_web_delivery_contract.md`
+is proposed only. No new backup schedule, retention/deletion rule, external
+alert, browser upgrade or Streamlit retirement is enabled by that recommendation.
+
 Use the locked security Python environment and the reviewed source checkout:
 
 ```text

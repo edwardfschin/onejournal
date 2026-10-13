@@ -785,6 +785,66 @@ hosted acceptance. The product vision, strategy mapping and maturity claims
 are unchanged. Rollback is a focused source revert; no private restoration or
 runtime change is needed to undo this source-only delivery.
 
+### Same-release Mac start and completed transport check: 2026-10-13
+
+The owner authorized starting the same protected release and finishing the
+pending check. The existing shortcut command matched its retained handover
+intent; public files and TLS setup matched independent receipts, and the port
+was unoccupied. The unchanged shortcut started installed `c173b88` in the
+owner's Terminal, not the newer checkout. One loopback listener matched that
+existing command/configuration. The private configuration, exact financial
+authorization files and TLS bytes also matched the retained operating baseline;
+that comparison did not open the journal. The public checker passed: exact Reports shell,
+verified TLS/privacy headers and anonymous enrolled access status, using only
+two cookie-free GETs. No financial request, login ceremony, broker call,
+migration, repair or requested audit write occurred.
+
+Startup normally opens existing application stores and resets volatile sessions;
+unchanged store bytes or new owner-login acceptance are not claimed. Saved
+enrollment is retained. The original connection-refusal receipt is preserved,
+and new operating evidence remains private. Keep the foreground Terminal open.
+No installation, daemon, trust change, financial publication or history
+activation was performed. The actual unchanged checker was exercised once;
+unchanged unit/build/browser/USB checks were not repeated. This closes the
+pending transport check, not the remaining Phase 1 packages.
+
+### Combined operating choices — proposed Mac testing profile: 2026-10-13
+
+**Status: recommendation only, not accepted policy.** The owner requested one
+combined recommendation. This profile is limited to Mac testing, not hosted
+production. Existing passkey/session/CSRF and offline-recovery controls stay
+unchanged. Recording the proposal activates no automation, deletion or new
+financial authority.
+
+| Choice | Recommended Mac trial setting |
+|---|---|
+| Browsers and accessibility | Existing Mac, supported Chrome and Safari; record tested versions without unnecessary upgrades. Keyboard core journeys and one Safari/VoiceOver speech check. Reuse unchanged 200% text-resize and 320-CSS-pixel reflow evidence. Actual phone/tablet and hosted checks remain for soft launch. |
+| Speed | Usable private page within 2 seconds after authentication; ordinary local filter/history update within 1 second for up to 300 displayed rows. Exclude device-verification waiting. These are initial targets, not proven real-data performance: measure once and fix confirmed failures, not speculative bottlenecks. |
+| Backup | New encrypted journal/release image after a day of journal edits and after approved financial publication. Refresh evidence/audit after new accepted source lineage and weekly during active use. Refresh access/TLS only when setup changes. Use quiet/stopped sources as existing operators require; unchanged days need no new journal image. |
+| Loss and recovery goals | Target at most one working day of unbacked-up journal edits and up to one week of security-audit lag, provided the owner performs those manual backups. Target usable restoration within one working day after recognizing a failure, with verified images, runtime and owner password/device access; this is not proven until the complete restored-service path passes. |
+| Retention and passwords | Preserve current recovery images, raw evidence, journal revisions and audit during the Mac trial; no automatic expiry/deletion. Keep image passwords separately from USB. Review space if needed; decide hosted retention later. Do not restore old passkeys/counters as a shortcut. This is not indefinite production retention. |
+| Availability and incidents | Attended foreground use, no 24/7 uptime promise. Use the check after a release switch or startup/error concern, not continuously. Terminal-visible failures, no external alert service. Suspected exposure: stop only the owned private service and preserve evidence. Incorrect figures: stop using affected output; stop serving if it cannot be safely isolated. Ordinary outages: troubleshoot on next use, never bypass login. |
+| Corrections, closure and release | Corrections remain source-reviewed/append-only. Closure/deletion requires a deliberate offline inventory and decision, not automatic SQL erasure. Leave Streamlit parked as internal reference, not a running fallback. Reuse accepted bounded financial scope and explicit stale/unavailable states; finish missing critical journeys and one dated final acceptance. History and hosting stay separate. |
+
+These numbers are proposed project choices, not guarantees or industry-mandated
+thresholds. Manual encrypted backup preserves owner password custody but
+depends on the owner doing it; no scheduler or reminder is enabled here. Existing
+verified images retain their exact dated scope and are not recreated for this
+proposal. No retention cleanup, browser upgrade or production policy is adopted.
+
+The accessibility scope draws on W3C's
+[text-resize](https://www.w3.org/WAI/WCAG22/Understanding/resize-text.html) and
+[reflow](https://www.w3.org/WAI/WCAG22/Understanding/reflow.html) guidance and
+[Apple's VoiceOver web commands](https://support.apple.com/guide/voiceover/web-commands-vo27972/mac).
+One speech check is not comprehensive WCAG conformance; necessary table
+scrolling and existing semantic evidence remain relevant.
+
+After owner acceptance, record the chosen Mac scope and implement only exposed
+gaps; do not create routine approval gates or repeat unchanged evidence. Exact
+live restore, runtime switch, credential, broker, financial publication and
+hosting authority remain separate. Formal Phase 1 stays 8/12; strategic scope
+and ADR-0018's production exit gate are unchanged.
+
 The web delivery packages map to Phase 1 as follows:
 
 | Phase 1 need | Required web package or dependency |
