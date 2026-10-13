@@ -1,0 +1,4 @@
+# Hosted rehearsal/runtime, pinned independently from the Mac security store.
+-r requirements-security.lock
+psycopg==3.3.6
+psycopg-binary==3.3.6

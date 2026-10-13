@@ -913,3 +913,114 @@ DB_TOTAL_FILLS, DB_TOTAL_EPISODES, and DB_TOTAL_EPISODE_LEGS are also current Du
 ### No-fill trading days
 
 NO FILL RESULT means both Schwab orders and transactions produced zero normalized fill rows. This is a clean no-op day for OneJournal. DuckDB import is skipped and generated CSVs are cleaned up.
+
+## Hosted candidate preparation (local only; 2026-10-13)
+
+This batch does not install anything on one-prod, transfer private data, change
+OneBot or historical backfill, or restart the accepted Mac site. ADR-0017's
+approved combined profile is authoritative. Keep normal Mac use unchanged.
+
+`scripts/web/package_hosted_release.py --destination <new-absolute-directory>`
+packages **clean committed public source**: wheel, pinned hosted dependencies,
+passkey-enabled static artifact, operator commands, configuration examples and
+Caddy/systemd templates. Use an isolated environment with
+`requirements-hosted.lock` plus the project installed; no active Mac environment
+needs modification. Failed candidates are retained but never activated. A Linux
+environment must be built from the locks on the eventual target; do not copy
+the Mac virtual environment. Verify `release.json` file hashes/source commit
+before any separately authorized upload or activation.
+
+The new runtime entry point is `onejournal-hosted-site --config <private-file>`.
+Configuration follows `config/hosted/hosted-config.example.json`: exact permanent
+HTTPS DNS origin, separate explicit local PostgreSQL journal/security connection
+files, a fresh random base64url proxy secret, public static directory, and exact
+optional financial authorization files. Private files use 0600 in owner-only
+0700 directories. The example domain is intentionally invalid until the owner
+chooses an address. Keep all real values outside Git. Runtime configuration
+must use the restricted roles, not database/schema owners. An operator-only
+configuration may name owner roles for explicit setup/recovery; never use that
+configuration to run the site.
+
+`prepare_hosted_store.py install-empty-journal` explicitly installs the bundled
+baseline into a **new empty journal database**. `provision-access` explicitly
+creates a separate fresh hosted security store and writes a new private
+enrollment file. `recover-access` requires the service to be stopped, verifies
+the origin/journal binding, revokes stored credentials and retains audit history.
+Both access commands require `--enrollment-file <new-private-file>` as well as
+`--config`. No startup migration, data import, secret printing or automatic
+service restart occurs. Enrollment expires after ten minutes and is entered
+directly into the trusted browser, never chat.
+
+Before real cutover, separately approve a frozen private-source export and
+backed-up disposable import/reconciliation, then the exact target transfer and
+activation. Preserve every source table's IDs, revisions, financial values,
+timestamp/lineage and current views, including the exact accepted financial
+authorization. Do not flatten history, infer missing transactions, fetch brokers
+or apply 0029. Synthetic rehearsal is not that real-state migration. Keep a
+single production journal writer after cutover; no two-way database sync.
+
+On the eventual target, create independent non-owner runtime roles and private
+operator roles. Apply the **journal section only in the journal database** and
+the **security section only in the security database** of
+`config/hosted/runtime-grants.sql`. Revoke public database access and schema
+creation, grant only the named database roles, use local socket/loopback SCRAM,
+and keep PostgreSQL off public interfaces. The startup validator rejects owner,
+privileged or excess-write roles. A second API worker is refused by the access
+lease. Sessions/challenges are revoked on restart; do not add workers silently.
+
+Caddy terminates HTTPS at the owner-approved name and sends the exact Host plus
+an overwritten private proxy header to loopback port 8766. It strips forwarded
+headers; the API never trusts arbitrary forwarded peer/scheme values. Keep the
+matching proxy secret in private Caddy service configuration and the separate
+OneJournal private file. Caddy has no private URL access logging. The app emits
+fixed failure signals without database/request values. The single-owner app
+budget permits 128 requests per ten seconds, with 20 concurrent requests;
+access retains its five failed-verification limit per fifteen minutes. Hosted
+denials retain per-minute/action counts and one sampled event, not unbounded
+individual denial rows. Accepted security events remain individually recorded;
+no private IP, path or filter is retained by these controls. Templates must be owned
+by the operator/root and verified on Linux before installation. Confirm actual
+firewall/cloud rules, TLS, resource usage and OneBot's unchanged operating state
+before a later production release; the earlier read-only inventory is not
+privileged security clearance.
+
+`backup_hosted_store.py create --config <file> --image <new-absolute-file>`
+creates a streaming AES-GCM authenticated encrypted backup of PostgreSQL
+journal/security dumps and selected private configuration/authority companions.
+The stopped-service access lease and journal writer lock protect the cross-store
+snapshot. Enter a separate unique password of at least 20 characters privately;
+an owner-only `--password-file` is available for a separately activated timer.
+Backups preserve prior images and never apply retention/deletion. Keep passwords
+independently and confirm an off-server copy before considering backup complete.
+
+`backup_hosted_store.py restore --config <new-target-operator-config> --image
+<encrypted-file> --companion-directory <new-private-directory>` authenticates
+the complete archive before database writes, refuses existing target relations,
+restores each new database transactionally, checks every table's content/counts
+against the encrypted manifest and verifies the installed schema binding. It
+exports private companions to a new directory, not their original paths. If the
+second store fails, retain the first isolated restore for diagnosis and use new
+empty targets for the next attempt; never overwrite live targets to retry.
+Recreate/review roles and grants explicitly because dumps exclude owners/ACLs.
+Run offline access recovery before owner re-enrollment after disaster restoration;
+do not reactivate old credentials from a restored access backup. Nothing starts
+automatically. Confirm protected reports/CSV, signed access and logout on that
+isolated restoration before selecting it for any separately approved cutover.
+
+The prepared backup timer is daily at 03:00 UTC; run the same backup service
+after an approved financial publication. Its wrapper pauses/resumes **only
+OneJournal and only if it was already running**; failed backup exits nonzero
+with a fixed operator-attention signal and the previous images remain. It does
+not upload data or reuse OneBot's backup credentials. The off-server destination
+and production alert delivery/objectives must be settled before activation.
+No timer is enabled in this local batch.
+
+Rollback preparation retains the previous immutable release and exact private
+configuration. Stop only OneJournal, verify the previous release's schema
+compatibility and hashes, then select that version and perform the bounded
+protected-path check. Do not reset a database merely to roll back code. If state
+recovery is necessary, restore to two fresh targets and reconcile separately,
+preserving later journal entries/audits before any approved switch. No prepared
+script silently rewrites the live version pointer or runs a destructive down
+migration. Final owner acceptance still requires the actual target and dated
+private release; Phase 1 remains 8/12.

@@ -57,7 +57,13 @@ test('settings reports only a verified, unexpired Mac session without retaining 
       return Response.json({ ...valid, ...change });
     });
     if (Object.keys(change).length) await assert.rejects(fetchWorkspaceSession(), /session could not be verified/);
-    else assert.deepEqual(await fetchWorkspaceSession(), { passkeyCount: 2 });
+    else assert.deepEqual(await fetchWorkspaceSession(), { passkeyCount: 2, hosted: false });
     mock.mock.restore();
   }
+});
+
+test('hosted settings accepts only the explicit hosted session contract', async (t) => {
+  t.mock.method(globalThis, 'fetch', async () => Response.json({ contract_version: 'onejournal.hosted-passkey.v1',
+    authenticated: true, passkey_count: 1, expires_in_seconds: 60, csrf: 'synthetic-csrf' }));
+  assert.deepEqual(await fetchWorkspaceSession(), { passkeyCount: 1, hosted: true });
 });

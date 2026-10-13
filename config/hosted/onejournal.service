@@ -1,0 +1,31 @@
+[Unit]
+Description=OneJournal isolated private-owner service
+After=network.target postgresql.service
+StartLimitIntervalSec=300
+StartLimitBurst=3
+
+[Service]
+Type=simple
+User=onejournal
+Group=onejournal
+WorkingDirectory=/opt/onejournal/current
+ExecStart=/opt/onejournal/current/python-env/bin/onejournal-hosted-site --config /var/lib/onejournal/private/hosted.json
+Restart=on-failure
+RestartSec=5
+UMask=0077
+Environment=PYTHONDONTWRITEBYTECODE=1
+CPUQuota=75%
+MemoryHigh=768M
+MemoryMax=1G
+TasksMax=64
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/onejournal
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

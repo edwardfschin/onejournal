@@ -195,9 +195,12 @@ def save_review(
 
         con.execute(
             """
-            INSERT OR REPLACE INTO manual_reviews (
+            INSERT INTO manual_reviews (
                 episode_uid, review_status, setup_quality, entry_reason, notes, updated_at
             ) VALUES (?, ?, ?, ?, ?, ?)
+            ON CONFLICT (episode_uid) DO UPDATE SET
+                review_status=excluded.review_status, setup_quality=excluded.setup_quality,
+                entry_reason=excluded.entry_reason, notes=excluded.notes, updated_at=excluded.updated_at
             """,
             [episode_uid, review_status, setup_quality, entry_reason or "", notes or "", created_at],
         )

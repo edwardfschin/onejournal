@@ -113,6 +113,17 @@ for the unchanged accepted release. P1-09–12 remain IN PROGRESS for production
 target decisions/checks and final production acceptance, not repeated Mac work.
 History remains separate; see the dated close-out in the web delivery contract.
 
+**Hosted local candidate: 2026-10-13.** The owner approved the combined isolated
+Caddy/FastAPI/PostgreSQL profile and local implementation/rehearsal/preparation,
+including commit/push but no deployment or private-state transfer. The candidate
+adds a separate hosted entry point and fresh DNS-bound access store, pinned
+schema through 0028, synthetic PostgreSQL/API/CSV/journal/access reconciliation,
+encrypted fresh-target recovery and public release/service preparation. See
+ADR-0017's dated profile and `docs/operator_quickstart.md`. This is local
+validation, not P1-09–12 production acceptance. The real domain, private-state
+cutover, target operations and final owner/device evidence remain outstanding;
+the accepted Mac runtime and historical backfill are not changed.
+
 This tracker is the authoritative Phase 1 completion record. Update the row and
 evidence whenever a package changes state. A broader PNL, UXJ, WEB, or OPS item
 is not complete merely because its required Phase 1 slice is complete.

@@ -2,7 +2,7 @@ import { accessJson } from './local-owner-access.ts';
 import { fetchReportAccounts, fetchRealizedHistory, type ReportContext } from './local-owner-reports.ts';
 
 export type SavedWorkspace = { current: ReportContext; history: ReportContext };
-export type WorkspaceSession = { passkeyCount: number };
+export type WorkspaceSession = { passkeyCount: number; hosted: boolean };
 
 export async function fetchSavedWorkspace(signal?: AbortSignal): Promise<SavedWorkspace> {
   const accounts = await fetchReportAccounts(signal);
@@ -28,11 +28,11 @@ export async function fetchWorkspaceSession(): Promise<WorkspaceSession> {
     contract_version: string; authenticated: boolean; passkey_count: number | null;
     expires_in_seconds: number | null;
   }>('session');
-  if (value.contract_version !== 'onejournal.mac-passkey.v1' || value.authenticated !== true
+  if (!['onejournal.mac-passkey.v1', 'onejournal.hosted-passkey.v1'].includes(value.contract_version) || value.authenticated !== true
     || !Number.isSafeInteger(value.passkey_count) || (value.passkey_count ?? 0) < 1
     || typeof value.expires_in_seconds !== 'number' || !Number.isFinite(value.expires_in_seconds)
     || value.expires_in_seconds <= 0 || value.expires_in_seconds > 8 * 60 * 60) {
     throw new Error('The protected session could not be verified.');
   }
-  return { passkeyCount: value.passkey_count! };
+  return { passkeyCount: value.passkey_count!, hosted: value.contract_version === 'onejournal.hosted-passkey.v1' };
 }

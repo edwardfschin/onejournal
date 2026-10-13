@@ -248,3 +248,55 @@ without changing financial authority.
 A material change to the frontend framework, API authority, hosted operational
 database, or portable service topology requires a superseding ADR with
 compatibility, migration, security, operational, and rollback analysis.
+
+## Approved hosted implementation profile — 2026-10-13
+
+The owner approved local hosted implementation, synthetic PostgreSQL rehearsal,
+and deployment/recovery preparation, with commit and push. This implements the
+existing foundation, not a framework replacement or deployment authorization.
+OneBot, the accepted Mac runtime and separate historical backfill stay unchanged.
+
+The initial hosted candidate uses Caddy for one exact permanent HTTPS DNS
+origin, a loopback-only FastAPI worker, PostgreSQL journal state, and a separate
+PostgreSQL security database. Linux identity, releases, private configuration,
+roles, service and resource limits are separate from OneBot. The real domain
+has not been selected. Hosted enrollment is fresh; Mac passkeys/security state
+are not copied or repurposed for the new relying party.
+
+`onejournal.journal.storage` is the operational-store boundary. Existing
+financial, review and revision services remain authoritative. The pinned
+PostgreSQL baseline preserves the schema through DuckDB 0028, constraints,
+decimal scales, UUIDs, timestamp semantics and current-revision views. Existing
+text-encoded high-precision report values stay text; no precision is shortened.
+The compiler reads only a newly built empty DuckDB database and records source
+SQL checksums. The PostgreSQL baseline is independently versioned and bundled
+in the installed wheel. Startup validates it but never installs/migrates/imports
+it. Migration 0029 and historical expansion remain separate.
+
+Initially exactly one API worker owns an exclusive PostgreSQL access lease.
+Sessions and ceremonies remain ephemeral; restart/recovery invalidates them.
+A second worker is rejected rather than presenting process-local sessions as
+multi-worker support. Durable passkeys, counters, failures, audit, journal
+revisions and operation receipts use PostgreSQL. Any later multi-worker change
+must move ephemeral authority into a shared transactional store and be tested
+explicitly. Cooperating journal writers serialize whole operations with an
+advisory lock, including the pre-transaction replay check; PostgreSQL supplies
+read snapshots. Runtime roles cannot own schemas/databases or modify financial
+releases, immutable revisions, or audit history.
+
+The existing static artifact and versioned private-owner API/routes are reused;
+`/local/...` remains the canonical private-owner route namespace, not a promise
+that the hostname is localhost. Hosted sign-in has its own explicit access
+contract. A private proxy header is overwritten by Caddy, forwarding headers
+are stripped, and the API checks loopback peer, exact Host/Origin, device
+verification, session, CSRF and replay. No broker request or financial
+calculation is added to browser request handling.
+
+Deployment preparation retains versioned artifacts and prior code for rollback,
+encrypted authenticated journal/security/config backups, separate off-server
+copies and tested fresh-target restoration. No scheduler, automatic retention,
+deletion, production transfer or service activation is authorized here. Daily
+and post-publication backup preparation is not proof of an off-server copy or
+production recovery. After a separately authorized cutover, designate one
+production journal writer; no bidirectional Mac/VPS database synchronization.
+The production gate remains ADR-0018 and the roadmap, not this local rehearsal.

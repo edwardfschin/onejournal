@@ -1,0 +1,11 @@
+[Unit]
+Description=OneJournal daily encrypted backup (not enabled by packaging)
+
+[Timer]
+OnCalendar=*-*-* 03:00:00 UTC
+Persistent=true
+RandomizedDelaySec=300
+Unit=onejournal-backup.service
+
+[Install]
+WantedBy=timers.target

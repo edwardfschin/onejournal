@@ -137,6 +137,24 @@ mapping's separation of source, calculation and reflection are unchanged; no
 vision or mapping rewrite is required. History expansion and trading remain
 outside this acceptance.
 
+### Hosted operational foundation update — 2026-10-13
+
+The ADR-0017 hosted candidate is **M3 — locally validated on synthetic
+PostgreSQL**, not operationally accepted. It preserves the spreadsheet-to-product
+map's stable activity identity, authored review history, reproducible reports
+and saved-copy recovery without importing workbook mechanics. The bounded
+Mac-testing M4 claim remains separate and unchanged. OneBot and historical
+backfill are outside this batch.
+
+Evidence concerns the new hosted storage/access boundary, PostgreSQL schema and
+JSON/CSV parity, revision/replay protection, encrypted disposable restoration,
+and public package/service preparation. Actual DNS/TLS/owner enrollment,
+private-state transfer, target deployment/rollback/off-server recovery,
+physical-device quality and dated production acceptance remain open under
+P1-09–12. No entire-product or production-operations M4 promotion is made.
+The product vision and spreadsheet evolution principles are unchanged; only
+this scoped implementation/validation evidence advances.
+
 ## Update rules
 
 Update this map when a capability crosses a maturity boundary or when evidence

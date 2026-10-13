@@ -8,13 +8,10 @@ from __future__ import annotations
 from contextlib import asynccontextmanager
 import json
 from pathlib import Path
-from urllib.parse import urlsplit
 
 from fastapi import FastAPI, Request
 from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
-
-from onejournal.passkey_access import validate_origin
 
 STATIC_CONTRACT = "onejournal.static-web.v1"
 PUBLIC_HEADERS = {
@@ -66,8 +63,6 @@ def serve_static_web(protected_app: FastAPI, directory: Path) -> FastAPI:
     access = getattr(protected_app.state, "passkey_access", None)
     if access is None:
         raise ValueError("Static private serving requires the existing passkey-protected API.")
-    origin = validate_origin(access.origin)
-    host = urlsplit(origin).netloc
     directory = directory.absolute()
     routes, redirects = static_routes(directory)
 
@@ -81,10 +76,8 @@ def serve_static_web(protected_app: FastAPI, directory: Path) -> FastAPI:
 
     @app.middleware("http")
     async def public_boundary(request: Request, call_next):
-        if (request.headers.get("host") != host
-                or request.headers.get("origin", origin) != origin
-                or any(name in request.headers for name in ("forwarded", "x-forwarded-host", "x-forwarded-proto"))):
-            response = JSONResponse({"detail": "Local origin required."}, status_code=403)
+        if not access.request_allowed(request):
+            response = JSONResponse({"detail": "Approved origin required."}, status_code=403)
         else:
             response = await call_next(request)
         for name, value in PUBLIC_HEADERS.items():

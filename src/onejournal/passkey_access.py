@@ -120,6 +120,15 @@ class Session:
 
 
 class Access:
+    contract = CONTRACT
+    rp_id = "localhost"
+    rp_name = "OneJournal Mac test"
+
+    def request_allowed(self, request):
+        return (request.headers.get("host") == self.host
+                and not any(key in request.headers for key in ("forwarded", "x-forwarded-host", "x-forwarded-proto"))
+                and request.headers.get("origin", self.origin) == self.origin)
+
     def __init__(self, path: Path, journal: Path, origin: str, *, clock=time.time):
         self.origin = validate_origin(origin)
         self.host = urlsplit(origin).netloc
@@ -225,8 +234,7 @@ def protect_app(app: FastAPI, access: Access) -> FastAPI:
     @app.middleware("http")
     async def owner_gate(request: Request, call_next):
         try:
-            if (request.headers.get("host") != access.host or
-                any(key in request.headers for key in ("forwarded", "x-forwarded-host", "x-forwarded-proto")) or
+            if (not access.request_allowed(request) or
                 request.headers.get("sec-fetch-site") in {"cross-site", "same-site"} or
                 ("origin" in request.headers and request.headers["origin"] != access.origin)):
                 raise HTTPException(403, "Request origin is not allowed.")
@@ -277,7 +285,7 @@ def protect_app(app: FastAPI, access: Access) -> FastAPI:
             remaining = (max(0, int(min(session.last_used + IDLE_SECONDS,
                                          session.created + ABSOLUTE_SECONDS) - access.clock()))
                          if session else None)
-            return {"contract_version": CONTRACT, "authenticated": session is not None,
+            return {"contract_version": access.contract, "authenticated": session is not None,
                     "enrollment_required": count == 0, "passkey_count": count if session else None,
                     "csrf": session.csrf if session else None,
                     "expires_in_seconds": remaining}
@@ -299,7 +307,7 @@ def protect_app(app: FastAPI, access: Access) -> FastAPI:
                     raise ValueError
                 uid, challenge = access.challenge("register", binding)
                 excluded = [PublicKeyCredentialDescriptor(id=base64url_to_bytes(row[0])) for row in access.con.execute("SELECT credential_id FROM passkeys").fetchall()]
-                options = generate_registration_options(rp_id="localhost", rp_name="OneJournal Mac test", user_id=access.user_handle,
+                options = generate_registration_options(rp_id=access.rp_id, rp_name=access.rp_name, user_id=access.user_handle,
                     user_name="OneJournal owner", challenge=challenge, exclude_credentials=excluded,
                     authenticator_selection=AuthenticatorSelectionCriteria(resident_key=ResidentKeyRequirement.REQUIRED, user_verification=UserVerificationRequirement.REQUIRED), timeout=CHALLENGE_SECONDS*1000)
             except ValueError:
@@ -320,7 +328,7 @@ def protect_app(app: FastAPI, access: Access) -> FastAPI:
                 challenge = access.consume(value.get("ceremony"), "register", binding)
                 same_origin_credential(value.get("credential"))
                 verified = verify_registration_response(credential=value.get("credential"), expected_challenge=challenge,
-                    expected_rp_id="localhost", expected_origin=access.origin, require_user_verification=True)
+                    expected_rp_id=access.rp_id, expected_origin=access.origin, require_user_verification=True)
                 identifier = bytes_to_base64url(verified.credential_id)
                 if (access.con.execute("SELECT COUNT(*) FROM passkeys").fetchone()[0] >= 5 or
                     access.con.execute("SELECT 1 FROM passkeys WHERE credential_id=?", [identifier]).fetchone()):
@@ -338,7 +346,7 @@ def protect_app(app: FastAPI, access: Access) -> FastAPI:
         with access.transaction():
             access.budget()
             uid, challenge = access.challenge("login", None)
-            options = generate_authentication_options(rp_id="localhost", challenge=challenge,
+            options = generate_authentication_options(rp_id=access.rp_id, challenge=challenge,
                 user_verification=UserVerificationRequirement.REQUIRED, timeout=CHALLENGE_SECONDS*1000)
             return {"ceremony": uid, "options": json.loads(options_to_json(options))}
 
@@ -355,7 +363,7 @@ def protect_app(app: FastAPI, access: Access) -> FastAPI:
                 if row is None or base64url_to_bytes(credential["response"]["userHandle"]) != access.user_handle:
                     raise ValueError
                 verified = verify_authentication_response(credential=credential, expected_challenge=challenge,
-                    expected_rp_id="localhost", expected_origin=access.origin, credential_public_key=bytes(row[0]),
+                    expected_rp_id=access.rp_id, expected_origin=access.origin, credential_public_key=bytes(row[0]),
                     credential_current_sign_count=row[1], require_user_verification=True)
                 now = access.clock()
                 access.sessions = {key: entry for key, entry in access.sessions.items()

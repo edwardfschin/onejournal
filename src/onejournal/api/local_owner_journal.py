@@ -21,6 +21,7 @@ from typing import Any, Literal
 from uuid import UUID, uuid4
 
 import duckdb
+from onejournal.journal.storage import PostgresTarget, connect
 from fastapi import FastAPI, Header, HTTPException, Query, Response
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
@@ -371,7 +372,7 @@ class WriteReceipt(LocalOwnerModel):
 
 def create_local_owner_journal_app(
     *,
-    journal_db_path: str | Path,
+    journal_db_path: str | Path | PostgresTarget,
     broker_current_authorization: (
         BrokerCurrentFinancialReleaseAuthorization | None
     ) = None,
@@ -383,15 +384,18 @@ def create_local_owner_journal_app(
     broker, credential, or raw-evidence parameter.
     """
 
-    supplied_path = Path(journal_db_path).expanduser()
-    if supplied_path.is_symlink():
-        raise ValueError("local-owner journal database must not be a symlink")
-    db_path = supplied_path.resolve()
-    if not db_path.is_file():
-        raise ValueError("local-owner journal database must already exist")
-    if stat.S_IMODE(db_path.stat().st_mode) != 0o600:
-        raise ValueError("local-owner journal database must use mode 0600")
-    with duckdb.connect(str(db_path), read_only=True) as con:
+    if isinstance(journal_db_path, PostgresTarget):
+        db_path = journal_db_path
+    else:
+        supplied_path = Path(journal_db_path).expanduser()
+        if supplied_path.is_symlink():
+            raise ValueError("local-owner journal database must not be a symlink")
+        db_path = supplied_path.resolve()
+        if not db_path.is_file():
+            raise ValueError("local-owner journal database must already exist")
+        if stat.S_IMODE(db_path.stat().st_mode) != 0o600:
+            raise ValueError("local-owner journal database must use mode 0600")
+    with connect(db_path, read_only=True) as con:
         tables = {str(row[0]) for row in con.execute("SHOW TABLES").fetchall()}
     required_tables = {
         "trade_episodes",
@@ -424,7 +428,7 @@ def create_local_owner_journal_app(
             "local-owner journal database requires durable journal and local API "
             "audit migrations; missing " + ", ".join(sorted(missing_tables))
         )
-    with duckdb.connect(str(db_path), read_only=True) as con:
+    with connect(db_path, read_only=True) as con:
         episode_relation = current_journal_relation(con, "trade_episodes")
         materialized_relation = current_journal_relation(
             con, "phase1_journal_materialized_episodes"
@@ -549,7 +553,7 @@ def create_local_owner_journal_app(
 
     reporting_release: ReportingRelease | None = None
     if reporting_authorization is not None:
-        with duckdb.connect(str(db_path), read_only=True) as con:
+        with connect(db_path, read_only=True) as con:
             try:
                 reporting_release = load_reporting_release(
                     con, report_release_uid=reporting_authorization.report_release_uid
@@ -597,7 +601,7 @@ def create_local_owner_journal_app(
         ]
 
     def open_db(*, read_only: bool = False) -> duckdb.DuckDBPyConnection:
-        return duckdb.connect(str(db_path), read_only=read_only)
+        return connect(db_path, read_only=read_only)
 
     db_lock = Lock()
 

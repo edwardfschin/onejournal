@@ -1000,6 +1000,47 @@ broker refresh, hosting, scheduler, deletion or trading. History recovery stays
 separate. ADR-0018's production gate is unchanged: formal Phase 1 stays 8/12,
 with P1-09–12 IN PROGRESS solely for their remaining production scope.
 
+### Hosted candidate preparation — 2026-10-13
+
+The owner approved the combined profile in ADR-0017 and one local implementation
+batch: hosted entry point, synthetic PostgreSQL rehearsal, deployment/recovery
+preparation, commit and push. No deployment, private-data transfer, live Mac
+database/runtime change, OneBot change or historical backfill is included.
+The accepted Mac close-out above remains closed.
+
+The candidate introduces independent hosted configuration and exact DNS/RP
+binding, fresh hosted passkey provisioning/recovery, a loopback/proxy boundary,
+non-owner PostgreSQL roles and an exclusive single-worker lease. Existing
+financial API/release authorizations and journal revisions/receipts are reused.
+Source migrations through 0028 map to an independently versioned PostgreSQL
+baseline; 0029 is excluded. The website does not receive connection strings,
+raw broker evidence, provisioning secrets or SQL access.
+
+Actual disposable PostgreSQL rehearsal uses invented source records only. It
+compares API JSON/CSV with DuckDB, exact report precision and acceptance
+fingerprints, append-only current-revision views, journal edits and receipt
+replays. Signed synthetic hosted enrollment/login, CSRF, logout/expiry,
+proxy-origin denial and offline recovery exercise the protected static shell.
+Encrypted dump/restore checks exact table contents, wrong passwords, tampering,
+existing-file preservation and refusal of a nonempty restore target. These
+checks do not establish real-account migration or owner-device enrollment.
+
+The public package contains the wheel (including pinned schema), locked
+dependencies, passkey-enabled static build, operator commands and Caddy/systemd
+preparation. It contains no private configuration or database. The Mac's Python
+environment is never copied to Linux. Templates are not installed or enabled.
+Resource caps address the reviewed shared host; actual service compatibility,
+effective firewall/cloud exposure and privileged configuration still require
+target verification before separately approved activation.
+
+Remaining production work is one permanent owner-chosen address and actual
+DNS/TLS; candidate dependency/security disposition; a separately authorized,
+backed-up and exactly reconciled private-state transfer/cutover; real deployment
+and rollback; independently held off-server backups and host restoration;
+physical-device/host-dependent quality checks; final operating objectives and
+dated owner acceptance. The next batch must name those actions explicitly.
+No synthetic pass is promoted to operational acceptance. Phase 1 remains 8/12.
+
 The web delivery packages map to Phase 1 as follows:
 
 | Phase 1 need | Required web package or dependency |

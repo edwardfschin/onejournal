@@ -28,7 +28,7 @@ function ProtectedWorkspace({ children }: { children: ReactNode }) {
     const requestGeneration = ++generation.current.value;
     try {
       const state = await accessJson<SessionStatus>('session');
-      if (state.contract_version !== 'onejournal.mac-passkey.v1' || typeof state.authenticated !== 'boolean'
+      if (!['onejournal.mac-passkey.v1', 'onejournal.hosted-passkey.v1'].includes(state.contract_version) || typeof state.authenticated !== 'boolean'
         || (state.authenticated && (typeof state.csrf !== 'string' || !state.csrf
           || typeof state.expires_in_seconds !== 'number'))) throw new Error('Access service is unavailable.');
       if (requestGeneration !== generation.current.value || logoutUnconfirmed.current) return;
@@ -54,7 +54,7 @@ function ProtectedWorkspace({ children }: { children: ReactNode }) {
   async function ceremony(register: boolean) {
     setBusy(true); setError('');
     try {
-      if (!window.isSecureContext || !window.PublicKeyCredential) throw new Error('Use a supported browser with trusted localhost HTTPS.');
+      if (!window.isSecureContext || !window.PublicKeyCredential) throw new Error('Use a supported browser with trusted HTTPS.');
       const enrollment = register && !session?.authenticated ? { enrollment_secret: secret } : {};
       const value = await accessJson<CeremonyOptions>(register ? 'register/options' : 'login/options', enrollment);
       const options = { ...value.options, challenge: decodeBase64url(value.options.challenge) };
@@ -97,7 +97,7 @@ function ProtectedWorkspace({ children }: { children: ReactNode }) {
 
   if (session?.authenticated) return <>
     <aside className="passkey-session-bar" aria-label="Private session">
-      <span>Mac passkey test · {session.passkey_count} registered</span>
+      <span>{session.contract_version === 'onejournal.hosted-passkey.v1' ? 'Hosted private access' : 'Mac passkey test'} · {session.passkey_count} registered</span>
       <button type="button" disabled={busy} onClick={() => { void ceremony(true); }}>Add backup passkey</button>
       <button type="button" disabled={busy} onClick={() => { void logout(); }}>Sign out</button>
       {error ? <output>{error}</output> : null}
@@ -105,7 +105,7 @@ function ProtectedWorkspace({ children }: { children: ReactNode }) {
     {children}
   </>;
   return <main className="passkey-login"><section aria-labelledby="passkey-title">
-    <p className="passkey-eyebrow">OneJournal · Mac-only security test</p>
+    <p className="passkey-eyebrow">OneJournal · private passkey access</p>
     <h1 id="passkey-title">Your private workspace</h1>
     <p>Use your passkey with device verification. No password or authenticator code.</p>
     {session?.enrollment_required ? <>

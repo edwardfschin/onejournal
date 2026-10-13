@@ -12,7 +12,7 @@ type View = 'today' | 'data' | 'settings';
 const headings = {
   today: ['Start with the evidence.', 'Your saved data, decisions and learning. This is not a live market dashboard.'],
   data: ['Know what your data covers.', 'Snapshot dates and unresolved gaps stay visible. Reloading does not fetch broker data.'],
-  settings: ['Your private Mac workspace.', 'Verified access status and the controls already available to you.'],
+  settings: ['Your private workspace.', 'Verified access status and the controls already available to you.'],
 } as const;
 const qualityLabels = {
   valid: 'Complete for this selection', stale: 'Stale data', incomplete: 'Partial results',
@@ -79,7 +79,7 @@ function OverviewContent({ view, onReload }: { view: View; onReload: () => void 
         <Link className="brand-mark" href={LOCAL_ROUTES.today} aria-label="OneJournal Today"><span className="brand-glyph">1</span><span className="brand-wordmark">OneJournal</span></Link>
         <LocalWorkspaceNavigation />
       </header>
-      <div className="mode-banner local-portfolio-banner"><span>Private Mac workspace</span><p>Saved evidence · manual updates · no trading</p></div>
+      <div className="mode-banner local-portfolio-banner"><span>Private owner workspace</span><p>Saved evidence · manual updates · no trading</p></div>
       <div className="content-frame" id="workspace-content" tabIndex={-1}>
         <div className="page-heading"><div><p className="eyebrow">{title} · local owner</p><h1>{headings[view][0]}</h1><p className="heading-copy">{headings[view][1]}</p></div>
           <button className="report-download" type="button" disabled={loading} onClick={onReload}><RefreshCw aria-hidden="true" />{view === 'settings' ? 'Check access status' : 'Reload saved data'}</button>
@@ -96,8 +96,8 @@ function OverviewContent({ view, onReload }: { view: View; onReload: () => void 
           {saved ? <section className="panel report-section report-context"><h2>Release provenance</h2><dl><dt>Release</dt><dd>{saved.current.metadata.report_release_uid}</dd><dt>Prepared (UTC)</dt><dd>{saved.current.metadata.generated_at_utc}</dd><dt>Owner accepted (UTC)</dt><dd>{saved.current.metadata.owner_accepted_at_utc}</dd><dt>Calculation version</dt><dd>{saved.current.metadata.calculation_version}</dd></dl></section> : null}
         </> : null}
         {view === 'settings' ? <>
-          {session ? <section className="panel report-section"><p className="eyebrow">Verified now</p><h2>Signed in with a passkey</h2><p>{session.passkeyCount} registered passkey{session.passkeyCount === 1 ? '' : 's'}. Device verification is required by the Mac access service.</p><p>Use the session bar above to sign out or add a backup passkey. These are the existing controls; this page does not change access policy.</p></section> : null}
-          <section className="panel report-section"><h2>Recovery and operating scope</h2><p>Recovery uses the private offline procedure. The encrypted USB access image backs up access setup, not the passkey itself; keep its password separately. Journal and evidence backups are separate.</p><p>No password, SMS or email fallback is provided. This is the Mac-only testing workspace, not a VPS or public launch.</p><p>Backup currency, broker freshness and production readiness are not verified by this settings page.</p></section>
+          {session ? <section className="panel report-section"><p className="eyebrow">Verified now</p><h2>Signed in with a passkey</h2><p>{session.passkeyCount} registered passkey{session.passkeyCount === 1 ? '' : 's'}. Device verification is required by the access service.</p><p>Use the session bar above to sign out or add a backup passkey. These are the existing controls; this page does not change access policy.</p></section> : null}
+          <section className="panel report-section"><h2>Recovery and operating scope</h2><p>Recovery uses the private offline procedure. Backups preserve access setup, not the passkey itself. Journal and evidence backups are separate.</p><p>No password, SMS or email fallback is provided. {session?.hosted ? 'Hosted private-owner access is active; this page does not certify production acceptance.' : 'This is the Mac testing workspace, not a public launch.'}</p><p>Backup currency, broker freshness and production readiness are not verified by this settings page.</p></section>
         </> : <section className="panel report-section"><h2>Keep the scopes separate</h2><p>Total P&amp;L remains unavailable when realized history and current holdings cover different scopes. This overview does not calculate profits, infer missing trades or label saved data as live.</p><Link className="workspace-action" href={view === 'today' ? LOCAL_ROUTES.data : LOCAL_ROUTES.reports}>{view === 'today' ? 'Check data coverage' : 'Open the full reports'} <ArrowRight aria-hidden="true" /></Link></section>}
       </div>
     </section>

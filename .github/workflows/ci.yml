@@ -33,10 +33,11 @@ jobs:
           cache-dependency-path: |
             requirements.lock
             requirements-security.lock
+            requirements-hosted.lock
 
       - name: Install locked environment
         run: |
-          python -m pip install -r requirements-security.lock
+          python -m pip install -r requirements-hosted.lock
           python -m pip install --no-deps --no-build-isolation -e .
 
       - name: Run clean-checkout validation

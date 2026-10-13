@@ -19,6 +19,7 @@ import re
 from typing import Any
 
 import duckdb
+from onejournal.journal.storage import connect
 
 from onejournal.journal.domain import current_journal_relation
 
@@ -697,7 +698,7 @@ def load_schwab_lifecycle_presentations(
 ) -> tuple[LifecyclePresentation, ...]:
     """Load compact lifecycle stories without changing journal state."""
 
-    with duckdb.connect(str(db_path), read_only=True) as con:
+    with connect(db_path, read_only=True) as con:
         tables = {str(row[0]) for row in con.execute("SHOW TABLES").fetchall()}
         required = {
             "normalized_fills",

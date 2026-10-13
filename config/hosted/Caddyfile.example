@@ -1,0 +1,43 @@
+{
+	admin off
+	persist_config off
+	log {
+		format filter {
+			wrap json
+			fields {
+				request delete
+				headers delete
+				uri delete
+			}
+		}
+	}
+	servers {
+		protocols h1 h2
+		max_header_size 32KB
+		strict_sni_host on
+		timeouts {
+			read_header 5s
+			read_body 15s
+			write 30s
+			idle 30s
+		}
+	}
+}
+
+# Do not activate until the owner chooses the permanent DNS name and the
+# reviewed Caddy environment supplies a fresh random proxy secret.
+{$ONEJOURNAL_DOMAIN} {
+	request_body {
+		max_size 256KB
+	}
+	header Strict-Transport-Security "max-age=86400"
+	reverse_proxy 127.0.0.1:8766 {
+		header_up Host {$ONEJOURNAL_DOMAIN}
+		header_up -Forwarded
+		header_up -X-Forwarded-For
+		header_up -X-Forwarded-Host
+		header_up -X-Forwarded-Proto
+		header_up X-OneJournal-Proxy {$ONEJOURNAL_PROXY_SECRET}
+	}
+	# No access-log directive: private URLs/filter values are not logged.
+}

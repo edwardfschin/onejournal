@@ -11,6 +11,7 @@ from pathlib import Path
 from typing import Any, Mapping, cast
 
 import duckdb
+from onejournal.journal.storage import PostgresTarget, connect
 
 from onejournal.instruments import InstrumentIdentity
 from onejournal.pnl.broker_current_position_valuation import (
@@ -419,9 +420,9 @@ def load_broker_current_position_valuation_run(
 ) -> BrokerCurrentPositionValuationReadBack | None:
     """Read one exact broker-current result without an implicit latest fallback."""
 
-    if not db_path.exists():
+    if not isinstance(db_path, PostgresTarget) and not db_path.exists():
         raise RuntimeError("database does not exist")
-    con = duckdb.connect(str(db_path), read_only=True)
+    con = connect(db_path, read_only=True)
     try:
         missing = REQUIRED_TABLES - _table_names(con)
         if missing:
