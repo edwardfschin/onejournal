@@ -256,6 +256,22 @@ and deployment/recovery preparation, with commit and push. This implements the
 existing foundation, not a framework replacement or deployment authorization.
 OneBot, the accepted Mac runtime and separate historical backfill stay unchanged.
 
+### Hosting boundary clarification — 2026-10-13
+
+The owner explicitly reserves `one-prod` exclusively for OneBot. OneJournal
+will use a **separate VPS**, not a separate service on the OneBot server. This
+supersedes the earlier shared-host preparation proposal and its inventory as
+target-readiness evidence. The separate VPS/provider/size/address have not been
+selected or provisioned. Continue useful preparation on the Mac; do not connect
+to or modify one-prod for OneJournal hosting work. No purchase, DNS change,
+deployment, private-state transfer or runtime restart is authorized.
+
+The portable Caddy/FastAPI/PostgreSQL architecture remains valid. Resource
+limits are provisional conservative templates, not sizing evidence for the
+unselected server. Reuse unchanged synthetic rehearsal evidence; verify Linux
+dependencies, privileges, firewall, capacity and recovery on the actual separate
+target before exposure. Keep the chosen domain and existing Mac operating scope.
+
 The initial hosted candidate uses Caddy for one exact permanent HTTPS DNS
 origin, a loopback-only FastAPI worker, PostgreSQL journal state, and a separate
 PostgreSQL security database. Linux identity, releases, private configuration,

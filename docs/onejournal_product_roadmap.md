@@ -124,6 +124,11 @@ validation, not P1-09–12 production acceptance. The owner selected
 `https://journal.onelumiq.com` on 2026-10-13 after confirming domain control.
 The candidate now aligns the public configuration, rendered proxy and release
 origin/RP metadata, with a hosted Today landing page rather than the demo.
+The owner's subsequent 2026-10-13 clarification reserves `one-prod` exclusively
+for OneBot and requires a separate OneJournal VPS. That target is not selected
+or provisioned; no OneJournal hosting action on one-prod is planned. Continue
+Mac preparation and reuse unchanged accepted evidence. The earlier shared-host
+inventory does not clear the eventual target, and resource caps remain provisional.
 Actual DNS/TLS, private-state
 cutover, target operations and final owner/device evidence remain outstanding;
 the accepted Mac runtime and historical backfill are not changed.

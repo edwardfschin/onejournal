@@ -146,6 +146,12 @@ and saved-copy recovery without importing workbook mechanics. The bounded
 Mac-testing M4 claim remains separate and unchanged. OneBot and historical
 backfill are outside this batch.
 
+The owner's 2026-10-13 hosting clarification reserves `one-prod` exclusively for
+OneBot and requires a separate, currently unselected OneJournal VPS. Preparation
+continues on the Mac. The earlier shared-host inventory is not evidence for that
+target; this topology correction does not promote any maturity or acceptance
+claim. The architecture boundary is recorded in ADR-0017.
+
 Evidence concerns the new hosted storage/access boundary, PostgreSQL schema and
 JSON/CSV parity, revision/replay protection, encrypted disposable restoration,
 and public package/service preparation. Actual DNS/TLS/owner enrollment,

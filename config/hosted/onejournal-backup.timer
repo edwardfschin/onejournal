@@ -1,3 +1,4 @@
+# Separate OneJournal VPS only; do not install or activate on one-prod.
 [Unit]
 Description=OneJournal daily encrypted backup (not enabled by packaging)
 

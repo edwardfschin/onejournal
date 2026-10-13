@@ -916,9 +916,14 @@ NO FILL RESULT means both Schwab orders and transactions produced zero normalize
 
 ## Hosted candidate preparation (local only; 2026-10-13)
 
-This batch does not install anything on one-prod, transfer private data, change
-OneBot or historical backfill, or restart the accepted Mac site. ADR-0017's
-approved combined profile is authoritative. Keep normal Mac use unchanged.
+The owner reserves **one-prod exclusively for OneBot** and requires a separate
+OneJournal VPS. That VPS/provider/size/address are not yet selected. This
+supersedes the earlier shared-host proposal: do not use the one-prod alias,
+address, access, credentials, firewall or services for OneJournal hosting work.
+The earlier host inventory is not readiness evidence for the new target.
+This batch stays on the Mac: no purchase, DNS change, installation, private-data
+transfer, historical backfill or accepted Mac site restart. ADR-0017's updated
+profile is authoritative. Keep normal Mac use unchanged.
 
 `scripts/web/package_hosted_release.py --destination <new-absolute-directory>`
 packages **clean committed public source**: wheel, pinned hosted dependencies,
@@ -960,16 +965,24 @@ setup is required. Configure only the journal subdomain using Porkbun's
 [DNS-record controls](https://kb.porkbun.com/article/68-how-to-edit-dns-records)
 when the target-activation batch is approved; inspect whether the current answer
 comes from an explicit record or a wildcard before making that narrow change.
-The next **single target-activation batch** should explicitly authorize:
-the exact journal DNS record replacement pointing to the verified one-prod
-public address; isolated Linux identities/roles/cluster and public-package
-installation under the combined resource budget; reviewed firewall/TLS and
-private synthetic access setup; and the bounded deployed login/report/CSV,
-backup/restore and code-rollback checks. Preserve every OneBot unit, credential,
-timer and root-domain/other-subdomain record. A fresh target dependency/security
-check and privileged firewall disposition precede exposure; the read-only port
-inventory alone is not clearance. Owner passkey entry and any required admin
-password happen privately, not in chat.
+When hosting is wanted, select and explicitly approve the separate OneJournal
+VPS/provider/size/cost and verify its identity/address; no server is being ordered
+now. The later **single target-activation batch** should explicitly authorize
+the exact journal DNS record pointing to that separate target; Linux
+identities/roles/cluster and public-package installation under a target-reviewed
+resource budget; firewall/TLS and private synthetic access setup; and the bounded
+deployed login/report/CSV, backup/restore and code-rollback checks. Never target
+one-prod. Preserve root-domain/other-subdomain records. A fresh target
+dependency/security check and privileged firewall disposition precede exposure;
+the former OneBot host inventory provides no clearance. Owner passkey entry and
+any required admin password happen privately, not in chat.
+
+Local preparation can update the portable public package and its hashes without
+uploading it. Reuse the completed synthetic PostgreSQL/API/access/recovery and
+accepted Mac checks unless relevant behavior changes. Actual Linux service,
+DNS/TLS, hosted device and off-server recovery acceptance wait for the separate
+target. Do not invent a host address, copy an SSH alias or repeat unchanged
+backup/browser suites to fill that gap.
 
 Keep that first hosted batch **synthetic only**: no journal/account history,
 financial authorizations, Mac passkey state or other existing private data is
@@ -1017,9 +1030,9 @@ denials retain per-minute/action counts and one sampled event, not unbounded
 individual denial rows. Accepted security events remain individually recorded;
 no private IP, path or filter is retained by these controls. Templates must be owned
 by the operator/root and verified on Linux before installation. Confirm actual
-firewall/cloud rules, TLS, resource usage and OneBot's unchanged operating state
-before a later production release; the earlier read-only inventory is not
-privileged security clearance.
+firewall/cloud rules, TLS and resource usage on the separate OneJournal VPS
+before a later production release; the earlier OneBot inventory is not target
+security clearance. Do not connect to one-prod for these hosting checks.
 
 The prepared `onejournal.slice` limits the **combined** app, proxy, dedicated
 PostgreSQL cluster and backup work to one CPU core-equivalent and 2 GiB, with
@@ -1027,8 +1040,10 @@ lower CPU/I/O weights. Per-service caps sit inside that shared budget; they are
 not additional full-core allowances. The proxy environment drop-in names a
 root-owned private environment file, never Git. Apply the PostgreSQL drop-in
 only to the exact new dedicated cluster instance after verifying its identity;
-never attach OneBot or a shared cluster to this slice. This reserves headroom
-on the reviewed two-core host but is not a production performance guarantee.
+never attach OneBot or a shared cluster to this slice. These are provisional
+conservative limits, not sizing or performance acceptance for the unselected
+separate VPS. Review its actual capacity before installation; do not carry
+forward the former OneBot host's two-core assumption.
 All units/drop-ins remain uninstalled and inactive in this batch.
 
 `backup_hosted_store.py create --config <file> --image <new-absolute-file>`

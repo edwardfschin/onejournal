@@ -1,3 +1,4 @@
+# Separate OneJournal VPS only; do not install or activate on one-prod.
 [Unit]
 Description=OneJournal isolated encrypted backup (requires separate activation)
 After=postgresql.service

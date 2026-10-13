@@ -1,5 +1,7 @@
+# Prepared only for a separate OneJournal VPS; never install on one-prod.
+# Provisional caps: review the selected target's capacity before activation.
 [Unit]
-Description=Combined OneJournal resource budget, separate from OneBot
+Description=Combined OneJournal resource budget on its dedicated VPS
 
 [Slice]
 CPUQuota=100%

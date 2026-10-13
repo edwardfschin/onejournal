@@ -1029,9 +1029,15 @@ The public package contains the wheel (including pinned schema), locked
 dependencies, passkey-enabled static build, operator commands and Caddy/systemd
 preparation. It contains no private configuration or database. The Mac's Python
 environment is never copied to Linux. Templates are not installed or enabled.
-Resource caps address the reviewed shared host; actual service compatibility,
-effective firewall/cloud exposure and privileged configuration still require
-target verification before separately approved activation.
+On 2026-10-13 the owner clarified that `one-prod` remains exclusively OneBot's
+VPS and OneJournal must use a separate VPS. This supersedes the shared-host
+proposal; the earlier host inventory is not target-readiness evidence. No
+OneJournal hosting access, installation or activation on one-prod is in scope.
+The separate target/provider/size/address remain unselected; work stays on the
+Mac. Resource caps are provisional conservative templates. Actual Linux
+dependencies, capacity, service compatibility, firewall/cloud exposure and
+privileged configuration require verification on the separate target before
+separately approved activation. No purchase or private-data transfer is approved.
 
 The owner confirmed control and chose `https://journal.onelumiq.com` on
 2026-10-13. The public example and package renderer bind that exact origin and

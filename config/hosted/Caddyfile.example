@@ -25,6 +25,7 @@
 }
 
 # The package renders ONEJOURNAL_DOMAIN from the approved public configuration.
+# Separate OneJournal VPS only; never install on OneBot's one-prod server.
 # Do not activate until DNS/deployment is separately approved and the reviewed
 # Caddy environment supplies a fresh random proxy secret.
 {$ONEJOURNAL_DOMAIN} {

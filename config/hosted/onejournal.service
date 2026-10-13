@@ -1,3 +1,4 @@
+# Separate OneJournal VPS only; one-prod is reserved exclusively for OneBot.
 [Unit]
 Description=OneJournal isolated private-owner service
 After=network.target postgresql.service
