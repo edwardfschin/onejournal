@@ -1071,6 +1071,20 @@ remain explicitly un-cleared. See `docs/mac_passkey_access_contract.md` for the
 scope and remaining disposition. No live environment, private state, one-prod
 hosting or history work was included; actual separate-target acceptance remains.
 
+The subsequent 2026-10-13 local batch patches the available build-tool findings
+and adds a temporary-copy-only journal migration rehearsal command to the
+public package. Build audit is down to six high findings in the unpatched
+braces generator chain, with zero critical/moderate findings; this is not full
+dependency clearance. Six packaging checks and the static build passed.
+Three focused migration tests passed against synthetic PostgreSQL state,
+including exact tables/views, unchanged source, all-insert rollback on a forced
+mismatch and matching Portfolio/Reports/CSV/journal output. Normal runtime
+targets, populated targets and newer history schemas are refused. No live
+migration or activation capability was added. Operator details and rollback are
+in `docs/operator_quickstart.md`; remaining dependency disposition is in
+`docs/mac_passkey_access_contract.md`. Separate-VPS selection, real-state
+cutover and hosted acceptance remain outstanding; Phase 1 remains 8/12.
+
 The web delivery packages map to Phase 1 as follows:
 
 | Phase 1 need | Required web package or dependency |

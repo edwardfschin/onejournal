@@ -48,7 +48,7 @@ def main():
         rendered = render_caddy((target / "deployment" / "Caddyfile.example").read_text(), origin)
         (target / "deployment" / "Caddyfile").write_text(rendered)
         (target / "commands").mkdir()
-        for name in ("prepare_hosted_store.py", "backup_hosted_store.py", "run_hosted_backup.sh"):
+        for name in ("prepare_hosted_store.py", "backup_hosted_store.py", "run_hosted_backup.sh", "rehearse_hosted_migration.py"):
             shutil.copyfile(ROOT / "scripts" / "web" / name, target / "commands" / name)
         for name in ("requirements.lock", "requirements-security.lock", "requirements-hosted.lock"):
             shutil.copyfile(ROOT / name, target / name)

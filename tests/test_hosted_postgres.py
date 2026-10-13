@@ -213,6 +213,59 @@ class HostedPostgresTests(unittest.TestCase):
         return create_local_owner_journal_app(journal_db_path=target,
             broker_current_authorization=self.broker_auth, reporting_authorization=self.report_auth)
 
+    def test_guarded_migration_exact_copy_refusals_and_atomic_rollback(self):
+        from hashlib import sha256
+        from unittest.mock import patch
+        from onejournal.hosted_migration import rehearse, relation_proof
+        name = 'oj_rehearsal_' + self.suffix
+        with psycopg.connect(ADMIN, autocommit=True) as admin:
+            admin.execute(sql.SQL('CREATE DATABASE {}').format(sql.Identifier(name)))
+        self.names.append(name)
+        target = PostgresTarget(make_conninfo(ADMIN, dbname=name))
+        install_empty(target)
+        pinned = sha256(self.source.read_bytes()).hexdigest()
+        with self.assertRaisesRegex(ValueError, 'hash differs'):
+            rehearse(self.source, '0' * 64, target)
+        with self.assertRaisesRegex(ValueError, 'disposable rehearsal'):
+            rehearse(self.source, pinned, self.operator_targets[0])
+        with self.assertRaisesRegex(ValueError, 'temporary rehearsal'):
+            rehearse(self.source, pinned, PostgresTarget(make_conninfo(ADMIN, host='127.0.0.1', dbname=name)))
+        # Reject an extended ledger instead of silently dropping its history.
+        import shutil
+        extended = self.root / 'extended.duckdb'
+        shutil.copyfile(self.source, extended)
+        extended.chmod(0o600)
+        with duckdb.connect(str(extended)) as con:
+            con.execute("UPDATE schema_migrations SET version='0029' WHERE version='0028'")
+        with self.assertRaisesRegex(ValueError, 'history is separate'):
+            rehearse(extended, sha256(extended.read_bytes()).hexdigest(), target)
+        # Force a post-insert mismatch; every target insert must roll back.
+        with patch('onejournal.hosted_migration.relation_proof', side_effect=[{}, {'different': True}]):
+            with self.assertRaisesRegex(ValueError, 'read-back differs'):
+                rehearse(self.source, pinned, target)
+        with connect(target, read_only=True) as con:
+            tables = con.execute("SELECT table_name FROM information_schema.tables WHERE table_schema='main' AND table_type='BASE TABLE' AND table_name!='hosted_schema_meta'").fetchall()
+            for table, in tables:
+                self.assertEqual(con.execute(f'SELECT COUNT(*) FROM "{table}"').fetchone()[0], 0)
+        result = rehearse(self.source, pinned, target)
+        self.assertFalse(result['activated'])
+        self.assertEqual(sha256(self.source.read_bytes()).hexdigest(), pinned)
+        self.assertGreater(len(result['exact_relations']), len(tables))
+        with self.assertRaisesRegex(ValueError, 'must be empty'):
+            rehearse(self.source, pinned, target)
+        with connect(target, read_only=True) as con:
+            for table, proof in result['exact_relations'].items():
+                self.assertEqual(relation_proof(con.connection, table), proof)
+        local, hosted = TestClient(self.api(self.source)), TestClient(self.api(target))
+        for path in ['/api/v1/local-owner/portfolio/current',
+                     '/api/v1/local-owner/reports/current/accounts',
+                     '/api/v1/local-owner/reports/current/positions.csv',
+                     '/api/v5/local-owner/journal/search']:
+            a, b = local.get(path), hosted.get(path)
+            self.assertEqual(a.status_code, 200, a.text)
+            self.assertEqual(b.status_code, 200, b.text)
+            self.assertEqual(a.content, b.content)
+
     def test_financial_json_csv_journal_revisions_and_replay_match_duckdb(self):
         validate(self.journal)
         validate_runtime_role(self.journal)

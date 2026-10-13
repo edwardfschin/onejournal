@@ -37,6 +37,16 @@ test('private builds always mount the existing passkey boundary before page cont
   assert.match(boundary, /pathname\?\.startsWith\('\/local\/'\)/);
 });
 
+test('reviewed build-security pins are present in every locked dependency copy', () => {
+  assert.equal(manifest.devDependencies.vite, '8.0.16');
+  assert.equal(lock.packages['node_modules/vite'].version, '8.0.16');
+  for (const [name, version] of Object.entries(manifest.overrides)) {
+    const copies = Object.entries(lock.packages).filter(([path]) => path.endsWith(`/${name}`));
+    assert.ok(copies.length, name);
+    for (const [path, entry] of copies) assert.equal(entry.version, version, path);
+  }
+});
+
 test('locally packaged font URLs have no network or workstation dependency', () => {
   const css = readFileSync(new URL('public/fonts/geist.css', root), 'utf8');
   const paths = [...css.matchAll(/url\(([^)]+)\)/g)].map((match) => match[1]);

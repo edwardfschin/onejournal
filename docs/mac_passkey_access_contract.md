@@ -480,9 +480,9 @@ after the private-socket-only test cluster started with the required permission.
 That owned test cluster was stopped. No real owner enrollment, encrypted-image
 rehearsal, broker call, history activation or live Mac environment was changed.
 
-The current frontend runtime-dependency audit reports zero findings, while the
-full development/build audit reports 31 package-chain findings (six critical,
-19 high and six moderate). This is not clearance of build tools. The hosted
+The initial frontend runtime-dependency audit reported zero findings, while the
+full development/build audit reported 31 package-chain findings (six critical,
+19 high and six moderate), before the build patch batch below. The hosted
 package serves static output and does not deploy Node, npm modules, the design
 generator or a Vite/Vinext server. That topology is now explicit in ADR-0017;
 the earlier unresolved-topology note below is superseded. Build-tool alerts
@@ -497,6 +497,24 @@ security store, private journal and OneBot stay unchanged. Rollback selects the
 previous public candidate with its matching lock; it does not downgrade a live
 environment or restore financial state. This advances candidate maintenance,
 not production acceptance or the formal 8/12 Phase 1 count.
+
+The subsequent approved build patch batch pins Vite 8.0.16 and same-major
+patched transitive versions of proxy-addr, tinypool, source-map-js,
+brace-expansion, fast-uri, postcss-selector-parser, undici, the MCP SDK, hono
+and ip-address. Exact overrides in `web/package.json` and the lockfile prevent
+an older nested copy from remaining. Clean installation, six packaging checks
+and the static production build passed. No application styling or live Mac
+installation changed.
+
+The resulting development audit has **six high, zero critical and zero
+moderate findings**. All six are the unpatched `braces` 3.0.3 chain through
+micromatch/fast-glob/ts-morph/shadcn; the registry has no patched braces release
+and audit reports no fix. Shadcn remains a development dependency because its
+CSS is imported by the build. This does not waive the finding or authorize
+running the generator on untrusted source/patterns. Node and the generator are
+excluded from the deployed static package. Other Python findings above remain
+open. Revert the focused dependency commit and reinstall its matching lock to
+restore the previous candidate; do not downgrade an active environment.
 
 ### Build-tool dependency separation: 2026-10-11
 

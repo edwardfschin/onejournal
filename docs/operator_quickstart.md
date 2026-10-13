@@ -1007,6 +1007,36 @@ Both access commands require `--enrollment-file <new-private-file>` as well as
 service restart occurs. Enrollment expires after ten minutes and is entered
 directly into the trusted browser, never chat.
 
+Local migration preparation now includes `rehearse_hosted_migration.py` in the
+public package. Its required arguments are `--source-copy`, `--source-sha256`,
+`--target-dsn-file` and `--receipt`. Use an owner-only (0700) temporary directory,
+a closed 0600 DuckDB copy with no WAL, and its exact SHA-256. Keep the DSN file
+0600 with a private parent. The target must use an owner-only temporary UNIX
+socket directory and a database named `oj_rehearsal_<unique suffix>` with the
+bundled baseline explicitly installed and all journal tables empty. TCP,
+remote targets, normal runtime names, non-temporary source parents and replay
+onto populated state are refused. There is no live migration/activation mode.
+
+The command admits only the complete checksum-pinned migration ledger through
+0028. Extra/missing tables or views, changed column types/order/nullability and
+newer history schemas are refused rather than omitted. It copies in one
+transaction with deferred constraints, compares typed multiset hashes and row
+counts for every table and view, confirms the source hash stayed unchanged,
+then checks constraints before committing. One million rows per relation is
+an explicit memory bound; exceeding it fails instead of truncating. A mismatch
+rolls back all inserts. The new 0600 private receipt records the proofs; never
+commit or publish it. Existing receipts cannot be overwritten. A failed receipt
+write after commit may leave a populated disposable target: retain it for
+diagnosis and use a new target for another run, never silently clear it.
+
+The 2026-10-13 validation used synthetic data only: exact relation reconciliation,
+unchanged source, post-insert failure rollback, nonempty/unsafe/newer-schema
+refusal, private/redacted receipts and matching Portfolio/Reports/CSV/journal
+responses. Three focused tests passed and the owned temporary cluster was
+stopped. No real private copy was read or migrated. Source files, live services,
+access state and history work are outside this command. Rollback is abandoning
+the disposable candidate; the original source remains authoritative.
+
 Before real cutover, separately approve a frozen private-source export and
 backed-up disposable import/reconciliation, then the exact target transfer and
 activation. Preserve every source table's IDs, revisions, financial values,
