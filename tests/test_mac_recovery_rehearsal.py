@@ -1,9 +1,10 @@
 """Focused copy lifetime, path binding and owned-child failure guards; no USB/live data."""
-from contextlib import redirect_stderr
+from contextlib import redirect_stderr, redirect_stdout, nullcontext
 import io
 import json
 from pathlib import Path
 import plistlib
+import subprocess
 import sys
 import tempfile
 from types import SimpleNamespace
@@ -129,7 +130,7 @@ class RecoveryTests(unittest.TestCase):
         child.terminate.assert_called_once()
         child.wait.assert_called_once()
         command = spawn.call_args.args[0]
-        self.assertEqual(command[:4], ['/synthetic/runtime/python', '-B', '-m', 'onejournal.mac_static_site'])
+        self.assertEqual(command[:4], ['/synthetic/runtime/python', '-B', '-c', runner.SERVICE_MAIN])
         self.assertNotIn('PYTHONPATH', spawn.call_args.kwargs['env'])
         self.assertNotIn('recover', command)
         self.assertIn(str(self.root / 'rehearsal-access.duckdb'), command)
@@ -194,6 +195,37 @@ class RecoveryTests(unittest.TestCase):
         self.assertEqual(receipt.read_bytes(), b'preserve existing evidence')
         prompt.assert_not_called()
         check.assert_not_called()
+
+    def test_real_installed_service_invocation_reaches_argument_parser(self):
+        # No private files or listener: --help must reach main, not silently import.
+        env = {key:value for key,value in runner.os.environ.items() if key in {'HOME','PATH','LANG','LC_ALL','TMPDIR'}}
+        result = subprocess.run([sys.executable, '-B', '-c', runner.SERVICE_MAIN, '--help'],
+                                cwd=self.root, env=env, capture_output=True, text=True, timeout=10)
+        self.assertEqual(result.returncode, 0)
+        self.assertIn('--web-config', result.stdout)
+        self.assertIn('--security-db', result.stdout)
+
+    def test_post_unlock_failure_records_stage_without_password_blame_or_private_error(self):
+        for name in ('journal-image','access-image','evidence-image'):
+            (self.root / name).write_bytes(b'synthetic image')
+            (self.root / name).chmod(0o600)
+        manifest = {'source_fingerprints':['a'*64]}
+        errors, output = io.StringIO(), io.StringIO()
+        with patch.object(runner.sys.stdin,'isatty',return_value=True), \
+             patch.object(runner,'check_release',return_value={'index_sha256':'a'*64}), \
+             patch.object(runner.getpass,'getpass',return_value='synthetic private password'), \
+             patch.object(runner,'journal_copy',return_value=nullcontext((self.root,{},1))), \
+             patch.object(runner,'access_copy',return_value=nullcontext(self.root)), \
+             patch.object(runner,'evidence_copy',return_value=nullcontext((self.root,manifest,(1,1)))), \
+             patch.object(runner,'source_digests',return_value={'a'*64}), \
+             patch.object(runner,'serve_and_probe',side_effect=RuntimeError('private response sentinel')), \
+             redirect_stderr(errors), redirect_stdout(output):
+            self.assertEqual(runner.main(self.arguments()),1)
+        receipt = json.loads((self.root / 'receipt').read_text())
+        self.assertEqual(receipt, {'status':'incomplete','stage':'restored_service'})
+        self.assertIn('All three images unlocked',errors.getvalue())
+        self.assertNotIn('private response sentinel',errors.getvalue())
+        self.assertNotIn('synthetic private password',errors.getvalue()+output.getvalue())
 
 
 if __name__ == '__main__':

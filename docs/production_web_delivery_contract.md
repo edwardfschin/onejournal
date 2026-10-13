@@ -930,6 +930,30 @@ owner-image recovery or screen-reader/owner acceptance. The separate owner
 Terminal run is pending; passwords must never enter chat or agent tool input.
 See `docs/operator_quickstart.md` for the finite run and acceptance boundaries.
 
+### Failed owner attempt and focused runner correction: 2026-10-13
+
+The owner's first attempt reached the evidence/audit password prompt. The
+preceding journal and access contexts had therefore unlocked and validated;
+do not blame those passwords. The original receipt retained only `incomplete`,
+so the exact later failure stage cannot be established from that attempt.
+The immediate retry stopped because its fixed receipt path already existed;
+the no-overwrite guard preserved the earlier evidence.
+
+Inspection also found a definite startup defect: invoking
+`python -m onejournal.mac_static_site` only imports the installed module; it
+has no `__main__` invocation. A non-mutating installed-runtime `--help` check
+confirmed the silent exit, while the console entry point reached its parser.
+The runner now explicitly invokes the installed module's `main` with the
+selected interpreter and isolated child environment. Fixed value-free progress
+and failure stages distinguish image, lineage and service failures. The private
+shortcut selects a fresh receipt each time, retaining the original failed one.
+
+Twelve focused checks passed, including a real installed-runtime entry-point
+smoke and a post-unlock failure regression proving stage reporting without
+password/response disclosure. No owner image was reopened, no password read,
+no restored server started and no live state changed during this correction.
+Actual restored-service completion, speech and owner acceptance remain pending.
+
 The web delivery packages map to Phase 1 as follows:
 
 | Phase 1 need | Required web package or dependency |

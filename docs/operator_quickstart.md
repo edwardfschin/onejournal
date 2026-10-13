@@ -209,7 +209,12 @@ failure. Original recovery images are hash-compared and preserved; the existing
 live site, security store and journal are not opened or replaced. A new private
 receipt remains `incomplete` on failure and records the exact runtime source and
 elapsed session time only after success. Do not overwrite a prior receipt on a
-retry. Passing this signed-client check is not owner-hardware re-enrollment,
+retry. The owner-private convenience shortcut selects a fresh receipt per run;
+the operator records fixed, value-free stages so an image unlock, lineage or
+service failure can be distinguished without exposing exception bodies. Image
+passwords are the passwords chosen when creating each encrypted USB image,
+not the Mac login password, a passkey or a new password to choose for this check.
+Passing this signed-client check is not owner-hardware re-enrollment,
 another-Mac/host recovery, fresh financial acceptance or production clearance.
 
 For the remaining hands-on check, use Safari on the **existing protected site**,

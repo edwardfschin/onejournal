@@ -518,6 +518,15 @@ No live overwrite/restart, new owner passkey, history activation or hosted
 acceptance is inferred. See the close-out preparation in the web delivery
 contract and operator quickstart. The formal count remains 8/12.
 
+The subsequent owner attempt is not a recovery PASS. It reached the third
+password prompt, establishing the first two image checks, but its old generic
+receipt did not identify the later failure. The immediate retry was refused
+by the existing receipt. A separate confirmed installed-runtime startup defect
+and value-free stage reporting are corrected with twelve focused checks;
+the convenience shortcut now preserves a fresh receipt for each attempt.
+No owner password/image rerun or live change was made during diagnosis. Full
+recovery, VoiceOver speech and final owner acceptance remain outstanding.
+
 ### Current owner-approved direction: Mac first, 2026-10-11
 
 Complete useful local work now; do not make VPS availability a prerequisite for
