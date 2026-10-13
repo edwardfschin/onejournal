@@ -1,8 +1,8 @@
-"""Offline incremental activity planning/review. No capture, import or publication."""
+"""Offline activity planning/review and disposable-copy append rehearsal only."""
 from __future__ import annotations
 
 import argparse
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import UTC, date, datetime, timedelta
 from hashlib import sha256
 import json
@@ -30,6 +30,13 @@ class ConfirmedActivityImport:
     activation_uid: str
     revision_uid: str
     assembly: object
+    checkpoint_uid: str = ''
+    checkpoint_cutoff: datetime | None = None
+    appended_records: dict = field(default_factory=dict)
+
+    @property
+    def cutoff(self):
+        return self.checkpoint_cutoff or self.assembly.snapshot_cutoff_utc
 
 
 def confirmed_import(db: Path, binding) -> ConfirmedActivityImport:
@@ -41,9 +48,14 @@ def confirmed_import(db: Path, binding) -> ConfirmedActivityImport:
     checked = private_file(db, 'journal', private_parent=True)
     with duckdb.connect(str(checked), read_only=True) as con:
         con.execute('BEGIN TRANSACTION')
-        _database_contract(con)
-        _contract(con)
-        row = con.execute('''SELECT c.activation_uid, c.revision_uid, r.assembly_uid,
+        return _confirmed_import(con, binding)
+
+
+def _confirmed_import(con, binding):
+    """Same reader for offline planning and the writer's commit transaction."""
+    _database_contract(con)
+    _contract(con)
+    row = con.execute('''SELECT c.activation_uid, c.revision_uid, r.assembly_uid,
                                     r.history_window_start, r.history_window_end,
                                     r.snapshot_cutoff_utc
             FROM phase1_journal_current_revision_ids c
@@ -53,16 +65,17 @@ def confirmed_import(db: Path, binding) -> ConfirmedActivityImport:
              AND c.source_broker = r.source_broker
             WHERE c.source_broker = 'schwab' AND c.source_account_id = ?''',
             [binding.source_account_id]).fetchone()
-        if row is None or row[5] is None:
-            raise ValueError('An active exact-cutoff import is required.')
-        assembly = _read(con, row[2])
-        if (assembly.connection_uid != binding.connection_uid
+    if row is None or row[5] is None:
+        raise ValueError('An active exact-cutoff import is required.')
+    assembly = _read(con, row[2])
+    if (assembly.connection_uid != binding.connection_uid
                 or assembly.source_account_id != binding.source_account_id
                 or assembly.lifecycle_window_start != row[3]
                 or assembly.lifecycle_window_end != row[4]
                 or assembly.snapshot_cutoff_utc != datetime.fromisoformat(row[5])):
-            raise ValueError('Active import lineage differs.')
-    return ConfirmedActivityImport(row[0], row[1], assembly)
+        raise ValueError('Active import lineage differs.')
+    from onejournal.journal.activity_refresh_repository import with_activity_checkpoint
+    return with_activity_checkpoint(con, ConfirmedActivityImport(row[0], row[1], assembly), binding)
 
 
 def activity_plan(baseline: ConfirmedActivityImport, binding, *, asof: date,
@@ -74,7 +87,7 @@ def activity_plan(baseline: ConfirmedActivityImport, binding, *, asof: date,
     This plan is not a durable cursor or permission to execute broker requests.
     """
     assembly = baseline.assembly
-    cutoff = assembly.snapshot_cutoff_utc
+    cutoff = baseline.cutoff
     if (cutoff is None or type(overlap_days) is not int or not 1 <= overlap_days <= 29
             or type(asof) is not date or asof < cutoff.astimezone(UTC).date()
             or binding.source_account_id != assembly.source_account_id
@@ -91,6 +104,8 @@ def activity_plan(baseline: ConfirmedActivityImport, binding, *, asof: date,
     lineage = [baseline.activation_uid, baseline.revision_uid,
                assembly.result_fingerprint,
                sha256(schwab_account_private_binding_bytes(binding)).hexdigest(), plan]
+    if baseline.checkpoint_uid:
+        lineage.append(baseline.checkpoint_uid)
     plan['plan_sha256'] = sha256(canonical_schwab_evidence_json(lineage).encode()).hexdigest()
     return plan
 
@@ -139,7 +154,7 @@ def _review_delta(baseline, converted, plan) -> dict:
     families = {f.family: f for f in assembly.families}
     counts = {}
     for name, (identity, observation, attribute) in _FAMILIES.items():
-        before = _index(families[name].records, identity, observation)
+        before = _index((*families[name].records, *baseline.appended_records.get(name, ())), identity, observation)
         incoming = _index(getattr(converted, attribute), identity, observation)
         counts[name] = dict(new=sum(k not in before for k in incoming),
                            unchanged=sum(before.get(k) == v for k, v in incoming.items()),
@@ -165,6 +180,25 @@ def review_activity(*, db, binding, asof, overlap_days, expected_plan_sha256,
     plan = activity_plan(baseline, binding, asof=asof, overlap_days=overlap_days)
     if plan['plan_sha256'] != expected_plan_sha256:
         raise ValueError('Active import or planned window changed; replan first.')
+    acquisition, converted = load_activity_capture(binding=binding,
+        acquisition_root=acquisition_root, acknowledgement=acknowledgement,
+        usage_policy=usage_policy, expected_run_uid=expected_run_uid,
+        expected_approval_id=expected_approval_id, expected_owner_uid=expected_owner_uid,
+        expected_owner_epoch_uid=expected_owner_epoch_uid, evaluated_at=evaluated_at)
+    if any(r.requested_at_utc < baseline.cutoff for r in acquisition.manifest.requests):
+        raise ValueError('Activity capture predates the confirmed checkpoint.')
+    result = _review_delta(baseline, converted, plan)
+    current = activity_plan(confirmed_import(db, binding), binding,
+                            asof=asof, overlap_days=overlap_days)
+    if current != plan:
+        raise ValueError('Active import changed during review; replan first.')
+    return result
+
+
+def load_activity_capture(*, binding, acquisition_root, acknowledgement, usage_policy,
+                          expected_run_uid, expected_approval_id, expected_owner_uid,
+                          expected_owner_epoch_uid, evaluated_at):
+    """One exact-byte validation boundary shared by review and append."""
     manifest, responses = acquisition_bundle(acquisition_root, response_count=2)
     acquisition = load_external_provider_acquisition(
         manifest, response_bytes=responses,
@@ -176,22 +210,13 @@ def review_activity(*, db, binding, asof, overlap_days, expected_plan_sha256,
         expected_owner_epoch_uid=expected_owner_epoch_uid)
     if (acquisition.manifest.profile != SCHWAB_LIFECYCLE_EXTERNAL_ACQUISITION_PROFILE
             or acquisition.manifest.connection_uid != binding.connection_uid
-            or acquisition.manifest.controls.oauth_refresh_count != 0
-            or any(r.requested_at_utc < baseline.assembly.snapshot_cutoff_utc
-                   for r in acquisition.manifest.requests)):
+            or acquisition.manifest.controls.oauth_refresh_count != 0):
         raise ValueError('Activity capture scope or timing differs.')
     converted = convert_external_schwab_lifecycle(
         acquisition, provider_account_hash=binding.provider_account_hash,
         provider_account_number=binding.provider_account_number,
         source_account_id=binding.source_account_id)
-    result = _review_delta(baseline, converted, plan)
-    # Detect a changed active import during validation. A future writer must
-    # recheck this identity inside its own commit transaction as well.
-    current = activity_plan(confirmed_import(db, binding), binding,
-                            asof=asof, overlap_days=overlap_days)
-    if current != plan:
-        raise ValueError('Active import changed during review; replan first.')
-    return result
+    return acquisition, converted
 
 
 def main(argv=None):
@@ -203,12 +228,13 @@ def main(argv=None):
     parser.add_argument('--overlap-days', type=int, required=True)
     commands = parser.add_subparsers(dest='command', required=True)
     commands.add_parser('plan')
-    review = commands.add_parser('review')
-    for name in ('acquisition-root', 'acknowledgement', 'usage-policy'):
-        review.add_argument('--' + name, type=Path, required=True)
-    for name in ('expected-plan-sha256', 'expected-run-uid', 'expected-approval-id',
-                 'expected-owner-uid', 'expected-owner-epoch-uid'):
-        review.add_argument('--' + name, required=True)
+    for command in ('review', 'rehearse'):
+        sub = commands.add_parser(command)
+        for name in ('acquisition-root', 'acknowledgement', 'usage-policy'):
+            sub.add_argument('--' + name, type=Path, required=True)
+        for name in ('expected-plan-sha256', 'expected-run-uid', 'expected-approval-id',
+                     'expected-owner-uid', 'expected-owner-epoch-uid'):
+            sub.add_argument('--' + name, required=True)
     args = parser.parse_args(argv)
     try:
         now = datetime.now(UTC)
@@ -219,17 +245,22 @@ def main(argv=None):
             result = activity_plan(confirmed_import(args.db, binding), binding,
                                    asof=args.asof, overlap_days=args.overlap_days)
         else:
-            result = review_activity(db=args.db, binding=binding, asof=args.asof,
+            kwargs = dict(binding=binding, asof=args.asof,
                 overlap_days=args.overlap_days, expected_plan_sha256=args.expected_plan_sha256,
                 acquisition_root=args.acquisition_root, acknowledgement=args.acknowledgement,
                 usage_policy=load_provider_usage_policy(args.usage_policy),
                 expected_run_uid=args.expected_run_uid, expected_approval_id=args.expected_approval_id,
                 expected_owner_uid=args.expected_owner_uid,
                 expected_owner_epoch_uid=args.expected_owner_epoch_uid, evaluated_at=now)
+            if args.command == 'rehearse':
+                from onejournal.activity_rehearsal import rehearse_activity
+                result = rehearse_activity(args.db, **kwargs)
+            else:
+                result = review_activity(db=args.db, **kwargs)
         print(json.dumps(result, sort_keys=True))
         return 2 if result.get('status') == 'review_required' else 0
     except Exception:
-        print('Activity preparation stopped. Check the active exact-cutoff import, pinned plan, private binding and verified bundle. No download, import or cursor advance occurred.')
+        print('Activity preparation stopped. Check the active exact-cutoff import, pinned plan, private binding and verified bundle. No broker call or live write was attempted; any temporary rehearsal copy is discarded.')
         return 1
 
 

@@ -3,7 +3,7 @@
 This directory is reserved for ordered DuckDB migration artifacts governed by
 `docs/database_migrations.md`.
 
-There are currently twenty-nine migration files:
+There are currently thirty migration files:
 
 - `0001_establish_schema_version.sql`:
   create the migration ledger (`schema_migrations`) with run metadata and audit
@@ -135,6 +135,14 @@ There are currently twenty-nine migration files:
   import delivery links and exact provider-bundle review evidence. It does not
   admit fills, change existing views or activate financial reports. Approved
   preparation/rehearsal is limited to disposable copies; live use is separate.
+- `0030_add_incremental_activity_imports.sql`:
+  add an immutable incremental-activity ledger. Each canonical artifact contains
+  new normalized records, source-manifest lineage and its checkpoint together;
+  an account-scoped unique sequence and run identity enforce append/replay
+  boundaries. Existing financial/history/review tables and views are unchanged.
+  Rehearsed only on disposable databases. This is an activity-evidence checkpoint,
+  not a financial publication or history activation. The writer refuses live
+  paths. No live application or hosted-schema change is included.
 
 The existing DuckDB schema is a prototype bootstrap baseline created (and now
 versioned) by `scripts/journal/init_journal_db.py`.

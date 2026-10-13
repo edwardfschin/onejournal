@@ -25,6 +25,9 @@ from onejournal.provider_connectors.external_acquisition import (
 from onejournal.refresh_activity import (
     ConfirmedActivityImport, activity_plan, confirmed_import, _review_delta, main,
 )
+from onejournal.activity_rehearsal import disposable_journal, prepare_copy
+from onejournal.journal.activity_refresh_repository import append_activity_copy
+import duckdb
 
 
 class ActivityRefreshTests(unittest.TestCase):
@@ -162,6 +165,90 @@ class ActivityRefreshTests(unittest.TestCase):
         self.assertEqual(code, 0, output)
         self.assertEqual(json.loads(output)['counts']['fills']['new'], 1)
         self.assertEqual(run(review), (code, output))
+        rehearsal = ['rehearse', *review[1:]]
+        rehearsal_code, rehearsal_output = run(rehearsal)
+        self.assertEqual(rehearsal_code, 0, rehearsal_output)
+        self.assertTrue(json.loads(rehearsal_output)['original_unchanged'])
+        kwargs = dict(binding=self.binding, asof=date(2026,9,7), overlap_days=3,
+            expected_plan_sha256=plan['plan_sha256'], acquisition_root=bundle,
+            acknowledgement=root/'ack.json', usage_policy=capture.usage_policy,
+            expected_run_uid=capture_fixture.RUN_UID, expected_approval_id=capture_fixture.APPROVAL_ID,
+            expected_owner_uid=capture_fixture.OWNER_UID, expected_owner_epoch_uid=capture_fixture.OWNER_EPOCH_UID,
+            evaluated_at=datetime(2026,9,8,15,tzinfo=UTC))
+        # The writer cannot be pointed at the original (even this synthetic one).
+        with self.assertRaises(ValueError):
+            append_activity_copy(db=history.db_path, **kwargs)
+        with disposable_journal(history.db_path) as target:
+            prepare_copy(target)
+            from onejournal.refresh_activity import _confirmed_import
+            calls = 0
+            def fail_readback(con, binding):
+                nonlocal calls
+                calls += 1
+                if calls == 2:
+                    raise ValueError('synthetic interrupted write')
+                return _confirmed_import(con, binding)
+            with patch('onejournal.refresh_activity._confirmed_import', side_effect=fail_readback):
+                with self.assertRaisesRegex(ValueError, 'interrupted'):
+                    append_activity_copy(db=target, **kwargs)
+            with duckdb.connect(str(target), read_only=True) as con:
+                self.assertEqual(con.execute('SELECT count(*) FROM incremental_activity_imports').fetchone()[0], 0)
+            self.assertEqual(confirmed_import(target, self.binding).cutoff, CUTOFF)
+            with patch('socket.socket.connect', side_effect=AssertionError('Network forbidden')):
+                saved = append_activity_copy(db=target, **kwargs)
+                self.assertTrue(saved['created'])
+                replay = append_activity_copy(db=target, **kwargs)
+                self.assertTrue(replay['replayed'])
+                self.assertEqual(saved['import_uid'], replay['import_uid'])
+            latest = confirmed_import(target, self.binding)
+            self.assertEqual(latest.cutoff, requested)  # NOT requested date's future midnight.
+            self.assertEqual(len(latest.appended_records['fills']), 1)
+            # Same source identities, later confirmed coverage: no duplicated records.
+            second_plan = activity_plan(latest, self.binding, asof=date(2026,9,8), overlap_days=5)
+            later_requests = tuple(replace(r, window_end_date=date(2026,9,8),
+                approved_market_date=date(2026,9,8), requested_at_utc=r.requested_at_utc+timedelta(days=1),
+                received_at_utc=r.received_at_utc+timedelta(days=1),
+                query=tuple(replace(q,value='2026-09-03T00:00:00.000Z') if q.name in ('startDate','fromEnteredTime')
+                            else replace(q,value='2026-09-08T23:59:59.999Z') if q.name in ('endDate','toEnteredTime')
+                            else q for q in r.query), window_start_date=date(2026,9,3)) for r in requests)
+            later_manifest = replace(manifest, acquisition_run_uid='synthetic-second-increment',
+                requests=later_requests, completed_at_utc=manifest.completed_at_utc+timedelta(days=1))
+            write(manifest_path, external_provider_acquisition_manifest_bytes(later_manifest))
+            next_args = dict(kwargs, asof=date(2026,9,8), overlap_days=5,
+                expected_run_uid='synthetic-second-increment')
+            with self.assertRaises(ValueError):  # stale predecessor cannot advance
+                append_activity_copy(db=target, **next_args)
+            # A new capture with a correction must not consume its run or checkpoint.
+            altered = transaction.replace(b'5.25', b'5.26')
+            write(bundle/'transactions.json', altered)
+            corrected = (later_requests[0], replace(later_requests[1],
+                response_byte_count=len(altered), response_sha256=sha256(altered).hexdigest()))
+            write(manifest_path, external_provider_acquisition_manifest_bytes(replace(later_manifest,requests=corrected)))
+            with self.assertRaisesRegex(ValueError, 'Unresolved'):
+                append_activity_copy(db=target, **dict(next_args,expected_plan_sha256=second_plan['plan_sha256']))
+            self.assertEqual(confirmed_import(target,self.binding).cutoff, requested)
+            write(bundle/'transactions.json', transaction)
+            write(manifest_path, external_provider_acquisition_manifest_bytes(later_manifest))
+            second = append_activity_copy(db=target, **dict(next_args,expected_plan_sha256=second_plan['plan_sha256']))
+            self.assertEqual(second['new_records'], 0)
+            self.assertEqual(confirmed_import(target,self.binding).cutoff, requested+timedelta(days=1))
+            write(manifest_path, external_provider_acquisition_manifest_bytes(manifest))
+            self.assertTrue(append_activity_copy(db=target, **kwargs)['replayed'])
+            # Changed content for a recorded run is rejected without overwrite.
+            altered = transaction.replace(b'5.25', b'5.26')
+            write(bundle/'transactions.json', altered)
+            changed_requests = (requests[0], replace(requests[1], response_byte_count=len(altered), response_sha256=sha256(altered).hexdigest()))
+            write(manifest_path, external_provider_acquisition_manifest_bytes(replace(manifest,requests=changed_requests)))
+            with self.assertRaises(ValueError):
+                append_activity_copy(db=target, **kwargs)
+            write(bundle/'transactions.json', transaction)
+            write(manifest_path, external_provider_acquisition_manifest_bytes(manifest))
+            with duckdb.connect(str(target), read_only=True) as con:
+                self.assertEqual(con.execute('SELECT count(*) FROM incremental_activity_imports').fetchone()[0], 2)
+            activate_prior_history_revision(target, revision_uid=legacy.revision_uid)
+            activate_prior_history_revision(target, revision_uid=current.revision_uid)
+            with self.assertRaisesRegex(ValueError, 'lineage'):
+                confirmed_import(target, self.binding)
         # Wrong authority, wrong account and tampered bytes fail without exposing values.
         wrong_owner = review.copy()
         wrong_owner[wrong_owner.index('--expected-owner-uid')+1] = 'wrong-owner'

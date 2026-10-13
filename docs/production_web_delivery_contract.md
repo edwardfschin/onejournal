@@ -116,8 +116,9 @@ This applies to Schwab and future IBKR adapters:
 The current request/intake implementation rejects full/reset/replacement options
 and retains earlier request/receipt rows. Incremental activity planning and
 duplicate/correction review are now prepared offline as described below, not
-connected to a live worker. Acquisition, atomic incremental import/cursor
-advancement and publication remain unimplemented for that broader scope.
+connected to a live worker. Atomic activity-evidence append/checkpoint persistence
+is now implemented and rehearsed on disposable DuckDB copies only. Acquisition,
+live integration and financial publication remain outside that operating scope.
 
 The local `onejournal-refresh-offline` command now connects the durable request
 to existing external Schwab position validation. `claim` returns one
@@ -162,16 +163,43 @@ candidate for source review. Order fills are corroboration, not additional
 financial fills. Conflicting observations, account/window mismatch and changed
 active import fail closed. Reconciliation differences and explicit unresolved
 cash/event evidence remain review-required. Absent records never delete earlier
-ones. The result is a value-free summary, not saved normalized delta data,
+ones. The review result is a value-free summary, not saved normalized delta data,
 financial acceptance or a new report.
 
 This preserves existing non-overlapping historical assembly contracts: the new
 overlap reviewer does not feed overlapping windows into those assemblers or
-weaken their validation. Nothing advances coverage, records financial rows or
-changes the website request's current-position scope. A future atomic writer
-must recheck the pinned predecessor inside its commit transaction, preserve
-existing evidence/reviews/releases, and advance coverage only on a completely
-validated successful import. Failed review and identical replay make no writes.
+weaken their validation. Review alone never advances coverage or records rows.
+The website request's current-position scope remains unchanged.
+
+**Disposable append rehearsal, 2026-10-14:** migration 0030 adds one immutable
+incremental-activity ledger. An import artifact stores new normalized records
+across the six activity families, source-manifest/checksum lineage, exact
+predecessor and checkpoint together. The writer repeats source validation,
+rechecks the active import and checkpoint inside one database transaction,
+rejects corrections/unresolved evidence, verifies canonical read-back and only
+then commits. A failed insert/read-back rolls back records and checkpoint as a
+unit. Unique account sequence/run constraints guard competing predecessors and
+duplicate runs. Exact run replay returns its saved receipt without changing
+state, even after later increments. A changed receipt cannot replace it.
+
+The next planner/reviewer reads the validated append chain on top of the original
+assembly, so previously appended identities remain duplicates. Checkpoints are
+capped at the earlier of the paired request start times and the requested UTC
+window end; requesting today's date never claims its unelapsed remainder.
+An empty or duplicate-only complete capture can confirm later coverage without
+adding financial records. A history activation/rollback or private-binding change
+after incremental imports fails closed pending explicit rebase/reconciliation;
+it cannot silently reset the activity checkpoint.
+
+The writer is restricted to an owner-private temporary
+`activity-rehearsal.duckdb`; there is no live-write flag or runtime wiring.
+`rehearse` creates a byte-verified copy under a read-only source lock, migrates
+only that copy, appends/replays, verifies existing relation content and removes
+the copy. Source WAL/lock conflicts stop without checkpoint or restart. Existing
+reports, reviews, history and financial materializations remain untouched.
+These records are imported **activity evidence**, not an updated Trades/P&L read
+model or report release. Guarded financial projection/publication, recovery and
+worker integration remain separate. No hosted schema or live migration changes.
 
 The normal Mac and hosted launchers leave this capability disabled. A separately
 scoped worker integration, account/capture authority and queue recovery setup

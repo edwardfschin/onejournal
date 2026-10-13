@@ -1246,8 +1246,8 @@ Before activation, connect this handoff to an explicitly authorized
 credential-owner transport without storing Schwab credentials in OneJournal,
 bind its account and capture authority, include the request store and retained
 bundles in recovery, and verify one bounded read-only capture. Incremental
-transactions have the offline planner/reviewer below but still need atomic
-incremental persistence and worker integration;
+transactions have the offline planner/reviewer and disposable-only atomic
+append rehearsal below, but still need worker and financial-read-model integration;
 historical backfill remains separate. Existing financial validation, review and
 append-only publication remain required after capture. Rollback is the prior
 code release with the feature disabled; retain request rows and source bundles.
@@ -1256,10 +1256,11 @@ No schema migration, live write, broker call or OneBot change is included.
 #### Incremental trades/transactions preparation — 2026-10-13
 
 `onejournal-refresh-activity` (source equivalent
-`python -m onejournal.refresh_activity`) is an offline, read-only companion,
+`python -m onejournal.refresh_activity`) is an offline companion,
 not a website worker or broker downloader. It requires an existing owner-private
 DuckDB journal and canonical Schwab account-binding file, both in private 0700
-directories with 0600 files. It neither creates nor migrates a database.
+directories with 0600 files. `plan` and `review` remain read-only; `rehearse`
+creates and migrates only its own temporary copy as described below.
 
 - Shared arguments, before `plan` or `review`: `--db`, `--account-binding`,
   `--asof YYYY-MM-DD` and `--overlap-days`. Here `--asof` explicitly means the UTC
@@ -1284,8 +1285,8 @@ directories with 0600 files. It neither creates nor migrates a database.
 - Output contains per-family new/unchanged/changed counts, no holdings, notes,
   account numbers or financial values. Keep plan/receipt hashes private too.
   Exit 0 means preparation succeeded, **not import/publication approval**;
-  `candidate_only` still needs financial validation and the future guarded
-  writer. Exit 2 means source review is required for changes/reconciliation or
+  `candidate_only` is eligible for the disposable append rehearsal, not financial
+  publication. Exit 2 means source review is required for changes/reconciliation or
   unresolved cash/event evidence. Exit 1 means validation stopped, with a fixed
   redacted diagnostic. Never ignore a nonzero exit or publish its partial counts.
 - Repeating a review does not persist candidates, advance a cursor, add fills or
@@ -1299,10 +1300,41 @@ reconciliation, account/window/authority/checksum rejection, rollback-invalidate
 plans and network-blocked CLI replay with unchanged database bytes. No actual
 journal was opened or broker request made for this preparation.
 
-Next implementation boundary: retain normalized deltas and source lineage,
-reconcile and transactionally append them with exact predecessor/read-back and
-replay protection; then connect the separately authorized worker and recovery
-flow. The current position request API and disabled launchers are unchanged.
-Historical assemblies retain their no-overlap rules; older history work and
-OneBot operations remain separate. Rollback is the previous code release: this
-component has no persistent state or schema to undo.
+#### Atomic activity append rehearsal — 2026-10-14
+
+Use `rehearse` in place of `review` with the same private inputs and pinned plan.
+The `--db` argument is always a read-only source: the command makes a new 0700
+temporary directory and 0600 `activity-rehearsal.duckdb`, migrates the copy to
+0030, appends, repeats the same append to prove replay, checks prior relation
+content and removes the temporary copy. It never opens the source for writing.
+Pending WAL or source lock conflicts stop; no service restart or checkpoint is
+attempted. Existing pending schema prerequisites are applied only on the copy;
+no historical evidence is imported or processed.
+
+The internal writer `append_activity_copy` also refuses non-temporary paths,
+symlinks/hardlinks and any filename other than `activity-rehearsal.duckdb`.
+There is no override for live use. Its new immutable ledger records only unseen
+normalized identities and the exact source manifest. Records and checkpoint
+commit together after in-transaction predecessor checks and exact read-back.
+Changed identities, incomplete reconciliation or a stale plan stop the append;
+an interrupted write leaves no partial cursor. Exact replay is a no-op even
+after another increment; a changed receipt for the same run fails closed.
+The next plan and duplicate checks include prior successful activity imports.
+Same-day checkpoints never jump ahead to the future end of the requested date.
+Later complete duplicate-only captures may advance coverage with zero new rows.
+
+Validation: focused synthetic disposable-copy checks cover append/replay,
+interruption after insert, stale predecessor, correction rejection, successive
+overlap without duplicates, partial-day checkpoints, rollback invalidation and
+unchanged original bytes. Migration 0030 also passed on a disposable copy of the
+private journal, preserving prior rows/views and removing the copy afterward.
+No real capture was fetched or appended; no live migration, report or service
+was changed. The private-copy check proves migration preservation; the synthetic
+check proves the append state machine, not acceptance of new real financial data.
+
+Next: financial projection/reconciliation of the retained activity into the
+existing journal/report release flow, then recovery and separately scoped
+worker integration. Activity evidence is not yet displayed as new Trades/P&L.
+Historical backfill and OneBot remain separate. Rollback for this preparation is
+the previous code release; rehearsal copies are discarded, originals retained.
+Migration 0030 has not been applied live or added to the hosted PostgreSQL schema.

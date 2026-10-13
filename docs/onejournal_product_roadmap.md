@@ -196,6 +196,17 @@ website activation. Atomic incremental persistence, transport and recovery
 integration remain outstanding. OneBot and historical backfill remain separate;
 the Phase 1 acceptance count remains 8/12.
 
+**Disposable activity append: 2026-10-14.** Migration 0030 and the temporary-only
+writer now commit new normalized activity evidence and its checkpoint atomically,
+with exact predecessor/read-back, correction rejection and replay protection.
+The planner consumes successful increments without duplicating their records.
+Synthetic disposable-copy tests cover interrupted writes and successive overlap;
+the private-journal copy migration preserved previous rows/views and original
+bytes. Temporary copies were removed. No live migration, broker download,
+OneBot operation, history processing or financial report activation occurred.
+Financial projection/publication, recovery and worker integration remain pending;
+Phase 1 remains 8/12, with no expanded operating acceptance.
+
 This tracker is the authoritative Phase 1 completion record. Update the row and
 evidence whenever a package changes state. A broader PNL, UXJ, WEB, or OPS item
 is not complete merely because its required Phase 1 slice is complete.
