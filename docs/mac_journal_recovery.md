@@ -25,7 +25,13 @@ No broker credentials, TLS private key, passkey registry/counters, sessions or
 enrollment grant is included. The separate access image covers its existing TLS
 setup. Original raw evidence outside the database and security-store audit are
 not copied; full evidence/security-audit disaster recovery remains separate work.
-There is no recurring schedule, retention choice or production-readiness claim.
+No automated recurring schedule or production-readiness claim is introduced
+by this operator. The owner-approved 2026-10-13 Mac-testing profile in
+`production_web_delivery_contract.md` sets manual journal/release backup after
+a day with edits and after approved financial publication, using the active
+configuration. It preserves trial images and keeps passwords separate from USB.
+Unchanged days need no new image. The usable-restoration target remains unproven
+until a complete restored-service journey, not merely this file restore, passes.
 
 ## Safe capture and verification
 

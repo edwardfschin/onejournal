@@ -88,9 +88,27 @@ sign in with the existing passkey when needed; restart clears sessions, not
 enrollment. This is bounded transport verification, not fresh financial/login
 acceptance. The previous connection refusal remains recorded separately.
 
-The combined Mac operating profile in `production_web_delivery_contract.md`
-is proposed only. No new backup schedule, retention/deletion rule, external
-alert, browser upgrade or Streamlit retirement is enabled by that recommendation.
+The owner accepted the combined Mac-testing profile on 2026-10-13; see
+`production_web_delivery_contract.md` for its exact scope and measured browser
+evidence. It adopts manual operating choices, not a scheduler or production SLA:
+
+- Create a new encrypted journal/release image after a day with journal edits
+  and after an approved financial publication, selecting the active config.
+- Refresh evidence/audit after new accepted source lineage and weekly during
+  active use. Refresh access/TLS only when that setup changes. Use the existing
+  quiet/stopped-source procedures; unchanged journal days need no new image.
+- Keep current trial images/evidence/revisions/audit, with passwords separate
+  from USB. No automatic deletion, old-passkey restore or external alert service.
+- Use the foreground protected site when attended. Check after release changes
+  or startup/error concerns, not continuously. Keep Streamlit parked, never as
+  an unprotected fallback. Ordinary outages are investigated on next use.
+
+The loss targets depend on performing these backups: at most one working day
+of journal edits and up to a week of security-audit lag. The one-working-day
+usable-restoration target is not yet demonstrated by a complete restored-service
+journey. Existing dated USB restoration evidence is reused, not repeated simply
+to obtain another PASS. Safari/VoiceOver speech, real-data responsiveness and
+dated final owner acceptance remain outstanding; history and hosting stay separate.
 
 Use the locked security Python environment and the reviewed source checkout:
 
@@ -134,7 +152,7 @@ It checks the public wheel/static files, not every installed Python module or
 dependency; retain the separate installation/source and dependency receipts.
 The command opens no journal/security database and changes no configuration,
 credential, source file or runtime. It is an on-demand operator check, not an
-automatically enabled monitor or adopted availability/alert policy.
+automatically enabled monitor or hosted availability/alert guarantee.
 
 ### When a check fails
 
@@ -156,8 +174,8 @@ automatically enabled monitor or adopted availability/alert policy.
   investigate. Do not bypass authentication or patch database/generated values.
   Any recovery, publication or reactivation follows its existing exact authority.
 
-These are existing fail-closed operating actions, not a new response-time,
-notification, retention or disaster-recovery policy. Journal/release, access/TLS
+These actions follow the accepted bounded Mac-testing profile, not a hosted
+response-time or notification promise. Journal/release, access/TLS
 setup, and evidence/audit recovery images have different scopes; use their
 recorded exact manifests and restore into new private locations only. A later
 live restoration must preserve work since the backup and requires explicit
@@ -182,7 +200,8 @@ retention-expiry command is claimed. Before such work, identify the selected
 private files, recovery images, audit requirements and approved retention scope;
 do not delete data or revoke credentials under a general closure request. Streamlit
 remains the retained internal prototype, not the protected release or a login
-fallback. No destructive retirement or new retention policy is adopted here.
+fallback. The accepted trial preserves existing evidence; no destructive
+retirement, automatic erasure or permanent production-retention rule is adopted.
 
 ### Reloading saved data versus fetching fresh broker data
 

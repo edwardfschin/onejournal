@@ -27,6 +27,13 @@ images. It is not hosted/production disaster-recovery acceptance.
 
 ## Owner operating step
 
+Under the owner-approved 2026-10-13 Mac-testing profile in
+`production_web_delivery_contract.md`, refresh this image after new accepted
+source lineage and weekly during active use. This is a manual cadence, not an
+enabled scheduler. Preserve trial images; passwords remain separate from USB.
+Existing dated restoration checks need not be repeated unchanged. This image
+does not establish complete restored-service or hosted recovery acceptance.
+
 Use the locked Mac passkey Python environment. Keep the protected site stopped
 for this command; its API otherwise holds the security store's writer lock.
 The destination must be a **new** `.dmg` path on the mounted USB. Enter a
