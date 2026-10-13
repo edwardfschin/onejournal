@@ -930,7 +930,13 @@ packages **clean committed public source**: wheel, pinned hosted dependencies,
 passkey-enabled static artifact, operator commands, configuration examples and
 Caddy/systemd templates. Use an isolated environment with
 `requirements-hosted.lock` plus the project installed; no active Mac environment
-needs modification. Failed candidates are retained but never activated. A Linux
+needs modification. This is a standalone 64-package hosted profile, not an
+include of the accepted Mac locks; its three reviewed server patches are recorded
+in `docs/mac_passkey_access_contract.md`. Install it only in a separate candidate
+environment, verify dependency consistency and exact installed pins, and retain
+the old candidate/lock for rollback. Do not install it into the owner's running
+Mac environment. Build-tool and other advisory dispositions are not blanket
+clearance. Failed candidates are retained but never activated. A Linux
 environment must be built from the locks on the eventual target; do not copy
 the Mac virtual environment. Verify `release.json` file hashes/source commit
 before any separately authorized upload or activation. `release.json` now also

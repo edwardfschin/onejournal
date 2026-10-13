@@ -1061,6 +1061,16 @@ physical-device/host-dependent quality checks; final operating objectives and
 dated owner acceptance. The next batch must name those actions explicitly.
 No synthetic pass is promoted to operational acceptance. Phase 1 remains 8/12.
 
+Local dependency maintenance on 2026-10-13 separated the hosted lock from the
+accepted Mac profile and patched only AnyIO, Starlette and python-multipart.
+Exact installed pins, dependency consistency and the focused static/signed
+access plus actual synthetic PostgreSQL JSON/CSV/replay/failure checks passed.
+The three patched pins have no matches in the dated OSV check; frontend runtime
+audit has zero findings. Build/development alerts and other Python matches
+remain explicitly un-cleared. See `docs/mac_passkey_access_contract.md` for the
+scope and remaining disposition. No live environment, private state, one-prod
+hosting or history work was included; actual separate-target acceptance remains.
+
 The web delivery packages map to Phase 1 as follows:
 
 | Phase 1 need | Required web package or dependency |

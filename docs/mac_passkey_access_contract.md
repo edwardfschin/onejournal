@@ -457,6 +457,47 @@ OPS-06. These are existing hosted-release requirements, not new Mac features or
 approved policies. The Mac review is recorded; P1-09 remains IN PROGRESS and
 Phase 1 remains 8/12 under the existing hosted-production completion definition.
 
+### Hosted candidate dependency maintenance: 2026-10-13
+
+The separate hosted candidate now has an independent `requirements-hosted.lock`;
+it no longer inherits the accepted Mac locks. Its 64-package closure retains
+every previous pin except AnyIO `4.13.0 -> 4.14.2`, Starlette `1.2.1 -> 1.3.1`
+and python-multipart `0.0.30 -> 0.0.31`. These are the reviewed patched versions
+for AnyIO process-pool/TLS, Starlette form/URL and multipart length handling.
+The existing JSON-only and raw Host/origin gates remain unchanged; an alert is
+not evidence of an exploit in this application. Publisher references are above,
+with [Starlette URL handling](https://github.com/Kludex/starlette/security/advisories/GHSA-jp82-jpqv-5vv3)
+and [AnyIO process workers](https://github.com/agronholm/anyio/security/advisories/GHSA-5p39-cfhj-2xmp).
+
+Fresh OSV exact-version queries found no matches for these three patched pins.
+All 64 hosted pins matched the disposable Python 3.13.9 environment and dependency
+consistency passed. Nine focused lock/address/static-access checks and three
+actual synthetic PostgreSQL checks passed: financial JSON/CSV and journal replay,
+signed access/proxy/CSRF/expiry/recovery, and the complete factory's redacted
+failure/burst boundary. The first integration attempt had no database because
+the sandbox refused PostgreSQL shared memory; the same selected checks passed
+after the private-socket-only test cluster started with the required permission.
+That owned test cluster was stopped. No real owner enrollment, encrypted-image
+rehearsal, broker call, history activation or live Mac environment was changed.
+
+The current frontend runtime-dependency audit reports zero findings, while the
+full development/build audit reports 31 package-chain findings (six critical,
+19 high and six moderate). This is not clearance of build tools. The hosted
+package serves static output and does not deploy Node, npm modules, the design
+generator or a Vite/Vinext server. That topology is now explicit in ADR-0017;
+the earlier unresolved-topology note below is superseded. Build-tool alerts
+remain open for maintenance before using affected generators/network services
+or untrusted source inputs. Existing GitPython, Pillow, urllib3 and setuptools
+advisory matches also remain, with prior reachability limitations; do not claim
+a globally clean Python environment. Hosted exposure still requires a fresh
+dependency/source review and actual separate-target security acceptance.
+
+The Mac `requirements.lock` and `requirements-security.lock`, installed release,
+security store, private journal and OneBot stay unchanged. Rollback selects the
+previous public candidate with its matching lock; it does not downgrade a live
+environment or restore financial state. This advances candidate maintenance,
+not production acceptance or the formal 8/12 Phase 1 count.
+
 ### Build-tool dependency separation: 2026-10-11
 
 The `shadcn` package is now a pinned development dependency, not an application

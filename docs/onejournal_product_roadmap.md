@@ -133,6 +133,16 @@ Actual DNS/TLS, private-state
 cutover, target operations and final owner/device evidence remain outstanding;
 the accepted Mac runtime and historical backfill are not changed.
 
+**Hosted dependency maintenance: 2026-10-13.** An independent candidate lock
+patches only AnyIO, Starlette and python-multipart without changing the accepted
+Mac locks/runtime. Exact 64-package pin/consistency verification, nine focused
+lock/address/static-access checks and three actual synthetic PostgreSQL
+API/access/failure-boundary checks passed. The three patched pins have no dated
+OSV matches; other Python and build-tool findings are not cleared. The owned
+test cluster was stopped. See `docs/mac_passkey_access_contract.md`; no VPS,
+real-data transfer, broker or history operation is included, and the formal
+Phase 1 count remains 8/12.
+
 This tracker is the authoritative Phase 1 completion record. Update the row and
 evidence whenever a package changes state. A broader PNL, UXJ, WEB, or OPS item
 is not complete merely because its required Phase 1 slice is complete.
