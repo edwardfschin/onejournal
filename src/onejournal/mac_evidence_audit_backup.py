@@ -5,6 +5,7 @@ images. In particular it must not copy the passkey security database itself.
 """
 from __future__ import annotations
 
+from contextlib import contextmanager
 from datetime import datetime, timezone
 import hashlib
 import json
@@ -253,7 +254,9 @@ def verify_restored(root: Path, manifest: dict) -> tuple[int, int]:
     return len(hashes), len(rows)
 
 
-def verify_backup(image: Path, password: str, expected: dict | None = None) -> tuple[int, int]:
+@contextmanager
+def restored_backup(image: Path, password: str, expected: dict | None = None):
+    """Yield verified temporary evidence/audit; never activate historical security."""
     password_bytes(password)
     if not image.is_absolute() or image.is_symlink() or not image.is_file():
         raise ValueError("Choose an existing non-symlink encrypted evidence image.")
@@ -286,10 +289,16 @@ def verify_backup(image: Path, password: str, expected: dict | None = None) -> t
                 copy_private(mount / name, restored / name)
             (restored / "evidence").mkdir(mode=0o700)
             _copy_tree(mount / "evidence", restored / "evidence", sorted(names))
-            return verify_restored(restored, manifest)
+            counts = verify_restored(restored, manifest)
+            yield restored, manifest, counts
         finally:
             if attached:
                 disk_image(["detach", str(mount), "-quiet"])
+
+
+def verify_backup(image: Path, password: str, expected: dict | None = None) -> tuple[int, int]:
+    with restored_backup(image, password, expected) as (_, _, counts):
+        return counts
 
 
 def create_backup(config_path: Path, security_db: Path, raw_root: Path, destination: Path,

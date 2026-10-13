@@ -1,6 +1,7 @@
 """Bounded Mac journal recovery; no live writes, service or credential changes."""
 from __future__ import annotations
 
+from contextlib import contextmanager
 from datetime import datetime, timezone
 import hashlib
 import json
@@ -136,7 +137,9 @@ def verify_restored(root: Path, manifest: dict, project_root: Path) -> int:
     return len(manifest["inventory"]["relations"])
 
 
-def verify_backup(image: Path, password: str, project_root: Path, expected: dict | None = None) -> int:
+@contextmanager
+def restored_backup(image: Path, password: str, project_root: Path, expected: dict | None = None):
+    """Yield verified temporary journal/release files, then discard only our copy."""
     password_bytes(password)
     if not image.is_absolute() or image.is_symlink() or not image.is_file():
         raise ValueError("Choose an existing non-symlink encrypted journal image.")
@@ -167,10 +170,16 @@ def verify_backup(image: Path, password: str, project_root: Path, expected: dict
                 if source.is_symlink() or not source.is_file():
                     raise ValueError("The recovery image has invalid files.")
                 copy_private(source, restored / name)
-            return verify_restored(restored, manifest, project_root)
+            count = verify_restored(restored, manifest, project_root)
+            yield restored, manifest, count
         finally:
             if attached:
                 disk_image(["detach", str(mount), "-quiet"])
+
+
+def verify_backup(image: Path, password: str, project_root: Path, expected: dict | None = None) -> int:
+    with restored_backup(image, password, project_root, expected) as (_, _, count):
+        return count
 
 
 def create_backup(config_path: Path, destination: Path, password: str, project_root: Path, *, require_usb: bool = True) -> int:

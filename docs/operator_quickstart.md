@@ -182,6 +182,44 @@ live restoration must preserve work since the backup and requires explicit
 authority. Do not repeat dated successful USB restoration merely to generate
 another PASS.
 
+### One-session disposable Mac recovery close-out
+
+`scripts/web/rehearse_mac_recovery.py` uses the **existing** journal, access and
+evidence/audit images. It asks for each password privately in the owner's Mac
+Terminal; it creates no new image. Select the approved installed Python runtime
+and public artifact with independently retained manifest/source/TLS pins.
+Use a new receipt in an existing owner-private directory outside Git and a
+separate free loopback port (default 4174; live port 4173 is refused).
+
+The operator reuses the existing encrypted-image verification/restoration code,
+keeps copies only for the scoped session, matches restored journal/evidence
+lineage and writes a new config bound solely to restored journal/release paths.
+It leaves original image/config files intact. A fresh **temporary** security
+store and signed ephemeral test device exercise the installed protected service:
+trusted HTTPS and exact shell, locked anonymous financial access, enrollment,
+login, current account/symbol reports and matching CSV, then logout/lock. Only
+three reporting-read audit additions are allowed in the disposable journal;
+schema and other relation counts must remain unchanged. No history request,
+migration, publication, owner-device credential or browser session is created.
+It imports the existing test authenticator from the reviewed source checkout;
+this is an operator rehearsal, not an installed standalone release command.
+
+The new child is stopped before its temporary copies are removed, including on
+failure. Original recovery images are hash-compared and preserved; the existing
+live site, security store and journal are not opened or replaced. A new private
+receipt remains `incomplete` on failure and records the exact runtime source and
+elapsed session time only after success. Do not overwrite a prior receipt on a
+retry. Passing this signed-client check is not owner-hardware re-enrollment,
+another-Mac/host recovery, fresh financial acceptance or production clearance.
+
+For the remaining hands-on check, use Safari on the **existing protected site**,
+sign in with the existing passkey, and verify Reports opens promptly. Temporarily
+turn on VoiceOver, listen to a heading, filter/action and table context, then
+restore the prior setting. No private numbers or screenshots need to be sent
+to chat. Report usable/not usable and any control that could not be read.
+Combine that result with one dated exact-release owner acceptance; do not turn
+each control or password prompt into another approval ceremony.
+
 ### Release export, corrections and closure limits
 
 Reports CSV exports cover the same currently authorized financial selection;

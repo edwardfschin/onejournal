@@ -900,6 +900,36 @@ by assumption. History recovery remains parked. P1-09–12 are IN PROGRESS and
 formal Phase 1 remains 8/12; neither synthetic checks nor this profile approval
 is final release acceptance.
 
+### Owner-authorized one-session close-out preparation: 2026-10-13
+
+The owner approved the remaining Mac close-out as one session, including
+commit/push, with private password entry and actual VoiceOver listening when
+needed. `scripts/web/rehearse_mac_recovery.py` now orchestrates the existing
+three encrypted-image restore mechanisms through temporary-copy contexts.
+Existing create/verify interfaces and image formats are unchanged. There is
+no new backup stack, dependency, image creation, scheduling or live restoration.
+
+The contexts retain verified restored files only for the session, then detach
+their own read-only mounts and remove their own temporary folders. The operator
+checks restored accepted-source lineage, independently pinned public artifact
+and original TLS, rebinds only a new disposable config, provisions only a new
+temporary security store, and starts the compatible **installed** protected
+service on a separate loopback port. A signed ephemeral test client uses its
+own cookie jar to check enrollment/login, current reports and release-matching
+CSV, then logout/lock. It does not enroll an owner-device passkey or disturb the
+live browser's localhost cookies. No history request/import is performed.
+
+Ten focused synthetic checks passed for copy lifetimes/cleanup, private modes,
+manifest path refusal, original-config preservation/new binding, owned-child
+shutdown on failure, exactly scoped disposable read-audit changes, no live port,
+noninteractive refusal and no-overwrite receipts. Four existing password/image
+guards and the existing journal manifest/authority guard also passed; unchanged
+native image creation, frontend builds and broad suites were not repeated.
+These fifteen checks establish preparation safeguards, **not** an executed
+owner-image recovery or screen-reader/owner acceptance. The separate owner
+Terminal run is pending; passwords must never enter chat or agent tool input.
+See `docs/operator_quickstart.md` for the finite run and acceptance boundaries.
+
 The web delivery packages map to Phase 1 as follows:
 
 | Phase 1 need | Required web package or dependency |

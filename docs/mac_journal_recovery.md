@@ -94,6 +94,15 @@ owner action, not an extra approval gate.
 
 ## Restoration and rollback
 
+For an approved one-session **disposable restored-service** check, use
+`scripts/web/rehearse_mac_recovery.py` with the existing three images and exact
+installed artifact/runtime. It extends verification with protected service
+startup and a signed ephemeral test-client journey before temporary cleanup;
+it never changes the live journal/configuration. See `docs/operator_quickstart.md`.
+The existing `create`, `verify` and `rehearse` commands and image format are
+unchanged. A prepared operator or passing synthetic guard is not an owner-image
+execution receipt, owner-device re-enrollment or live restoration authority.
+
 Rehearsal restores only into fresh temporary private directories and removes them
 after verification. It never replaces the live journal or restarts either server;
 there is therefore no live rollback operation for this rehearsal.

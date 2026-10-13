@@ -1,6 +1,7 @@
 """Mac-native encrypted access-setup backup, never a passkey/journal backup."""
 from __future__ import annotations
 
+from contextlib import contextmanager
 import hashlib
 import json
 import os
@@ -95,8 +96,9 @@ def hashes(contents: dict[str, bytes]) -> dict[str, str]:
     return {name: hashlib.sha256(value).hexdigest() for name, value in contents.items()}
 
 
-def verify_backup(image: Path, password: str, expected: dict[str, str] | None = None) -> None:
-    """Unlock read-only; restore only to disposable owner-private local files."""
+@contextmanager
+def restored_backup(image: Path, password: str, expected: dict[str, str] | None = None):
+    """Yield verified temporary setup; detach and remove only our files on exit."""
     password_bytes(password)
     if plistlib.loads(disk_image(["isencrypted", str(image), "-plist"])).get("encrypted") is not True:
         raise ValueError("The recovery image is not encrypted.")
@@ -130,10 +132,17 @@ def verify_backup(image: Path, password: str, expected: dict[str, str] | None = 
             if actual != manifest["sha256"] or (expected is not None and actual != expected):
                 raise ValueError("Restored access files do not match the recorded backup.")
             setup_snapshot(restored)
+            yield restored
         finally:
             if attached:
                 # Detach only our own temporary mount; never eject the USB.
                 disk_image(["detach", str(mount), "-quiet"])
+
+
+def verify_backup(image: Path, password: str, expected: dict[str, str] | None = None) -> None:
+    """Unlock read-only and verify without retaining restored files."""
+    with restored_backup(image, password, expected):
+        pass
 
 
 def validate_destination(destination: Path, *, require_usb: bool = True) -> None:

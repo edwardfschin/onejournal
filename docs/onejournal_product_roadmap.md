@@ -508,6 +508,16 @@ financial publication or history activation is authorized by recording them.
 All four remaining packages are still IN PROGRESS; the formal count stays 8/12.
 Hosted/physical-device acceptance remains a separate soft-launch boundary.
 
+The owner then approved one combined remaining Mac close-out session with
+commit/push. A guarded disposable restored-service operator is prepared using
+the existing encrypted image formats and installed protected runtime, not a
+new backup/release. Fifteen focused synthetic/compatibility safeguards passed;
+actual owner-image execution, VoiceOver listening and final owner acceptance
+are still pending. Password custody requires the owner's private Terminal.
+No live overwrite/restart, new owner passkey, history activation or hosted
+acceptance is inferred. See the close-out preparation in the web delivery
+contract and operator quickstart. The formal count remains 8/12.
+
 ### Current owner-approved direction: Mac first, 2026-10-11
 
 Complete useful local work now; do not make VPS availability a prerequisite for
