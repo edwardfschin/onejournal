@@ -1246,8 +1246,63 @@ Before activation, connect this handoff to an explicitly authorized
 credential-owner transport without storing Schwab credentials in OneJournal,
 bind its account and capture authority, include the request store and retained
 bundles in recovery, and verify one bounded read-only capture. Incremental
-transactions still need their own window/cursor/deduplication implementation;
+transactions have the offline planner/reviewer below but still need atomic
+incremental persistence and worker integration;
 historical backfill remains separate. Existing financial validation, review and
 append-only publication remain required after capture. Rollback is the prior
 code release with the feature disabled; retain request rows and source bundles.
 No schema migration, live write, broker call or OneBot change is included.
+
+#### Incremental trades/transactions preparation — 2026-10-13
+
+`onejournal-refresh-activity` (source equivalent
+`python -m onejournal.refresh_activity`) is an offline, read-only companion,
+not a website worker or broker downloader. It requires an existing owner-private
+DuckDB journal and canonical Schwab account-binding file, both in private 0700
+directories with 0600 files. It neither creates nor migrates a database.
+
+- Shared arguments, before `plan` or `review`: `--db`, `--account-binding`,
+  `--asof YYYY-MM-DD` and `--overlap-days`. Here `--asof` explicitly means the UTC
+  acquisition end date, not a portfolio valuation date. Future dates are refused.
+  Overlap must be explicitly configured from 1–29 days; no runtime policy or
+  scheduler has been selected. Including the cutoff day prevents an intraday gap.
+- `plan` reads the active confirmed v3 import and emits bounded dates, a pinned
+  plan hash, whether more windows are pending, and
+  `broker_execution_authorized: false`. It cannot use merely saved evidence or
+  legacy date-only coverage. Each window is at most 30 dates, never starts before
+  confirmed history, and never skips to the end of a longer catch-up gap.
+- `review` additionally requires `--expected-plan-sha256`, `--acquisition-root`,
+  `--acknowledgement`, `--usage-policy`, `--expected-run-uid`,
+  `--expected-approval-id`, `--expected-owner-uid`, `--expected-owner-epoch-uid`.
+  The root contains exactly the existing acquisition manifest and its two
+  bounded orders/transactions JSON response files. Keep all files private.
+  This consumes already transferred evidence; it does not request it.
+- Review reuses exact bytes/checksums, account binding, terms and external-owner
+  validation, then requires the exact planned window and a capture no earlier
+  than the confirmed cutoff. A changed import/activation or account binding
+  requires replanning; there is no fallback to another import or account.
+- Output contains per-family new/unchanged/changed counts, no holdings, notes,
+  account numbers or financial values. Keep plan/receipt hashes private too.
+  Exit 0 means preparation succeeded, **not import/publication approval**;
+  `candidate_only` still needs financial validation and the future guarded
+  writer. Exit 2 means source review is required for changes/reconciliation or
+  unresolved cash/event evidence. Exit 1 means validation stopped, with a fixed
+  redacted diagnostic. Never ignore a nonzero exit or publish its partial counts.
+- Repeating a review does not persist candidates, advance a cursor, add fills or
+  write a receipt. The original database and evidence are unchanged. Missing
+  incoming records do not delete existing records. Any conflicting same-identity
+  observation requires source review, not an automatic overwrite.
+
+Focused synthetic tests cover active-versus-saved imports, UTC partial-day
+overlap, bounded catch-up, duplicate/new/changed identities, paired-fill
+reconciliation, account/window/authority/checksum rejection, rollback-invalidated
+plans and network-blocked CLI replay with unchanged database bytes. No actual
+journal was opened or broker request made for this preparation.
+
+Next implementation boundary: retain normalized deltas and source lineage,
+reconcile and transactionally append them with exact predecessor/read-back and
+replay protection; then connect the separately authorized worker and recovery
+flow. The current position request API and disabled launchers are unchanged.
+Historical assemblies retain their no-overlap rules; older history work and
+OneBot operations remain separate. Rollback is the previous code release: this
+component has no persistent state or schema to undo.

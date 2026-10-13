@@ -184,6 +184,18 @@ Credential-owner transport, transaction increments, recovery integration and
 activation remain pending. No OneBot, historical backfill, live data or website
 change occurred; this does not advance the Phase 1 acceptance count.
 
+**Offline activity increments: 2026-10-13.** The installed incremental planner
+now starts from the active, checksum-validated exact-cutoff history import,
+includes bounded UTC-day overlap and pins the predecessor against rollback or
+account/window drift. The paired evidence reviewer distinguishes new, unchanged
+and changed source identities, using transaction-authoritative fills and
+retaining correction/reconciliation review requirements. Focused synthetic
+tests prove no network use and unchanged journal bytes. This is planning/review,
+not a saved delta, financial import, cursor advancement, broker download or
+website activation. Atomic incremental persistence, transport and recovery
+integration remain outstanding. OneBot and historical backfill remain separate;
+the Phase 1 acceptance count remains 8/12.
+
 This tracker is the authoritative Phase 1 completion record. Update the row and
 evidence whenever a package changes state. A broader PNL, UXJ, WEB, or OPS item
 is not complete merely because its required Phase 1 slice is complete.

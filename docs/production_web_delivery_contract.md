@@ -114,9 +114,10 @@ This applies to Schwab and future IBKR adapters:
   New accepted reports may supersede the displayed release without erasing it.
 
 The current request/intake implementation rejects full/reset/replacement options
-and retains earlier request/receipt rows. It does not yet implement incremental
-transaction acquisition, import cursors or financial deduplication for a live
-worker. Those requirements must be satisfied before that broader scope activates.
+and retains earlier request/receipt rows. Incremental activity planning and
+duplicate/correction review are now prepared offline as described below, not
+connected to a live worker. Acquisition, atomic incremental import/cursor
+advancement and publication remain unimplemented for that broader scope.
 
 The local `onejournal-refresh-offline` command now connects the durable request
 to existing external Schwab position validation. `claim` returns one
@@ -131,6 +132,46 @@ review closure; changed evidence cannot overwrite an existing receipt. Errors
 leave evidence and request state intact, with no private values in CLI output.
 This is local synthetic-tested wiring, not an activated transport or financial
 import. No database schema migration or public API shape change is required.
+
+The separate `onejournal-refresh-activity` command prepares incremental trades
+and transactions from the **active confirmed history revision**, not the newest
+saved assembly, request receipt or maximum trade timestamp. A read-only database
+transaction verifies migration contracts and the linked canonical v3 evidence
+artifact/checksum, exact account/connection, coverage and UTC snapshot cutoff.
+Legacy date-only or missing active imports fail closed; no cursor is guessed.
+The plan binds the active revision/activation, assembly fingerprint, private
+account binding and exact query window. A rollback, changed binding or changed
+plan invalidates a previously prepared review.
+
+Planning includes the cutoff's UTC date, including when only part of that day
+was imported. Explicit `overlap_days` (1–29, no default operating policy) extends
+back within already confirmed coverage, never before its start. Each paired
+orders/transactions window is at most 30 UTC dates; longer catch-up reports more
+windows pending rather than skipping the gap. The `--asof` acquisition date is
+not a New York P&L valuation date. Bounded overlap cannot promise to detect every
+arbitrarily old late posting or correction; that requires separate source review,
+not an automatic expansion into historical backfill.
+
+Offline review validates an existing two-response acquisition with the current
+owner/epoch/approval/terms/account boundary and zero credential renewal. It
+compares stable source identities and canonical content across orders,
+transactions, transaction-derived fills, cash and lifecycle events/legs. Only
+observation lineage is excluded from comparison. Repeated unchanged records are
+skipped; new identities are counted as candidates; changed identities block the
+candidate for source review. Order fills are corroboration, not additional
+financial fills. Conflicting observations, account/window mismatch and changed
+active import fail closed. Reconciliation differences and explicit unresolved
+cash/event evidence remain review-required. Absent records never delete earlier
+ones. The result is a value-free summary, not saved normalized delta data,
+financial acceptance or a new report.
+
+This preserves existing non-overlapping historical assembly contracts: the new
+overlap reviewer does not feed overlapping windows into those assemblers or
+weaken their validation. Nothing advances coverage, records financial rows or
+changes the website request's current-position scope. A future atomic writer
+must recheck the pinned predecessor inside its commit transaction, preserve
+existing evidence/reviews/releases, and advance coverage only on a completely
+validated successful import. Failed review and identical replay make no writes.
 
 The normal Mac and hosted launchers leave this capability disabled. A separately
 scoped worker integration, account/capture authority and queue recovery setup

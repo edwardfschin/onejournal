@@ -34,17 +34,27 @@ def read_private(path: Path, limit: int) -> bytes:
 
 
 def position_bundle(root: Path) -> tuple[bytes, dict[str, bytes]]:
+    return acquisition_bundle(root, response_count=1)
+
+
+def acquisition_bundle(root: Path, *, response_count: int) -> tuple[bytes, dict[str, bytes]]:
+    if response_count not in (1, 2):
+        raise ValueError('Unsupported refresh response count.')
     manifest = read_private(root / EXTERNAL_PROVIDER_ACQUISITION_MANIFEST_FILENAME, 256 * 1024)
     document = json.loads(manifest)
     requests = document.get('requests') if isinstance(document, dict) else None
-    if not isinstance(requests, list) or len(requests) != 1 or not isinstance(requests[0], dict):
-        raise ValueError('Exactly one position response is required.')
-    name = requests[0].get('response_filename')
-    if not isinstance(name, str) or Path(name).name != name or not name.endswith('.json'):
-        raise ValueError('Unsafe refresh response name.')
-    if {p.name for p in root.iterdir()} != {EXTERNAL_PROVIDER_ACQUISITION_MANIFEST_FILENAME, name}:
+    if not isinstance(requests, list) or len(requests) != response_count:
+        raise ValueError('Refresh response count differs.')
+    names = []
+    for item in requests:
+        name = item.get('response_filename') if isinstance(item, dict) else None
+        if (not isinstance(name, str) or Path(name).name != name or not name.endswith('.json')
+                or name == EXTERNAL_PROVIDER_ACQUISITION_MANIFEST_FILENAME or name in names):
+            raise ValueError('Unsafe or repeated refresh response name.')
+        names.append(name)
+    if {p.name for p in root.iterdir()} != {EXTERNAL_PROVIDER_ACQUISITION_MANIFEST_FILENAME, *names}:
         raise ValueError('Refresh bundle differs from its manifest.')
-    return manifest, {name: read_private(root / name, 4 * 1024 * 1024)}
+    return manifest, {name: read_private(root / name, 4 * 1024 * 1024) for name in names}
 
 
 def receive_position_refresh(
