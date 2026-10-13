@@ -1,6 +1,6 @@
 {
   "contract_version": "onejournal.hosted-site.v1",
-  "origin": "https://OWNER-CHOSEN-DOMAIN",
+  "origin": "https://journal.onelumiq.com",
   "journal_dsn_file": "/var/lib/onejournal/private/journal-runtime.dsn",
   "security_dsn_file": "/var/lib/onejournal/private/access-runtime.dsn",
   "proxy_secret_file": "/var/lib/onejournal/private/proxy-secret.txt",

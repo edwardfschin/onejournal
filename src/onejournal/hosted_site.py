@@ -75,7 +75,7 @@ def configured_app(config: HostedConfig):
             broker_current_authorization=broker, reporting_authorization=reporting)
     access = HostedAccess(config.security, config.journal, config.origin, config.proxy_secret)
     try:
-        app = serve_static_web(protect_app(api, access), config.static_directory)
+        app = serve_static_web(protect_app(api, access), config.static_directory, home_page="/local/today")
     except Exception:
         access.close()
         raise

@@ -259,9 +259,20 @@ OneBot, the accepted Mac runtime and separate historical backfill stay unchanged
 The initial hosted candidate uses Caddy for one exact permanent HTTPS DNS
 origin, a loopback-only FastAPI worker, PostgreSQL journal state, and a separate
 PostgreSQL security database. Linux identity, releases, private configuration,
-roles, service and resource limits are separate from OneBot. The real domain
-has not been selected. Hosted enrollment is fresh; Mac passkeys/security state
+roles, service and resource limits are separate from OneBot. On 2026-10-13 the
+owner confirmed domain control and selected `https://journal.onelumiq.com` as
+the permanent origin, with exact relying-party ID `journal.onelumiq.com`.
+Hosted enrollment is fresh; Mac passkeys/security state
 are not copied or repurposed for the new relying party.
+
+The public configuration example is the package's domain source. Packaging
+renders a concrete Caddy site and Host from that origin, leaving only the
+private proxy credential unresolved, and records origin/RP/home in the release
+manifest. Hosted `/` redirects to `/local/today`, not demonstration data; the
+Mac/demo default remains unchanged. These are explicit hosted-only routing
+and additive package-metadata changes. Address selection and local validation
+do not authorize DNS changes, installation, certificate issuance, private-state
+transfer or activation. Those remain the next separately bounded target batch.
 
 `onejournal.journal.storage` is the operational-store boundary. Existing
 financial, review and revision services remain authoritative. The pinned

@@ -107,6 +107,21 @@ class StaticWebTests(unittest.TestCase):
             self.assertNotIn('<html', response.text)
         self.assertEqual(self.calls, [])
 
+    def test_explicit_hosted_home_preserves_mac_default_and_private_gate(self):
+        self.assertEqual(self.client.get('/', follow_redirects=False).headers['location'], '/demo')
+        protected_api = FastAPI()
+        protected_api.add_api_route('/api/private', lambda: {'synthetic': 'must not escape anonymously'})
+        protect_app(protected_api, self.access)
+        hosted = TestClient(serve_static_web(protected_api, self.dist, home_page='/local/today'), base_url=ORIGIN)
+        root = hosted.get('/?from=synthetic', follow_redirects=False)
+        self.assertEqual(root.status_code, 307)
+        self.assertEqual(root.headers['location'], '/local/today?from=synthetic')
+        self.assertEqual(hosted.get('/api/private').status_code, 401)
+        self.assertEqual(hosted.get('/local/today').status_code, 200)
+        for bad in ('/demo', '/api/private', '/local/unknown', 'https://attacker.invalid'):
+            with self.assertRaises(ValueError):
+                serve_static_web(protected_api, self.dist, home_page=bad)
+
     def test_signed_access_csrf_logout_and_idle_expiry_survive_static_mount(self):
         csrf = self.login()
         self.assertEqual(self.client.get('/api/v5/local-owner/journal/search').status_code, 200)

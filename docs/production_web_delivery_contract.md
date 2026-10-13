@@ -1033,8 +1033,22 @@ Resource caps address the reviewed shared host; actual service compatibility,
 effective firewall/cloud exposure and privileged configuration still require
 target verification before separately approved activation.
 
-Remaining production work is one permanent owner-chosen address and actual
-DNS/TLS; candidate dependency/security disposition; a separately authorized,
+The owner confirmed control and chose `https://journal.onelumiq.com` on
+2026-10-13. The public example and package renderer bind that exact origin and
+RP (`journal.onelumiq.com`); release metadata records both plus the hosted home
+`/local/today`. Hosted `/` opens that protected-workspace shell rather than the
+demo; API/session/financial gates are unchanged. The Mac/default demo redirect
+is not altered. Signed synthetic RP/origin rejection and focused root/gate
+checks cover this local change; no actual owner passkey was enrolled.
+
+Read-only authoritative DNS currently points the chosen name to a Porkbun
+target, not OneJournal. No DNS record, certificate, host package, service,
+private data or OneBot setting was changed. Deployment must replace only the
+exact journal record, preserving the root domain and other services. The owner
+selected the name, not a hosted-production acceptance claim.
+
+Remaining production work is actual DNS/TLS; candidate dependency/security
+disposition; a separately authorized,
 backed-up and exactly reconciled private-state transfer/cutover; real deployment
 and rollback; independently held off-server backups and host restoration;
 physical-device/host-dependent quality checks; final operating objectives and

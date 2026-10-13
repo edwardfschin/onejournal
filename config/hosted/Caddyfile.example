@@ -24,8 +24,9 @@
 	}
 }
 
-# Do not activate until the owner chooses the permanent DNS name and the
-# reviewed Caddy environment supplies a fresh random proxy secret.
+# The package renders ONEJOURNAL_DOMAIN from the approved public configuration.
+# Do not activate until DNS/deployment is separately approved and the reviewed
+# Caddy environment supplies a fresh random proxy secret.
 {$ONEJOURNAL_DOMAIN} {
 	request_body {
 		max_size 256KB

@@ -8,8 +8,18 @@ from pathlib import Path
 import shutil
 import subprocess
 import sys
+from urllib.parse import urlsplit
 
 ROOT = Path(__file__).resolve().parents[2]
+
+
+def render_caddy(template, origin):
+    """One domain authority for the package; proxy credentials stay private."""
+    from onejournal.hosted_access import validate_hosted_origin
+    validate_hosted_origin(origin)
+    if "{$ONEJOURNAL_DOMAIN}" not in template or "{$ONEJOURNAL_PROXY_SECRET}" not in template:
+        raise ValueError("Hosted proxy template is incompatible.")
+    return template.replace("{$ONEJOURNAL_DOMAIN}", urlsplit(origin).hostname)
 
 
 def main():
@@ -33,6 +43,10 @@ def main():
         static_routes(ROOT / "web" / "dist")
         shutil.copytree(ROOT / "web" / "dist", target / "static", symlinks=False)
         shutil.copytree(ROOT / "config" / "hosted", target / "deployment")
+        profile = json.loads((target / "deployment" / "hosted-config.example.json").read_text())
+        origin = profile["origin"]
+        rendered = render_caddy((target / "deployment" / "Caddyfile.example").read_text(), origin)
+        (target / "deployment" / "Caddyfile").write_text(rendered)
         (target / "commands").mkdir()
         for name in ("prepare_hosted_store.py", "backup_hosted_store.py", "run_hosted_backup.sh"):
             shutil.copyfile(ROOT / "scripts" / "web" / name, target / "commands" / name)
@@ -42,6 +56,7 @@ def main():
                      for path in sorted(target.rglob("*")) if path.is_file()}
         (target / "release.json").write_text(json.dumps({"contract_version": "onejournal.hosted-release.v1",
             "source_commit": revision, "files": checksums, "private_data_included": False,
+            "site_origin": origin, "rp_id": urlsplit(origin).hostname, "home_path": "/local/today",
             "linux_environment_required": True, "activated": False}, indent=2, sort_keys=True))
     except Exception:
         # Preserve a failed candidate for diagnosis, never silently promote it.

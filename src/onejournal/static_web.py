@@ -58,13 +58,17 @@ def static_routes(directory: Path) -> tuple[list[str], dict[str, str]]:
         raise ValueError("Static website artifact is missing or incompatible; rebuild it from the locked source.") from None
 
 
-def serve_static_web(protected_app: FastAPI, directory: Path) -> FastAPI:
+def serve_static_web(protected_app: FastAPI, directory: Path, *, home_page: str | None = None) -> FastAPI:
     """Public files are separate from, never exempted inside, the API gate."""
     access = getattr(protected_app.state, "passkey_access", None)
     if access is None:
         raise ValueError("Static private serving requires the existing passkey-protected API.")
     directory = directory.absolute()
     routes, redirects = static_routes(directory)
+    if home_page is not None:
+        if home_page not in routes or not home_page.startswith("/local/"):
+            raise ValueError("The hosted home page must be a canonical private workspace route.")
+        redirects["/"] = home_page
 
     @asynccontextmanager
     async def lifespan(app):

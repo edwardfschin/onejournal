@@ -928,18 +928,55 @@ Caddy/systemd templates. Use an isolated environment with
 needs modification. Failed candidates are retained but never activated. A Linux
 environment must be built from the locks on the eventual target; do not copy
 the Mac virtual environment. Verify `release.json` file hashes/source commit
-before any separately authorized upload or activation.
+before any separately authorized upload or activation. `release.json` now also
+records `site_origin`, `rp_id` and `home_path`. The package renders
+`deployment/Caddyfile` from the public example's origin, so a separate domain
+environment override cannot silently disagree with that candidate. Only the
+proxy-secret environment placeholder remains; never substitute a real secret
+into a public package or command output.
 
 The new runtime entry point is `onejournal-hosted-site --config <private-file>`.
 Configuration follows `config/hosted/hosted-config.example.json`: exact permanent
 HTTPS DNS origin, separate explicit local PostgreSQL journal/security connection
 files, a fresh random base64url proxy secret, public static directory, and exact
 optional financial authorization files. Private files use 0600 in owner-only
-0700 directories. The example domain is intentionally invalid until the owner
-chooses an address. Keep all real values outside Git. Runtime configuration
+0700 directories. The owner approved `https://journal.onelumiq.com` on
+2026-10-13 and confirmed control of `onelumiq.com`. The public example names
+that origin; keep all credentials, actual connection configuration and financial
+authority outside Git. Runtime configuration
 must use the restricted roles, not database/schema owners. An operator-only
 configuration may name owner roles for explicit setup/recovery; never use that
 configuration to run the site.
+
+Use exactly `journal.onelumiq.com` for the hosted RP/Host, HTTPS at its normal
+port and `/local/today` as the landing page. The hosted root redirects there;
+the accepted Mac URLs and root/demo behavior remain unchanged. Enroll a fresh
+owner passkey only after actual trusted HTTPS and the hosted security store are
+accepted. Do not provision a temporary domain/RP to bypass DNS readiness.
+
+The read-only DNS check currently finds a Porkbun target for the journal name.
+Keep DNS at Porkbun: no registrar transfer, nameserver change or Cloudflare
+setup is required. Configure only the journal subdomain using Porkbun's
+[DNS-record controls](https://kb.porkbun.com/article/68-how-to-edit-dns-records)
+when the target-activation batch is approved; inspect whether the current answer
+comes from an explicit record or a wildcard before making that narrow change.
+The next **single target-activation batch** should explicitly authorize:
+the exact journal DNS record replacement pointing to the verified one-prod
+public address; isolated Linux identities/roles/cluster and public-package
+installation under the combined resource budget; reviewed firewall/TLS and
+private synthetic access setup; and the bounded deployed login/report/CSV,
+backup/restore and code-rollback checks. Preserve every OneBot unit, credential,
+timer and root-domain/other-subdomain record. A fresh target dependency/security
+check and privileged firewall disposition precede exposure; the read-only port
+inventory alone is not clearance. Owner passkey entry and any required admin
+password happen privately, not in chat.
+
+Keep that first hosted batch **synthetic only**: no journal/account history,
+financial authorizations, Mac passkey state or other existing private data is
+transferred. Real-state migration/cutover and dated financial/production owner
+acceptance remain separate. Until that target batch is explicitly approved,
+local packaging and read-only DNS/host checks do not start DNS, TLS, deployment
+or services. No historical backfill or 0029 work is included.
 
 `prepare_hosted_store.py install-empty-journal` explicitly installs the bundled
 baseline into a **new empty journal database**. `provision-access` explicitly

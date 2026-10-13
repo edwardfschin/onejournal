@@ -120,7 +120,11 @@ adds a separate hosted entry point and fresh DNS-bound access store, pinned
 schema through 0028, synthetic PostgreSQL/API/CSV/journal/access reconciliation,
 encrypted fresh-target recovery and public release/service preparation. See
 ADR-0017's dated profile and `docs/operator_quickstart.md`. This is local
-validation, not P1-09–12 production acceptance. The real domain, private-state
+validation, not P1-09–12 production acceptance. The owner selected
+`https://journal.onelumiq.com` on 2026-10-13 after confirming domain control.
+The candidate now aligns the public configuration, rendered proxy and release
+origin/RP metadata, with a hosted Today landing page rather than the demo.
+Actual DNS/TLS, private-state
 cutover, target operations and final owner/device evidence remain outstanding;
 the accepted Mac runtime and historical backfill are not changed.
 
