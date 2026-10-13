@@ -491,3 +491,22 @@ and quality preparation now, reserving actual domain/RP/TLS and hosted controls
 for the eventual host. Do not repeat accepted Mac login/logout or dated recovery
 checks unchanged, change the localhost RP, adopt a hosted framework/policy, or
 activate a different runtime under this sequencing instruction alone.
+
+### Bounded Mac-testing close-out accepted: 2026-10-13
+
+The owner explicitly closed the remaining Mac work after a successful existing-
+image restored-service rehearsal, clear VoiceOver headings/controls/table and
+prompt Reports opening. Prior owner passkey/login/logout/two-tab and offline
+recovery evidence is reused. The new rehearsal provisioned only a fresh
+temporary security store and signed ephemeral test credential, verified HTTPS,
+current report/export access and logout lock, then stopped its owned service
+and removed its copies. It did not restore old credential counters, enroll an
+owner-device passkey, open the live security store or change the active origin.
+
+This accepts the bounded protected Mac-testing scope and its agreed trial
+operating choices. It is not blanket dependency clearance, full WCAG conformity,
+owner-hardware re-enrollment or hosted/production acceptance. Exact runtime and
+owner acceptance remain private; `production_web_delivery_contract.md` records
+the finite remaining production work. Do not repeat unchanged Mac security
+checks without a relevant change or finding. P1-09 remains IN PROGRESS only for
+the broader production scope; history is a separate parked track.

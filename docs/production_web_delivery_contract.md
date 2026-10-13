@@ -822,7 +822,7 @@ financial authority.
 | Browsers and accessibility | Existing Mac, supported Chrome and Safari; record tested versions without unnecessary upgrades. Keyboard core journeys and one Safari/VoiceOver speech check. Reuse unchanged 200% text-resize and 320-CSS-pixel reflow evidence. Actual phone/tablet and hosted checks remain for soft launch. |
 | Speed | Usable private page within 2 seconds after authentication; ordinary local filter/history update within 1 second for up to 300 displayed rows. Exclude device-verification waiting. These are initial targets, not proven real-data performance: measure once and fix confirmed failures, not speculative bottlenecks. |
 | Backup | New encrypted journal/release image after a day of journal edits and after approved financial publication. Refresh evidence/audit after new accepted source lineage and weekly during active use. Refresh access/TLS only when setup changes. Use quiet/stopped sources as existing operators require; unchanged days need no new journal image. |
-| Loss and recovery goals | Target at most one working day of unbacked-up journal edits and up to one week of security-audit lag, provided the owner performs those manual backups. Target usable restoration within one working day after recognizing a failure, with verified images, runtime and owner password/device access; this is not proven until the complete restored-service path passes. |
+| Loss and recovery goals | Target at most one working day of unbacked-up journal edits and up to one week of security-audit lag, provided the owner performs those manual backups. Target usable restoration within one working day after recognizing a failure. The same-Mac restored-service signed-client rehearsal passed on 2026-10-13; owner-hardware re-enrollment and another-Mac/host recovery are not proven by it. |
 | Retention and passwords | Preserve current recovery images, raw evidence, journal revisions and audit during the Mac trial; no automatic expiry/deletion. Keep image passwords separately from USB. Review space if needed; decide hosted retention later. Do not restore old passkeys/counters as a shortcut. This is not indefinite production retention. |
 | Availability and incidents | Attended foreground use, no 24/7 uptime promise. Use the check after a release switch or startup/error concern, not continuously. Terminal-visible failures, no external alert service. Suspected exposure: stop only the owned private service and preserve evidence. Incorrect figures: stop using affected output; stop serving if it cannot be safely isolated. Ordinary outages: troubleshoot on next use, never bypass login. |
 | Corrections, closure and release | Corrections remain source-reviewed/append-only. Closure/deletion requires a deliberate offline inventory and decision, not automatic SQL erasure. Leave Streamlit parked as internal reference, not a running fallback. Reuse accepted bounded financial scope and explicit stale/unavailable states; finish missing critical journeys and one dated final acceptance. History and hosting stay separate. |
@@ -954,6 +954,52 @@ password/response disclosure. No owner image was reopened, no password read,
 no restored server started and no live state changed during this correction.
 Actual restored-service completion, speech and owner acceptance remain pending.
 
+### Mac-testing close-out — owner accepted: 2026-10-13
+
+**The agreed Mac-testing work is closed.** The owner reported that recovery
+passed, VoiceOver read the headings, controls and table clearly, and Reports
+opened promptly, then explicitly instructed closing out the Mac work. This
+accepts the existing protected single-owner Mac-testing release under the
+combined profile above, not a hosted production release or new financial scope.
+The exact installed source/artifact, configuration/financial-authority lineage,
+successful recovery receipt and owner statement are retained privately.
+
+The independently read recovery receipt records `passed`: existing encrypted
+images preserved, restored journal/evidence lineage matched, exact static shell
+and verified HTTPS, fresh temporary signed-test enrollment/login, current
+account/symbol reports and release-matching CSV, logout lock and temporary
+service/copy cleanup. Only the three scoped read-audit additions occurred in
+the disposable journal; the accepted guard checked unchanged schema and other
+relation counts. Recorded session time includes owner password entry and is
+within the Mac trial's one-working-day recovery target for this same-Mac path.
+It is not a general recovery-time guarantee, fresh owner-device enrollment,
+full lifetime-history recovery, another-Mac restoration or hosted acceptance.
+
+The actual VoiceOver result is owner-heard evidence for the requested Safari
+check, not agent-observed speech or comprehensive WCAG conformity. Prompt
+Reports opening is an owner usability confirmation, not a stopwatch measurement
+of real-data latency. Existing Chrome/Safari synthetic timings, zoom/reflow,
+keyboard, export, financial-quality and security evidence are reused unchanged.
+The rehearsal's test-helper import emitted a TestClient deprecation warning;
+the run then passed. No dependency replacement or unnecessary test cycle is
+included in this documentation-only close-out.
+
+| Package | Mac-testing disposition | Separate soft-launch/production work |
+|---|---|---|
+| P1-09 | Accepted bounded protected Mac access/session/offline recovery/audit and trial operating choices. | Actual domain/RP/TLS and enrollment/recovery, candidate dependency/security review, host/proxy/abuse boundaries and production security-state/audit policy. |
+| P1-10 | Accepted installed package/start/retained rollback, encrypted images, scoped restored service and manual trial operations. | Target state and migration if required, deployment/rollback, host recovery and final production availability/retention/alerting objectives. |
+| P1-11 | Accepted bounded Mac browser/keyboard/zoom/reflow evidence, owner-heard VoiceOver and responsive Reports use. | Physical-device and host/network-dependent journeys and final target accessibility/performance checks. |
+| P1-12 | Owner accepted the dated existing Mac-testing release and its limitations; Streamlit remains parked. | Dated exact production release and explicit owner acceptance after the target-dependent checks. |
+
+No routine Mac close-out action remains under this accepted scope. Do not reopen
+unchanged backup/browser/login suites to keep working. Normal use and the
+accepted manual backup cadence continue; a changed release or new defect gets
+only its relevant validation. This close-out installs nothing, writes no live
+database, restarts no service and activates no historical migration/import,
+broker refresh, hosting, scheduler, deletion or trading. History recovery stays
+separate. ADR-0018's production gate is unchanged: formal Phase 1 stays 8/12,
+with P1-09–12 IN PROGRESS solely for their remaining production scope.
+
 The web delivery packages map to Phase 1 as follows:
 
 | Phase 1 need | Required web package or dependency |
@@ -999,9 +1045,9 @@ if a switch is recommended.
 | WEB-W08 | Bounded PNL-06 through PNL-08 slices, WEB-07 | COMPLETE | Phase 1 account/symbol breakdown, date-filtered P&L history, export and quality-conformant views | Explore the accepted current portfolio and export the same bounded records and values | Completed and owner-accepted on 2026-10-05 for the demonstrated private single-owner local-only reporting scope, acceptance `ONEJOURNAL-WEB-W08-GATE4-OWNER-ACCEPTANCE-20261005-01`. Exact release `ONEJOURNAL-WEB-W08-REPORT-RELEASE-20260909-01`, fingerprint `506a4b49810e4da77f3880818a83425c835eb9cd25d08b1503dd95ed9d6ddb2c`, preserves one `Primary` account, 230 admitted allocations, 57 withheld scopes, 287 processed and zero pending, covering 2026-03-06 through 2026-09-04. PR #13 delivered implementation `c62531c` into canonical merge `eba4a4c`. The activated loopback API and `/local/reports` expose reconciled account/symbol breakdowns, date/account/symbol filters, explicit quality/count/reason and snapshot/provenance states, and exact-decimal CSV exports. Private JSON/CSV read-back matched accepted state; valid-empty and outside-coverage selections behaved correctly; desktop/tablet/mobile and keyboard/table access passed. Verification added 11 privacy-safe read-audit rows within the approved 16-row bound; row counts and contents of all 81 other compared tables/views were unchanged. No complete portfolio realized/total P&L, continuous acquisition, authentication, hosting, or trading is accepted. See `docs/phase1_reporting_release_contract.md` for the exact acceptance evidence and limitations. | Sol High for financial contracts and private acceptance; Terra Medium for bounded implementation |
 | WEB-W09 | UXJ-05, UXJ-06, WEB-07 | LATER | Post-Phase 1 attachments, goals, habits and recurring review experience | Complete the private review workflow beyond Phase 1 entries and reviews | Attachment privacy/retention/recovery and financial-evaluation dependencies pass | Sol High for privacy policy; Terra Medium for implementation |
 | WEB-W10 | WEB-06 | IN PROGRESS | Authentication, authorization, secure sessions, recovery and audit | Sign in to an isolated environment and verify owner-only navigation | ADR-0031's protected Mac pair, owner login/logout and bounded recovery checks are recorded. The 2026-10-09 source/dependency-reachability review found no additional confirmed critical defect in the inspected Mac owner workflow, without clearing all dependency alerts. Hosted domain/RP/TLS and recovery, production packaging/dependencies, proxy/abuse/access verification, and OPS-06 security-state/audit/incident procedures remain open. This is not hosted/production or Phase 1 acceptance. See `docs/mac_passkey_access_contract.md` | Sol High |
-| WEB-W11 | WEB-08 | IN PROGRESS | End-to-end quality, accessibility, performance and browser/device coverage | Use the accepted flows on supported desktop, tablet and mobile targets | Mac Chrome/Safari scope and speed targets accepted; scoped synthetic keyboard/timing checks passed. Actual speech, real-data responsiveness and final physical-device/host acceptance remain | Terra Medium; Luna Low for routine regression maintenance |
-| WEB-W12 | OPS-01 through OPS-06 | IN PROGRESS | Environment, hosting, PostgreSQL migration, deployment, observability, backup and recovery | Use the existing Mac installed release and recovery/check tooling; hosted staging remains separate | Mac packaging/recovery/integrity evidence and trial operating choices recorded; complete usable restored-service journey and actual target state/deployment/restore/rollback acceptance remain | Sol High for architecture/security/migration; Terra Medium for automation |
-| WEB-W13 | WEB-09, OPS-07 | IN PROGRESS | Production acceptance and Streamlit transition | Prepare the exact existing Mac scope and explicit limitations without changing financial authority | Export/correction/closure limits, trial evidence retention and Streamlit parking accepted; final target verification and dated owner acceptance remain | Sol High for final critical review; Luna Low for release-record maintenance |
+| WEB-W11 | WEB-08 | IN PROGRESS | End-to-end quality, accessibility, performance and browser/device coverage | Use the accepted flows on supported desktop, tablet and mobile targets | Bounded Mac checks and owner-heard VoiceOver/prompt Reports use accepted 2026-10-13; physical-device and final host/network acceptance remain | Terra Medium; Luna Low for routine regression maintenance |
+| WEB-W12 | OPS-01 through OPS-06 | IN PROGRESS | Environment, hosting, PostgreSQL migration, deployment, observability, backup and recovery | Use the accepted Mac installed release and recovery/check tooling; hosted staging remains separate | Mac trial operations and scoped restored-service journey accepted 2026-10-13; actual target state/deployment/restore/rollback and production-policy acceptance remain | Sol High for architecture/security/migration; Terra Medium for automation |
+| WEB-W13 | WEB-09, OPS-07 | IN PROGRESS | Production acceptance and Streamlit transition | Use the dated accepted Mac-testing release with explicit limitations | Mac-testing release, trial retention and Streamlit parking accepted 2026-10-13; final production-target verification and dated production owner acceptance remain | Sol High for final critical review; Luna Low for release-record maintenance |
 
 ## Delivery sequence and PNL-03 coordination
 

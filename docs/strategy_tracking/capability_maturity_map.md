@@ -118,6 +118,25 @@ and production operations and P1-10 through P1-12 are not promoted. The USB imag
 backs up access setup, not passkey private keys or the financial journal.
 See `docs/mac_passkey_access_contract.md` for evidence and limitations.
 
+### Accepted bounded Mac-testing release: 2026-10-13
+
+The protected single-owner Mac-testing release is **M4 - Operationally accepted
+for that bounded trial scope**, following the owner's explicit close-out after
+existing-image restored-service success, clear VoiceOver speech and prompt
+Reports use. The accepted profile, installed-release and recovery evidence are
+recorded in `production_web_delivery_contract.md`, the Mac security/recovery
+contracts and private receipts. Earlier valid financial, login/logout, browser
+and backup evidence is reused, not relabeled as new financial acceptance.
+
+This advances only the bounded Mac trial's operational acceptance. It does not
+promote the complete production website/operations rows in the dated September
+snapshot, assert sustained M5 use, waive dependency/physical-device/host checks,
+or change ADR-0018's production exit gate. Formal Phase 1 remains 8/12. The
+product vision's private, evidence-backed financial memory and the spreadsheet
+mapping's separation of source, calculation and reflection are unchanged; no
+vision or mapping rewrite is required. History expansion and trading remain
+outside this acceptance.
+
 ## Update rules
 
 Update this map when a capability crosses a maturity boundary or when evidence

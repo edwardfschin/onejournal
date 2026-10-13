@@ -30,8 +30,9 @@ by this operator. The owner-approved 2026-10-13 Mac-testing profile in
 `production_web_delivery_contract.md` sets manual journal/release backup after
 a day with edits and after approved financial publication, using the active
 configuration. It preserves trial images and keeps passwords separate from USB.
-Unchanged days need no new image. The usable-restoration target remains unproven
-until a complete restored-service journey, not merely this file restore, passes.
+Unchanged days need no new image. The 2026-10-13 same-Mac restored-service
+signed-client journey passed within the trial recovery target. That evidence
+does not prove owner-hardware re-enrollment, another-Mac or hosted recovery.
 
 ## Safe capture and verification
 
@@ -195,3 +196,22 @@ are documented in `docs/mac_evidence_audit_recovery.md`; do not misreport that
 guard as passed or repeat the successful images merely to remove its warning.
 The protected site is running again. Detailed recovery evidence remains private;
 this dated refresh does not adopt recurring/retention policy or complete P1-10.
+
+## Accepted same-Mac restored-service close-out: 2026-10-13
+
+The owner entered the existing image passwords privately. The recorded
+`rehearse_mac_recovery.py` run passed against the retained installed release:
+all three encrypted images unlocked/validated, restored accepted-source lineage
+matched, verified HTTPS and the exact shell were served, fresh temporary signed
+test access reached the current reports/CSV, and logout locked access again.
+Original images were preserved and the owned temporary service/copies removed.
+The receipt permits only three report-read audit additions in the disposable
+journal, with schema and other relation counts unchanged. No live database,
+security store, configuration, history ledger or service was replaced.
+
+The owner then confirmed VoiceOver clarity and prompt Reports opening and
+directed Mac close-out. This is accepted bounded Mac-testing recovery and use,
+not a guarantee of future recovery time, owner-hardware re-enrollment, another
+Mac/host recovery or Phase 1 production completion. Detailed identity/timing
+and acceptance receipts remain private. No new backup image or repeated native
+rehearsal is needed for this unchanged state.

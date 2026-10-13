@@ -104,11 +104,15 @@ evidence. It adopts manual operating choices, not a scheduler or production SLA:
   an unprotected fallback. Ordinary outages are investigated on next use.
 
 The loss targets depend on performing these backups: at most one working day
-of journal edits and up to a week of security-audit lag. The one-working-day
-usable-restoration target is not yet demonstrated by a complete restored-service
-journey. Existing dated USB restoration evidence is reused, not repeated simply
-to obtain another PASS. Safari/VoiceOver speech, real-data responsiveness and
-dated final owner acceptance remain outstanding; history and hosting stay separate.
+of journal edits and up to a week of security-audit lag. On 2026-10-13 the existing
+images passed the complete same-Mac restored-service signed-client check within
+the one-working-day trial target, including private password entry. This is not
+another-Mac/host recovery or owner-hardware re-enrollment proof. The owner also
+confirmed clear VoiceOver headings/controls/table and prompt Reports opening,
+then accepted closing the bounded Mac-testing work. The successful receipt and
+exact release acceptance remain private. Existing evidence is reused; no repeat
+backup, browser suite or further routine approval is needed. History and hosted
+soft-launch work remain separate; formal Phase 1 stays 8/12.
 
 Use the locked security Python environment and the reviewed source checkout:
 
@@ -217,7 +221,9 @@ not the Mac login password, a passkey or a new password to choose for this check
 Passing this signed-client check is not owner-hardware re-enrollment,
 another-Mac/host recovery, fresh financial acceptance or production clearance.
 
-For the remaining hands-on check, use Safari on the **existing protected site**,
+The hands-on Safari/VoiceOver check was owner-confirmed on 2026-10-13 and is
+closed for the unchanged Mac-testing release. Do not repeat it simply to obtain
+another PASS. For a later relevant change, use Safari on the **protected site**,
 sign in with the existing passkey, and verify Reports opens promptly. Temporarily
 turn on VoiceOver, listen to a heading, filter/action and table context, then
 restore the prior setting. No private numbers or screenshots need to be sent
