@@ -2,13 +2,31 @@
 
 ## Decision
 
-The 36 tracked artifacts under `scripts/oldjournal/`, `scripts/tgps_user/`, and
-`scripts/execution/` are not part of the active OneJournal runtime.
+The owner approved relocating exactly 36 inactive historical artifacts on
+2026-10-14. Their original paths were `scripts/oldjournal/` (18),
+`scripts/tgps_user/` (17) and `scripts/execution/` (1). They have been removed from
+the current OneJournal branch after verified private archiving, not destroyed
+or installed in OneBot. Active integration code and live services are unchanged.
 
-No legacy artifact is approved for direct reuse, import, broker access, database
-access, migration, execution, deletion, or relocation. This audit classifies
-the retained source and identifies concepts that may be reimplemented later
-behind current OneJournal contracts.
+The archive is outside both repositories at:
+
+```text
+Projects/Private/LegacyArchive/TradersGPS/2026-10-14-from-OneJournal
+```
+
+It preserves all original repository-relative paths and exact bytes, with
+directories mode 0700 and non-executable files mode 0600. `manifest.json` records
+the 36 filenames, byte sizes, SHA-256 checksums, original modes and source commit
+`5f812a9a369ac9406118a11eb3fb60edd0b6d108`. All 36 copies were verified before
+source removal. `ARCHIVE-README.txt` explains the non-runtime scope and recovery.
+Archive contents and metadata stay outside Git; existing Git history remains
+unchanged. Other checkouts, OneBot source/deployment copies and services were not
+synchronized, modified or retired by this relocation.
+
+The classifications below are the original historical review, not an active
+script inventory. The archive approval authorizes no direct reuse, import,
+broker/database access, migration, execution, trading or permanent destruction.
+Useful concepts may be reimplemented behind current OneJournal contracts.
 
 ## Scope and evidence
 
@@ -28,21 +46,25 @@ Verified findings:
 
 - No active OneJournal source, test, baseline, CI, or operator script imports or
   invokes an audited artifact.
-- The only repository references outside the audited trees are the operating
-  safety rule and the roadmap audit action.
+- Remaining OneJournal references are historical audit/inventory and safety
+  guidance; no active source, test, CI, operator or packaging caller was found.
 - Expected top-level `client/`, `common/`, and `tgps-user/` directories are
   absent from this repository.
 - `openpyxl`, `xlsxwriter`, `yahooquery`, `ibapi`, `client`, and `common` are
   unavailable in the reproducible OneJournal environment. `pandas` is present
   transitively, but the legacy applications and their complete dependencies are
   not declared OneJournal dependencies.
-- All audited Python files compile syntactically without importing or executing
-  them.
+- The original audit compiled Python source without importing or executing it.
+  Relocation only copied and checksummed source bytes; no legacy script ran.
 - Legacy defaults target TradersGPS paths, schemas, tokens, workbooks, and
   databases rather than OneJournal ODFS contracts.
 - External schedulers, aliases, deployment copies, or operator habits cannot be
-  proven absent from this repository alone. That prevents a safe deletion
-  classification.
+  proven absent from this repository alone. The 2026-10-14 local process, cron,
+  shell-profile and launch-agent checks found no active local caller. OneBot has
+  historical runbook references and a register entry for a separately retained
+  VPS staging tool; these and OneBot's sync exclusions were left unchanged. No
+  remote inspection/cleanup or claim that all deployment copies are absent is
+  made. This is reversible local source relocation, not global deletion.
 
 ## Classification meanings
 
@@ -58,7 +80,8 @@ Verified findings:
 - `DELETE` — safe removal has been proven across static, runtime, operator, and
   deployment references. No artifact currently meets this standard.
 
-These labels authorize no file operation by themselves.
+These historical labels authorize no file operation by themselves. The exact
+36-file relocation above was separately approved by the owner.
 
 ## Critical safety findings
 
@@ -163,7 +186,17 @@ For every `RETAIN_ISOLATED` item:
 - future evaluation requires an approved execution-plane architecture and
   trading-safety review
 
-## Archive and deletion gate
+## Archive recovery and future operations
+
+For recovery, verify each archived file against `manifest.json`, then copy only
+the required source to a new private inspection directory, retaining its original
+relative path. Preserve current files and existing archive copies. The source
+commit above also retains the originals in Git history. Restoring source for
+inspection does not authorize importing, executing, reconnecting credentials,
+deploying or activating trading. No financial/runtime database was archived here.
+
+Permanent destruction, further relocation or runtime reuse is not part of the
+completed archive operation. It still requires the relevant checks below.
 
 Archiving or deleting any artifact requires:
 
@@ -174,4 +207,4 @@ Archiving or deleting any artifact requires:
 - preservation of any unique contract or representative behavior
 - explicit approval for the file operation
 
-No deletion is recommended by this audit.
+No permanent destruction or Git-history rewrite is recommended by this audit.

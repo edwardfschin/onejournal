@@ -471,8 +471,10 @@ audit history, and data retention must be designed before production launch.
 
 ## Legacy code
 
-Existing code under `scripts/oldjournal/`, `scripts/tgps_user/`, and
-execution-related folders is not automatically approved for reuse.
+Historical code formerly under `scripts/oldjournal/`, `scripts/tgps_user/`, and
+`scripts/execution/` is archived privately outside both OneJournal and OneBot.
+The relocation and recovery evidence are recorded in `docs/legacy_code_audit.md`.
+Recovered archive or Git-history source is not automatically approved for reuse.
 
 Before migrating or reusing legacy code:
 

@@ -4,12 +4,12 @@
 
 This is the current, repository-wide inventory of executable material under
 `scripts/`. It distinguishes active OneJournal operator/validation commands
-from retained legacy TradersGPS/OneBot material. It is not a roadmap, and it
+from privately archived legacy TradersGPS material. It is not a roadmap, and it
 does not make a script production-approved merely because it is retained.
 
 The inventory is based on the source code, current CI/baseline and Streamlit
 call sites, operator documentation, and the full
-[legacy-code audit](legacy_code_audit.md). Last reviewed: 2026-09-06.
+[legacy-code audit](legacy_code_audit.md). Legacy disposition updated: 2026-10-14.
 
 Status meanings:
 
@@ -24,9 +24,10 @@ Status meanings:
   the legacy-code audit. They are not active OneJournal runtime paths.
 
 No script in this inventory may place, cancel, replace, or modify broker orders
-as part of an active OneJournal path. `scripts/execution/`,
-`scripts/oldjournal/`, and `scripts/tgps_user/` are specifically excluded from
-all active imports, UI actions, CI workflows, and operator commands.
+as part of an active OneJournal path. The 36 former files under
+`scripts/execution/`, `scripts/oldjournal/` and `scripts/tgps_user/` are no longer
+tracked on the current branch. Their private archive and older Git-history
+copies must not be imported or used by UI actions, CI or operator commands.
 
 ## Active OneJournal scripts
 
@@ -118,21 +119,25 @@ A script can be removed only after the reference matrix shows zero production, b
 - `operator_import_runbook.md`
 - `approved_lifecycle_pnl_operator.md`
 
-## Isolated legacy and execution material
+## Archived legacy and execution material
 
-The following 36 retained artifacts are outside the active OneJournal runtime.
+The following 36 artifacts were archived outside both repositories on 2026-10-14
+after owner approval and exact checksum verification; none remain active scripts.
 Their individual behavior, broker-write capability, dependencies, and
 classification are authoritative in [legacy-code audit](legacy_code_audit.md).
 They may not be called, imported, scheduled, or exposed by OneJournal.
 
-| Directory | Files | Disposition |
+| Original directory (preserved inside private archive) | Files | Historical classification |
 |---|---:|---|
 | `scripts/execution/` | 1 | `scripts/execution/stage_orders_v0.py` — RETAIN_ISOLATED; Excel/JSONL order staging with no active OneJournal route. |
 | `scripts/oldjournal/` | 18 | `audit_trades.py`, `db_inspect.py`, `export_trx.py`, `fetch_orders_live.py`, `fetch_positions_live.py`, `ideas_runner.py`, `incremental_export.py`, `ingest_acct_activity.py`, `init_journal.sql`, `introspect_journal.py`, `journal_doctor.py`, `migrate_open_orders_lineage.py`, `oms_cli.py`, `positions_report.py`, `rebuild_db.py`, `report_open_orders_live.py`, `run_trading_session.sh`, `transactions_report.py` — individually classified MIGRATE, ARCHIVE, or RETAIN_ISOLATED. |
 | `scripts/tgps_user/` | 17 | `_lock.py`, `actions_capture.py`, `doctor.py`, `exec_plan.py`, `fills_mgt.py`, `fills_normalize.py`, `ibkr_fills_mgt.py`, `ibkr_fills_normalize.py`, `ibkr_order_mgt.py`, `ibkr_sellput_queue.py`, `ideas_runner.py`, `init_ledger.py`, `order_mgt.py`, `policy_eval.py`, `queue_editor.py`, `sellput_day.py`, `sync_ideas.py` — individually classified MIGRATE, ARCHIVE, or RETAIN_ISOLATED. |
 
-The legacy classification is a retention and safety boundary, not authorization
-to reuse, relocate, run, delete, or connect those scripts to OneJournal.
+These are original review classifications, not files still present under
+`scripts/`. Archive location, provenance and recovery are recorded in the audit.
+The completed relocation authorizes no reuse, execution, deployment, destruction
+or connection of this source to OneJournal or OneBot. Active credential-free
+OneBot integration/intake code stays in OneJournal unchanged.
 
 ## Inventory update rule
 

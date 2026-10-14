@@ -442,7 +442,7 @@ website features.
 | FND-04 | COMPLETE | Establish automated unit, integration, contract, and regression test structure. | Tests run through one documented command and include initial DB, payload, adapter, and lifecycle coverage. |
 | FND-05 | COMPLETE | Activate the committed GitHub workflow for package installation, tests, contract checks, and secret/runtime-artifact guards. | The pushed branch runs the workflow successfully without private broker data; PR 1 run 6 passed. |
 | FND-06 | COMPLETE | Replace the stale Phase 0 README with the current architecture, setup, safety boundary, and roadmap link. | README matches the verified repository and points to current operator documentation. |
-| FND-07 | COMPLETE | Audit and classify `scripts/oldjournal`, `scripts/tgps_user`, and execution-related legacy code. | Each legacy path is marked migrate, retain-isolated, archive, or delete with evidence. |
+| FND-07 | COMPLETE | Audit and classify the historical `scripts/oldjournal`, `scripts/tgps_user`, and execution-related legacy source. | Original 36-file classifications are preserved in `docs/legacy_code_audit.md`. On 2026-10-14 the owner approved their relocation to a private archive outside OneJournal/OneBot; all paths/bytes/checksums and Git provenance were verified before removing the exact files from the current branch. This cleanup made no active integration, OneBot, deployment or live service change; Git history and other checkouts remain intact. |
 | FND-08 | COMPLETE | Define architecture-decision-record and schema-migration conventions. | A documented template and storage location exist and one initial decision is recorded. |
 
 ### Queue 0 exit gate
