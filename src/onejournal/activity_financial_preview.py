@@ -39,6 +39,8 @@ from onejournal.pnl.bounded_reconciliation import normalized_fill_from_lifecycle
 from onejournal.refresh_activity import _confirmed_import, _index, _FAMILIES
 
 CONTRACT = 'onejournal.activity-financial-preview.v1'
+CURRENT_CALCULATION_REVISION = 'activity-preview-v2'
+LEGACY_CALCULATION_REVISION = 'activity-preview-v1'
 
 
 def _digest(value):
@@ -69,7 +71,10 @@ def _combined_records(baseline):
         for name, (identity, observation, _) in _FAMILIES.items() if name!='orders'}
 
 
-def _build_preview(baseline, *, approved_events, account_alias, reviews=None):
+def _build_preview(baseline, *, approved_events, account_alias, reviews=None,
+                   calculation_revision=CURRENT_CALCULATION_REVISION):
+    if calculation_revision not in (CURRENT_CALCULATION_REVISION,LEGACY_CALCULATION_REVISION):
+        raise ValueError('Unsupported activity calculation revision.')
     records = _combined_records(baseline)
     assembly = baseline.assembly
     source = baseline.checkpoint_uid or assembly.result_fingerprint
@@ -81,10 +86,18 @@ def _build_preview(baseline, *, approved_events, account_alias, reviews=None):
         raise ValueError('Activity financial scope differs.')
     original_plan = build_schwab_journal_materialization_plan(assembly)
     original_states = build_schwab_journal_lifecycle_reconciliation(assembly)
+    # The assembly validates an explicit native-currency consensus. The released
+    # lifecycle reconciler uses this for security identity: the Schwab adapter
+    # puts currency on cash legs, not security legs. This is neither a cash/P&L
+    # default nor FX conversion. Keep v1 only to reproduce existing draft backups.
+    native_currency = next(f.records[0]['currency'] for f in assembly.families if f.family=='account')
     original_state_by_id = {s.episode_uid:s for s in original_states.states}
     original_by_id = {e.preview.episode_uid:e for e in original_plan.episodes}
     held_scopes = {original_by_id[s.episode_uid].scope_uid:s.reason_code or 'lifecycle_review_required'
                    for s in original_states.states if s.lifecycle_quality != 'resolved'}
+    held_fills = {uid:s.reason_code or 'lifecycle_review_required'
+                  for s in original_states.states if s.lifecycle_quality!='resolved'
+                  for uid in original_by_id[s.episode_uid].fill_uids}
     grouped = defaultdict(list)
     for fill in fills:
         grouped[_scope_key(fill)].append(fill)
@@ -94,7 +107,7 @@ def _build_preview(baseline, *, approved_events, account_alias, reviews=None):
         try:
             build_lifecycle_fill_events(rows)
             previews = build_episode_previews_from_fills(rows)
-            reason = held_scopes.get(scope_uid)
+            reason = held_scopes.get(scope_uid) if calculation_revision==LEGACY_CALCULATION_REVISION else None
         except LifecycleContractError as exc:
             if not str(exc).startswith('Unmatched close quantity'):
                 raise
@@ -105,8 +118,17 @@ def _build_preview(baseline, *, approved_events, account_alias, reviews=None):
                 'unknown','Lifecycle Review Required',len(rows),'Opening history is missing','unavailable',
                 [{'fill_uid':f.fill_uid} for f in rows])]
             reason = 'opening_history_missing'
-        episodes.extend(_episode(p,scope_uid=scope_uid,quality='review_required' if reason else 'resolved',reason=reason)
-                        for p in previews)
+        for p in previews:
+            inherited = {held_fills[leg['fill_uid']] for leg in p.legs if leg['fill_uid'] in held_fills}
+            # Restrict v2 baseline gates to their actual episode fills. A later
+            # unresolved cycle cannot invalidate an earlier independent close.
+            # Fill overlap still preserves the gate when an increment changes
+            # the public episode identity; do not promote that affected cycle.
+            episode_reason = reason
+            if calculation_revision==CURRENT_CALCULATION_REVISION and inherited:
+                episode_reason = reason or (next(iter(inherited)) if len(inherited)==1 else 'lifecycle_review_required')
+            episodes.append(_episode(p,scope_uid=scope_uid,
+                quality='review_required' if episode_reason else 'resolved',reason=episode_reason))
     by_fill = {f.fill_uid:f for f in fills}
     episode_by_fill = {uid:e for e in episodes for uid in e.fill_uids}
     if len(episode_by_fill) != len(fills):
@@ -144,6 +166,8 @@ def _build_preview(baseline, *, approved_events, account_alias, reviews=None):
             unscoped_events.append((uid,at))
         for leg in legs:
             currency = str(leg.get('currency','')).strip()
+            if not currency and calculation_revision==CURRENT_CALCULATION_REVISION:
+                currency = native_currency
             if not currency:
                 unscoped_events.append((uid,at))
                 continue
@@ -230,7 +254,7 @@ def _build_preview(baseline, *, approved_events, account_alias, reviews=None):
             lifecycle_count=p.lifecycle_count,instrument_summary=p.instrument_summary))
     start = datetime.combine(assembly.lifecycle_window_start,time(),UTC).astimezone(NEW_YORK).date()
     end = baseline.cutoff.astimezone(NEW_YORK).date()
-    version = calculation.calculation_version+'+activity-preview-v1'
+    version = calculation.calculation_version+'+'+calculation_revision
     payload = dict(contract_version=CONTRACT,source=source,checkpoint_utc=baseline.cutoff,
         fill_fingerprint=build_fill_input_fingerprint(fills),lifecycle_fingerprint=build_lifecycle_input_fingerprint(events),
         projection=projection.result_fingerprint,trades=trades,items=[asdict(i) for i in items],
@@ -240,7 +264,8 @@ def _build_preview(baseline, *, approved_events, account_alias, reviews=None):
         omissions,tuple(trades),projection.executions,projection.instruments,_digest(payload))
 
 
-def load_activity_financial_preview(db, binding, *, expected_checkpoint_uid, account_alias):
+def load_activity_financial_preview(db, binding, *, expected_checkpoint_uid, account_alias,
+                                   calculation_revision=CURRENT_CALCULATION_REVISION):
     if not isinstance(account_alias,str) or not account_alias.strip() or len(account_alias)>64:
         raise ValueError('An explicit private account alias is required.')
     checked = private_file(db,'activity journal',private_parent=True)
@@ -257,7 +282,8 @@ def load_activity_financial_preview(db, binding, *, expected_checkpoint_uid, acc
         events = load_approved_lifecycle_events(con,asof=baseline.cutoff.date())
         reviews = {uid:(status,quality) for uid,status,quality in con.execute(
             'SELECT episode_uid,review_status,setup_quality FROM manual_reviews').fetchall()}
-        return _build_preview(baseline,approved_events=events,account_alias=account_alias,reviews=reviews)
+        return _build_preview(baseline,approved_events=events,account_alias=account_alias,reviews=reviews,
+                              calculation_revision=calculation_revision)
 
 
 def report_preview(preview, *, from_date, to_date, account_alias=None, symbol=None):
@@ -269,9 +295,12 @@ def report_preview(preview, *, from_date, to_date, account_alias=None, symbol=No
         item_status='valid',reason_codes=list(i.reason_codes),calculation_version=preview.calculation_version) for i in items]
     pending = sum(o.item_status=='reconciliation_pending' for o in preview.omissions
         if from_date<=o.close_market_date<=to_date and (symbol is None or o.symbol==symbol)) if quality!='unavailable' else 0
-    return dict(metadata=dict(contract_version=CONTRACT,quality=quality,reason_counts=reasons,
+    metadata = dict(contract_version=CONTRACT,quality=quality,reason_counts=reasons,
         result_fingerprint=preview.result_fingerprint,checkpoint_utc=preview.checkpoint_utc.isoformat(),
-        position_snapshot_utc=preview.position_snapshot_utc.isoformat(),owner_accepted=False),
+        position_snapshot_utc=preview.position_snapshot_utc.isoformat(),owner_accepted=False)
+    if preview.calculation_version.endswith('+'+CURRENT_CALCULATION_REVISION):
+        metadata['calculation_version'] = preview.calculation_version
+    return dict(metadata=metadata,
         counts=dict(processed_count=len(rows)+sum(reasons.values()),available_count=len(rows),
                     unavailable_count=sum(reasons.values())-pending,reconciliation_pending_count=pending),items=rows)
 

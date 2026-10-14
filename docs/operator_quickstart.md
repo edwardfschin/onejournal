@@ -1504,5 +1504,51 @@ draft. Successful encrypted restoration is recovery evidence, not financial
 owner acceptance, publication, broker permission or runtime activation.
 
 Focused guards and one native encrypted round trip using the actual private
-package passed. Off-device refresh remains pending until the owner enters the
-real image password and the USB restoration receipt confirms completion.
+package passed. The owner subsequently entered the real image password in
+Terminal; the USB copy unlocked, restored all exact files and reproduced the
+v1 report/CSV/Trades. Its private success receipt pins that package fingerprint.
+Existing images, the site, OneBot and historical evidence were unchanged.
+
+#### Superseding offline financial correction — 2026-10-14
+
+The earlier admission difference came from two isolated-preview defects, not
+changed FIFO prices/fees or missing accepted allocations:
+
+- Normalized Schwab **security** event legs leave currency blank (cash legs
+  carry currency). Treating those security legs as unscoped events blocked
+  unrelated instruments. The corrected preview uses the assembly's explicit,
+  validated native-currency consensus to construct security identity, matching
+  the released lifecycle reconciler. An explicit leg currency is still retained.
+  This does not default monetary values, infer lifecycle approval or convert FX.
+- A baseline reconciliation restriction was applied to every episode in an
+  instrument scope. The corrected preview inherits that restriction only via
+  the affected episode's actual fill identities, preserving it when an increment
+  changes that episode's public UID. A later unresolved cycle no longer blocks
+  an earlier independent, confirmed round trip. Missing opening history still
+  blocks its scope; affected/unscoped unapproved events and mismatches remain
+  withheld. No existing released calculator or journal projection was modified.
+
+New calculations identify `activity-preview-v2`. Report metadata carries the
+full calculation version even for an empty/unavailable response; CSV rows retain
+that same full version. Preparation recovery chooses a recognized revision from
+the already checksum-verified report metadata, not by retrying calculations.
+Original v1 packages lacked that marker and reproduce explicitly using v1;
+unknown markers fail closed. The private preparation contract remains v1 and
+the new metadata marker is additive. No live/public API contract is changed.
+
+Both focused regressions reproduced the original defects before the correction.
+Financial/preparation/recovery/incremental guards pass, including changed episode
+identity, affected-event withholding, legacy dispatch and unknown-version refusal.
+Read-only verification of the original backed-up package still reproduces its
+exact v1 fingerprint/payloads. A **new separate v2 package** was then prepared
+from its saved snapshot/evidence and restored on disposable files. Comparison
+retains every accepted predecessor item UID and exact value. The previous package
+and all source bytes remain intact; new unresolved scopes stay explicit.
+
+The verified USB image covers the original **v1** package, not this corrected
+**v2** draft. The latter has local disposable-recovery evidence only. Its new
+fingerprint still needs owner financial review and its own encrypted recovery
+coverage before any separately authorized publication. Do not overwrite the v1
+image, reuse its acceptance or treat this correction as live financial authority.
+No further password is needed for this offline correction. Historical backfill,
+broker downloads, live writes, site activation and OneBot remain out of scope.

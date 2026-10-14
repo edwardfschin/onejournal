@@ -14,6 +14,7 @@ import duckdb
 
 from onejournal.activity_financial_preview import (
     load_activity_financial_preview, report_preview, report_preview_csv, trade_preview,
+    CURRENT_CALCULATION_REVISION, LEGACY_CALCULATION_REVISION,
 )
 from onejournal.activity_rehearsal import disposable_journal, prepare_copy, _proof
 from onejournal.brokers.schwab.account_binding import load_schwab_account_private_binding_bytes
@@ -101,6 +102,24 @@ def _safe_name(name):
     raise ValueError('Unexpected preparation file.')
 
 
+def _calculation_revision(report):
+    """Select only a recognized revision from already checksum-verified bytes.
+
+    Original v1 drafts had no metadata calculation marker, including empty
+    reports. New drafts always pin v2 in metadata, not just on available rows.
+    Unknown versions fail rather than trying calculations until one matches.
+    """
+    metadata = report.get('metadata')
+    if not isinstance(metadata,dict):
+        raise ValueError('Preparation calculation metadata is invalid.')
+    if 'calculation_version' not in metadata:
+        return LEGACY_CALCULATION_REVISION
+    version = metadata['calculation_version']
+    if isinstance(version,str) and version.endswith('+'+CURRENT_CALCULATION_REVISION):
+        return CURRENT_CALCULATION_REVISION
+    raise ValueError('Unsupported preparation calculation revision.')
+
+
 def verify_preparation(root):
     """Hash every file and regenerate the draft from the recovered snapshot."""
     root = _private_directory(root,'report preparation')
@@ -134,7 +153,8 @@ def verify_preparation(root):
     if _json_bytes(guard)!=read_private(root/'provenance.json',1024*1024):
         raise ValueError('Preparation source lineage differs.')
     preview = load_activity_financial_preview(db,binding,
-        expected_checkpoint_uid=document['checkpoint_uid'],account_alias=document['account_alias'])
+        expected_checkpoint_uid=document['checkpoint_uid'],account_alias=document['account_alias'],
+        calculation_revision=_calculation_revision(json.loads(read_private(root/'report.json',64*1024*1024))))
     if preview.result_fingerprint!=document['result_fingerprint'] or preview.position_snapshot_utc.isoformat()!=document['position_snapshot_utc']:
         raise ValueError('Recovered financial result differs.')
     for name,expected in _documents(preview).items():

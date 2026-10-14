@@ -287,8 +287,9 @@ publication, financial owner acceptance and worker activation remain separate.
 
 **Draft review/encrypted supplement, 2026-10-14:** read-only comparison with the
 selected predecessor found identical shared allocation values but reduced
-admission under the candidate lifecycle-review gate. The candidate is not
-recommended for live replacement until that difference is reconciled. Review
+admission under the candidate lifecycle-review gate. That v1 candidate is not
+recommended for live replacement. The superseding offline correction below
+resolves the admission defects without publishing a replacement. Review
 does not convert `prepared_pending_owner_acceptance` into accepted authority.
 
 A Mac-native encrypted-draft command now supports retaining the exact package, including
@@ -299,8 +300,25 @@ and verifies read-only USB unlock plus disposable restoration and deterministic
 financial-payload reproduction. Success remains recovery-only: no accepted
 authorization, live write, broker download, runtime change, OneBot change or
 historical backfill. Unchanged access setup need not be recaptured. The native
-local rehearsal passed; real off-device refresh needs private owner password
-entry and a successful USB verification receipt.
+local rehearsal passed. The owner then completed private password entry; the
+USB restoration receipt confirms exact v1 package/financial-payload recovery.
+
+**Superseding offline correction, 2026-10-14:** `activity-preview-v2` corrects
+security-event currency scoping and baseline episode restriction inheritance.
+Security identity uses the validated native currency already used by the released
+lifecycle reconciler, never inferred economics or FX. Restrictions bind affected
+fill identities, including changed episode UIDs, not all cycles of an instrument.
+Unapproved affected/unscoped events, missing opens and mismatches still withhold.
+The released calculators/read models and live database remain unchanged.
+
+New private report metadata pins the full calculation version, including empty
+responses. Original packages without that marker explicitly reproduce v1;
+unrecognized revisions fail closed. This additive private metadata does not
+change the live API. Focused regressions and a new private v2 preparation/copy
+restoration passed; every accepted predecessor item UID/value is retained.
+The verified USB image still covers the original v1 draft. V2 is locally
+rehearsed, unaccepted and not encrypted off-device yet. Financial review, v2
+recovery coverage, guarded publication and worker activation remain separate.
 
 The normal Mac and hosted launchers leave this capability disabled. A separately
 scoped worker integration, account/capture authority and queue recovery setup

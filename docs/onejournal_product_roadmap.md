@@ -235,18 +235,36 @@ download, runtime activation, OneBot or historical-backfill change occurred.
 Financial acceptance, the current guarded publication bridge, encrypted recovery
 refresh and worker activation remain pending. Phase 1 remains 8/12.
 
-**Draft review/encrypted recovery preparation: 2026-10-14.** The concrete draft
+**Draft review/encrypted recovery: 2026-10-14.** The original v1 draft
 was compared read-only with its selected accepted predecessor. Shared admitted
 values agree, but candidate lifecycle gates withhold previously accepted
 allocations; it is not recommended for live replacement until the admission
 difference is reconciled. A private value-free review receipt pins this finding.
 The encrypted-draft command can protect the unchanged package without
 restarting the live site or replacing existing recovery images. Focused guards
-and a native encrypted disposable round trip passed. Real USB refresh awaits
-private owner password entry and the off-device verification receipt. No live
+and a native encrypted disposable round trip passed. The owner completed private
+password entry; the USB receipt confirms exact v1 draft restoration. No live
 publication, broker download, OneBot or historical-backfill work is included.
 Financial acceptance/publication and worker activation remain pending; Phase 1
 remains 8/12.
+
+**Offline admission correction: 2026-10-14.** Two isolated-preview defects were
+reproduced and corrected: blank security-leg currency no longer makes a known
+instrument event globally unscoped, and a later unresolved episode no longer
+blocks an earlier independent close. V2 uses the validated native currency and
+inherits baseline restrictions through affected fill identities, even when
+the episode UID changes. It does not infer lifecycle approval or monetary data.
+Real unresolved scopes remain withheld. Released calculators and live state are
+unchanged. All accepted predecessor item identities and exact values survive
+the new private preparation and disposable restoration.
+
+New report metadata explicitly identifies the calculation revision; recovery
+preserves original v1 payloads and rejects unknown revisions. Focused guards,
+old-package reproduction and new v2 copy recovery passed. The original v1 draft
+has verified USB coverage; the separate v2 draft is locally rehearsed only.
+V2 financial owner review, its encrypted recovery coverage, the guarded live
+publication bridge and worker activation remain pending. No broker download,
+OneBot or historical-backfill work occurred. Phase 1 remains 8/12.
 
 This tracker is the authoritative Phase 1 completion record. Update the row and
 evidence whenever a package changes state. A broader PNL, UXJ, WEB, or OPS item

@@ -2,11 +2,22 @@ from dataclasses import replace
 from decimal import Decimal
 import unittest
 
-from onejournal.activity_report_preparation import _validate_draft
+from onejournal.activity_report_preparation import _validate_draft,_calculation_revision
+from onejournal.activity_financial_preview import (
+    CURRENT_CALCULATION_REVISION,LEGACY_CALCULATION_REVISION,
+)
 import test_activity_financial_preview as financial_fixture
 
 
 class ReportPreparationGuardTests(unittest.TestCase):
+    def test_recovery_dispatch_preserves_legacy_and_requires_known_new_marker(self):
+        self.assertEqual(_calculation_revision({'metadata':{}}),LEGACY_CALCULATION_REVISION)
+        self.assertEqual(_calculation_revision({'metadata':{
+            'calculation_version':'fifo+'+CURRENT_CALCULATION_REVISION}}),CURRENT_CALCULATION_REVISION)
+        for metadata in (None,{'calculation_version':None},{'calculation_version':'unknown'}):
+            with self.assertRaises(ValueError):
+                _calculation_revision({'metadata':metadata})
+
     def test_release_precision_and_identity_checks_do_not_require_fake_acceptance(self):
         fixture = financial_fixture.ActivityFinancialPreviewTests()
         fixture.setUp()
