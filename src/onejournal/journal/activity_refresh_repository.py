@@ -55,6 +55,11 @@ def _ledger(con, baseline, binding):
         import_sequence, acquisition_run_uid, artifact_json
         FROM incremental_activity_imports WHERE source_broker='schwab'
         AND source_account_id=? ORDER BY import_sequence''', [binding.source_account_id]).fetchall()
+    if not rows:
+        # An empty additive ledger must preserve the accepted baseline exactly.
+        # Legacy observation variants are reconciled only when an increment
+        # actually compares identities; a schema-only rehearsal adds no cursor.
+        return [], {}, baseline.cutoff
     previous = ''
     cutoff = baseline.assembly.snapshot_cutoff_utc
     records = {name: [] for name in _FAMILIES}

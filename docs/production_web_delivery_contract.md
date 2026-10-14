@@ -198,8 +198,54 @@ only that copy, appends/replays, verifies existing relation content and removes
 the copy. Source WAL/lock conflicts stop without checkpoint or restart. Existing
 reports, reviews, history and financial materializations remain untouched.
 These records are imported **activity evidence**, not an updated Trades/P&L read
-model or report release. Guarded financial projection/publication, recovery and
-worker integration remain separate. No hosted schema or live migration changes.
+model or report release. Offline financial projection is connected below;
+guarded publication, recovery and worker integration remain separate.
+No hosted schema or live migration changes.
+
+**Offline financial reporting, 2026-10-14:** an isolated activity adapter now
+reads the validated original assembly plus the retained incremental ledger at
+one explicitly pinned checkpoint. It calls the existing episode, execution-cash
+reconciliation, FIFO/lifecycle and reporting functions without changing their
+released implementations or inventing a new complete position snapshot.
+The adapter emits private candidate Trades response data and realized-P&L
+JSON/CSV rows; it does not activate history, create an accepted reporting release,
+write P&L or bind a website route.
+
+Every candidate execution must reconcile to one exact transaction net cash
+amount, including commissions and fees. Missing or inconsistent source net cash
+stops the candidate; it is never inferred from the calculated amount. Only fills
+at or before the confirmed checkpoint are admitted. Stable duplicates do not
+increase trade counts. Exact decimal values are preserved rather than rounded
+to the legacy persisted projection scale. Dates use the established New York
+reporting convention while source/checkpoint instants remain UTC.
+
+The adapter retains baseline scope restrictions and existing lifecycle states.
+Missing opening history and unresolved lifecycle evidence remain explicit
+omissions. Approved lifecycle instructions use the existing FIFO allocator and
+must link to retained source-event legs; raw description hints grant no P&L
+authority. Fully settled approved option episodes can close; unresolved events
+are exposed even when no captured trade can be associated with them. A later
+unresolved event does not erase a previously completed, independent round trip.
+Open trades after the old position cutoff remain reconciliation-pending until
+fresh position evidence arrives. Unrealized and complete portfolio totals are
+not recalculated from that older snapshot.
+
+The offline reporting filter reuses the existing date/account/symbol selection
+and omission rules. Its metadata explicitly identifies a candidate and sets
+`owner_accepted: false`; JSON/CSV values and counts agree. Trades data is checked
+against the released response models, with stored review status retained for
+unchanged episode identities. This financial adapter does not relocate journal
+entries or silently reassign notes to changed episode identities. Existing source
+records, journal prose, accepted releases and read models stay intact.
+
+The installed `onejournal-activity-financial-preview` command rehearses on its
+own byte-verified disposable copy and prints only status/quality/counts. All
+prior table/view contents and original bytes are checked; the temporary copy is
+removed. Both the verified synthetic increment-to-report path and the current
+private-journal copy passed. An empty migration-0030 ledger now preserves the
+accepted baseline without indexing legacy order-status observation variants.
+Such variants remain subject to the incremental intake's source-review rules;
+the financial adapter calculates from transaction fills, not order observations.
 
 The normal Mac and hosted launchers leave this capability disabled. A separately
 scoped worker integration, account/capture authority and queue recovery setup

@@ -1332,9 +1332,59 @@ No real capture was fetched or appended; no live migration, report or service
 was changed. The private-copy check proves migration preservation; the synthetic
 check proves the append state machine, not acceptance of new real financial data.
 
-Next: financial projection/reconciliation of the retained activity into the
-existing journal/report release flow, then recovery and separately scoped
-worker integration. Activity evidence is not yet displayed as new Trades/P&L.
+The offline financial projection below connects this retained activity to the
+existing calculation/reporting types. Recovery, guarded release publication and
+separately scoped worker integration remain outstanding.
+Activity evidence is not yet displayed by the running website as new Trades/P&L.
 Historical backfill and OneBot remain separate. Rollback for this preparation is
 the previous code release; rehearsal copies are discarded, originals retained.
 Migration 0030 has not been applied live or added to the hosted PostgreSQL schema.
+
+#### Offline Trades/P&L financial rehearsal — 2026-10-14
+
+The installed `onejournal-activity-financial-preview` command (source equivalent
+`python -m onejournal.activity_financial_preview`) requires `--db`,
+`--account-binding`, `--expected-checkpoint-uid` and `--account-alias`.
+Use the exact retained import/checkpoint UID; when no increment exists, use the
+active assembly fingerprint. The account alias must match existing released
+identity where present; `Primary` remains the approved private account name.
+Keep these inputs private, outside Git and browser parameters.
+
+The source database is opened read-only under the existing WAL/lock rules. The
+command creates a verified disposable copy, applies pending schema only there,
+loads the exact checkpoint, builds trade episodes/executions and bounded realized
+items/omissions, validates the existing Trades response models and JSON/CSV
+parity, checks all copied relations for unintended writes, then removes the copy.
+No provider call, live migration, history activation, financial persistence,
+report authorization or service restart occurs. There is no live-write switch.
+
+Output is a value-free status/quality/count summary. Exit 0 means the offline
+pipeline completed, including explicit incomplete/reconciliation-pending states;
+it is not owner acceptance of financial figures. Exit 1 means the candidate
+stopped. Missing/mismatched transaction net cash, stale checkpoint, conflicting
+source records or invalid lifecycle links are not converted into zeros or hidden.
+Private candidate objects and reporting payloads remain in memory; this command
+does not export holdings, journal notes, account identifiers or P&L into logs.
+
+The candidate reuses the established FIFO, lifecycle, fee and execution-cash
+rules. Repeated observations never become extra fills. Opening history remains
+required; approved terminal instructions must bind actual retained event legs.
+Earlier independent closed trades remain reportable when a later event needs
+review. Any unresolved event without a matched captured trade is still exposed
+as an omission. New open positions require a fresh position snapshot before
+financial reconciliation; old snapshot quantities/prices do not become current
+portfolio or unrealized totals. The current accepted release remains intact.
+
+Focused tests cover confirmed close/fees, exact decimal precision, missing opens,
+cash mismatch, duplicate/post-checkpoint evidence, two trade cycles, new open
+position withholding, approved expiration and broken source-leg links,
+unreviewed events, time-bounded omissions, checkpoint mismatch, typed Trades and
+JSON/CSV parity. The verified synthetic ledger and real private-journal copy
+rehearsals passed with unchanged source bytes and relations. The real-copy run
+uses saved accepted evidence; it does not prove acceptance of fresh broker data.
+
+Next: bind the candidate to the guarded report-release preparation flow and
+include retained activity/raw bundles/checkpoints in recovery before worker
+activation. Existing order-observation variants may require source review at
+incremental intake; the reporting adapter does not invent a latest-order policy.
+Historical backfill, OneBot and hosted schema work remain outside this rehearsal.

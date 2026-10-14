@@ -207,6 +207,20 @@ OneBot operation, history processing or financial report activation occurred.
 Financial projection/publication, recovery and worker integration remain pending;
 Phase 1 remains 8/12, with no expanded operating acceptance.
 
+**Offline activity reporting: 2026-10-14.** An isolated adapter connects retained
+activity to the existing trade grouping, transaction-net-cash reconciliation,
+FIFO/lifecycle allocations and report row/omission types. Typed Trades payloads
+and exact JSON/CSV realized values are rehearsed without changing released
+calculators or activating a history/report. Missing opening evidence, unapproved
+events and stale open-position reconciliation stay explicit. Approved option
+settlement is supported with retained source-leg checks. The synthetic complete
+ledger-to-report path and private-journal-copy rehearsal passed; original bytes
+and table/view content were preserved and temporary copies removed. The empty
+ledger reader was corrected to preserve accepted baseline observations.
+Financial release preparation/publication, recovery and worker integration
+remain pending. OneBot and historical backfill are unchanged; Phase 1 remains
+8/12 and no fresh financial or production acceptance is inferred.
+
 This tracker is the authoritative Phase 1 completion record. Update the row and
 evidence whenever a package changes state. A broader PNL, UXJ, WEB, or OPS item
 is not complete merely because its required Phase 1 slice is complete.

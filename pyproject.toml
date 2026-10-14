@@ -32,6 +32,7 @@ onejournal-mac-site = "onejournal.mac_static_site:main"
 onejournal-hosted-site = "onejournal.hosted_site:main"
 onejournal-refresh-offline = "onejournal.refresh_intake:main"
 onejournal-refresh-activity = "onejournal.refresh_activity:main"
+onejournal-activity-financial-preview = "onejournal.activity_financial_preview:main"
 
 [project.optional-dependencies]
 security = ["webauthn>=3.0.1,<4"]

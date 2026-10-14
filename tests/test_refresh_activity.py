@@ -120,6 +120,9 @@ class ActivityRefreshTests(unittest.TestCase):
             capture.setUp()
         order = capture.order_body.replace(b'2026-08-31', b'2026-09-04')
         transaction = capture.transaction_body.replace(b'2026-08-31', b'2026-09-04')
+        document = json.loads(transaction)
+        document[0]['netAmount'] = '-1051.30'
+        transaction = capture_fixture.canonical_json_bytes(document)
         requested = datetime(2026, 9, 7, 14, tzinfo=UTC)
         requests = []
         for old, body in zip(capture.manifest.requests, (order, transaction)):
@@ -180,6 +183,9 @@ class ActivityRefreshTests(unittest.TestCase):
             append_activity_copy(db=history.db_path, **kwargs)
         with disposable_journal(history.db_path) as target:
             prepare_copy(target)
+            # An empty new ledger cannot reinterpret old accepted observations.
+            with patch('onejournal.refresh_activity._index',side_effect=AssertionError('No increment to compare')):
+                self.assertEqual(confirmed_import(target,self.binding).cutoff,CUTOFF)
             from onejournal.refresh_activity import _confirmed_import
             calls = 0
             def fail_readback(con, binding):
@@ -203,6 +209,25 @@ class ActivityRefreshTests(unittest.TestCase):
             latest = confirmed_import(target, self.binding)
             self.assertEqual(latest.cutoff, requested)  # NOT requested date's future midnight.
             self.assertEqual(len(latest.appended_records['fills']), 1)
+            from onejournal.activity_financial_preview import load_activity_financial_preview, rehearse_financial_preview
+            with patch('socket.socket.connect', side_effect=AssertionError('Network forbidden')):
+                financial = load_activity_financial_preview(target,self.binding,
+                    expected_checkpoint_uid=saved['import_uid'],account_alias='Primary')
+                self.assertEqual(len(financial.executions),2)
+                financial_result = rehearse_financial_preview(target,self.binding,
+                    expected_checkpoint_uid=saved['import_uid'],account_alias='Primary')
+                self.assertEqual(financial_result['status'],'offline_financial_rehearsal_passed')
+                self.assertFalse(financial_result['financial_publication_authorized'])
+                from onejournal.activity_financial_preview import main as financial_main
+                output = StringIO()
+                with redirect_stdout(output):
+                    code = financial_main(['--db',str(target),'--account-binding',str(root/'binding.json'),
+                        '--expected-checkpoint-uid',saved['import_uid'],'--account-alias','Primary'])
+                self.assertEqual(code,0,output.getvalue())
+                self.assertNotIn(self.binding.source_account_id,output.getvalue())
+                self.assertNotIn(self.binding.provider_account_number,output.getvalue())
+            with self.assertRaisesRegex(ValueError,'checkpoint'):
+                load_activity_financial_preview(target,self.binding,expected_checkpoint_uid='stale',account_alias='Primary')
             # Same source identities, later confirmed coverage: no duplicated records.
             second_plan = activity_plan(latest, self.binding, asof=date(2026,9,8), overlap_days=5)
             later_requests = tuple(replace(r, window_end_date=date(2026,9,8),
