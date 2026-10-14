@@ -320,6 +320,20 @@ The verified USB image still covers the original v1 draft. V2 is locally
 rehearsed, unaccepted and not encrypted off-device yet. Financial review, v2
 recovery coverage, guarded publication and worker activation remain separate.
 
+**Additional-result review/recovery, 2026-10-14:** the exact corrected draft was
+reviewed against the selected accepted predecessor. All existing item identities
+and decimal values remain; each additional ordinary-fill allocation has confirmed
+opening/closing lineage, matching scope, independent gross/net/cost arithmetic,
+transaction cash reconciliation and CSV/version parity. Remaining gaps stay
+withheld. A private technical-review receipt pins the package and additional
+lineage; no financial owner acceptance or report authorization is created.
+The unchanged encrypted-backup command created a new v2 image, leaving prior
+images intact. Native Terminal password entry and matching USB restoration
+receipt confirm exact corrected-package/payload recovery; v2 off-device coverage
+is now complete, superseding the preceding pending state. This bounded
+review/recovery is not new feature work,
+historical backfill, broker access, publication or worker activation.
+
 The normal Mac and hosted launchers leave this capability disabled. A separately
 scoped worker integration, account/capture authority and queue recovery setup
 are needed before activation. Reloading saved data remains distinct from

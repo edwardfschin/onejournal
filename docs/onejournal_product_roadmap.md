@@ -266,6 +266,21 @@ V2 financial owner review, its encrypted recovery coverage, the guarded live
 publication bridge and worker activation remain pending. No broker download,
 OneBot or historical-backfill work occurred. Phase 1 remains 8/12.
 
+**Additional-result review/recovery: 2026-10-14.** Source review of the corrected
+draft's additions passed: exact open/close lineage and account/instrument/currency
+scope, independent decimal P&L and proportional cost arithmetic, confirmed
+transaction cash and export/version parity. Every accepted predecessor item UID
+and value remains unchanged. Unresolved evidence stays withheld. This is technical
+review, not financial owner acceptance. The existing recovery tool created one
+new corrected-draft USB image; earlier images are preserved. Native Terminal
+password entry and the matching USB receipt confirm exact corrected-package
+restoration. V2 encrypted off-device coverage is complete, superseding the prior
+recovery-pending state.
+Drift check keeps work inside the approved offline refresh review/recovery scope,
+without new feature work, broad tests, live publication, broker downloads, OneBot
+or historical backfill. Financial owner acceptance/publication and worker
+activation remain separate. Phase 1 remains 8/12.
+
 This tracker is the authoritative Phase 1 completion record. Update the row and
 evidence whenever a package changes state. A broader PNL, UXJ, WEB, or OPS item
 is not complete merely because its required Phase 1 slice is complete.

@@ -1552,3 +1552,33 @@ coverage before any separately authorized publication. Do not overwrite the v1
 image, reuse its acceptance or treat this correction as live financial authority.
 No further password is needed for this offline correction. Historical backfill,
 broker downloads, live writes, site activation and OneBot remain out of scope.
+
+#### Additional-result source review and corrected-draft backup — 2026-10-14
+
+The separate corrected draft's additions were reviewed against the exact accepted
+predecessor, not against an inferred latest release. Every predecessor item UID
+and decimal value remains unchanged. Each additional result has distinct
+confirmed opening/closing fill lineage within the pinned checkpoint, matching
+account/instrument/currency scope, supported direction and multiplier, and a
+valid matched quantity. Independent decimal arithmetic reproduces gross P&L,
+proportional opening/closing commissions and fees, and net realized P&L. Relevant
+executions match retained Schwab transaction cash; export values and calculation
+versions agree. Source snapshot bytes are unchanged. Unresolved entries remain
+omitted, not replaced with estimated or zero values. This is technical review,
+not financial owner acceptance, a full-history claim or publication authority.
+
+The private review receipt binds the exact corrected-package and additional-fill
+lineage fingerprints. The package itself remains unchanged and unaccepted.
+The existing backup tool created a **new corrected-draft image** and success
+receipt; the original v1 image and all earlier images are preserved. The owner
+entered the image password privately in native Terminal. The USB copy unlocked
+read-only, restored every exact file and reproduced report/CSV/Trades/omissions.
+Its receipt matches the reviewed v2 package fingerprint and supplies no
+publication authority. This supersedes the preceding v2 recovery-pending state.
+
+Drift check: this completes only the already approved offline incremental-refresh
+review/recovery slice. No new feature/framework, broad test campaign, broker
+download, live data/write/publication, site restart, OneBot work or historical
+backfill is needed. The existing recovery tool is reused without code changes.
+The formal Phase 1 count remains 8/12; worker activation and any live release
+require their own explicit scope, not inference from this review or backup.
