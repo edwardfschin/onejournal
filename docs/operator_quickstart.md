@@ -1937,7 +1937,18 @@ This completes the approved bounded report write/Mac activation, not hosted
 production acceptance. OneBot and historical backfill were untouched. The verified
 corrected image is the pre-write rollback/recovery point; it does not contain
 the newly appended report/activation sidecars or subsequent read audits. A
-post-publication image is due under the agreed manual backup policy; that is
+post-publication image was due at activation under the manual backup policy; that is
 separate from the already completed pre-write restoration proof. Do not add
 generic tests or routine approvals for unchanged release evidence. Phase 1
 remains 8/12.
+
+The subsequent owner-authorized journal/release refresh completed on 2026-10-14.
+The existing backup operator used the active publication configuration and a
+new encrypted USB destination, preserving earlier images. The owner supplied
+successful USB unlock, exact-file, 95-table/view, schema and release-restoration
+validation output; independent metadata confirmed encryption. No password was
+accessed, restoration repeated, service restarted or live state changed.
+This closes the post-publication journal/release image requirement only; it
+does not add all activation receipts or current security/raw-evidence coverage.
+See `docs/mac_journal_recovery.md`. The separate VPS remains a proposal with
+no purchase, deployment, transfer or hosted acceptance; Phase 1 remains 8/12.

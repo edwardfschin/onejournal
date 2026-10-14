@@ -390,8 +390,8 @@ value-free report-read audit rows. Private receipts record the release identity,
 fingerprint, target/backup/configuration and owner decisions; previous config/
 shortcut, reports and images remain rollback evidence. No broker requests,
 OneBot or historical-backfill changes occurred. Post-restart owner sign-in was
-not performed by the agent. The post-publication encrypted image remains due
-under the agreed manual policy; the corrected verified pre-write image remains
+not performed by the agent. At activation, the post-publication encrypted image
+was still due under the manual policy; the corrected verified pre-write image remains
 the rollback point. This closes this bounded P1-08 maintenance release, not the
 remaining production-target P1-09 through P1-12 acceptance. Phase 1 remains 8/12.
 
@@ -405,6 +405,15 @@ temporary-copy migration command is not a live cutover tool, and encrypted
 hosted backups do not yet upload off-server. These gaps remain explicit rather
 than inferred complete. No unchanged Mac suite is repeated. History and broker
 refresh activation remain separate; the formal count remains 8/12.
+
+**Post-publication backup refreshed: 2026-10-14.** The owner supplied the
+successful encrypted USB journal backup receipt using the active publication
+configuration: exact files, all 95 tables/views, schema and release restoration
+validation passed. Independent read-only metadata confirms the new image is
+encrypted; the successful restoration was not repeated. Earlier images remain
+recovery evidence. This closes the due manual journal/release refresh, not
+hosted recovery or Phase 1 completion; OneBot, live services and historical
+backfill are unchanged. See `docs/mac_journal_recovery.md` for coverage limits.
 
 This tracker is the authoritative Phase 1 completion record. Update the row and
 evidence whenever a package changes state. A broader PNL, UXJ, WEB, or OPS item

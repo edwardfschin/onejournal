@@ -215,3 +215,23 @@ not a guarantee of future recovery time, owner-hardware re-enrollment, another
 Mac/host recovery or Phase 1 production completion. Detailed identity/timing
 and acceptance receipts remain private. No new backup image or repeated native
 rehearsal is needed for this unchanged state.
+
+## Owner-verified post-publication journal image: 2026-10-14
+
+After the approved corrected report publication/Mac activation, the owner ran
+the existing `backup_mac_journal.py create` with the active publication
+configuration, not the older default. The owner supplied its successful receipt:
+USB unlock, exact files, **95 tables/views**, schema and exact-release restoration
+validation passed, with no live write, checkpoint or service restart. A read-only
+metadata check independently confirmed the new owner-private image exists and
+is encrypted. The successful restoration was not repeated.
+
+This completes the manual post-publication journal/release backup refresh,
+including the newly persisted report, active configuration and referenced
+financial authorizations. Earlier pre-write, draft, access and evidence/audit
+images remain separate recovery evidence. The journal image does not include
+all activation receipts, raw source files or current security-store state;
+do not describe it as a complete hosted/disaster-recovery backup. Password
+custody stays with the owner, independently of the USB. OneBot, historical
+backfill and live services were unchanged by this backup. Separate-VPS setup
+is prepared only; Phase 1 remains 8/12.
