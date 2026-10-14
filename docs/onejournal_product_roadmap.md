@@ -395,6 +395,17 @@ under the agreed manual policy; the corrected verified pre-write image remains
 the rollback point. This closes this bounded P1-08 maintenance release, not the
 remaining production-target P1-09 through P1-12 acceptance. Phase 1 remains 8/12.
 
+**Separate-VPS handoff prepared: 2026-10-14.** The owner approved the
+post-publication Mac backup refresh and local setup preparation with commit/push.
+The operator quickstart now names a dated server/cost/OS recommendation and the
+finite synthetic-target, guarded real cutover, off-server recovery and final
+quality/acceptance sequence. Server selection/purchase and target activation
+remain unapproved; no OneJournal operation on one-prod is planned. The existing
+temporary-copy migration command is not a live cutover tool, and encrypted
+hosted backups do not yet upload off-server. These gaps remain explicit rather
+than inferred complete. No unchanged Mac suite is repeated. History and broker
+refresh activation remain separate; the formal count remains 8/12.
+
 This tracker is the authoritative Phase 1 completion record. Update the row and
 evidence whenever a package changes state. A broader PNL, UXJ, WEB, or OPS item
 is not complete merely because its required Phase 1 slice is complete.

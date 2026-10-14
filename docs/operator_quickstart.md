@@ -1171,6 +1171,82 @@ backup set before promising full recovery; historical backfill stays separate.
 The already tested Mac recovery remains accepted. Actual off-server transfer,
 missed-job delivery and fresh-target recovery need one bounded hosted check.
 
+### Separate VPS handoff proposal — 2026-10-14
+
+The owner approved refreshing the published Mac journal backup and preparing
+the separate OneJournal VPS setup, including commit/push. Preparation does not
+authorize buying a server, remote access, DNS changes, deployment, private-state
+transfer or activation. OneBot's `one-prod`, credentials and services and the
+separate historical-backfill track remain untouched.
+
+**Recommended starting server, not an accepted hosting selection:** DigitalOcean
+Basic Regular in Singapore (SGP1), 2 shared vCPUs, 4 GiB RAM and 80 GiB SSD,
+with a Debian 13 x64 image. The listed server price checked on 2026-10-14 is
+US$24/month, excluding taxes, optional provider backups, off-server storage and
+usage beyond included allowances. Verify price and regional capacity at purchase.
+The 2 GiB alternative is cheaper but leaves no headroom outside the prepared
+2 GiB combined application/backup cap; 4 GiB is the conservative initial
+recommendation, not measured target capacity or an uptime promise.
+Use a separate OneJournal provider project and a clearly separate server name,
+proposed `onejournal-prod`; never copy the `one-prod` alias or its access setup.
+
+Sources: [DigitalOcean pricing](https://www.digitalocean.com/pricing/droplets),
+[available images](https://docs.digitalocean.com/products/droplets/details/images/),
+[regional availability](https://docs.digitalocean.com/products/droplets/details/availability/),
+and [Debian 13 release](https://www.debian.org/News/2025/20250809).
+Debian 13 supplies Python 3.13 and PostgreSQL 17. Python 3.13 is inside the
+project's declared range and avoids adding an alternate interpreter repository.
+Actual Linux dependency installation, PostgreSQL compatibility and Caddy/service
+validation must still pass on the new target. Do not copy a Mac virtual environment.
+Keep the approved static/Python/PostgreSQL topology; no Docker, Kubernetes,
+managed database or additional application server is required for this proposal.
+
+The finite execution sequence is:
+
+1. Owner selects the server/cost and supplies access privately. Record the new
+   server identity, IP and SSH fingerprint independently; none exists in this
+   preparation. Review target capacity and the provisional resource caps.
+2. One explicitly bounded **synthetic-only setup batch** covers separate Linux
+   identities/roles, a dedicated PostgreSQL cluster, public-package installation,
+   firewall/TLS and only the `journal.onelumiq.com` DNS record. Keep DNS at its
+   existing provider; no Cloudflare/domain transfer is required. Propose SSH
+   restricted to approved administrator sources, web ports 80/443 only and no
+   public PostgreSQL/API port; validate both IPv4 and IPv6 before exposure.
+   Protect the Mac site and leave root-domain/other-subdomain records unchanged.
+   Provision fresh hosted access; never transfer Mac passkey/security state.
+3. Verify the deployed synthetic owner-access/logout/protected-route journey,
+   exact release hashes and code rollback once. Reuse unchanged Mac and offline
+   reconciliation evidence; do not repeat the complete local test programme.
+4. Before any **real-state cutover**, implement and review a guarded target-bound
+   import/activation command. The existing `rehearse_hosted_migration.py` permits
+   temporary local targets only and is not a live migration tool; do not relax
+   its guards to deploy. Freeze and back up the then-current Mac source, compare
+   every relation and exact accepted Portfolio/Reports/CSV on the approved target,
+   preserve source revisions, and choose one production writer. Do not include
+   history expansion, broker capture or two-way database synchronization.
+5. Settle the existing combined backup/retention/incident proposal above with
+   the actual destination, costs and recovery objectives. Implement its narrow
+   encrypted-image upload and remote verification: the existing hosted backup
+   command does not upload. Prove an independently held off-server copy and one
+   fresh-target restore before accepting hosted operation. Keep decryption
+   passwords outside the server/bucket; do not use OneBot backup credentials.
+6. Complete only uncovered host/network/physical-device quality journeys and
+   obtain one dated final owner acceptance for the exact private production
+   release. This is the P1-09 through P1-12 exit, not a new feature backlog.
+
+Use an immutable public package built from the chosen clean committed release
+and its matching locks. An older prepared package is not automatically the new
+release. Keep the six unpatched development-generator-chain findings explicit;
+Node/generators are absent from the deployed static package. Perform a fresh
+candidate-specific security review at exposure, not an unchanged daily audit.
+
+Rollback keeps the accepted Mac release and its independently verified backups
+available, plus the previous hosted code/configuration. Never overwrite a live
+journal or restore old passkey counters as a code-rollback shortcut. No server,
+DNS record, service, production policy or private transfer is changed by this
+handoff. Phase 1 remains 8/12. The strategic scope and maturity claims are
+unchanged; no new framework or hosting ADR is implied by a recommendation.
+
 ### Website refresh preparation — 2026-10-13
 
 The owner selected the existing OneBot-owned Schwab connection and deferred
