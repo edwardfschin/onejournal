@@ -281,6 +281,25 @@ without new feature work, broad tests, live publication, broker downloads, OneBo
 or historical backfill. Financial owner acceptance/publication and worker
 activation remain separate. Phase 1 remains 8/12.
 
+**Owner-accepted activity/publication preparation: 2026-10-14.** The owner
+accepted the exact corrected realized draft, including explicit withheld entries,
+and authorized guarded preparation only. Private acceptance pins both draft
+and result fingerprints/counts without changing the verified encrypted source.
+The accepted realized branch was bridged into an unpublished report draft on
+a disposable copy, retaining existing current-valuation authority without a
+refresh. Exact readback/replay, previous-state preservation, partial reporting
+and runtime-authorization refusal passed, including the actual saved snapshot.
+
+The new private checksummed plan has no live target or publication/activation
+authority. The report stays draft; no runtime report authorization is created,
+no live-write command enabled and no legacy writer changed. Live target/schema
+binding, fresh verified live backup, guarded live publication and separate
+activation remain pending. Acceptance/preparation sidecars remain local; the
+unchanged corrected source draft already has verified USB coverage. OneBot,
+historical backfill, broker downloads and live data/runtime remain untouched.
+This is bounded financial acceptance/preparation, not Phase 1 or hosted
+production acceptance. Phase 1 remains 8/12.
+
 This tracker is the authoritative Phase 1 completion record. Update the row and
 evidence whenever a package changes state. A broader PNL, UXJ, WEB, or OPS item
 is not complete merely because its required Phase 1 slice is complete.

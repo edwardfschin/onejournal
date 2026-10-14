@@ -1582,3 +1582,58 @@ download, live data/write/publication, site restart, OneBot work or historical
 backfill is needed. The existing recovery tool is reused without code changes.
 The formal Phase 1 count remains 8/12; worker activation and any live release
 require their own explicit scope, not inference from this review or backup.
+
+#### Accepted activity result: guarded publication preparation — 2026-10-14
+
+The owner explicitly accepted the exact corrected realized-result draft and
+its withheld entries, approving publication **preparation only**. The private
+`onejournal.activity-result-acceptance.v1` sidecar records that decision, its
+UTC recording time, unique acceptance identity, exact package/result fingerprints
+and counts, with `publication_authorized: false`. It is a trusted operator record
+of the owner's chat decision, never an instruction extracted from broker data
+or a public web field. The original draft manifest and encrypted image stay
+byte-identical; acceptance is an external, explicitly pinned state transition.
+
+`onejournal-activity-publication-preparation` requires `--package`, `--acceptance`,
+`--recovery-receipt` and `--output-dir`. For a source checkout use
+`PYTHONPATH=src python -m onejournal.activity_publication_preparation`; an installed
+package exposes the named command. All inputs/outputs are private and outside
+Git. A new output directory under an existing 0700 parent is required. Existing
+outputs are refused, files use 0600 and the completion plan is written last.
+There is no `--persist`, live-database argument, publication or service option.
+
+Preparation verifies the immutable draft, exact accepted fingerprint/counts and
+matching corrected-draft encrypted-recovery receipt. It rebuilds the accepted
+realized result from the snapshot and pins the exact predecessor report/history
+checkpoint. The report draft uses the existing `ReportingRelease` model/store;
+the realized branch carries this genuine new owner acceptance. The predecessor's
+already accepted current-valuation identity/authority is retained unchanged and
+validated against its stored valuation, **not refreshed or claimed current**.
+The plan identifies this retained-current mode explicitly. Any later selection
+of a different valuation requires a newly bound plan and its exact authority.
+
+Only a new temporary database copy receives the report draft. Rehearsal proves
+exact readback, idempotent repeat, unchanged previous report/audit rows and all
+other relations, correct partial reporting, and runtime-authorization refusal.
+The copy is removed and source bytes remain unchanged. Financial-result
+acceptance does not manufacture report publication authority: the report still
+has `release_status: draft`, null report-level acceptance and no
+`report-release-authorization.json`. Normal launchers cannot activate it.
+
+The separate private output contains the accepted-result sidecar, matching
+recovery receipt, typed `prepared-report-draft.json` and checksummed
+`publication-plan.json`. It pins the exact snapshot/result/checkpoint/predecessor
+and rehearsal evidence. `live_target_bound`, `publication_authorized` and
+`runtime_activation_authorized` are false. Later live work still requires exact
+live target/schema binding, a fresh verified live backup and explicit publication
+authority; runtime activation remains separately scoped. The existing legacy
+live-persistence operator is unchanged and must not consume this new preparation
+as a compatible package. No new live-write bridge was enabled.
+
+Focused acceptance/scope/authorization and copy-persistence guards pass. Full
+preparation using the actual accepted snapshot also passed, retaining every
+reportable item and omission without changing the encrypted draft, live journal,
+current release, site, OneBot or historical backfill. The acceptance and new
+preparation sidecars are local, not newly encrypted off-device in this step;
+the already verified USB image continues to protect their unchanged source draft.
+No password or broker download is needed for this bounded preparation.

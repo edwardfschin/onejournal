@@ -334,6 +334,24 @@ is now complete, superseding the preceding pending state. This bounded
 review/recovery is not new feature work,
 historical backfill, broker access, publication or worker activation.
 
+**Owner acceptance/publication preparation, 2026-10-14:** the owner explicitly
+accepted the corrected bounded realized draft, authorizing preparation only.
+A private exact-fingerprint/count acceptance sidecar preserves that decision
+without modifying the immutable encrypted package. Copy-only preparation bridges
+the accepted realized result into the existing reporting model/store, retaining
+the selected predecessor's exact current-valuation authority without refreshing
+it. The report remains a draft; no report-level authorization is generated.
+
+Temporary persistence/readback, exact replay, preservation of prior state and
+runtime refusal passed on synthetic and real saved evidence. A checksummed
+private plan pins acceptance, verified recovery, result/checkpoint/snapshot and
+predecessor. It has no bound live target and grants neither publication nor
+activation. There is no live-write CLI option and the legacy live writer is
+unchanged. Exact live target/schema, fresh verified live backup and explicit
+publication authority remain prerequisites; activation stays separately scoped.
+These new local sidecars are not newly backed up off-device. No live data, broker,
+OneBot, history or runtime change is made by this preparation.
+
 The normal Mac and hosted launchers leave this capability disabled. A separately
 scoped worker integration, account/capture authority and queue recovery setup
 are needed before activation. Reloading saved data remains distinct from
