@@ -409,6 +409,25 @@ live persistence with explicit authority, followed by scoped visible activation.
 This is not completion of the remaining hosted production acceptance work.
 Phase 1 remains 8/12; OneBot and historical backfill remain separate.
 
+**Activation qualification, 2026-10-14:** live report persistence/activation was
+approved, but stopped before either action. The actual protected Mac listener
+uses the October 11 financial configuration and October 10 current portfolio
+valuation; the prepared report/live binding had selected the September
+configuration and September 4 current valuation. The same journal bytes cannot
+establish that these two selected authorities are interchangeable. The existing
+preflight/backup/rehearsal proves only its exact supplied configuration, not
+preservation of the actual active website branch. Activation as prepared would
+regress current Portfolio and is not allowed under the stated unchanged-valuation
+scope. The accepted 257/83 realized result remains unchanged.
+
+The recommended focused correction is to preserve the active already accepted
+October current branch and rebuild/bind the report combination, confirming
+matching recovery coverage. Obtain direction before changing the prepared
+predecessor; do not silently rebind or invent new financial acceptance. This is
+a preparation mistake, not added product scope or another generic test campaign.
+No live publication/restart, broker access, OneBot or historical-backfill change
+occurred. Phase 1 remains 8/12.
+
 The normal Mac and hosted launchers leave this capability disabled. A separately
 scoped worker integration, account/capture authority and queue recovery setup
 are needed before activation. Reloading saved data remains distinct from

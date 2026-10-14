@@ -341,6 +341,28 @@ History and OneBot remain excluded. This maintenance preparation does not close
 the remaining production-target P1-09 through P1-12 requirements; Phase 1 remains
 8/12.
 
+**Activation-target mismatch discovered: 2026-10-14.** The owner approved live
+257/83 report persistence and Mac activation, but neither action was executed.
+Inspection of the actual listener and startup shortcut found that the running
+site selects the October 11 report/configuration, retaining a portfolio valuation
+as of October 10. The preparation/binding and fresh image had instead selected
+the older September configuration and its September 4 portfolio valuation.
+Both configurations point to the same journal; unchanged journal bytes do not
+prove that the selected financial authority matches the running website.
+
+The guarded writer/rehearsal and encrypted-image proof remain valid for their
+explicit selected inputs, not for preserving the actual active financial branch.
+Activation as prepared would regress Portfolio and is therefore stopped. The
+accepted 257/83 realized-result decision remains intact. The recommended
+correction is to retain the actually active, already accepted October current
+valuation and reprepare/bind only that report combination, confirming recovery
+coverage for the corrected inputs before using the live approval. Owner direction
+is required because this changes the prepared predecessor/current authority;
+do not silently substitute or rebind. No live database write, restart, new
+publication authority, broker request, OneBot or history change was performed.
+This is a preparation error, not a new product requirement or a generic test
+gate. Phase 1 remains 8/12.
+
 This tracker is the authoritative Phase 1 completion record. Update the row and
 evidence whenever a package changes state. A broader PNL, UXJ, WEB, or OPS item
 is not complete merely because its required Phase 1 slice is complete.

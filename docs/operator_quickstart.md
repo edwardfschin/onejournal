@@ -1779,3 +1779,28 @@ nonzero, including missing authority and lock conflicts. Focused synthetic
 command/repository tests and the actual copy rehearsal passed. No more backup/
 preflight ceremony is queued for unchanged inputs. Actual publication and runtime
 activation remain unapproved; Phase 1 remains 8/12. OneBot and history stay separate.
+
+#### Stop notice: selected preparation differs from active financial configuration
+
+On 2026-10-14, explicit live persistence/activation approval was received but not
+exercised. The actual protected listener and private startup shortcut select the
+October 11 release configuration, whose current portfolio valuation is dated
+October 10. The prepared 257/83 report, its live binding and fresh journal-image
+selection retain the older September configuration/September 4 portfolio branch.
+The journal path and bytes match, but the broker-current and report authorities
+do not. Do not execute/activate this preparation as if it preserved the actual
+running website's current portfolio.
+
+The preflight only proved consistency with its explicitly supplied configuration;
+it did not identify the current listener/shortcut's selected financial authority.
+The transaction rehearsal and backup proof are not invalidated for those supplied
+inputs, but are insufficient for the approved non-regressive activation.
+
+Keep the existing site/configuration and all immutable packages/images unchanged.
+The 257/83 realized financial acceptance remains valid. After owner direction,
+the focused correction should retain the active already accepted October current
+valuation, select its exact predecessor, reprepare/rebind that combination and
+confirm corresponding recovery coverage. Rehearse only the changed combination;
+do not repeat generic tests or broker/history work. Then use the approved bounded
+release scope against the corrected evidence. No live write, stop/restart or
+publication-authority creation occurred when this mismatch was detected.
