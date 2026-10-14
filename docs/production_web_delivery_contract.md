@@ -352,6 +352,24 @@ publication authority remain prerequisites; activation stays separately scoped.
 These new local sidecars are not newly backed up off-device. No live data, broker,
 OneBot, history or runtime change is made by this preparation.
 
+**Read-only live binding/backup, 2026-10-14:** the exact live journal/config and
+selected releases are now bound to the accepted corrected result and publication
+preparation. Actual live schema 0028 and reporting column/precision compatibility
+were verified; the result reproduces unchanged. The disposable-only 0029/0030
+tables are empty and unnecessary for report-only publication, so no live
+migration or history/incremental import is performed.
+
+An immutable private binding sidecar pins all live input hashes, schema/ledger,
+prepared-plan hash and result. It supersedes the original plan's unbound stage
+without modifying that plan or granting publication/activation authority. Stale
+state fails closed. The fresh journal backup reuses established encrypted USB
+restoration and adds exact binding/source/image verification; completion remains
+pending the owner's private password and matching success receipt. Existing
+images and live services are retained. New preparation/acceptance/binding
+sidecars remain local; the image covers the current journal/config/releases.
+Guarded report-only publication and separately scoped activation are still
+unapproved; broker, OneBot and historical-backfill work remain excluded.
+
 The normal Mac and hosted launchers leave this capability disabled. A separately
 scoped worker integration, account/capture authority and queue recovery setup
 are needed before activation. Reloading saved data remains distinct from

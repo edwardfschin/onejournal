@@ -300,6 +300,21 @@ historical backfill, broker downloads and live data/runtime remain untouched.
 This is bounded financial acceptance/preparation, not Phase 1 or hosted
 production acceptance. Phase 1 remains 8/12.
 
+**Read-only live binding/backup: 2026-10-14.** The configured live schema is 0028;
+accepted corrected-result reproduction, existing snapshot records and exact
+reporting precision/columns passed read-only checks. Empty snapshot-only
+0029/0030 tables are not needed for this report-only release and were not
+migrated live. A private immutable binding pins the live target/config/releases,
+schema ledger/inventory, accepted result and prepared plan; changed state is
+rejected. Publication and activation remain unauthorized.
+
+The existing encrypted journal backup path is reused for a fresh bound USB image;
+password entry and matching restored-backup receipt remain pending. Earlier
+images, live data/site, OneBot and historical backfill remain unchanged. New
+sidecars remain local. Guarded live report publication and separately scoped
+activation are still pending, as is broader Phase 1 acceptance. Phase 1 remains
+8/12.
+
 This tracker is the authoritative Phase 1 completion record. Update the row and
 evidence whenever a package changes state. A broader PNL, UXJ, WEB, or OPS item
 is not complete merely because its required Phase 1 slice is complete.

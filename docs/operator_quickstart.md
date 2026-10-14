@@ -1637,3 +1637,54 @@ current release, site, OneBot or historical backfill. The acceptance and new
 preparation sidecars are local, not newly encrypted off-device in this step;
 the already verified USB image continues to protect their unchanged source draft.
 No password or broker download is needed for this bounded preparation.
+
+#### Read-only live-target binding and fresh journal backup — 2026-10-14
+
+The owner authorized read-only target/schema binding and a new verified backup,
+not publication. The configured live journal is at **0028**. Its existing records
+match the reviewed snapshot, and the corrected accepted result reproduces there
+exactly. Reporting columns (including DECIMAL precision) match the rehearsed
+store. Empty 0029 historical-evidence and 0030 incremental-ledger tables exist
+only in the disposable snapshot; neither migration is required for this
+**report-only** release and neither was applied live. Future incremental imports
+are a different operation and still require their own migration/write scope.
+
+`activity_live_binding.bind_live_target` consumes the immutable corrected package,
+checksummed publication preparation, private live web config, an explicitly
+expected schema version and a new owner-private output file. It verifies existing
+release authority, matching accepted financial result, exact prepared report
+bytes and source stability, without opening a writer. The separate
+`onejournal.activity-live-target-binding.v1` receipt pins live database/config/
+release-file paths and hashes, migration ledger, schema inventory, publication
+plan and accepted result. Native migration TIMESTAMP metadata is hashed in its
+storage representation; no timezone is inferred or attached.
+
+The original publication plan remains unchanged. Its initial unbound state is
+superseded by this independently checked binding sidecar, not by editing it or
+the backed-up draft. Both publication and activation authority stay false.
+`verify_bound_target` rejects any changed live file, configuration, release
+authority, schema or ledger. Never silently rebind or substitute another target.
+
+`scripts/web/backup_bound_activity_target.py` requires `--binding`, `--web-config`,
+`--destination` and `--receipt`. It checks the binding before hidden native
+Terminal password entry, then reuses the established Mac journal backup and its
+AES-256 USB restore verification. It never migrates, checkpoints, starts/stops a
+service, accesses a broker or publishes. The destination and receipt must be new;
+earlier images are preserved. After restore verification it checks that the
+bound live state is still unchanged and records binding/live-journal/image hashes
+and relation count. Changed state prevents a valid bound-backup receipt; any
+otherwise verified image is retained rather than overwritten or deleted.
+
+Read-only binding and focused stale-target, precision and native-ledger timestamp
+guards passed. Fresh USB backup completion is pending private password entry and
+the matching `bound_live_journal_backup_verified` receipt. No additional native
+backup rehearsal or broad test campaign is needed; the established image path
+is reused and the actual USB copy will be verified.
+
+This fresh pre-publication image protects the current live journal, web config
+and their exact existing release files. The corrected draft/source evidence is
+already protected by its separate verified image. New acceptance, publication
+and binding sidecars remain local and are not added to this journal image.
+Financial acceptance does not authorize live publication; report-write and
+runtime activation remain pending. The site, OneBot and historical backfill
+stay unchanged; the formal Phase 1 count remains 8/12.
