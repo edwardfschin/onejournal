@@ -285,6 +285,23 @@ to existing encrypted images. This pass verifies private disposable restoration;
 it does not create/refresh a USB image or prove off-device recovery. Guarded live
 publication, financial owner acceptance and worker activation remain separate.
 
+**Draft review/encrypted supplement, 2026-10-14:** read-only comparison with the
+selected predecessor found identical shared allocation values but reduced
+admission under the candidate lifecycle-review gate. The candidate is not
+recommended for live replacement until that difference is reconciled. Review
+does not convert `prepared_pending_owner_acceptance` into accepted authority.
+
+A Mac-native encrypted-draft command now supports retaining the exact package, including
+its disposable journal and selected source evidence, under `package/`. Existing
+recovery images and the live site remain untouched. It reuses the approved
+AES-256/password/mounted-USB controls, never overwrites an existing destination,
+and verifies read-only USB unlock plus disposable restoration and deterministic
+financial-payload reproduction. Success remains recovery-only: no accepted
+authorization, live write, broker download, runtime change, OneBot change or
+historical backfill. Unchanged access setup need not be recaptured. The native
+local rehearsal passed; real off-device refresh needs private owner password
+entry and a successful USB verification receipt.
+
 The normal Mac and hosted launchers leave this capability disabled. A separately
 scoped worker integration, account/capture authority and queue recovery setup
 are needed before activation. Reloading saved data remains distinct from

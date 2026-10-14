@@ -1454,3 +1454,55 @@ encrypted recovery set before a separately authorized live report release and
 worker activation. The existing accepted-report writer still requires genuine
 financial and report acceptance; a general preparation/rehearsal instruction
 does not supply it. No routine approval is needed for checks inside that scope.
+
+#### Draft review and encrypted draft recovery — 2026-10-14
+
+The concrete draft has been reviewed read-only against its exact accepted
+predecessor. Its wider date range and admission gates do not make it a safe
+replacement: some previously accepted allocations are withheld by the candidate's
+lifecycle-review gate. Shared admitted allocation values agree. The private
+review receipt records counts, both date ranges, the exact package fingerprint
+and the traced withholding reason, without changing the preparation manifest or
+creating acceptance. Reconcile the admission difference before considering a
+live replacement; do not silently discard accepted results, weaken the gate or
+expand into historical backfill. The currently published release stays intact.
+
+`onejournal-activity-report-backup` (source equivalent
+`python scripts/web/backup_activity_report.py`) provides `create` and `verify`.
+For creation supply `--package` with the exact verified draft and `--destination`
+with a **new** `.dmg` on the mounted USB. Run in your own Mac Terminal. An optional
+`--receipt` must be a new file under an existing owner-only 0700 parent outside
+Git; it records success, exact file count and package fingerprint, never passwords
+or financial values. Verification uses `--destination` alone. Both modes require
+hidden Terminal password entry; creation asks for confirmation. Keep the unique
+20+ character image password independently of the USB. It is not a website-login
+password. No password, token or passkey belongs in chat, arguments or scripts.
+
+The new image is a **draft supplement**, not a replacement for the existing
+journal/release, access-setup and evidence/audit recovery images. It contains
+`package/` with the complete unchanged preparation folder: disposable journal,
+source evidence, binding, selected predecessor authority and draft payloads.
+It contains no new report authority, passkey/security database, TLS key, broker
+credentials or live activation configuration. Older images are preserved.
+There is no need to stop the live site or re-back up unchanged access setup to
+protect this isolated draft.
+
+The command reuses native AES-256 encrypted Mac disk images. Plaintext staging
+stays in a local owner-private temporary directory; only the encrypted image
+goes to USB. Before capture it checks the package and destination. It verifies
+the populated capture against the unchanged source, reserves a new output
+exclusively, then unlocks the **USB copy** read-only and restores into fresh
+owner-only temporary files. Every file/checkpoint/lineage hash and regenerated
+report/CSV/Trades/omission payload must match. Temporary mounts/copies are removed;
+failure removes only this command's newly reserved unverified image, never an
+older image. A failed receipt write can leave a verified image; inspect rather
+than retrying creation over it.
+
+For recovery, verify/unlock the image privately and retain any files only in a
+new owner-only directory. Never overwrite live files or point a runtime at this
+draft. Successful encrypted restoration is recovery evidence, not financial
+owner acceptance, publication, broker permission or runtime activation.
+
+Focused guards and one native encrypted round trip using the actual private
+package passed. Off-device refresh remains pending until the owner enters the
+real image password and the USB restoration receipt confirms completion.
