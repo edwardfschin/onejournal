@@ -48,7 +48,7 @@ def _binding_hash(binding):
 
 def _ledger(con, baseline, binding):
     """Verify the entire append chain and rebuild its normalized-only overlay."""
-    from onejournal.refresh_activity import _FAMILIES, _index
+    from onejournal.refresh_activity import _FAMILIES, _index, _prior_order_variants
     if not _schema(con):
         return [], {}, baseline.cutoff
     rows = con.execute('''SELECT import_uid, source_broker, source_account_id,
@@ -63,7 +63,8 @@ def _ledger(con, baseline, binding):
     previous = ''
     cutoff = baseline.assembly.snapshot_cutoff_utc
     records = {name: [] for name in _FAMILIES}
-    indexes = {name: _index(next(f.records for f in baseline.assembly.families if f.family == name), identity, observation)
+    indexes = {name: (_prior_order_variants(next(f.records for f in baseline.assembly.families if f.family == name))
+                      if name == 'orders' else _index(next(f.records for f in baseline.assembly.families if f.family == name), identity, observation))
                for name, (identity, observation, _) in _FAMILIES.items()}
     artifacts = []
     for sequence, (uid, broker, account, stored_sequence, run, body) in enumerate(rows, 1):
@@ -152,7 +153,7 @@ def append_activity_copy(*, db, binding, asof, overlap_days, expected_plan_sha25
     original receipt, including when subsequent increments already exist.
     """
     from onejournal.refresh_activity import (
-        _confirmed_import, activity_plan, load_activity_capture, _review_delta, _index, _FAMILIES,
+        _confirmed_import, activity_plan, load_activity_capture, _review_delta, _index, _prior_order_variants, _FAMILIES,
     )
     checked = disposable_target(db)
     acquisition, converted = load_activity_capture(binding=binding, **capture_args)
@@ -191,7 +192,9 @@ def append_activity_copy(*, db, binding, asof, overlap_days, expected_plan_sha25
             families = {f.family: f for f in baseline.assembly.families}
             records = {}
             for name, (identity, observation, attribute) in _FAMILIES.items():
-                before = _index((*families[name].records, *baseline.appended_records.get(name, ())), identity, observation)
+                prior = (*families[name].records, *baseline.appended_records.get(name, ()))
+                before = (_prior_order_variants(prior) if name == 'orders' else
+                          _index(prior, identity, observation))
                 incoming = _index(getattr(converted, attribute), identity, observation)
                 records[name] = [json.loads(incoming[k]) for k in sorted(incoming.keys() - before.keys())]
             sequence = con.execute('''SELECT COALESCE(MAX(import_sequence),0)+1 FROM incremental_activity_imports

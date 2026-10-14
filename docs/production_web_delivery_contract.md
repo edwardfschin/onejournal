@@ -159,7 +159,10 @@ compares stable source identities and canonical content across orders,
 transactions, transaction-derived fills, cash and lifecycle events/legs. Only
 observation lineage is excluded from comparison. Repeated unchanged records are
 skipped; new identities are counted as candidates; changed identities block the
-candidate for source review. Order fills are corroboration, not additional
+candidate for source review. Previously accepted immutable order-status variants
+are compared as a set: an exact known variant is unchanged, while a newly seen
+variant of the same order still blocks. Other conflicting observations remain
+review-required. Order fills are corroboration, not additional
 financial fills. Conflicting observations, account/window mismatch and changed
 active import fail closed. Reconciliation differences and explicit unresolved
 cash/event evidence remain review-required. Absent records never delete earlier

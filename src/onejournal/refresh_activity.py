@@ -137,6 +137,21 @@ def _index(records, identity, observation):
     return indexed
 
 
+def _prior_order_variants(records):
+    """Keep every accepted order-status observation for comparison.
+
+    Historical assemblies can retain several immutable states of one order.
+    A new state from a fresh capture still requires source review; none is
+    selected as the authoritative financial fill.
+    """
+    variants = {}
+    for record in records:
+        indexed = _index((record,), 'order_uid', 'order_observation_uid')
+        for uid, encoded in indexed.items():
+            variants.setdefault(uid, set()).add(encoded)
+    return variants
+
+
 def _review_delta(baseline, converted, plan) -> dict:
     """Value-free candidate summary, never financial acceptance or import.
 
@@ -154,11 +169,13 @@ def _review_delta(baseline, converted, plan) -> dict:
     families = {f.family: f for f in assembly.families}
     counts = {}
     for name, (identity, observation, attribute) in _FAMILIES.items():
-        before = _index((*families[name].records, *baseline.appended_records.get(name, ())), identity, observation)
+        prior = (*families[name].records, *baseline.appended_records.get(name, ()))
+        before = (_prior_order_variants(prior) if name == 'orders' else
+                  {uid: {encoded} for uid, encoded in _index(prior, identity, observation).items()})
         incoming = _index(getattr(converted, attribute), identity, observation)
         counts[name] = dict(new=sum(k not in before for k in incoming),
-                           unchanged=sum(before.get(k) == v for k, v in incoming.items()),
-                           changed=sum(k in before and before[k] != v for k, v in incoming.items()))
+                           unchanged=sum(v in before.get(k, ()) for k, v in incoming.items()),
+                           changed=sum(k in before and v not in before[k] for k, v in incoming.items()))
     unresolved = (not converted.reconciliation.exact or any(
         row.get('evidence_status') == 'review_required'
         for row in (*converted.cash_rows, *converted.lifecycle_event_legs)))

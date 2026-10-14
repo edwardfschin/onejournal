@@ -99,6 +99,24 @@ class ActivityRefreshTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 _review_delta(self.baseline, bad, self.plan())
 
+    def test_accepted_prior_order_status_variants_do_not_hide_new_corrections(self):
+        original = self.window()
+        order_family = next(f for f in self.assembly.families if f.family == 'orders')
+        prior_variant = {**order_family.records[0], 'status': 'WORKING'}
+        families = tuple(replace(f, records=(*f.records, prior_variant)) if f.family == 'orders' else f
+                         for f in self.assembly.families)
+        baseline = replace(self.baseline, assembly=replace(self.assembly, families=families))
+        known = _review_delta(baseline, original, self.plan(baseline))
+        self.assertEqual(known['status'], 'candidate_only')
+        self.assertEqual(known['counts']['orders'], dict(new=0, unchanged=1, changed=0))
+        changed = replace(original, order_records=({**original.order_records[0], 'status': 'CANCELED'},))
+        correction = _review_delta(baseline, changed, self.plan(baseline))
+        self.assertEqual(correction['status'], 'review_required')
+        self.assertEqual(correction['counts']['orders'], dict(new=0, unchanged=0, changed=1))
+        with self.assertRaisesRegex(ValueError, 'Conflicting observations'):
+            _review_delta(baseline, replace(original, order_records=(*original.order_records, *changed.order_records)),
+                          self.plan(baseline))
+
     def test_real_active_import_and_verified_cli_are_read_only(self):
         history = history_fixture.SchwabHistoryRevisionTests()
         history.setUp()
