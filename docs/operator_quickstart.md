@@ -18,6 +18,15 @@ runtime or listener on port 8765 is needed. The approved maintenance publication
 advanced the existing journal to 0028 and selected new exact authorizations.
 Saved passkeys, certificate and security policy are unchanged.
 
+The owner-approved 2026-10-14 report maintenance release is now active through
+the updated private startup shortcut and its exact new configuration. It contains
+257 reportable results and 83 withheld entries, covering 2026-03-05 through
+2026-10-10, while preserving the already accepted October 10 Portfolio valuation
+and broker authority. No new broker evidence was acquired. Do not select the
+older September default configuration or the retained October 11 report config
+as though it were the active report; both are deliberate rollback/reference
+selections. Exact activation paths and fingerprints remain in private receipts.
+
 To start the installed release after stopping its own existing terminal, set
 `OJ_WEB_CONFIG` to the active private configuration recorded in the private
 publication receipts. Do not silently use the earlier authorization config:
@@ -1828,11 +1837,31 @@ unchanged realized items/omissions, with old source bytes unchanged.
 Actual corrected private preparation, copy-only draft storage/readback and
 read-only schema-0028 binding passed. The earlier image contains the same journal
 but old configuration/authorities, so it does not prove restoration of the active
-October configuration. One corrected bound encrypted journal image is required;
-the native owner-private `RunCurrentJournalBackup.command` requests its password
-only in Terminal. Earlier images remain untouched. Completion awaits that
-password and matching verified receipt, not another routine approval. No live
-report write or restart has happened yet. The remaining already-approved actions
-are the guarded write, selection of the new report with the same October broker
-authority/security/TLS/installed runtime, owned Mac restart and bounded endpoint
-verification. Do not add generic test or backup stages for unchanged inputs.
+October configuration. The owner completed the corrected native backup: the
+actual encrypted USB image restored with 95 tables/views, matching the exact
+October configuration and unchanged pre-write journal. Earlier images remain
+untouched. The corrected guarded command then passed its disposable rehearsal,
+including rollback/replay, and appended the accepted 257/83 report to the live
+schema-0028 journal. Prior journal/report/audit state was verified before commit;
+no migration, import or broker call occurred.
+
+Only the verified protected OneJournal listener was stopped. The private startup
+shortcut now selects a new configuration/report authorization with unchanged
+October broker authority, security store, TLS and installed Mac runtime. The old
+configuration/shortcut are retained privately for deliberate rollback; no old
+report or source package/image was overwritten. The restarted site serves trusted
+HTTPS at the same URL. Installed-runtime realized JSON and CSV exactly matched
+all 257 decimal-safe items and 83 withheld entries; its current read model retains
+October 10 Portfolio. These three financial reads added exactly three value-free
+report audit rows. Anonymous financial access was refused, and existing passkey
+enrollment remains present. Owner browser sign-in after this restart was not
+performed by the agent; use the existing passkey to sign in again.
+
+This completes the approved bounded report write/Mac activation, not hosted
+production acceptance. OneBot and historical backfill were untouched. The verified
+corrected image is the pre-write rollback/recovery point; it does not contain
+the newly appended report/activation sidecars or subsequent read audits. A
+post-publication image is due under the agreed manual backup policy; that is
+separate from the already completed pre-write restoration proof. Do not add
+generic tests or routine approvals for unchanged release evidence. Phase 1
+remains 8/12.

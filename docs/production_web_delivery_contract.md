@@ -439,13 +439,30 @@ selection and pins its identity/fingerprint; old callers retain the source
 predecessor. Focused regression and actual disposable preparation/read-only
 binding to the active configuration passed.
 
-The earlier journal image is still valid for its captured inputs, but contains
-old configuration/authorities. A corrected encrypted live journal/configuration
-image awaits the owner's private password and verified receipt; prior images
-are preserved. Actual live write/restart have not yet occurred. The already
-approved bounded release continues after that receipt with the same installed
-protected Mac runtime, broker authority, passkeys/TLS and no broker/OneBot/history
-work. No new routine approval or broad suite is needed. Phase 1 remains 8/12.
+The owner completed the corrected encrypted live journal/configuration image:
+the actual USB copy restored with 95 tables/views and unchanged bound pre-write
+state. Earlier images remain preserved. Corrected disposable command rehearsal
+then proved rollback, exact readback, prior-state preservation and replay.
+
+**Corrected bounded Mac publication completed, 2026-10-14:** the owner-approved
+257/83 report was appended transactionally to the schema-0028 live journal,
+with exact reporting/preservation checks before commit and no migration/import.
+The same installed protected Mac runtime was restarted with a new exact report
+authorization/configuration and updated private startup shortcut. October 10
+Portfolio/current financial authority, security store and TLS were unchanged;
+old reports/configuration/shortcut and images were retained as rollback evidence.
+The report covers 2026-03-05 through 2026-10-10. Trusted live HTTPS, anonymous
+financial-access refusal and installed-runtime JSON/CSV/current read-model
+verification passed; exact realized decimal values/counts and all 83 omissions
+matched, adding exactly three value-free read-audit rows. Existing passkey
+enrollment remains present, but owner sign-in after the restart was not performed
+by the agent. No broker request, OneBot or historical-backfill change occurred.
+
+This completes the approved bounded maintenance publication and Mac activation,
+not hosted production acceptance. The corrected verified encrypted image protects
+the pre-write state; post-publication image/activation-sidecar coverage is still
+due under the agreed manual policy. No repeated generic suite or routine approval
+is required for unchanged evidence. Phase 1 remains 8/12.
 
 The normal Mac and hosted launchers leave this capability disabled. A separately
 scoped worker integration, account/capture authority and queue recovery setup

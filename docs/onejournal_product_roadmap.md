@@ -373,13 +373,27 @@ preparation and read-only binding to the active schema-0028 configuration passed
 The new plan records the explicit predecessor selection. The source financial
 draft's verified encrypted recovery is reused.
 
-The corrected live journal/configuration image awaits private password entry:
-the previous same-journal image captured the old configuration and cannot be
-relabeled as proof of active October recovery. One corrected native encrypted
-image will preserve earlier images. Live write and activation are approved but
-not yet executed; they remain pending that actual receipt, not another approval
-or generic validation campaign. OneBot/history/broker access remain excluded.
-Phase 1 remains 8/12.
+The owner completed the corrected encrypted USB journal/configuration image:
+restoration matched 95 tables/views and the actual October configuration, with
+the pre-write target unchanged. Prior images were preserved. The corrected
+guarded command passed disposable rollback/readback/replay and then appended
+the accepted 257/83 report live at schema 0028, verifying prior state before
+commit. No migration or historical import was performed.
+
+**Approved corrected Mac publication completed: 2026-10-14.** The same installed
+protected Mac runtime was restarted with the new exact report authorization and
+updated private daily shortcut. The October 10 Portfolio/current authority,
+passkeys and TLS were retained. Trusted HTTPS, anonymous financial refusal and
+installed-runtime realized JSON/CSV/current read-model verification passed,
+with exact 257/83 coverage for 2026-03-05 through 2026-10-10 and exactly three
+value-free report-read audit rows. Private receipts record the release identity,
+fingerprint, target/backup/configuration and owner decisions; previous config/
+shortcut, reports and images remain rollback evidence. No broker requests,
+OneBot or historical-backfill changes occurred. Post-restart owner sign-in was
+not performed by the agent. The post-publication encrypted image remains due
+under the agreed manual policy; the corrected verified pre-write image remains
+the rollback point. This closes this bounded P1-08 maintenance release, not the
+remaining production-target P1-09 through P1-12 acceptance. Phase 1 remains 8/12.
 
 This tracker is the authoritative Phase 1 completion record. Update the row and
 evidence whenever a package changes state. A broader PNL, UXJ, WEB, or OPS item
