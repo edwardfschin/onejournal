@@ -36,6 +36,7 @@ onejournal-activity-financial-preview = "onejournal.activity_financial_preview:m
 onejournal-activity-release-preparation = "onejournal.activity_report_preparation:main"
 onejournal-activity-report-backup = "onejournal.activity_report_backup:main"
 onejournal-activity-publication-preparation = "onejournal.activity_publication_preparation:main"
+onejournal-activity-publication = "onejournal.activity_publication:main"
 
 [project.optional-dependencies]
 security = ["webauthn>=3.0.1,<4"]

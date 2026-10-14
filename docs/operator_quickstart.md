@@ -1719,3 +1719,63 @@ and runtime activation still need their own explicit scope. The retained current
 valuation is not refreshed, and the 83 withheld entries remain withheld. New
 preparation sidecars remain local; their off-device inclusion is not claimed.
 OneBot, historical backfill and live data/runtime remain unchanged.
+
+#### Guarded publication command: prepared and rehearsed — 2026-10-14
+
+Writer preparation is complete. Use the installed `onejournal-activity-publication`
+entry point or `python scripts/web/run_activity_publication.py`. Explicit mode
+`rehearse` or `publish` takes the same `--binding`, `--web-config`, `--package`,
+`--publication-dir`, `--backup-receipt` and `--backup-image` selections as the
+read-only preflight. No broker, migration, history-import, runtime-config or
+service-control option exists.
+
+`rehearse` rejects `--publication-authority`. It copies the exact bound live
+journal privately, simulates report acceptance only there, exercises rollback
+after insertion and before commit, then exact append/readback and duplicate-free
+replay. The copy and simulated acceptance are removed. Actual rehearsal passed
+with **257 reportable / 83 withheld**, original bytes unchanged and all prior
+data preserved. The encrypted USB proof was reused; no new password/image or
+broad suite was needed.
+
+`publish` is implemented but **not authorized or run on live state**. It requires
+separate owner-private `--publication-authority` JSON; financial acceptance and
+preparation/backup receipts alone are insufficient. Its exact fields are:
+
+- `contract_version`: `onejournal.activity-publication-authority.v1`
+- `decision`: `accepted`; `accepted_scope`: `bound_report_only_persistence`
+- `approval_source`: `project_owner_explicit_request`
+- `binding_sha256`, `publication_plan_sha256`, `backup_receipt_sha256`: hashes
+  of the exact already verified private inputs
+- `owner_acceptance_uid`: a new report-level decision identity, not reused from
+  either financial branch and not prefixed `offline-rehearsal:`
+- `accepted_at_utc`: an explicit UTC instant not preceding the financial draft
+- `publication_authorized`: `true`; `runtime_activation_authorized`: `false`
+
+Create that authority only after the owner genuinely authorizes the named live
+write, never from a preparation request. The report UID/fingerprint deterministically
+incorporates the new decision; only report-level metadata changes from the draft.
+Financial items, omissions, existing current valuation and financial acceptances
+are retained. No runtime authorization document or selected pointer is replaced.
+
+Before opening a writer, the command verifies the accepted draft/plan/binding and
+actual existing recovery-image bytes. It freezes every input, checks the exact
+target hash/schema and obtains the exclusive journal lock. It rechecks reporting
+state under that lock. The existing persistence store now permits an optional
+pre-commit verification callback: exact readback, expected counts, prior reports/
+audit and all other relations must match before commit. Input drift or verification
+failure rolls back the transaction; old callers retain default behaviour.
+
+Persistence does **not** switch the running website. Activation still needs
+explicit configuration/restart scope and a bounded visible acceptance check.
+Recovery retains the old selected report/configuration: do not delete or overwrite
+an old release to undo a new append. The encrypted image remains the pre-write
+recovery point; restore to fresh targets if database recovery is necessary.
+
+The SQL append is idempotent, but a successful live write changes the original
+database hash. The old binding is not silently advanced. After an interrupted/
+uncertain command, confirm the deterministic release UID and exact fingerprint
+read-only before retry; do not rebind/re-run blindly. Failures are value-free and
+nonzero, including missing authority and lock conflicts. Focused synthetic
+command/repository tests and the actual copy rehearsal passed. No more backup/
+preflight ceremony is queued for unchanged inputs. Actual publication and runtime
+activation remain unapproved; Phase 1 remains 8/12. OneBot and history stay separate.

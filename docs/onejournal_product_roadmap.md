@@ -315,10 +315,31 @@ The new read-only publication-preparation guard linked that actual image to the
 accepted 257/83 draft, exact plan and schema-0028 target; changed draft/backup/
 target and redacted failure tests passed. This needs no new password or repeated
 restore, grants no authority and creates no live writer. The legacy writer is
-not adapted to this package. Guarded writer preparation, live report publication
-and separately scoped activation remain pending. Live data/site, OneBot and
+not adapted to this package. A separate guarded writer is now implemented and
+rehearsed offline, as recorded below. Live report publication and separately
+scoped activation remain pending. Live data/site, OneBot and
 historical backfill remain unchanged; new sidecars remain local. This does not
 close broader Phase 1 acceptance. Phase 1 remains 8/12.
+
+**Guarded publication command: 2026-10-14.** The missing command implementation
+is complete. Rehearsal used a disposable copy of the exact bound schema-0028
+live journal and reused the verified USB proof, without a new image/password or
+broker request. It appended the exact 257/83 report, verified decimal-safe
+readback and preservation of all prior journal/report/audit state, replayed
+without duplicates and rolled back an injected pre-commit failure. The original
+journal, immutable drafts and live configuration/runtime stayed unchanged.
+
+The command's `publish` mode requires separate exact private owner publication
+authority; no such authority was created or exercised. It appends only a new
+report in one transaction, with verification before commit, and does not change
+the selected website release or restart services. Synthetic rehearsal authority
+exists only in memory/on the removed copy and is refused by the live authority
+validator. Focused command/repository tests passed. No further backup or generic
+preflight work is queued for unchanged evidence: next is explicit report-only
+live-persistence authority, then separately scoped website activation/acceptance.
+History and OneBot remain excluded. This maintenance preparation does not close
+the remaining production-target P1-09 through P1-12 requirements; Phase 1 remains
+8/12.
 
 This tracker is the authoritative Phase 1 completion record. Update the row and
 evidence whenever a package changes state. A broader PNL, UXJ, WEB, or OPS item

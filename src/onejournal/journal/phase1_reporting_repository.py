@@ -10,7 +10,7 @@ import json
 from pathlib import Path
 import re
 import stat
-from typing import Any, Iterable, Literal
+from typing import Any, Callable, Iterable, Literal
 
 import duckdb
 
@@ -289,7 +289,11 @@ def validate_reporting_release(release: ReportingRelease) -> None:
     _validate_release(release)
 
 
-def persist_reporting_release(con: duckdb.DuckDBPyConnection, release: ReportingRelease) -> None:
+def persist_reporting_release(
+    con: duckdb.DuckDBPyConnection, release: ReportingRelease,
+    *, before_commit: Callable[[], None] | None = None,
+) -> None:
+    """Append atomically; optional caller verification also runs before replay commit."""
     _validate_release(release)
     processed = len(release.items) + len(release.omissions)
     available = len(release.items)
@@ -311,6 +315,8 @@ def persist_reporting_release(con: duckdb.DuckDBPyConnection, release: Reporting
                 raise Phase1ReportingError(
                     "report release UID conflicts with existing immutable state"
                 )
+            if before_commit is not None:
+                before_commit()
             con.execute("COMMIT")
             return
         con.execute(
@@ -371,6 +377,8 @@ def persist_reporting_release(con: duckdb.DuckDBPyConnection, release: Reporting
                 "INSERT INTO phase1_reporting_release_omissions VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
                 [(release.report_release_uid, x.omission_uid, x.source_broker, x.source_account_id, x.close_market_date, x.symbol, x.reason_code, x.item_status) for x in release.omissions]
             )
+        if before_commit is not None:
+            before_commit()
         con.execute("COMMIT")
     except Exception:
         con.execute("ROLLBACK")

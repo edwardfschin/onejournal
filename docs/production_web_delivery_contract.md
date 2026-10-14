@@ -380,9 +380,34 @@ state fail closed; failures are nonzero and private values are not printed.
 The command grants no authority and has no writer, password prompt, migration,
 broker or runtime option. It reuses the completed restoration proof instead of
 repeating it. The legacy live writer remains unadapted to this new package;
-guarded writer preparation, explicit live publication and separately scoped
-activation are still pending. Current valuation is retained, not refreshed;
+the separate guarded command is now complete as recorded below. Explicit live
+publication and separately scoped activation remain pending. Current valuation
+is retained, not refreshed;
 financial omissions and the formal 8/12 completion count are unchanged.
+
+**Guarded publication command, 2026-10-14:** preparation is now implemented and
+rehearsed, rather than left behind another readiness check. The exact bound
+schema-0028 live journal was copied privately; the 257/83 report appended and
+read back exactly, prior journal/report/audit state was preserved, an injected
+pre-commit failure rolled back completely and replay created no duplicates.
+Actual source/configuration and immutable packages stayed unchanged. The existing
+encrypted restoration proof was reused, with no new password/image or broad suite.
+
+The explicit `rehearse`/`publish` command has no migration, broker, history import,
+service or runtime-configuration-write capability. A future live write requires a separate
+exact private owner decision binding the plan, live binding and restored-backup
+receipt; financial draft acceptance does not suffice. The source is exclusively
+locked, input bytes frozen and exact reporting readback/preservation verified
+inside the transaction before commit. All original persistence callers retain
+their default transaction behaviour. Synthetic copy-only acceptance is not a
+live authority artifact; no actual publication authority was created or used.
+The selected website release stays old until separately scoped activation.
+
+Drift correction: stop adding unchanged-evidence preflight/backup stages. The
+command preparation is finished; the next maintenance boundary is report-only
+live persistence with explicit authority, followed by scoped visible activation.
+This is not completion of the remaining hosted production acceptance work.
+Phase 1 remains 8/12; OneBot and historical backfill remain separate.
 
 The normal Mac and hosted launchers leave this capability disabled. A separately
 scoped worker integration, account/capture authority and queue recovery setup
