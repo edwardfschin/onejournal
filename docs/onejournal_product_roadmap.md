@@ -415,6 +415,21 @@ recovery evidence. This closes the due manual journal/release refresh, not
 hosted recovery or Phase 1 completion; OneBot, live services and historical
 backfill are unchanged. See `docs/mac_journal_recovery.md` for coverage limits.
 
+**Mac-first priority reaffirmed: 2026-10-14.** The owner stopped the proposed
+VPS move until the current OneJournal experience works on the Mac. The separate
+VPS research and package are retained as future preparation; server selection,
+purchase, DNS, deployment and private-state transfer are not the next work item.
+The current protected listener still serves both Portfolio and Reports over
+trusted localhost HTTPS, and anonymous requests to both financial API families
+return 401. The owner confirmed passkey sign-in and opening both the newly
+published Reports and October 10 Portfolio in the external browser. Reuse the
+accepted Mac login, recovery, VoiceOver and performance evidence from the
+earlier release unless this changed report or a specific failure requires a
+focused check. The website's broker
+refresh remains disabled pending its separately scoped worker/connection work;
+complete history is still separate. The formal Phase 1 count remains 8/12
+under the existing hosted exit gate; do not infer hosted completion from Mac use.
+
 This tracker is the authoritative Phase 1 completion record. Update the row and
 evidence whenever a package changes state. A broader PNL, UXJ, WEB, or OPS item
 is not complete merely because its required Phase 1 slice is complete.

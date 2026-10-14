@@ -1173,6 +1173,14 @@ missed-job delivery and fresh-target recovery need one bounded hosted check.
 
 ### Separate VPS handoff proposal — 2026-10-14
 
+**Deferred by owner on 2026-10-14.** The current protected Mac release was
+checked after the report update. The server choice, purchase, DNS and
+deployment sequence below is reference material, not the
+active next step. Continue the existing Mac site and its manual backup cadence;
+do not create a second environment merely to repeat already accepted Mac tests.
+The owner confirmed passkey sign-in and opening both the updated Reports and
+October 10 Portfolio in the external browser. VPS work remains parked.
+
 The owner approved refreshing the published Mac journal backup and preparing
 the separate OneJournal VPS setup, including commit/push. Preparation does not
 authorize buying a server, remote access, DNS changes, deployment, private-state

@@ -1395,6 +1395,18 @@ broker refresh, hosting, scheduler, deletion or trading. History recovery stays
 separate. ADR-0018's production gate is unchanged: formal Phase 1 stays 8/12,
 with P1-09–12 IN PROGRESS solely for their remaining production scope.
 
+After the later 2026-10-14 report publication and backup, the owner reaffirmed
+Mac-first use and deferred the separate VPS move. The live protected Mac site
+serves Portfolio and Reports over trusted localhost HTTPS; anonymous financial
+API requests are denied. The owner confirmed passkey sign-in and opening both
+the newly published Reports and October 10 Portfolio in the external browser.
+Earlier accepted Mac recovery, accessibility and browser evidence is reused
+unless the changed release shows a concrete failure. The Data screen's broker
+refresh stays disabled under its
+existing separate activation boundary. Do not present VPS selection or purchase
+as the next step under the owner's Mac-first direction. Hosted Phase 1
+acceptance remains unchanged at 8/12.
+
 ### Hosted candidate preparation — 2026-10-13
 
 The owner approved the combined profile in ADR-0017 and one local implementation
