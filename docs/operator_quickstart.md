@@ -1676,10 +1676,12 @@ and relation count. Changed state prevents a valid bound-backup receipt; any
 otherwise verified image is retained rather than overwritten or deleted.
 
 Read-only binding and focused stale-target, precision and native-ledger timestamp
-guards passed. Fresh USB backup completion is pending private password entry and
-the matching `bound_live_journal_backup_verified` receipt. No additional native
-backup rehearsal or broad test campaign is needed; the established image path
-is reused and the actual USB copy will be verified.
+guards passed. The owner completed private password entry: the fresh encrypted
+USB journal image was restored and verified against **95 tables/views**, with the
+bound live target unchanged. The matching `bound_live_journal_backup_verified`
+receipt pins the binding, live journal and actual image hashes. Earlier images
+were preserved. No repeat password entry or restoration rehearsal is needed
+while these exact bytes remain unchanged.
 
 This fresh pre-publication image protects the current live journal, web config
 and their exact existing release files. The corrected draft/source evidence is
@@ -1688,3 +1690,32 @@ and binding sidecars remain local and are not added to this journal image.
 Financial acceptance does not authorize live publication; report-write and
 runtime activation remain pending. The site, OneBot and historical backfill
 stay unchanged; the formal Phase 1 count remains 8/12.
+
+#### Read-only publication-preparation preflight — 2026-10-14
+
+`scripts/web/check_activity_publication_ready.py` connects the existing accepted
+draft, immutable preparation, live binding and verified backup proofs. Select
+`--binding`, `--web-config`, `--package`, `--publication-dir`, `--backup-receipt`
+and `--backup-image` explicitly. It needs no password and creates no receipt,
+authorization, database writer, migration, service or broker request.
+
+The check pins the plan to its live binding, checks every prepared input and
+reproduces the selected source package with the existing validator. It matches
+the backup's binding hash, live journal hash, relation count and actual private
+image bytes. Changed/missing evidence, publication/activation authority in a
+preparation receipt, or a stale target fail closed with a nonzero exit and
+value-free message. Final byte checks refuse evidence changed during the check.
+It never silently rebinds, renews a backup or substitutes another package.
+
+The actual accepted **257 reportable / 83 withheld** draft, schema **0028** live
+target and new **95-table/view** USB backup passed this preflight. Focused
+positive, changed-input, wrong-backup, stale-target and redacted CLI failure
+tests passed. No second encrypted restore or broad test suite was run.
+
+This is a point-in-time preparation check, not publication authority or a live
+writer. An eventual guarded writer must recheck the inputs before writing;
+the legacy writer has not been adapted to this package. Guarded live publication
+and runtime activation still need their own explicit scope. The retained current
+valuation is not refreshed, and the 83 withheld entries remain withheld. New
+preparation sidecars remain local; their off-device inclusion is not claimed.
+OneBot, historical backfill and live data/runtime remain unchanged.

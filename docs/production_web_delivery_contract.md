@@ -363,12 +363,26 @@ An immutable private binding sidecar pins all live input hashes, schema/ledger,
 prepared-plan hash and result. It supersedes the original plan's unbound stage
 without modifying that plan or granting publication/activation authority. Stale
 state fails closed. The fresh journal backup reuses established encrypted USB
-restoration and adds exact binding/source/image verification; completion remains
-pending the owner's private password and matching success receipt. Existing
-images and live services are retained. New preparation/acceptance/binding
+restoration and adds exact binding/source/image verification; completion is now
+recorded by the owner's successful password entry and matching success receipt:
+the actual USB image restored with 95 tables/views and unchanged bound live
+state. Existing images and live services are retained. New preparation/acceptance/binding
 sidecars remain local; the image covers the current journal/config/releases.
 Guarded report-only publication and separately scoped activation are still
 unapproved; broker, OneBot and historical-backfill work remain excluded.
+
+**Publication-preparation preflight, 2026-10-14:** the read-only guard now links
+the accepted 257/83 draft, exact checksummed preparation and live binding to the
+verified USB image. Actual source-package reproduction, unchanged target,
+matching backup/binding/journal/image hashes and 95 relations passed. Changed
+drafts, altered or absent images, wrong backup targets/counts and stale live
+state fail closed; failures are nonzero and private values are not printed.
+The command grants no authority and has no writer, password prompt, migration,
+broker or runtime option. It reuses the completed restoration proof instead of
+repeating it. The legacy live writer remains unadapted to this new package;
+guarded writer preparation, explicit live publication and separately scoped
+activation are still pending. Current valuation is retained, not refreshed;
+financial omissions and the formal 8/12 completion count are unchanged.
 
 The normal Mac and hosted launchers leave this capability disabled. A separately
 scoped worker integration, account/capture authority and queue recovery setup

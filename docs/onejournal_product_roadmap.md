@@ -309,11 +309,16 @@ schema ledger/inventory, accepted result and prepared plan; changed state is
 rejected. Publication and activation remain unauthorized.
 
 The existing encrypted journal backup path is reused for a fresh bound USB image;
-password entry and matching restored-backup receipt remain pending. Earlier
-images, live data/site, OneBot and historical backfill remain unchanged. New
-sidecars remain local. Guarded live report publication and separately scoped
-activation are still pending, as is broader Phase 1 acceptance. Phase 1 remains
-8/12.
+the owner completed password entry and the matching receipt confirms restoration
+of 95 tables/views with unchanged live state. Earlier images are preserved.
+The new read-only publication-preparation guard linked that actual image to the
+accepted 257/83 draft, exact plan and schema-0028 target; changed draft/backup/
+target and redacted failure tests passed. This needs no new password or repeated
+restore, grants no authority and creates no live writer. The legacy writer is
+not adapted to this package. Guarded writer preparation, live report publication
+and separately scoped activation remain pending. Live data/site, OneBot and
+historical backfill remain unchanged; new sidecars remain local. This does not
+close broader Phase 1 acceptance. Phase 1 remains 8/12.
 
 This tracker is the authoritative Phase 1 completion record. Update the row and
 evidence whenever a package changes state. A broader PNL, UXJ, WEB, or OPS item

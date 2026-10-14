@@ -13,7 +13,7 @@ from onejournal.activity_report_preparation import verify_preparation, _json_byt
 from onejournal.activity_publication_preparation import PLAN, validate_acceptance, build_report_draft
 from onejournal.activity_financial_preview import load_activity_financial_preview
 from onejournal.brokers.schwab.account_binding import load_schwab_account_private_binding_bytes
-from onejournal.local_web import load_config, configured_app
+from onejournal.local_web import load_config, configured_app, private_file
 from onejournal.mac_access_backup import private_output
 from onejournal.mac_evidence_audit_backup import _private_directory
 from onejournal.mac_journal_backup import file_hash, inventory, create_backup
@@ -133,3 +133,73 @@ def backup_bound_target(*,binding_path,config_path,project_root,destination,pass
         relation_count=count,publication_authorized=False,runtime_activation_authorized=False)
     private_output(receipt_path,_json_bytes(result))
     return result
+
+
+def verify_publication_readiness(*,binding_path,config_path,project_root,package,
+                                publication_dir,backup_receipt_path,backup_image):
+    """Connect existing acceptance/binding/restore proofs without granting authority.
+
+    This is a point-in-time read-only preflight, not a writer, a new restoration
+    rehearsal or permission to publish. Any eventual writer must recheck it.
+    """
+    binding_bytes=read_private(binding_path,1024*1024)
+    binding=verify_bound_target(binding_path,config_path,project_root)
+    plan_bytes=read_private(publication_dir/'publication-plan.json',1024*1024)
+    plan=json.loads(plan_bytes)
+    if (sha256(plan_bytes).hexdigest()!=binding.get('publication_plan_sha256')
+            or plan.get('contract_version')!=PLAN
+            or plan.get('financial_result_owner_accepted') is not True
+            or plan.get('publication_authorized') is not False
+            or plan.get('runtime_activation_authorized') is not False
+            or plan.get('current_valuation_mode')!='retain_exact_predecessor_no_refresh'
+            or set(plan.get('sha256',{}))!={'acceptance.json','recovery-receipt.json','prepared-report-draft.json'}):
+        raise ValueError('Publication plan differs from the bound unpublished preparation.')
+    for name,digest in plan['sha256'].items():
+        if sha256(read_private(publication_dir/name,64*1024*1024)).hexdigest()!=digest:
+            raise ValueError('Prepared publication inputs changed.')
+    manifest_bytes=read_private(package/'manifest.json',1024*1024)
+    manifest=verify_preparation(package)
+    if (manifest['package_fingerprint']!=plan.get('package_fingerprint')
+            or manifest['result_fingerprint']!=plan.get('result_fingerprint')
+            or manifest['checkpoint_uid']!=plan.get('checkpoint_uid')
+            or manifest['sha256']['journal.duckdb']!=plan.get('snapshot_sha256')
+            or any(binding.get(k)!=plan.get(k) for k in (
+                'package_fingerprint','result_fingerprint','report_release_fingerprint',
+                'reportable_count','withheld_count'))):
+        raise ValueError('Accepted draft differs from the bound publication preparation.')
+    draft=json.loads(read_private(publication_dir/'prepared-report-draft.json',64*1024*1024))
+    if (draft.get('release_status')!='draft' or draft.get('owner_acceptance_uid') is not None
+            or draft.get('owner_accepted_at_utc') is not None):
+        raise ValueError('Preparation must remain an unpublished report draft.')
+    backup_bytes=read_private(backup_receipt_path,1024*1024)
+    backup=json.loads(backup_bytes)
+    image=private_file(backup_image,'verified journal image')
+    fields={'status','binding_sha256','live_journal_sha256','image_sha256','relation_count',
+            'publication_authorized','runtime_activation_authorized'}
+    if (set(backup)!=fields or backup['status']!='bound_live_journal_backup_verified'
+            or backup['publication_authorized'] is not False
+            or backup['runtime_activation_authorized'] is not False
+            or backup['binding_sha256']!=sha256(binding_bytes).hexdigest()
+            or backup['live_journal_sha256']!=binding['live_state']['sha256']['journal']
+            or type(backup['relation_count']) is not int
+            or backup['relation_count']!=binding['live_state']['relation_count']
+            or backup['image_sha256']!=file_hash(image)):
+        raise ValueError('Verified backup does not match the unchanged bound live target.')
+    # Reject changes during the preflight, not just changes since the backup.
+    if (verify_bound_target(binding_path,config_path,project_root)!=binding
+            or read_private(binding_path,1024*1024)!=binding_bytes
+            or read_private(publication_dir/'publication-plan.json',1024*1024)!=plan_bytes
+            or read_private(backup_receipt_path,1024*1024)!=backup_bytes
+            or file_hash(private_file(backup_image,'verified journal image'))!=backup['image_sha256']):
+        raise ValueError('Publication preparation changed during its read-only preflight.')
+    for name,digest in plan['sha256'].items():
+        if sha256(read_private(publication_dir/name,64*1024*1024)).hexdigest()!=digest:
+            raise ValueError('Prepared publication inputs changed during preflight.')
+    if (read_private(package/'manifest.json',1024*1024)!=manifest_bytes
+            or any(file_hash(private_file(package/name,'preparation file',private_parent=True))!=digest
+                   for name,digest in manifest['sha256'].items())):
+        raise ValueError('Accepted draft changed during preflight.')
+    return dict(status='publication_preparation_ready',reportable_count=plan['reportable_count'],
+        withheld_count=plan['withheld_count'],schema_version=binding['live_state']['schema_version'],
+        backup_relation_count=backup['relation_count'],publication_authorized=False,
+        runtime_activation_authorized=False)
