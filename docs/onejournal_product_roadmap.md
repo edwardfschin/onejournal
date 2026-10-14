@@ -221,6 +221,20 @@ Financial release preparation/publication, recovery and worker integration
 remain pending. OneBot and historical backfill are unchanged; Phase 1 remains
 8/12 and no fresh financial or production acceptance is inferred.
 
+**Guarded activity draft/recovery: 2026-10-14.** A private review package now pins
+the exact checkpoint/result and selected accepted predecessor, validates report
+coverage/identity/precision, and retains report JSON/CSV, typed trade data,
+omissions, journal snapshot, account binding and checksum-selected source files.
+It remains explicitly unaccepted and supplies no publication authorization.
+Disposable restoration reproduces all financial payloads exactly. Existing Mac
+evidence recovery now includes validated incremental manifest/response/ack/binding
+lineage; encryption and USB policy remain unchanged. Focused tests and full
+private-journal/evidence preparation/restoration passed, with originals preserved
+and temporary copies removed. No live write, encrypted-image refresh, broker
+download, runtime activation, OneBot or historical-backfill change occurred.
+Financial acceptance, the current guarded publication bridge, encrypted recovery
+refresh and worker activation remain pending. Phase 1 remains 8/12.
+
 This tracker is the authoritative Phase 1 completion record. Update the row and
 evidence whenever a package changes state. A broader PNL, UXJ, WEB, or OPS item
 is not complete merely because its required Phase 1 slice is complete.

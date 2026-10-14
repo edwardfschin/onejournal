@@ -100,6 +100,50 @@ def with_activity_checkpoint(con, baseline, binding):
                    appended_records=records)
 
 
+def activity_recovery_digests(con):
+    """Extend the existing recovery allowlist with exact retained activity files.
+
+    No filesystem discovery or broker capability. This verifies stored artifact
+    bytes, append lineage and the existing manifest contract before selecting
+    source responses, acknowledgements and private account bindings for backup.
+    """
+    from onejournal.provider_connectors.external_acquisition import (
+        _parse_manifest, SCHWAB_LIFECYCLE_EXTERNAL_ACQUISITION_PROFILE,
+    )
+    tables = {r[0] for r in con.execute('SHOW TABLES').fetchall()}
+    if 'schema_migrations' not in tables:
+        if 'incremental_activity_imports' in tables:
+            raise ValueError('Activity recovery ledger lacks migration authority.')
+        return set()
+    if not _schema(con):
+        return set()
+    required, heads = set(), {}
+    for uid, account, sequence, run, body in con.execute('''SELECT import_uid,source_account_id,
+        import_sequence,acquisition_run_uid,artifact_json FROM incremental_activity_imports
+        WHERE source_broker='schwab' ORDER BY source_account_id,import_sequence''').fetchall():
+        artifact = json.loads(body)
+        previous, expected_sequence = heads.get(account,('',1))
+        if (sha256(body.encode()).hexdigest()!=uid or canonical_schwab_evidence_json(artifact)!=body
+                or artifact['contract_version']!=CONTRACT or artifact['source_broker']!='schwab'
+                or artifact['source_account_id']!=account or artifact['sequence']!=sequence
+                or sequence!=expected_sequence or artifact['predecessor_uid']!=previous
+                or artifact['run_uid']!=run):
+            raise ValueError('Activity recovery artifact or append chain differs.')
+        manifest = _parse_manifest(artifact['source_manifest'])
+        manifest_bytes = external_provider_acquisition_manifest_bytes(manifest)
+        if (manifest.profile!=SCHWAB_LIFECYCLE_EXTERNAL_ACQUISITION_PROFILE
+                or manifest.acquisition_run_uid!=run or manifest.controls.oauth_refresh_count!=0
+                or sha256(manifest_bytes).hexdigest()!=artifact['manifest_sha256']):
+            raise ValueError('Activity recovery source manifest differs.')
+        digests = {artifact['manifest_sha256'], artifact['binding_sha256'], manifest.acknowledgement_sha256,
+                   *(r.response_sha256 for r in manifest.requests)}
+        if any(not isinstance(d,str) or len(d)!=64 or set(d)-set('0123456789abcdef') for d in digests):
+            raise ValueError('Activity recovery source digest is invalid.')
+        required.update(digests)
+        heads[account] = (uid,sequence+1)
+    return required
+
+
 def append_activity_copy(*, db, binding, asof, overlap_days, expected_plan_sha256, **capture_args):
     """Revalidate bytes, then append records + checkpoint in one transaction.
 

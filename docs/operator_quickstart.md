@@ -1383,8 +1383,74 @@ JSON/CSV parity. The verified synthetic ledger and real private-journal copy
 rehearsals passed with unchanged source bytes and relations. The real-copy run
 uses saved accepted evidence; it does not prove acceptance of fresh broker data.
 
-Next: bind the candidate to the guarded report-release preparation flow and
-include retained activity/raw bundles/checkpoints in recovery before worker
-activation. Existing order-observation variants may require source review at
+The guarded draft/recovery package below now retains this candidate and its
+source inputs. Existing order-observation variants may require source review at
 incremental intake; the reporting adapter does not invent a latest-order policy.
 Historical backfill, OneBot and hosted schema work remain outside this rehearsal.
+
+#### Guarded activity report preparation and recovery — 2026-10-14
+
+`onejournal-activity-release-preparation` (source equivalent
+`python -m onejournal.activity_report_preparation`) requires `--db`,
+`--account-binding`, `--raw-root`, `--expected-checkpoint-uid`, `--account-alias`
+and `--output-dir`. Supply `--predecessor-authorization` whenever the source
+journal contains an accepted report. Run in the existing Mac security environment
+(`onejournal[security]`); the command reuses its evidence-recovery helpers.
+That file must authorize the exact selected
+predecessor and the identical account/alias scope; it is not authority for the
+new financial result. These are trusted private operator inputs, not web fields.
+
+Use a new absolute output directory under an existing owner-only 0700 parent,
+outside Git and outside the source-evidence root. The command opens the journal
+read-only, creates and migrates its own disposable copy, checks the checkpoint
+and predecessor, rebuilds the candidate, and validates release coverage, unique
+result identities and DECIMAL(38,27) limits without inventing acceptance IDs.
+
+The preparation folder contains `report.json`, `realized-history.csv`,
+`trades.json`, `omissions.json`, `provenance.json`, `journal.duckdb`,
+`account-binding.json`, the selected `predecessor-authorization.json` when
+required, and an `evidence/` tree of original checksum-matched source files.
+`manifest.json` binds every file and marks `prepared_pending_owner_acceptance`,
+null owner acceptance and `publication_authorized: false`. No new
+`report-release-authorization.json` is created. Do not point a live release or
+API launcher at this draft. It is sensitive private data, not a public artifact.
+
+The command restores all files into a second fresh temporary directory,
+validates exact hashes and current ledger/schema lineage, regenerates the
+financial preview and compares report/CSV/Trades/omissions byte-for-byte. It
+checks unchanged original bytes and copied table/view contents. Temporary
+copies are removed; the verified private review folder is retained. Its CLI
+prints status only. Exit 0 means preparation/recovery rehearsal succeeded;
+financial acceptance and publication remain pending. Exit 1 means preparation
+stopped. Missing or altered source files never become inferred evidence.
+
+All intermediate directories are created explicitly as 0700 (including nested
+source paths), files as 0600. Existing destinations are refused. The completion
+manifest is copied last, so an interrupted output without a valid manifest
+must not be used. Re-run into a new destination; earlier output is never reset
+or overwritten. Verification also refuses unexpected files, unsafe paths and
+fabricated accepted status.
+
+Recovery integration: the encrypted journal image includes the entire
+incremental ledger/checkpoint already. The evidence/audit backup's source
+allowlist now validates the immutable incremental artifacts and exact source
+manifest contracts, then requires original manifests/responses, provider-use
+acknowledgements and private account bindings in addition to the existing
+persisted Phase 1 evidence. Existing encrypted-image/password/USB procedures
+are reused unchanged. The private draft's own complete recovery rehearsal does
+not update those images or count as a new encrypted/off-device backup.
+
+Focused checks cover the verified incremental ledger through draft creation and
+restoration, exact source allowlists, release precision limits, no accepted
+authorization, stale-checkpoint refusal, nested private directories, tampered
+report bytes, missing evidence and destination preservation. A full preparation
+and restoration using the saved private journal/evidence also passed. Only a new
+private draft folder was retained; no live database, existing release, runtime,
+OneBot, historical-backfill, broker, USB or hosted state was changed.
+
+Next operating checkpoint: review the concrete draft, resolve any remaining
+financial omissions/fresh-position requirements, and refresh the approved
+encrypted recovery set before a separately authorized live report release and
+worker activation. The existing accepted-report writer still requires genuine
+financial and report acceptance; a general preparation/rehearsal instruction
+does not supply it. No routine approval is needed for checks inside that scope.

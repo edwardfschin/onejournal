@@ -38,8 +38,10 @@ README = """OneJournal Mac source-evidence and security-audit recovery
 
 This encrypted image contains only the original JSON files whose SHA-256
 fingerprints are recorded in the journal's persisted Phase 1 Schwab v1/v2/v3
-evidence families, the exact persisted v3 assembly artifacts, and the value-free
-security event history at capture time. Unpersisted evidence is not included.
+evidence families, the exact persisted v3 assembly artifacts, persisted
+incremental activity manifests/responses/acknowledgements/account bindings,
+and the value-free security event history at capture time. Unpersisted evidence
+and report-preparation folders are not included by this image automatically.
 It does not contain a journal, access setup, passkeys, security database,
 enrollment grant, broker credential or live session. Keep the separate journal
 and access images and their passwords. This is Mac-only, point-in-time recovery.
@@ -116,6 +118,8 @@ def source_digests(journal: Path) -> set[str]:
                 for family in assembly.families:
                     values.update(family.source_manifest_sha256s)
                     values.update(family.source_raw_sha256s)
+        from onejournal.journal.activity_refresh_repository import activity_recovery_digests
+        values.update(activity_recovery_digests(con))
     if lineage_count == 0 or not values:
         raise ValueError("No persisted Phase 1 source lineage is available.")
     return values

@@ -226,6 +226,65 @@ class ActivityRefreshTests(unittest.TestCase):
                 self.assertEqual(code,0,output.getvalue())
                 self.assertNotIn(self.binding.source_account_id,output.getvalue())
                 self.assertNotIn(self.binding.provider_account_number,output.getvalue())
+            from onejournal.journal.activity_refresh_repository import activity_recovery_digests
+            from onejournal.mac_evidence_audit_backup import source_digests
+            from onejournal.activity_report_preparation import prepare_activity_release,verify_preparation,rehearse_recovery
+            from onejournal.journal.phase1_reporting_repository import load_reporting_release_authorization
+            with duckdb.connect(str(target),read_only=True) as con:
+                required_activity = activity_recovery_digests(con)
+            self.assertEqual(required_activity,{sha256(manifest_path.read_bytes()).hexdigest(),
+                sha256(order).hexdigest(),sha256(transaction).hexdigest(),
+                sha256(capture.acknowledgement_bytes).hexdigest(),sha256(schwab_account_private_binding_bytes(self.binding)).hexdigest()})
+            self.assertTrue(required_activity.issubset(source_digests(target)))
+            package = root/'prepared-report'
+            raw_recovery = root/'source-evidence'
+            raw_recovery.mkdir(mode=0o700)
+            nested = raw_recovery
+            for name in ('provider','window','bundle'):
+                nested = nested/name
+                nested.mkdir(mode=0o700)
+            for name,body in ((EXTERNAL_PROVIDER_ACQUISITION_MANIFEST_FILENAME,manifest_path.read_bytes()),
+                              ('orders.json',order),('transactions.json',transaction),
+                              ('acknowledgement.json',capture.acknowledgement_bytes),
+                              ('account-binding.json',schwab_account_private_binding_bytes(self.binding))):
+                write(nested/name,body)
+            preparation = dict(source_db=target,account_binding=root/'binding.json',raw_root=raw_recovery,
+                expected_checkpoint_uid=saved['import_uid'],account_alias='Primary',output_dir=package)
+            snapshot_before = target.read_bytes()
+            # The legacy fixture declares placeholder raw hashes. This mock
+            # limits only its baseline file selection; real-journal recovery
+            # separately proves the complete legacy + incremental allowlist.
+            with patch('onejournal.activity_report_preparation.source_digests',return_value=required_activity), \
+                 patch('socket.socket.connect',side_effect=AssertionError('Network forbidden')):
+                result = prepare_activity_release(**preparation)
+                self.assertFalse(result['publication_authorized'])
+                document = verify_preparation(package)
+                self.assertIsNone(document['owner_acceptance'])
+                self.assertEqual(document['release_status'],'prepared_pending_owner_acceptance')
+                self.assertTrue(rehearse_recovery(package))
+                self.assertFalse((package/'report-release-authorization.json').exists())
+                with self.assertRaises(ValueError):
+                    load_reporting_release_authorization(package/'manifest.json')
+                old_manifest = (package/'manifest.json').read_bytes()
+                with self.assertRaises(ValueError):
+                    prepare_activity_release(**preparation)
+                self.assertEqual((package/'manifest.json').read_bytes(),old_manifest)
+                with self.assertRaisesRegex(ValueError,'checkpoint'):
+                    prepare_activity_release(**dict(preparation,expected_checkpoint_uid='stale',output_dir=root/'stale-package'))
+                self.assertFalse((root/'stale-package').exists())
+                report_before = (package/'report.json').read_bytes()
+                write(package/'report.json',report_before+b' ')
+                with self.assertRaisesRegex(ValueError,'checksum'):
+                    verify_preparation(package)
+                write(package/'report.json',report_before)
+                evidence_file = next((package/'evidence').rglob('orders.json'))
+                evidence_before = evidence_file.read_bytes()
+                evidence_file.unlink()  # Disposable synthetic package only.
+                with self.assertRaisesRegex(ValueError,'missing'):
+                    verify_preparation(package)
+                write(evidence_file,evidence_before)
+                self.assertEqual(verify_preparation(package),document)
+            self.assertEqual(target.read_bytes(),snapshot_before)
             with self.assertRaisesRegex(ValueError,'checkpoint'):
                 load_activity_financial_preview(target,self.binding,expected_checkpoint_uid='stale',account_alias='Primary')
             # Same source identities, later confirmed coverage: no duplicated records.
@@ -274,6 +333,11 @@ class ActivityRefreshTests(unittest.TestCase):
             activate_prior_history_revision(target, revision_uid=current.revision_uid)
             with self.assertRaisesRegex(ValueError, 'lineage'):
                 confirmed_import(target, self.binding)
+            with duckdb.connect(str(target)) as con:
+                con.execute("UPDATE incremental_activity_imports SET artifact_json=artifact_json || ' ' WHERE import_sequence=1")
+            with duckdb.connect(str(target),read_only=True) as con:
+                with self.assertRaisesRegex(ValueError,'artifact'):
+                    activity_recovery_digests(con)
         # Wrong authority, wrong account and tampered bytes fail without exposing values.
         wrong_owner = review.copy()
         wrong_owner[wrong_owner.index('--expected-owner-uid')+1] = 'wrong-owner'

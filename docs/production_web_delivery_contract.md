@@ -247,6 +247,44 @@ accepted baseline without indexing legacy order-status observation variants.
 Such variants remain subject to the incremental intake's source-review rules;
 the financial adapter calculates from transaction fills, not order observations.
 
+**Guarded preparation/recovery, 2026-10-14:** the activity candidate now has an
+installed private-package preparation command. It pins the activity checkpoint,
+financial fingerprint, account alias, original database bytes and exact selected
+accepted predecessor report. If an accepted report exists, its explicit matching
+authorization is required; preparation does not silently choose a predecessor.
+Result identities, coverage and existing release decimal-storage limits are
+checked without manufacturing owner acceptance.
+
+The new `onejournal.activity-report-preparation.v1` package contains the report
+JSON, exact-decimal CSV, typed trade data, omissions and provenance, together with
+a byte-verified disposable journal snapshot, private account binding, selected
+predecessor authority and the complete checksum-selected persisted source set.
+Its status is `prepared_pending_owner_acceptance`, acceptance is null and
+publication authority is false. There is no new accepted report-authorization
+file. The existing accepted-release writer cannot consume this draft as authority.
+It remains a review/recovery package, not a persisted or activated report release.
+
+Recovery restores the complete package into a new owner-private temporary
+directory, verifies every file and lineage hash, rebuilds the financial result,
+and compares the exact report/CSV/trade/omission bytes. Originals and all copied
+journal relations are unchanged. Missing/changed evidence, stale checkpoint,
+predecessor mismatch, duplicate output destinations or fabricated acceptance
+stop preparation. Every intermediate copy directory uses 0700 and files use
+0600. The final directory is reserved exclusively and the completion manifest
+is written last. Incomplete outputs must not be used; prior outputs are retained.
+Preparation is kept outside Git and the source-evidence tree to prevent recursive
+copying into later packages.
+
+Existing encrypted journal backups already retain the full activity ledger.
+The Mac evidence-backup allowlist now additionally verifies persisted incremental
+artifact/manifest chains and includes their original response, acknowledgement
+and account-binding hashes. Missing files or altered ledger/manifest bytes stop
+backup selection. Existing encryption, password, USB, security-audit and access
+recovery procedures are unchanged. Draft packages are not automatically added
+to existing encrypted images. This pass verifies private disposable restoration;
+it does not create/refresh a USB image or prove off-device recovery. Guarded live
+publication, financial owner acceptance and worker activation remain separate.
+
 The normal Mac and hosted launchers leave this capability disabled. A separately
 scoped worker integration, account/capture authority and queue recovery setup
 are needed before activation. Reloading saved data remains distinct from
