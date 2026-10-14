@@ -9,6 +9,7 @@ import duckdb
 
 from onejournal.activity_publication_preparation import (
     ACCEPTANCE,validate_acceptance,build_report_draft,rehearse_report_draft,prepare_publication,main,
+    selected_predecessor,
 )
 from onejournal.journal.phase1_reporting_repository import persist_reporting_release,load_reporting_release
 from onejournal.mac_journal_backup import file_hash
@@ -82,6 +83,35 @@ class ActivityPublicationPreparationTests(unittest.TestCase):
         with redirect_stderr(StringIO()),self.assertRaises(SystemExit) as stopped:
             main(['--persist'])
         self.assertEqual(stopped.exception.code,2)
+
+    def test_explicit_active_predecessor_preserves_newer_current_without_changing_realized_acceptance(self):
+        from onejournal.mac_access_backup import private_output
+        from onejournal.journal.phase1_reporting_persistence_operator import report_authorization_document
+        from onejournal.journal.phase1_reporting_repository import calculate_report_release_fingerprint
+        from onejournal.activity_report_preparation import _json_bytes
+        current=replace(self.predecessor,report_release_uid='synthetic-active-report',
+            current_valuation_run_uid='synthetic-newer-valuation',current_result_fingerprint='c'*64,
+            current_owner_acceptance_uid='synthetic-newer-current-acceptance',
+            owner_acceptance_uid='synthetic-newer-report-acceptance',report_release_fingerprint='')
+        current=replace(current,report_release_fingerprint=calculate_report_release_fingerprint(release=current))
+        with duckdb.connect(str(self.path)) as con:
+            persist_reporting_release(con,current)
+        old_path=self.path.parent/'old.json'; active_path=self.path.parent/'active.json'
+        private_output(old_path,_json_bytes(report_authorization_document(self.predecessor)))
+        private_output(active_path,_json_bytes(report_authorization_document(current)))
+        before=file_hash(self.path); old_bytes=old_path.read_bytes()
+        self.assertEqual(selected_predecessor(self.path,old_path)[1],self.predecessor)
+        authority,selected=selected_predecessor(self.path,old_path,active_path)
+        self.assertEqual(selected,current)
+        rebuilt=build_report_draft(self.preview,selected,{'revision_uid':'synthetic-current-history'},self.acceptance,self.at)
+        self.assertEqual(rebuilt.current_result_fingerprint,current.current_result_fingerprint)
+        self.assertEqual(rebuilt.current_valuation_run_uid,current.current_valuation_run_uid)
+        self.assertEqual(rebuilt.current_owner_acceptance_uid,current.current_owner_acceptance_uid)
+        self.assertEqual(rebuilt.items,self.draft().items)
+        self.assertEqual(rebuilt.omissions,self.draft().omissions)
+        self.assertEqual(rebuilt.realized_owner_acceptance_uid,self.acceptance['acceptance_uid'])
+        self.assertEqual(file_hash(self.path),before)
+        self.assertEqual(old_path.read_bytes(),old_bytes)
 
 
 if __name__=='__main__':

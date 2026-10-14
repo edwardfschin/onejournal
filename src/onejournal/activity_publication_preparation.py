@@ -28,6 +28,7 @@ from onejournal.mac_access_backup import private_output
 from onejournal.mac_evidence_audit_backup import _private_directory
 from onejournal.mac_journal_backup import file_hash
 from onejournal.refresh_intake import read_private
+from onejournal.local_web import private_file
 
 ACCEPTANCE = 'onejournal.activity-result-acceptance.v1'
 PLAN = 'onejournal.activity-publication-preparation.v1'
@@ -111,7 +112,23 @@ def rehearse_report_draft(source, release):
                 previous_state_preserved=True,runtime_authorization_refused=True,quality=quality)
 
 
-def prepare_publication(*, package, acceptance_path, recovery_receipt_path, output_dir):
+def selected_predecessor(db, source_authorization, selected_authorization=None):
+    """Keep the immutable source package, but explicitly select accepted current authority.
+
+    No latest-release lookup or inference. The selected release must already be
+    present and owner-accepted in the backed-up snapshot.
+    """
+    path=private_file(selected_authorization or source_authorization,
+                      'selected predecessor authorization',private_parent=True)
+    authority=load_reporting_release_authorization(path)
+    with duckdb.connect(str(db),read_only=True) as con:
+        predecessor=load_reporting_release(con,report_release_uid=authority.report_release_uid)
+        authorize_reporting_release(predecessor,authority)
+    return authority,predecessor
+
+
+def prepare_publication(*, package, acceptance_path, recovery_receipt_path, output_dir,
+                        predecessor_authorization=None):
     output=Path(output_dir)
     if not output.is_absolute() or output.exists() or output.is_symlink():
         raise ValueError('Choose a new absolute private publication-preparation directory.')
@@ -133,10 +150,8 @@ def prepare_publication(*, package, acceptance_path, recovery_receipt_path, outp
     preview=load_activity_financial_preview(package/'journal.duckdb',binding,
         expected_checkpoint_uid=manifest['checkpoint_uid'],account_alias=manifest['account_alias'])
     recorded_at=validate_acceptance(acceptance,manifest,preview)
-    authority=load_reporting_release_authorization(package/'predecessor-authorization.json')
-    with duckdb.connect(str(package/'journal.duckdb'),read_only=True) as con:
-        predecessor=load_reporting_release(con,report_release_uid=authority.report_release_uid)
-        authorize_reporting_release(predecessor,authority)
+    authority,predecessor=selected_predecessor(package/'journal.duckdb',
+        package/'predecessor-authorization.json',predecessor_authorization)
     current_breakdowns(package/'journal.duckdb',predecessor)  # Exact retained current-valuation fingerprint.
     provenance=json.loads(read_private(package/'provenance.json',1024*1024))
     release=build_report_draft(preview,predecessor,provenance,acceptance,recorded_at)
@@ -151,6 +166,8 @@ def prepare_publication(*, package, acceptance_path, recovery_receipt_path, outp
         package_fingerprint=manifest['package_fingerprint'],result_fingerprint=preview.result_fingerprint,
         checkpoint_uid=manifest['checkpoint_uid'],snapshot_sha256=manifest['sha256']['journal.duckdb'],
         predecessor=asdict(authority),report_release_uid=release.report_release_uid,
+        predecessor_selection=('explicit_owner_selected_current' if predecessor_authorization is not None
+                               else 'backed_up_source_predecessor'),
         report_release_fingerprint=release.report_release_fingerprint,
         current_valuation_mode='retain_exact_predecessor_no_refresh',
         current_result_fingerprint=release.current_result_fingerprint,
@@ -169,10 +186,13 @@ def main(argv=None):
     parser=argparse.ArgumentParser(description=__doc__)
     for name in ('package','acceptance','recovery-receipt','output-dir'):
         parser.add_argument('--'+name,type=Path,required=True)
+    parser.add_argument('--predecessor-authorization',type=Path,
+        help='Explicit already accepted active report authority; never select latest or change the source package.')
     args=parser.parse_args(argv)
     try:
         print(json.dumps(prepare_publication(package=args.package,acceptance_path=args.acceptance,
-            recovery_receipt_path=args.recovery_receipt,output_dir=args.output_dir),sort_keys=True))
+            recovery_receipt_path=args.recovery_receipt,output_dir=args.output_dir,
+            predecessor_authorization=args.predecessor_authorization),sort_keys=True))
         return 0
     except Exception:
         print('Publication preparation stopped. Check exact owner acceptance, verified draft/recovery and new private output. No live write, publication, broker call or runtime change occurred.')

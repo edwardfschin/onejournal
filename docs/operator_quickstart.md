@@ -1804,3 +1804,35 @@ confirm corresponding recovery coverage. Rehearse only the changed combination;
 do not repeat generic tests or broker/history work. Then use the approved bounded
 release scope against the corrected evidence. No live write, stop/restart or
 publication-authority creation occurred when this mismatch was detected.
+
+#### Approved October-portfolio correction — 2026-10-14
+
+The owner explicitly approved preserving October 10 Portfolio, correcting the
+preparation and completing the live report write/Mac activation, with no broker,
+OneBot or historical-backfill work. The correction is now prepared and bound to
+the actual October 11 runtime configuration; its 257 results and 83 withheld
+entries and realized-result acceptance are unchanged.
+
+`prepare_publication`/its command accepts optional `--predecessor-authorization`
+to select that exact already owner-accepted active report. Selection is explicit,
+never "latest," and must authorize a release already present in the backed-up
+snapshot. The plan pins the selected predecessor and records
+`predecessor_selection: explicit_owner_selected_current`. Existing callers
+without the option retain the immutable source predecessor. The original
+encrypted financial package, acceptance and recovery receipt are reused without
+editing them. Current valuation/run/acceptance are copied exactly from the
+selected October report; no refresh or new financial acceptance is invented.
+The focused regression proves preservation of the newer current branch and
+unchanged realized items/omissions, with old source bytes unchanged.
+
+Actual corrected private preparation, copy-only draft storage/readback and
+read-only schema-0028 binding passed. The earlier image contains the same journal
+but old configuration/authorities, so it does not prove restoration of the active
+October configuration. One corrected bound encrypted journal image is required;
+the native owner-private `RunCurrentJournalBackup.command` requests its password
+only in Terminal. Earlier images remain untouched. Completion awaits that
+password and matching verified receipt, not another routine approval. No live
+report write or restart has happened yet. The remaining already-approved actions
+are the guarded write, selection of the new report with the same October broker
+authority/security/TLS/installed runtime, owned Mac restart and bounded endpoint
+verification. Do not add generic test or backup stages for unchanged inputs.

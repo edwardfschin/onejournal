@@ -428,6 +428,25 @@ a preparation mistake, not added product scope or another generic test campaign.
 No live publication/restart, broker access, OneBot or historical-backfill change
 occurred. Phase 1 remains 8/12.
 
+**Owner-approved correction prepared, 2026-10-14:** the owner explicitly approved
+preserving October 10 Portfolio and completing the corrected report publication
+and Mac activation. Preparation now explicitly selects the accepted active
+October predecessor from the existing backed-up snapshot, retaining its exact
+current valuation/run/acceptance. The realized 257/83 result and acceptance,
+immutable financial package and verified draft recovery remain unchanged.
+There is no latest-release fallback. The plan records explicit predecessor
+selection and pins its identity/fingerprint; old callers retain the source
+predecessor. Focused regression and actual disposable preparation/read-only
+binding to the active configuration passed.
+
+The earlier journal image is still valid for its captured inputs, but contains
+old configuration/authorities. A corrected encrypted live journal/configuration
+image awaits the owner's private password and verified receipt; prior images
+are preserved. Actual live write/restart have not yet occurred. The already
+approved bounded release continues after that receipt with the same installed
+protected Mac runtime, broker authority, passkeys/TLS and no broker/OneBot/history
+work. No new routine approval or broad suite is needed. Phase 1 remains 8/12.
+
 The normal Mac and hosted launchers leave this capability disabled. A separately
 scoped worker integration, account/capture authority and queue recovery setup
 are needed before activation. Reloading saved data remains distinct from

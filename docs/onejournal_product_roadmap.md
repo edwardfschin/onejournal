@@ -363,6 +363,24 @@ publication authority, broker request, OneBot or history change was performed.
 This is a preparation error, not a new product requirement or a generic test
 gate. Phase 1 remains 8/12.
 
+**Approved target correction prepared: 2026-10-14.** The owner authorized
+preservation of October 10 Portfolio, corrected preparation and completion of
+the live report/Mac activation. Explicit selection of the already accepted
+active October predecessor is implemented; it does not choose latest, change
+the immutable source/acceptance or recalculate the 257/83 realized result.
+Focused newer-current preservation regression, actual copy-only report
+preparation and read-only binding to the active schema-0028 configuration passed.
+The new plan records the explicit predecessor selection. The source financial
+draft's verified encrypted recovery is reused.
+
+The corrected live journal/configuration image awaits private password entry:
+the previous same-journal image captured the old configuration and cannot be
+relabeled as proof of active October recovery. One corrected native encrypted
+image will preserve earlier images. Live write and activation are approved but
+not yet executed; they remain pending that actual receipt, not another approval
+or generic validation campaign. OneBot/history/broker access remain excluded.
+Phase 1 remains 8/12.
+
 This tracker is the authoritative Phase 1 completion record. Update the row and
 evidence whenever a package changes state. A broader PNL, UXJ, WEB, or OPS item
 is not complete merely because its required Phase 1 slice is complete.
