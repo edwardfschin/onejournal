@@ -58,6 +58,21 @@ class LocalWebLauncherTests(unittest.TestCase):
         self.document["reporting_authorization"] = str(auth)
         self.assertEqual(runner.parse_config(self.document).start_page, "/local/reports")
 
+    def test_manual_capture_setup_is_all_or_none_and_private(self) -> None:
+        self.document["manual_capture_authorization"] = str(self.config_path)
+        with self.assertRaisesRegex(runner.LocalWebError, "all five"):
+            runner.parse_config(self.document)
+        for name in ("manual_capture_acknowledgement", "manual_capture_usage_policy",
+                     "manual_capture_account_binding"):
+            self.document[name] = str(self.config_path)
+        staging = self.private / "staging"
+        staging.mkdir(mode=0o700)
+        self.document["manual_capture_staging_root"] = str(staging)
+        self.assertEqual(runner.parse_config(self.document).manual_capture_staging_root, staging)
+        staging.chmod(0o755)
+        with self.assertRaises(runner.LocalWebError):
+            runner.parse_config(self.document)
+
     def test_config_rejects_unknown_hosts_ports_and_nonlocal_urls(self) -> None:
         changes = [
             {"host": "0.0.0.0"}, {"api_url": "https://example.invalid"},

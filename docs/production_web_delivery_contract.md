@@ -76,14 +76,45 @@ reason; it never becomes zero or an unlabeled estimate.
 ### Import and reconcile safely
 
 The owner can inspect a proposed import, validation result, reconciliation,
-counts, omissions, and failures before any separately authorized write. The web
-experience does not silently refresh provider credentials or bypass operator
-approval boundaries.
+counts, omissions, and failures. During the current Mac testing scope, the
+owner's later choice is automatic publication only when every required financial
+check passes; otherwise the prior release stays active. The web experience
+does not silently refresh provider credentials or bypass operator boundaries.
 
 ### Request fresh broker evidence
 
 The owner's 2026-10-13 direction keeps OneBot as the existing Schwab credential
-owner and defers activation. The prepared Data screen uses the versioned
+owner and defers activation. On 2026-10-14 the owner chose **manual exports**
+over a new website-to-OneBot handoff or moving the Schwab credential to the Mac.
+OneBot and its trading/order capabilities remain unchanged. The website must
+not imply that clicking it contacts Schwab; the useful Mac workflow is to
+accept an explicitly supplied private export, validate it, and update the saved
+release automatically only if the financial checks pass. The owner selected the
+existing checksum-verified OneJournal capture package through a Mac website
+file picker. A generic Schwab website CSV is not an equivalent input and must
+not be silently accepted. Historical backfill remains separate.
+
+The file picker must accept only the capture manifest and its exact response
+files. It must not accept a browser-supplied approval or provider-use
+acknowledgement. A separate, owner-private, mode-`0600` approval record in a
+mode-`0700` directory outside Git and the web root binds one manifest SHA-256,
+capture scope, run, approval, owner and owner epoch. The Mac selects that record;
+the browser cannot choose its path or values. The existing provider-use
+acknowledgement, usage policy and account/instrument binding are also Mac-side
+inputs. The optional Mac upload path accepts a bounded JSON request under the
+existing passkey and CSRF protection, rechecks the exact approval, provider use,
+account and package bytes, then stages the unchanged files once in an owner-only
+directory. An exact repeat returns a replay receipt. It does not append to the
+journal, advance a checkpoint, calculate P&L or publish a release. The running
+Mac site has not been reconfigured or restarted to activate this path. The
+private configuration requires all five server-selected fields:
+`manual_capture_authorization`, `manual_capture_acknowledgement`,
+`manual_capture_usage_policy`, `manual_capture_account_binding`, and
+`manual_capture_staging_root`; an incomplete configuration is rejected. Neither
+package self-checksums nor a user-selected local file confer approval by
+themselves. A changed package requires a new independent approval record.
+
+The older, inactive request-queue boundary uses the versioned
 `onejournal.data-refresh.v1` request/status boundary. It accepts a request ID,
 not a broker URL, credentials, account selector or history range. A private
 durable handoff permits one active current-position request and requires a
@@ -120,6 +151,24 @@ connected to a live worker. Atomic activity-evidence append/checkpoint persisten
 is now implemented and rehearsed on disposable DuckDB copies only. Acquisition,
 live integration and financial publication remain outside that operating scope.
 
+**Owner operating choice, 2026-10-14:** a future Mac website refresh should
+publish the updated saved Portfolio/Reports automatically *only when the entire
+new financial release passes its applicable validation*. This supersedes a
+per-refresh owner-review preference, not the existing fail-closed checks. A
+complete position observation, exact account/instrument identity, reconciled
+activity, valid calculations and prices, recoverable live state, exact read-back
+and a safe switch to the new release are required for the scope being published.
+An unknown or changed source record, newly unresolved financial scope,
+incomplete/stale input, backup failure or publication failure must retain the
+previous saved release and report an actionable hold. Previously disclosed
+withheld history must remain explicitly labelled and unchanged in identity and
+reason; it does not become a valid result merely through refresh.
+This is a chosen target behavior, **not** an assertion that the current manual
+owner-acceptance/publication contracts or the website worker already implement
+it, nor authority for a broker request, live write or runtime change in this
+work item. Those contracts must be revised together before activation; merely
+enabling the request queue would leave the button unable to complete a refresh.
+
 The local `onejournal-refresh-offline` command now connects the durable request
 to existing external Schwab position validation. `claim` returns one
 credential-free `onejournal.refresh-handoff.v1` message and marks that request
@@ -144,6 +193,20 @@ The plan binds the active revision/activation, assembly fingerprint, private
 account binding and exact query window. A rollback, changed binding or changed
 plan invalidates a previously prepared review.
 
+The `onejournal.staged_activity_rehearsal` operator entry point connects an
+already staged manual **activity** package to that same existing append and
+financial-preview path on one disposable journal copy. It rechecks the
+server-selected private approval and exact staged bytes, derives the matching
+activity account binding from the private position binding, reviews the active
+import, and stops before the copy writer when source review is required. A
+successful copy returns only counts, report quality and whether the prior
+position snapshot is stale; it never writes the live journal, authorizes a
+report, activates the Mac website, contacts Schwab or creates a backup. The
+current-position package still needs its own accepted append/valuation path,
+and automatic live publication still needs a guarded writer, backup and safe
+release switch. This copy-only connection must not be presented as a working
+website refresh.
+
 Planning includes the cutoff's UTC date, including when only part of that day
 was imported. Explicit `overlap_days` (1–29, no default operating policy) extends
 back within already confirmed coverage, never before its start. Each paired
@@ -161,8 +224,16 @@ observation lineage is excluded from comparison. Repeated unchanged records are
 skipped; new identities are counted as candidates; changed identities block the
 candidate for source review. Previously accepted immutable order-status variants
 are compared as a set: an exact known variant is unchanged, while a newly seen
-variant of the same order still blocks. Other conflicting observations remain
-review-required. Order fills are corroboration, not additional
+variant of the same order normally blocks. The sole source-reviewed exception is
+an unfilled `PENDING_ACTIVATION` order becoming `REPLACED`: its requested order,
+legs and every other field must remain unchanged; filled quantity must stay
+zero; remaining quantity must become zero; close time cannot regress; and no
+transaction-derived fill may refer to that order. The append-only artifact
+retains both versions and exact predecessor/successor hashes under a versioned
+review reason. Its durable read-back rechecks the exception before accepting
+the checkpoint. Any other changed order or economic record remains held for
+separate review. This exception is not financial or report acceptance. Order
+fills are corroboration, not additional
 financial fills. Conflicting observations, account/window mismatch and changed
 active import fail closed. Reconciliation differences and explicit unresolved
 cash/event evidence remain review-required. Absent records never delete earlier

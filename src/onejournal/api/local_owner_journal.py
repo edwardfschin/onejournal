@@ -378,6 +378,7 @@ def create_local_owner_journal_app(
     ) = None,
     reporting_authorization: ReportingReleaseAuthorization | None = None,
     refresh_requests=None,
+    manual_capture_intake=None,
 ) -> FastAPI:
     """Build the private app with a server-selected, existing journal database.
 
@@ -574,6 +575,8 @@ def create_local_owner_journal_app(
     )
     from onejournal.refresh_requests import register_routes
     register_routes(app, refresh_requests)
+    from onejournal.manual_capture_upload import register_manual_capture_routes
+    register_manual_capture_routes(app, manual_capture_intake)
     vertical_groups = load_schwab_vertical_presentation_groups(db_path)
     vertical_group_by_episode = {
         member.episode_uid: group

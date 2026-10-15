@@ -4,6 +4,7 @@ from __future__ import annotations
 import argparse
 from dataclasses import dataclass, field
 from datetime import UTC, date, datetime, timedelta
+from decimal import Decimal, InvalidOperation
 from hashlib import sha256
 import json
 from pathlib import Path
@@ -152,11 +153,70 @@ def _prior_order_variants(records):
     return variants
 
 
+def _review_order_corrections(prior, incoming, fills):
+    """Review only an unfilled pending order's source-backed replacement.
+
+    The older observation stays immutable. Exact canonical hashes bind the
+    reviewed successor; transaction fills, other statuses or other changed
+    fields cannot use this non-financial route.
+    """
+    reviewed = {}
+    for uid, encoded in incoming.items():
+        if uid not in prior or encoded in prior[uid]:
+            continue
+        current = json.loads(encoded)
+        source_order_id = current.get('source_order_id')
+        if (not isinstance(source_order_id, str) or not source_order_id
+                or current.get('status') != 'REPLACED'
+                or any(row.get('source_order_id') == source_order_id for row in fills)):
+            continue
+        matching = []
+        for previous_encoded in prior[uid]:
+            previous = json.loads(previous_encoded)
+            changed = {key for key in previous.keys() | current.keys()
+                       if previous.get(key) != current.get(key)}
+            if (previous.keys() != current.keys()
+                    or previous.get('status') != 'PENDING_ACTIVATION'
+                    or not changed <= {'status', 'remaining_quantity', 'closed_at_utc'}
+                    or 'status' not in changed):
+                continue
+            try:
+                old_remaining = Decimal(str(previous['remaining_quantity']))
+                new_remaining = Decimal(str(current['remaining_quantity']))
+                old_filled = Decimal(str(previous['filled_quantity']))
+                new_filled = Decimal(str(current['filled_quantity']))
+                old_close_value = previous['closed_at_utc']
+                old_closed = (datetime.fromisoformat(old_close_value)
+                              if old_close_value else None)
+                new_closed = datetime.fromisoformat(current['closed_at_utc'])
+            except (KeyError, TypeError, ValueError, InvalidOperation):
+                continue
+            if (not all(value.is_finite() for value in
+                        (old_remaining, new_remaining, old_filled, new_filled))
+                    or old_remaining <= 0 or new_remaining != 0
+                    or old_filled != 0 or new_filled != 0
+                    or new_closed.tzinfo is None
+                    or (old_closed is not None and (old_closed.tzinfo is None
+                                                   or new_closed < old_closed))):
+                continue
+            matching.append(previous_encoded)
+        if len(matching) != 1:
+            continue
+        reviewed[uid] = dict(
+            contract_version='onejournal.order-status-correction-review.v1',
+            reason_code='unfilled_pending_order_replaced',
+            order_uid_sha256=sha256(uid.encode()).hexdigest(),
+            predecessor_sha256=sha256(matching[0].encode()).hexdigest(),
+            successor_sha256=sha256(encoded.encode()).hexdigest())
+    return reviewed
+
+
 def _review_delta(baseline, converted, plan) -> dict:
     """Value-free candidate summary, never financial acceptance or import.
 
     Orders are corroboration; only transaction-derived fills are counted. A
-    changed identity blocks the candidate, even if the change looks harmless.
+    A changed identity blocks except for the exact non-financial, source-reviewed
+    order replacement above; transaction-derived fills remain authoritative.
     Missing records are retained, never interpreted as deletes or reversals.
     """
     assembly = baseline.assembly
@@ -168,23 +228,30 @@ def _review_delta(baseline, converted, plan) -> dict:
         raise ValueError('Activity evidence differs from its pinned plan.')
     families = {f.family: f for f in assembly.families}
     counts = {}
+    order_corrections = {}
     for name, (identity, observation, attribute) in _FAMILIES.items():
         prior = (*families[name].records, *baseline.appended_records.get(name, ()))
         before = (_prior_order_variants(prior) if name == 'orders' else
                   {uid: {encoded} for uid, encoded in _index(prior, identity, observation).items()})
         incoming = _index(getattr(converted, attribute), identity, observation)
+        if name == 'orders':
+            fills = (*families['fills'].records,
+                     *baseline.appended_records.get('fills', ()), *converted.transaction_rows)
+            order_corrections = _review_order_corrections(before, incoming, fills)
         counts[name] = dict(new=sum(k not in before for k in incoming),
                            unchanged=sum(v in before.get(k, ()) for k, v in incoming.items()),
                            changed=sum(k in before and v not in before[k] for k, v in incoming.items()))
     unresolved = (not converted.reconciliation.exact or any(
         row.get('evidence_status') == 'review_required'
         for row in (*converted.cash_rows, *converted.lifecycle_event_legs)))
-    conflict = any(c['changed'] for c in counts.values())
+    conflict = (counts['orders']['changed'] != len(order_corrections)
+                or any(c['changed'] for name, c in counts.items() if name != 'orders'))
     return dict(contract_version='onejournal.activity-refresh-review.v1',
                 plan_sha256=plan['plan_sha256'],
                 manifest_sha256=converted.external_manifest_sha256,
                 status='review_required' if conflict or unresolved else 'candidate_only',
                 counts=counts, source_reconciliation_exact=converted.reconciliation.exact,
+                source_reviewed_order_correction_count=len(order_corrections),
                 cursor_advanced=False, journal_written=False,
                 financial_publication_authorized=False)
 

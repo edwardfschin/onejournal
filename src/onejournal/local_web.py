@@ -29,6 +29,9 @@ LOCAL_PAGES = {"/local/journal", "/local/trades", "/local/portfolio", "/local/re
 CONFIG_FIELDS = {
     "contract_version", "journal_db_path", "broker_current_authorization",
     "reporting_authorization", "web_port", "api_port", "start_page",
+    "manual_capture_authorization", "manual_capture_acknowledgement",
+    "manual_capture_usage_policy", "manual_capture_account_binding",
+    "manual_capture_staging_root",
 }
 
 
@@ -44,6 +47,11 @@ class LocalWebConfig:
     web_port: int = 4173
     api_port: int = 8765
     start_page: str = "/local/journal"
+    manual_capture_authorization: Path | None = None
+    manual_capture_acknowledgement: Path | None = None
+    manual_capture_usage_policy: Path | None = None
+    manual_capture_account_binding: Path | None = None
+    manual_capture_staging_root: Path | None = None
 
     @property
     def url(self) -> str:
@@ -70,6 +78,20 @@ def private_file(path: Path, label: str, *, private_parent: bool = False) -> Pat
     return path.resolve()
 
 
+def private_directory(path: Path, label: str) -> Path:
+    try:
+        if not path.is_absolute() or path.is_symlink():
+            raise LocalWebError(f"{label} must be an absolute, non-symlink directory.")
+        info = path.stat()
+        if not stat.S_ISDIR(info.st_mode) or stat.S_IMODE(info.st_mode) != 0o700:
+            raise LocalWebError(f"{label} must be a directory with mode 0700.")
+        if info.st_uid != os.getuid():
+            raise LocalWebError(f"{label} must belong to the current Mac user.")
+    except OSError:
+        raise LocalWebError(f"{label} is missing or unreadable. Check its private location.") from None
+    return path.resolve()
+
+
 def parse_config(document: Any) -> LocalWebConfig:
     if not isinstance(document, dict) or set(document) - CONFIG_FIELDS:
         raise LocalWebError("Local website configuration has unknown or invalid fields.")
@@ -87,6 +109,23 @@ def parse_config(document: Any) -> LocalWebConfig:
     db = file_field("journal_db_path", required=True)
     broker = file_field("broker_current_authorization")
     report = file_field("reporting_authorization")
+    capture_names = (
+        "manual_capture_authorization", "manual_capture_acknowledgement",
+        "manual_capture_usage_policy", "manual_capture_account_binding",
+        "manual_capture_staging_root",
+    )
+    supplied_capture = [document.get(name) is not None for name in capture_names]
+    if any(supplied_capture) and not all(supplied_capture):
+        raise LocalWebError("Manual capture setup requires all five private paths.")
+    capture_files = [file_field(name) for name in capture_names[:4]] if all(supplied_capture) else [None] * 4
+    capture_root = None
+    if all(supplied_capture):
+        value = document["manual_capture_staging_root"]
+        if not isinstance(value, str) or not value.strip():
+            raise LocalWebError("Manual capture staging root must name an existing private directory.")
+        capture_root = private_directory(Path(value).expanduser(), "manual capture staging root")
+        if capture_root.is_relative_to(Path(__file__).resolve().parents[2]):
+            raise LocalWebError("Manual capture staging root must be outside the Git checkout.")
     ports = [document.get("web_port", 4173), document.get("api_port", 8765)]
     if any(type(port) is not int or not 1024 <= port <= 65535 for port in ports):
         raise LocalWebError("Website and API ports must be integers between 1024 and 65535.")
@@ -97,7 +136,8 @@ def parse_config(document: Any) -> LocalWebConfig:
     if not isinstance(page, str) or page not in LOCAL_PAGES:
         raise LocalWebError("start_page must be a canonical local Journal, Trades, Portfolio, or Reports path.")
     assert db is not None
-    return LocalWebConfig(db, broker, report, ports[0], ports[1], page)
+    return LocalWebConfig(db, broker, report, ports[0], ports[1], page,
+                          *capture_files, capture_root)
 
 
 def load_config(path: Path, project_root: Path) -> LocalWebConfig:
@@ -119,12 +159,25 @@ def configured_app(config: LocalWebConfig) -> Any:
         from onejournal.api.broker_current_position_contracts import load_broker_current_financial_release_authorization
         from onejournal.api.local_owner_journal import create_local_owner_journal_app
         from onejournal.journal.phase1_reporting_repository import load_reporting_release_authorization
+        from onejournal.manual_capture_upload import ManualCaptureIntake
+        from onejournal.provider_connectors.usage_policy import load_provider_usage_policy
         broker = load_broker_current_financial_release_authorization(config.broker_authorization) if config.broker_authorization else None
         report = load_reporting_release_authorization(config.reporting_authorization) if config.reporting_authorization else None
+        capture = None
+        if config.manual_capture_authorization is not None:
+            capture = ManualCaptureIntake(
+                authorization_path=config.manual_capture_authorization,
+                acknowledgement_path=config.manual_capture_acknowledgement,
+                account_binding_path=config.manual_capture_account_binding,
+                usage_policy=load_provider_usage_policy(config.manual_capture_usage_policy),
+                staging_root=config.manual_capture_staging_root,
+                project_root=Path(__file__).resolve().parents[2],
+            )
         return create_local_owner_journal_app(
             journal_db_path=config.journal_db,
             broker_current_authorization=broker,
             reporting_authorization=report,
+            manual_capture_intake=capture,
         )
     except ImportError:
         raise LocalWebError("Python dependencies are missing. Complete the documented project setup in the OneJournal environment.") from None

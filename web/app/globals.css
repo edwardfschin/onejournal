@@ -194,6 +194,11 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .report-download { display: inline-flex; align-items: center; gap: 7px; color: var(--signal-cyan); background: var(--surface-1); border: 1px solid var(--line); border-radius: 7px; padding: 10px 12px; font-size: 12px; cursor: pointer; }
 .report-download svg { width: 15px; height: 15px; }
 .report-download:disabled,.local-reports-route .primary-action:disabled { opacity: .5; cursor: not-allowed; }
+.manual-capture-label { display: block; margin: 14px 0 6px; color: var(--text); font-size: 13px; }
+.manual-capture-files { display: block; max-width: 100%; color: var(--text); font-size: 13px; }
+.manual-capture-files::file-selector-button { margin-right: 10px; padding: 9px 12px; color: var(--signal-cyan); background: var(--surface-1); border: 1px solid var(--line); border-radius: 7px; cursor: pointer; }
+.manual-capture-files:disabled::file-selector-button { opacity: .5; cursor: not-allowed; }
+.report-section output { display: block; margin-top: 12px; color: var(--text); font-size: 13px; line-height: 1.6; }
 .bounded-report-quality { margin: 15px 0; border-left: 3px solid var(--signal-cyan); padding: 8px 12px; background: var(--signal-cyan-soft); color: var(--text); font-size: 12px; }
 .bounded-report-quality:not(.valid) { border-color: var(--signal-amber); background: var(--signal-amber-soft); }
 .bounded-report-quality p { margin: 6px 0; line-height: 1.6; }

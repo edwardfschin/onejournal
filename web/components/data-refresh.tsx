@@ -1,50 +1,45 @@
 'use client';
 import * as React from 'react';
-import { fetchRefreshStatus, requestRefresh, type RefreshStatus } from '@/lib/data-refresh';
-
-const labels = {
-  queued: 'Refresh requested. Waiting for the broker connection.',
-  capturing: 'Downloading current positions. Your saved reports are unchanged.',
-  captured: 'Download received. Validation and review are required before updating your reports.',
-  closed: 'Refresh review closed. Check the saved release date for published data.',
-  failed: 'Refresh stopped. Your saved reports are unchanged.',
-};
+import { manualCaptureAvailable, stageManualCapture } from '@/lib/manual-capture';
 
 export default function DataRefresh() {
-  const [status, setStatus] = React.useState<RefreshStatus | null>(null);
+  const [enabled, setEnabled] = React.useState(false);
+  const [checked, setChecked] = React.useState(false);
   const [busy, setBusy] = React.useState(false);
+  const [selected, setSelected] = React.useState<File[]>([]);
+  const [message, setMessage] = React.useState('');
   const [error, setError] = React.useState('');
-  // Keep the same identity after an uncertain response; retry cannot duplicate.
-  const operation = React.useRef<string | null>(null);
-  async function check() {
-    setBusy(true);
-    try { setStatus(await fetchRefreshStatus()); setError(''); }
-    catch (e) { setError(e instanceof Error ? e.message : 'Refresh status is unavailable.'); }
-    finally { setBusy(false); }
-  }
-  React.useEffect(() => { void check(); }, []);
-  async function refresh() {
-    if (!status?.enabled) return;
-    setBusy(true);
-    operation.current ??= crypto.randomUUID();
+  const input = React.useRef<HTMLInputElement>(null);
+  React.useEffect(() => {
+    void manualCaptureAvailable().then(value => { setEnabled(value); setChecked(true); })
+      .catch(() => { setChecked(true); setError('Capture upload status is unavailable. Saved results are unchanged.'); });
+  }, []);
+  async function upload() {
+    setBusy(true); setError(''); setMessage('');
     try {
-      const latest = await requestRefresh(operation.current);
-      setStatus({ ...status, latest }); setError(''); operation.current = null;
-    } catch (e) { setError(e instanceof Error ? e.message : 'Refresh was not confirmed.'); }
-    finally { setBusy(false); }
+      const receipt = await stageManualCapture(selected);
+      setMessage(receipt.replayed
+        ? 'This exact package was already received. Your saved results are unchanged.'
+        : 'The package was verified and saved privately on this Mac. Portfolio and Reports have not changed yet.');
+      setSelected([]);
+      if (input.current) input.current.value = '';
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : 'The package could not be verified. Saved results are unchanged.');
+    } finally { setBusy(false); }
   }
-  const pending = status?.latest && ['queued', 'capturing', 'captured'].includes(status.latest.state);
-  const provider = status?.provider === 'schwab' ? 'Schwab' : status?.provider ?? 'Schwab';
   return <section className="panel report-section" aria-labelledby="refresh-heading">
-    <h2 id="refresh-heading">Refresh from {provider}</h2>
-    <p>Request a new dated position snapshot, keeping earlier snapshots and your journal. Position quantities are not added together across snapshots. No full rebuild or automatic publication. Historical backfill is separate.</p>
+    <h2 id="refresh-heading">Refresh from Schwab</h2>
+    <p>Choose the verified capture files you obtained separately. This website does not contact Schwab. A complete financial check is still required before saved Portfolio or Reports can change. Historical backfill is separate.</p>
+    <label className="manual-capture-label" htmlFor="manual-capture-files">Capture manifest and response files</label>
+    <input className="manual-capture-files" id="manual-capture-files" ref={input} type="file" accept=".json,application/json" multiple
+      disabled={!enabled || busy} onChange={event => setSelected(Array.from(event.target.files ?? []))} />
     <div className="report-filter-actions">
-      <button className="report-download" type="button" disabled={busy || !status?.enabled || Boolean(pending) || Boolean(error)} onClick={() => void refresh()}>Refresh from {provider}</button>
-      <button className="report-download" type="button" disabled={busy} onClick={() => void check()}>Check refresh status</button>
+      <button className="report-download" type="button" disabled={!enabled || busy || selected.length === 0}
+        onClick={() => void upload()}>Verify and save package</button>
     </div>
-    <p role="status" aria-live="polite">{busy ? 'Checking refresh…' : status?.enabled === false
-      ? 'The broker refresh connection is not activated yet. Reload saved data still reads the current saved release.'
-      : status?.latest ? labels[status.latest.state] : status ? 'No refresh has been requested.' : 'Refresh status has not been verified.'}</p>
+    <output aria-live="polite">{busy ? 'Verifying capture…' : message ||
+      (checked && !enabled ? 'Manual package upload is not configured yet. Your saved results are unchanged.' :
+        !checked ? 'Checking whether private upload is available…' : 'Choose the package files to verify.')}</output>
     {error ? <p role="alert">{error}</p> : null}
   </section>;
 }

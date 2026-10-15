@@ -23,7 +23,8 @@ from onejournal.provider_connectors.external_acquisition import (
     EXTERNAL_PROVIDER_ACQUISITION_MANIFEST_FILENAME, external_provider_acquisition_manifest_bytes,
 )
 from onejournal.refresh_activity import (
-    ConfirmedActivityImport, activity_plan, confirmed_import, _review_delta, main,
+    ConfirmedActivityImport, activity_plan, confirmed_import, _review_delta,
+    _prior_order_variants, _review_order_corrections, main,
 )
 from onejournal.activity_rehearsal import disposable_journal, prepare_copy
 from onejournal.journal.activity_refresh_repository import append_activity_copy
@@ -117,6 +118,41 @@ class ActivityRefreshTests(unittest.TestCase):
             _review_delta(baseline, replace(original, order_records=(*original.order_records, *changed.order_records)),
                           self.plan(baseline))
 
+    def test_unfilled_order_replacement_is_exactly_reviewed_and_other_changes_hold(self):
+        original = self.window()
+        pending = {**original.order_records[0], 'order_uid': 'synthetic-pending-order',
+                   'source_order_id': 'synthetic-pending-order', 'status': 'PENDING_ACTIVATION',
+                   'requested_quantity': '2', 'remaining_quantity': '2',
+                   'filled_quantity': '0', 'closed_at_utc': '2026-09-05T10:00:00+00:00'}
+        successor = {**pending, 'status': 'REPLACED', 'remaining_quantity': '0',
+                     'closed_at_utc': '2026-09-06T10:00:00+00:00'}
+        families = tuple(replace(f, records=(*f.records, pending)) if f.family == 'orders' else f
+                         for f in self.assembly.families)
+        baseline = replace(self.baseline, assembly=replace(self.assembly, families=families))
+        captured = replace(original, order_records=(*original.order_records, successor))
+        accepted = _review_delta(baseline, captured, self.plan(baseline))
+        self.assertEqual(accepted['status'], 'candidate_only')
+        self.assertEqual(accepted['counts']['orders']['changed'], 1)
+        self.assertEqual(accepted['source_reviewed_order_correction_count'], 1)
+        prior = _prior_order_variants((pending,))
+        current = {successor['order_uid']: next(iter(_prior_order_variants((successor,))[successor['order_uid']]))}
+        reviews = _review_order_corrections(prior, current, original.transaction_rows)
+        self.assertEqual(len(reviews), 1)
+        self.assertEqual(reviews[successor['order_uid']]['reason_code'], 'unfilled_pending_order_replaced')
+        unset_close = {**pending, 'closed_at_utc': ''}
+        self.assertEqual(len(_review_order_corrections(
+            _prior_order_variants((unset_close,)), current, original.transaction_rows)), 1)
+        for changed in ({**successor, 'requested_quantity': '3'},
+                        {**successor, 'filled_quantity': '1'},
+                        {**successor, 'status': 'FILLED'},
+                        {**successor, 'closed_at_utc': '2026-09-04T10:00:00+00:00'}):
+            held = _review_delta(baseline, replace(original, order_records=(*original.order_records, changed)),
+                                 self.plan(baseline))
+            self.assertEqual(held['status'], 'review_required')
+            self.assertEqual(held['source_reviewed_order_correction_count'], 0)
+        linked_fill = {**original.transaction_rows[0], 'source_order_id': successor['source_order_id']}
+        self.assertFalse(_review_order_corrections(prior, current, (linked_fill,)))
+
     def test_real_active_import_and_verified_cli_are_read_only(self):
         history = history_fixture.SchwabHistoryRevisionTests()
         history.setUp()
@@ -162,6 +198,70 @@ class ActivityRefreshTests(unittest.TestCase):
         write(bundle / 'transactions.json', transaction)
         write(root / 'binding.json', schwab_account_private_binding_bytes(self.binding))
         write(root / 'ack.json', capture.acknowledgement_bytes)
+        # The website's verified staging area must feed the existing copy-only
+        # financial path without changing the source journal.
+        from onejournal.brokers.schwab.position_binding import (
+            SCHWAB_POSITION_PRIVATE_BINDING_SCHEMA, SchwabPositionPrivateBinding,
+            schwab_position_private_binding_bytes,
+        )
+        from onejournal.manual_capture_upload import ManualCaptureIntake
+        from onejournal.refresh_capture_authorization import AUTHORIZATION_VERSION
+        from onejournal.staged_activity_rehearsal import rehearse_staged_activity
+        position_binding = SchwabPositionPrivateBinding(
+            SCHWAB_POSITION_PRIVATE_BINDING_SCHEMA, self.binding.connection_uid,
+            self.binding.source_account_id, self.binding.provider_account_hash,
+            self.binding.provider_account_number, (),
+        )
+        write(root / 'position-binding.json', schwab_position_private_binding_bytes(position_binding))
+        digest = sha256(manifest_path.read_bytes()).hexdigest()
+        authorization = root / 'manual-authorization.json'
+        write(authorization, json.dumps(dict(
+            contract_version=AUTHORIZATION_VERSION, capture_scope='activity',
+            manifest_sha256=digest, acquisition_run_uid=manifest.acquisition_run_uid,
+            acquisition_approval_id=capture_fixture.APPROVAL_ID,
+            owner_uid=capture_fixture.OWNER_UID,
+            owner_epoch_uid=capture_fixture.OWNER_EPOCH_UID,
+        )).encode())
+        staging = root / 'manual-staging'
+        staging.mkdir(mode=0o700)
+        intake = ManualCaptureIntake(
+            authorization_path=authorization, acknowledgement_path=root / 'ack.json',
+            account_binding_path=root / 'position-binding.json',
+            usage_policy=capture.usage_policy, staging_root=staging,
+            project_root=Path(__file__).resolve().parents[1],
+        )
+        before_stage = history.db_path.read_bytes()
+        with patch('socket.socket.connect', side_effect=AssertionError('Network forbidden')):
+            self.assertEqual(intake.stage({p.name: p.read_bytes() for p in bundle.iterdir()})['scope'], 'activity')
+            staged_result = rehearse_staged_activity(
+                intake=intake, manifest_sha256=digest, source_db=history.db_path,
+                asof=date(2026, 9, 7), overlap_days=3, account_alias='Primary',
+            )
+        self.assertEqual(staged_result['status'], 'copy_financial_preview_complete')
+        self.assertGreater(staged_result['new_records'], 0)
+        self.assertFalse(staged_result['live_journal_written'])
+        self.assertTrue(staged_result['disposable_copy_appended'])
+        self.assertFalse(staged_result['financial_publication_authorized'])
+        self.assertEqual(history.db_path.read_bytes(), before_stage)
+        with patch('onejournal.staged_activity_rehearsal.review_activity',
+                   return_value={'status': 'review_required'}), \
+             patch('onejournal.staged_activity_rehearsal.disposable_journal',
+                   side_effect=AssertionError('Held evidence must not reach a writer')):
+            held = rehearse_staged_activity(
+                intake=intake, manifest_sha256=digest, source_db=history.db_path,
+                asof=date(2026, 9, 7), overlap_days=3, account_alias='Primary',
+            )
+        self.assertEqual(held['status'], 'held_for_source_review')
+        self.assertFalse(held['disposable_copy_appended'])
+        self.assertFalse(held['financial_publication_authorized'])
+        approved = authorization.read_bytes()
+        write(authorization, approved.replace(digest.encode(), b'0' * 64))
+        with self.assertRaises(ValueError):
+            rehearse_staged_activity(
+                intake=intake, manifest_sha256=digest, source_db=history.db_path,
+                asof=date(2026, 9, 7), overlap_days=3, account_alias='Primary',
+            )
+        write(authorization, approved)
         common = ['--db',str(history.db_path),'--account-binding',str(root/'binding.json'),
                   '--asof','2026-09-07','--overlap-days','3']
         review = ['review','--expected-plan-sha256',plan['plan_sha256'],

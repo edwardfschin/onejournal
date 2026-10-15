@@ -48,7 +48,9 @@ def _binding_hash(binding):
 
 def _ledger(con, baseline, binding):
     """Verify the entire append chain and rebuild its normalized-only overlay."""
-    from onejournal.refresh_activity import _FAMILIES, _index, _prior_order_variants
+    from onejournal.refresh_activity import (
+        _FAMILIES, _index, _prior_order_variants, _review_order_corrections,
+    )
     if not _schema(con):
         return [], {}, baseline.cutoff
     rows = con.execute('''SELECT import_uid, source_broker, source_account_id,
@@ -82,11 +84,24 @@ def _ledger(con, baseline, binding):
         next_cutoff = datetime.fromisoformat(artifact['checkpoint_utc'])
         if next_cutoff.tzinfo is None or next_cutoff < cutoff or set(artifact['records']) != set(_FAMILIES):
             raise ValueError('Invalid activity checkpoint or record families.')
+        incoming_orders = _index(artifact['records']['orders'], 'order_uid', 'order_observation_uid')
+        reviewed = _review_order_corrections(indexes['orders'], incoming_orders,
+            (*next(f.records for f in baseline.assembly.families if f.family == 'fills'),
+             *records['fills'], *artifact['records']['fills']))
+        if (artifact.get('order_corrections', []) != [reviewed[uid] for uid in sorted(reviewed)]
+                or artifact['review'].get('source_reviewed_order_correction_count', 0) != len(reviewed)):
+            raise ValueError('Persisted order correction review differs.')
         for name, (identity, observation, _) in _FAMILIES.items():
             additions = _index(artifact['records'][name], identity, observation)
-            if len(additions) != len(artifact['records'][name]) or indexes[name].keys() & additions.keys():
+            duplicate_ids = indexes[name].keys() & additions.keys()
+            if (len(additions) != len(artifact['records'][name])
+                    or duplicate_ids != (reviewed.keys() if name == 'orders' else set())):
                 raise ValueError('Persisted activity identity was duplicated.')
-            indexes[name].update(additions)
+            if name == 'orders':
+                for order_uid, encoded in additions.items():
+                    indexes[name].setdefault(order_uid, set()).add(encoded)
+            else:
+                indexes[name].update(additions)
             records[name].extend(artifact['records'][name])
         previous, cutoff = uid, next_cutoff
         artifacts.append((uid, artifact))
@@ -153,7 +168,8 @@ def append_activity_copy(*, db, binding, asof, overlap_days, expected_plan_sha25
     original receipt, including when subsequent increments already exist.
     """
     from onejournal.refresh_activity import (
-        _confirmed_import, activity_plan, load_activity_capture, _review_delta, _index, _prior_order_variants, _FAMILIES,
+        _confirmed_import, activity_plan, load_activity_capture, _review_delta,
+        _index, _prior_order_variants, _review_order_corrections, _FAMILIES,
     )
     checked = disposable_target(db)
     acquisition, converted = load_activity_capture(binding=binding, **capture_args)
@@ -191,12 +207,20 @@ def append_activity_copy(*, db, binding, asof, overlap_days, expected_plan_sha25
                 raise ValueError('Activity capture cannot regress the confirmed checkpoint.')
             families = {f.family: f for f in baseline.assembly.families}
             records = {}
+            order_corrections = {}
             for name, (identity, observation, attribute) in _FAMILIES.items():
                 prior = (*families[name].records, *baseline.appended_records.get(name, ()))
                 before = (_prior_order_variants(prior) if name == 'orders' else
                           _index(prior, identity, observation))
                 incoming = _index(getattr(converted, attribute), identity, observation)
-                records[name] = [json.loads(incoming[k]) for k in sorted(incoming.keys() - before.keys())]
+                if name == 'orders':
+                    order_corrections = _review_order_corrections(before, incoming,
+                        (*families['fills'].records, *baseline.appended_records.get('fills', ()),
+                         *converted.transaction_rows))
+                selected = (incoming.keys() - before.keys()) | (order_corrections.keys() if name == 'orders' else set())
+                records[name] = [json.loads(incoming[k]) for k in sorted(selected)]
+            if len(order_corrections) != review['source_reviewed_order_correction_count']:
+                raise ValueError('Order correction review changed before append.')
             sequence = con.execute('''SELECT COALESCE(MAX(import_sequence),0)+1 FROM incremental_activity_imports
                 WHERE source_broker='schwab' AND source_account_id=?''', [binding.source_account_id]).fetchone()[0]
             artifact = dict(contract_version=CONTRACT, sequence=sequence, run_uid=run,
@@ -206,7 +230,8 @@ def append_activity_copy(*, db, binding, asof, overlap_days, expected_plan_sha25
                 predecessor_uid=baseline.checkpoint_uid, checkpoint_utc=cutoff.astimezone(UTC).isoformat(),
                 plan=plan, manifest_sha256=acquisition.manifest_sha256,
                 source_manifest=json.loads(external_provider_acquisition_manifest_bytes(manifest)),
-                records=records, new_records=sum(len(v) for v in records.values()), review=review)
+                records=records, new_records=sum(len(v) for v in records.values()), review=review,
+                order_corrections=[order_corrections[uid] for uid in sorted(order_corrections)])
             body = canonical_schwab_evidence_json(artifact)
             uid = sha256(body.encode()).hexdigest()
             con.execute('INSERT INTO incremental_activity_imports VALUES (?,?,?,?,?,?)',
