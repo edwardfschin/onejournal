@@ -207,6 +207,19 @@ and automatic live publication still needs a guarded writer, backup and safe
 release switch. This copy-only connection must not be presented as a working
 website refresh.
 
+The `onejournal.staged_position_rehearsal` code now connects an already staged
+manual **current-position** package to the existing broker-current valuation
+and append-only snapshot tables on a disposable journal copy. It rechecks the
+exact independent capture approval, verifies the currently accepted Mac
+Portfolio release, and reuses that release's snapshot-age and currency-quantum
+settings. A capture for another account, an older observation, an unknown
+currency, a stale snapshot or incomplete valuation cannot silently replace
+the saved Portfolio. Missing tax-lot basis is shown as a financial hold, not
+inferred from the broker's general average price. A complete copy read-back
+returns counts and availability only. This is not a live append, new owner
+acceptance, report release, website worker or activation; those remain to be
+connected with the activity side behind a recoverable release switch.
+
 Planning includes the cutoff's UTC date, including when only part of that day
 was imported. Explicit `overlap_days` (1–29, no default operating policy) extends
 back within already confirmed coverage, never before its start. Each paired

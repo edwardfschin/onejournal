@@ -6,6 +6,28 @@ new entry only after a meaningful new check. Keep private data and machine-
 specific private paths out of this file. Evidence from another worktree applies
 here only when the listed code hashes and conditions match.
 
+## 2026-10-15 — staged position to disposable valuation and snapshot append
+
+- **Code tested:** `src/onejournal/staged_position_rehearsal.py` SHA-256
+  `69716cb3f7b8f398803c5e3ea007dc9a832c914184b770116b1e7fca7960babf`;
+  `tests/test_staged_position_rehearsal.py` SHA-256
+  `9f992bf1931d39a78dd0bbaa727bc35408580765ef614909ed4bba01ff103ef1`.
+- **Focused synthetic check:** one test passed in the Mac security Python
+  runtime. An exact privately staged position package used the previously
+  accepted release's valuation policy, appended a new snapshot and valuation
+  on a disposable copy, and read it back. Missing tax-lot basis returned a
+  financial hold; stale evidence failed. The original journal bytes were
+  unchanged, and network connection was forbidden throughout. Early runs of
+  this same new test exposed incorrect synthetic completion time and database
+  file permissions, then an intentionally missing basis; the fixture was
+  corrected, not the safety checks. No full suite or private rehearsal ran.
+- **Not proved:** no private capture, live journal append, new Portfolio release,
+  report update, backup, website worker, browser journey or broker access was
+  exercised. The saved Mac website remains unchanged.
+- **Reuse boundary:** repeat the smallest affected check if these code hashes,
+  capture or valuation contracts, input class or runtime changes, or before a
+  newly authorized consequential live action.
+
 ## 2026-10-15 — staged activity to disposable financial preview
 
 - **Code tested:** `src/onejournal/staged_activity_rehearsal.py` SHA-256
