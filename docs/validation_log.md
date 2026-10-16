@@ -6,6 +6,44 @@ new entry only after a meaningful new check. Keep private data and machine-
 specific private paths out of this file. Evidence from another worktree applies
 here only when the listed code hashes and conditions match.
 
+## 2026-10-16 — live latest captured Portfolio/Reports publication
+
+- **Authority/source:** owner explicitly requested updating Portfolio and Reports
+  with the latest validated retained data, keeping OneBot, historical backfill
+  and VPS separate. The earlier conditional publication choice applies after
+  financial validation. Calculation producer is committed `3ccc986`; its exact
+  code hash and source/checkpoint/result fingerprints are bound in the private
+  preparation plan. No new broker request or migration was required.
+- **Published result:** the complete 68-position observation and report coverage
+  now use October 15, New York market date, from the October 16 UTC capture.
+  There are 260 reportable realized results and 83 withheld entries. All 257
+  previously published results match exactly, and a multiset comparison confirms
+  the same 83 withheld economic scopes, statuses and reasons. Saved valuation
+  uses the original capture instant and unchanged freshness/precision rules;
+  publication time does not turn these prices into live prices.
+- **Live operation:** stopped only the previously identified OneJournal Mac
+  process. Created a fresh owner-private rollback journal/configuration/launcher
+  copy, verified exact database bytes and opening the retained report, then
+  appended the new snapshot, valuation and immutable combined report. Typed
+  read-back and the existing Portfolio, report breakdown, realized-history and
+  CSV APIs passed against the saved live target. Every non-financial-publication
+  relation, including Journal entries/reviews/checkpoint and history, matched its
+  pre-write proof. Previous report releases and their results were preserved.
+- **Runtime activation:** switched only the private financial authorization paths
+  in a new configuration and restarted the existing compatible protected runtime.
+  The unchanged frontend/static release was reused without another build.
+  Trusted HTTPS, served-shell hash, enrolled-passkey status and the actual process
+  selecting the new configuration passed. Private plan, publication, rollback
+  and runtime receipts are retained outside Git. No personal values or private
+  paths are copied here.
+- **Reuse/limits:** reused the focused quantity-reconciliation checks and the
+  single new combined disposable-copy API/CSV result recorded below. No unchanged
+  full suite, upload rehearsal, encrypted recovery exercise or security suite was
+  rerun. This proves the dated saved release and runtime switch, not live broker
+  prices, complete earlier account history, VPS deployment or owner visual
+  acceptance after reloading the browser. Recheck only the affected binding,
+  financial result or runtime when its inputs or code change.
+
 ## 2026-10-16 — Mac saved-Journal live activation
 
 - **Authority and release:** owner explicitly approved the fresh rollback copy,
