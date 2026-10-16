@@ -482,7 +482,7 @@ export default function LocalOwnerJournalPage({ activeSection = 'Journal' }: Loc
 
   async function saveEntry(event: SyntheticEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!selectedEpisode || !entryBody.trim()) return;
+    if (!entryBody.trim()) return;
     setWriteState('entry');
     setNotice(null);
     try {
@@ -496,7 +496,8 @@ export default function LocalOwnerJournalPage({ activeSection = 'Journal' }: Loc
       setEntryBody('');
       try {
         await refreshSelected();
-        setNotice(receipt.replayed ? 'Entry confirmed from its existing replay receipt.' : 'Journal entry saved as immutable revision 1.');
+        if (!selectedEpisode) await openJournalEntry(receipt.resource_uid);
+        setNotice(receipt.replayed ? 'Entry confirmed from its existing replay receipt.' : 'Journal entry saved.');
       } catch {
         setServiceError('The entry was saved, but refreshed journal state is unavailable.');
         setNotice('Entry saved. Refresh before making another change to this trade.');
@@ -571,6 +572,18 @@ export default function LocalOwnerJournalPage({ activeSection = 'Journal' }: Loc
     }
   }
 
+  const entryResultList = entryResults.length > 0 ? <div className="local-entry-results"><p className="eyebrow">Journal entries · open to read</p>{entryResults.map((entry) => <button className={`local-result-row ${openedEntry?.entry_uid === entry.entry_uid ? 'is-selected' : ''}`} type="button" key={entry.entry_uid} onClick={() => entry.episode_uid ? void openLifecycle(entry.episode_uid) : void openJournalEntry(entry.entry_uid)}><span className="trade-symbol violet">JN</span><span><small>{shortDate(entry.occurred_at ?? entry.created_at)} · revision {entry.revision_no}</small><strong>{label(entry.entry_type)}</strong><span>{entry.episode_uid ? 'Linked trade · open journal and trade' : 'Standalone entry · open privately'}</span></span><ChevronRight aria-hidden="true" /></button>)}</div> : null;
+
+  const journalEntryForm = <form className="panel local-author-panel" onSubmit={saveEntry}>
+    <div className="panel-header"><div><p className="eyebrow">Private journal</p><h2>{lifecycle ? `Reflect on ${lifecycle.trade.primary_symbol}` : 'Write a journal entry'}</h2></div><NotebookPen aria-hidden="true" /></div>
+    <p className="heading-copy">{lifecycle ? 'This reflection will be linked to the selected trade.' : 'You can write without selecting a trade. This entry will not change trade records.'}</p>
+    {lifecycle ? <button className="quiet-button" type="button" onClick={() => { setSelectedEpisode(null); setLifecycle(null); setOpenedEntry(null); }}>Write without linking a trade</button> : null}
+    <label className="local-field"><span>Entry type</span><select value={entryType} onChange={(event) => setEntryType(event.target.value)}>{entryTypes.map((value) => <option value={value} key={value}>{label(value)}</option>)}</select></label>
+    <label className="local-field"><span>Title <small>optional</small></span><input value={entryTitle} onChange={(event) => setEntryTitle(event.target.value)} maxLength={512} /></label>
+    <label className="local-field"><span>What did I learn?</span><textarea value={entryBody} onChange={(event) => setEntryBody(event.target.value)} maxLength={20000} rows={5} required placeholder="Write the decision, mistake, lesson, or next action." /></label>
+    <div className="local-submit-row"><button className="primary-preview" type="submit" disabled={writeState !== 'idle' || !entryBody.trim()}>{writeState === 'entry' ? 'Saving…' : 'Save journal entry'}</button><small>Saved privately; financial evidence is unchanged</small></div>
+  </form>;
+
   return (
     <main className="app-shell local-journal-route">
       <a className="workspace-skip-link" href="#workspace-content">Skip to content</a>
@@ -585,16 +598,21 @@ export default function LocalOwnerJournalPage({ activeSection = 'Journal' }: Loc
           <form className="search-box" onSubmit={runSearch}><Search aria-hidden="true" /><label className="sr-only" htmlFor="journal-search">Search trades and journal</label><input id="journal-search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search trades, symbols, notes…" type="search" /><button className="local-search-submit" type="submit" aria-label="Run search"><ArrowRight aria-hidden="true" /></button></form>
           <div className="topbar-actions"><span className="local-pill"><LockKeyhole aria-hidden="true" /> Loopback only</span></div>
         </header>
-        <output className="mode-banner"><span><ShieldCheck aria-hidden="true" /> Private historical journal</span><p>This is trade history, not a list of current holdings. Lifecycle status comes from Schwab fills, terminal events, and the reconciled position snapshot. No demo fallback.</p></output>
+        <output className="mode-banner"><span><ShieldCheck aria-hidden="true" /> {activeSection === 'Trades' ? 'Private trade evidence' : 'Private trading journal'}</span><p>{activeSection === 'Trades' ? 'Inspect what happened and record why you entered a trade. This is historical evidence, not current holdings.' : 'Read your notes and record what you learned. New Schwab activity appears only after it has been safely added to the journal.'}</p></output>
         <div className="content-frame" id="workspace-content" tabIndex={-1}>
-          <div className="page-heading"><div><p className="eyebrow">{activeSection} · local owner</p><h1>{activeSection === 'Trades' ? 'Inspect historical trades and their evidence.' : 'Review historical trades and their decisions.'}</h1><p className="heading-copy">Closed trades remain here as history. Search durable journal state, inspect its reconciled lifecycle status, then append a review or reflection without changing financial evidence.</p></div><button className="outline-action" type="button" onClick={() => void loadInitial()} disabled={loading}><RefreshCw aria-hidden="true" /> Refresh</button></div>
+          <div className="page-heading"><div><p className="eyebrow">{activeSection} · local owner</p><h1>{activeSection === 'Trades' ? 'What happened, and why did I trade?' : 'What did I learn?'}</h1><p className="heading-copy">{activeSection === 'Trades' ? 'Inspect the recorded trade and save your reason for entering it. Financial evidence is never changed by a review.' : 'Open an existing journal entry or choose a trade to add a reflection. The journal shows saved history, not an unverified broker download.'}</p></div><button className="outline-action" type="button" onClick={() => void loadInitial()} disabled={loading}><RefreshCw aria-hidden="true" /> Reload saved journal</button></div>
 
           {serviceError ? <section className="panel local-state local-state-error" role="alert"><LockKeyhole aria-hidden="true" /><div><strong>Local journal unavailable</strong><p>{serviceError}</p></div><button className="quiet-button" type="button" onClick={() => void loadInitial()}>Try again</button></section> : null}
 
+          {activeSection === 'Journal' ? journalEntryForm : null}
+
           <section className="local-journal-grid">
             <section className="panel local-browser-panel" aria-busy={loading}>
-              <div className="panel-header"><div><p className="eyebrow">Historical lifecycle browser</p><h2>{query.trim() ? 'Search results' : 'Recent journal history'}</h2></div>{loading ? <LoaderCircle className="local-spinner" aria-label="Loading" /> : <span className="health-score">{browserItems.length} items</span>}</div>
+              <div className="panel-header"><div><p className="eyebrow">{activeSection === 'Trades' ? 'Historical trade browser' : 'Private journal browser'}</p><h2>{query.trim() ? 'Search results' : activeSection === 'Trades' ? 'Recent trades' : 'Your entries and trades'}</h2></div>{loading ? <LoaderCircle className="local-spinner" aria-label="Loading" /> : <span className="health-score">{browserItems.length} trades · {entryResults.length} entries</span>}</div>
               {!loading && searchResult && episodeResults.length === 0 && entryResults.length === 0 ? <div className="local-empty"><Search aria-hidden="true" /><strong>No matching journal state</strong><p>Try a symbol, note phrase, or clear the search. No substitute results are shown.</p></div> : null}
+              {activeSection === 'Journal' && !loading && !query.trim() && entryResults.length === 0 ? <p className="local-muted">No saved entries yet. You can start with the writing form above.</p> : null}
+              {activeSection === 'Journal' ? entryResultList : null}
+              {activeSection === 'Journal' && browserItems.length > 0 ? <p className="eyebrow local-entry-results">Choose a trade to reflect on</p> : null}
               <div className="local-result-list">{browserItems.map((item) => {
                 if (item.kind === 'episode') {
                   const episode = item.episode;
@@ -660,7 +678,7 @@ export default function LocalOwnerJournalPage({ activeSection = 'Journal' }: Loc
                   })}</div> : null}
                 </article>;
               })}</div>
-              {entryResults.length > 0 ? <div className="local-entry-results"><p className="eyebrow">Matching journal entries · metadata only</p>{entryResults.map((entry) => <button className={`local-result-row ${openedEntry?.entry_uid === entry.entry_uid ? 'is-selected' : ''}`} type="button" key={entry.entry_uid} onClick={() => entry.episode_uid ? void openLifecycle(entry.episode_uid) : void openJournalEntry(entry.entry_uid)}><span className="trade-symbol violet">JN</span><span><small>{shortDate(entry.occurred_at ?? entry.created_at)} · revision {entry.revision_no}</small><strong>{label(entry.entry_type)}</strong><span>{entry.episode_uid ? 'Linked trade · open lifecycle' : 'Standalone entry · open privately'}</span></span><ChevronRight aria-hidden="true" /></button>)}</div> : null}
+              {activeSection === 'Trades' ? entryResultList : null}
             </section>
 
             <section className="panel local-queue-panel">
@@ -676,29 +694,22 @@ export default function LocalOwnerJournalPage({ activeSection = 'Journal' }: Loc
             {lifecycle ? <>
               {lifecycle.trade.lifecycle_quality !== 'resolved' ? <output className="local-quality-warning"><ShieldCheck aria-hidden="true" /><p><strong>Financial lifecycle unavailable</strong><span>{label(lifecycle.trade.lifecycle_reason ?? 'lifecycle review required')}. The captured fills remain visible, but aggregates are withheld until the missing history is reconciled.</span></p></output> : null}
               <div className="local-trade-meta"><span><small>Opened</small><strong>{shortDateTime(lifecycle.trade.opened_at)}</strong></span><span><small>Instrument</small><strong>{label(lifecycle.trade.asset_class)} · {lifecycle.trade.asset_class === 'option' ? optionInstrumentSummary(lifecycle.trade.instrument_summary) : lifecycle.trade.instrument_summary}</strong></span><span><small>Position check</small><strong>{label(lifecycle.trade.position_reconciliation_status)}</strong></span><span><small>Source</small><strong>{lifecycle.trade.execution_count} Schwab {lifecycle.trade.execution_count === 1 ? 'execution' : 'executions'}</strong></span></div>
-              <div className="local-instrument-list"><p className="eyebrow">Instrument summary · executions are grouped, not removed</p>{lifecycle.instruments.map((instrument) => <article key={instrument.instrument_uid}><header><span>{String(instrument.instrument_index).padStart(2, '0')}</span><div><small>{label(instrument.asset_class)} · {instrument.opening_direction ? `${label(instrument.opening_direction)} opening` : 'opening history unavailable'}</small><strong>{instrument.symbol}</strong><p>{instrument.option_type ? `${label(instrument.option_type)} · ${instrument.expiry ?? 'no expiry'} · strike ${instrument.strike ? strikeText(instrument.strike) : '—'} · multiplier ${instrument.multiplier ?? '—'}` : 'Equity instrument'}</p></div></header><footer><span>{instrument.execution_count} {instrument.execution_count === 1 ? 'execution' : 'executions'}</span><span>Bought {decimalText(instrument.buy_quantity)}</span><span>Sold {decimalText(instrument.sell_quantity)}</span><span>Captured delta {decimalText(instrument.captured_quantity_delta)}</span></footer></article>)}</div>
+              {activeSection === 'Trades' ? <><div className="local-instrument-list"><p className="eyebrow">Instrument summary · executions are grouped, not removed</p>{lifecycle.instruments.map((instrument) => <article key={instrument.instrument_uid}><header><span>{String(instrument.instrument_index).padStart(2, '0')}</span><div><small>{label(instrument.asset_class)} · {instrument.opening_direction ? `${label(instrument.opening_direction)} opening` : 'opening history unavailable'}</small><strong>{instrument.symbol}</strong><p>{instrument.option_type ? `${label(instrument.option_type)} · ${instrument.expiry ?? 'no expiry'} · strike ${instrument.strike ? strikeText(instrument.strike) : '—'} · multiplier ${instrument.multiplier ?? '—'}` : 'Equity instrument'}</p></div></header><footer><span>{instrument.execution_count} {instrument.execution_count === 1 ? 'execution' : 'executions'}</span><span>Bought {decimalText(instrument.buy_quantity)}</span><span>Sold {decimalText(instrument.sell_quantity)}</span><span>Captured delta {decimalText(instrument.captured_quantity_delta)}</span></footer></article>)}</div>
               <div className="local-execution-list"><p className="eyebrow">Exact Schwab executions · not strategy legs</p>{lifecycle.executions.map((execution) => <article key={execution.execution_uid}><span>{String(execution.execution_index).padStart(2, '0')}</span><div><small>{shortDateTime(execution.filled_at)} · matched to Schwab transaction</small><strong>{execution.side} {decimalText(execution.quantity)} @ {money(execution.fill_price, execution.currency, 4, 2)}</strong><p>Schwab net cash movement {money(execution.schwab_net_cash_movement, execution.currency)} · commission {money(execution.commission, execution.currency)} · fees {money(execution.fees, execution.currency)}</p></div></article>)}</div>
               {lifecycle.lifecycle_story && lifecycle.lifecycle_story.option_stock_settlements.length > 0 ? <div className="local-execution-list local-settlement-list"><p className="eyebrow">Linked Schwab option settlement</p>{lifecycle.lifecycle_story.option_stock_settlements.map((settlement) => <button className="local-settlement-detail" type="button" key={settlement.settlement_uid} onClick={() => void openLifecycle(settlement.stock_episode_uid)}><span>↕</span><div><small>{shortDateTime(settlement.settled_at)} · exact structured match</small><strong>{label(settlement.settlement_kind)} · {stockSettlementLabel(settlement.stock_quantity, settlement.settlement_kind).toLowerCase()} {signedQuantity(settlement.stock_quantity)} {settlement.stock_symbol} @ {money(settlement.stock_price, settlement.currency, 4, 2)}</strong><p>Open the resulting stock lifecycle. This link does not merge or alter either Schwab-backed trade.</p></div><ChevronRight aria-hidden="true" /></button>)}</div> : null}
-              {lifecycle.lifecycle_story && lifecycle.lifecycle_story.option_expirations.length > 0 ? <div className="local-execution-list local-settlement-list"><p className="eyebrow">Schwab terminal lifecycle evidence</p>{lifecycle.lifecycle_story.option_expirations.map((expiration) => <article className="local-expiration-detail" key={expiration.expiration_uid}><span>↕</span><div><small>Expired {shortDate(expiration.expires_on)} · Schwab posted {shortDateTime(expiration.posted_at)}</small><strong>Expiration indicated · {decimalText(expiration.option_quantity)} {decimalText(expiration.option_quantity) === '1' ? 'contract' : 'contracts'}</strong><p>No assignment or resulting stock settlement was matched. Financial authority remains review required because Schwab supplied a description hint rather than a structured event type.</p></div></article>)}</div> : null}
+              {lifecycle.lifecycle_story && lifecycle.lifecycle_story.option_expirations.length > 0 ? <div className="local-execution-list local-settlement-list"><p className="eyebrow">Schwab terminal lifecycle evidence</p>{lifecycle.lifecycle_story.option_expirations.map((expiration) => <article className="local-expiration-detail" key={expiration.expiration_uid}><span>↕</span><div><small>Expired {shortDate(expiration.expires_on)} · Schwab posted {shortDateTime(expiration.posted_at)}</small><strong>Expiration indicated · {decimalText(expiration.option_quantity)} {decimalText(expiration.option_quantity) === '1' ? 'contract' : 'contracts'}</strong><p>No assignment or resulting stock settlement was matched. Financial authority remains review required because Schwab supplied a description hint rather than a structured event type.</p></div></article>)}</div> : null}</> : null}
               <div className="local-entry-list"><p className="eyebrow">Current journal entries</p>{lifecycle.entries.length === 0 ? <p className="local-muted">No entries are attached to this trade.</p> : lifecycle.entries.map((entry) => <article key={entry.entry_uid}><header><span>{label(entry.entry_type)}</span><small>Revision {entry.revision_no}</small></header><strong>{entry.title || 'Untitled entry'}</strong><p>{entry.body}</p></article>)}</div>
             </> : null}
             {openedEntry ? <div className="local-entry-list local-standalone-entry"><p className="eyebrow">Intentionally opened journal prose</p><article><header><span>{label(openedEntry.entry_type)}</span><small>Revision {openedEntry.revision_no}</small></header><strong>{openedEntry.title || 'Untitled entry'}</strong><p>{openedEntry.body}</p></article></div> : null}
           </section>
 
-          {lifecycle ? <section className="local-author-grid">
+          {lifecycle && activeSection === 'Trades' ? <section className="local-author-grid local-author-grid-single">
             <form className="panel local-author-panel" onSubmit={saveReview}>
               <div className="panel-header"><div><p className="eyebrow">Append review</p><h2>Record the assessment</h2></div><ShieldCheck aria-hidden="true" /></div>
               <div className="local-field-grid"><label><span>Status</span><select value={reviewStatus} onChange={(event) => setReviewStatus(event.target.value)}>{reviewStatuses.map((value) => <option value={value} key={value}>{label(value)}</option>)}</select></label><label><span>Setup quality</span><select value={setupQuality} onChange={(event) => setSetupQuality(event.target.value)}>{setupQualities.map((value) => <option value={value} key={value}>{label(value)}</option>)}</select></label></div>
               <label className="local-field"><span>Entry reason</span><input value={entryReason} onChange={(event) => setEntryReason(event.target.value)} maxLength={4000} placeholder="Why the trade was entered" /></label>
               <label className="local-field"><span>Private review notes</span><textarea value={reviewNotes} onChange={(event) => setReviewNotes(event.target.value)} maxLength={20000} rows={5} placeholder="What should be remembered?" /></label>
               <div className="local-submit-row"><button className="primary-preview" type="submit" disabled={writeState !== 'idle'}>{writeState === 'review' ? 'Saving…' : 'Save append-only review'}</button><small>Replay-safe operation identity</small></div>
-            </form>
-            <form className="panel local-author-panel" onSubmit={saveEntry}>
-              <div className="panel-header"><div><p className="eyebrow">Append journal entry</p><h2>Add a reflection</h2></div><NotebookPen aria-hidden="true" /></div>
-              <label className="local-field"><span>Entry type</span><select value={entryType} onChange={(event) => setEntryType(event.target.value)}>{entryTypes.map((value) => <option value={value} key={value}>{label(value)}</option>)}</select></label>
-              <label className="local-field"><span>Title <small>optional</small></span><input value={entryTitle} onChange={(event) => setEntryTitle(event.target.value)} maxLength={512} /></label>
-              <label className="local-field"><span>Private entry</span><textarea value={entryBody} onChange={(event) => setEntryBody(event.target.value)} maxLength={20000} rows={5} required placeholder="Capture the decision, mistake, or lesson." /></label>
-              <div className="local-submit-row"><button className="primary-preview" type="submit" disabled={writeState !== 'idle' || !entryBody.trim()}>{writeState === 'entry' ? 'Saving…' : 'Save immutable revision 1'}</button><small>Financial evidence is unchanged</small></div>
             </form>
           </section> : null}
 

@@ -185,6 +185,24 @@ class LocalOwnerJournalApiTests(unittest.TestCase):
         self.assertEqual(accepted.status_code, 200)
         self.assertEqual(conflict.status_code, 409)
 
+    def test_standalone_journal_entry_can_be_saved_and_opened(self) -> None:
+        created = self.client.post(
+            "/api/v5/local-owner/journal/entries",
+            headers={"X-OneJournal-Operation-Id": str(uuid4())},
+            json={"entry_type": "lesson", "episode_uid": None,
+                  "title": "Synthetic lesson", "body": "Synthetic private reflection"},
+        )
+        self.assertEqual(created.status_code, 200)
+        entry_uid = created.json()["resource_uid"]
+        listed = self.client.get("/api/v5/local-owner/journal/search", params={"q": "Synthetic lesson"})
+        self.assertEqual(listed.status_code, 200)
+        self.assertEqual([row["entry_uid"] for row in listed.json()["entries"]], [entry_uid])
+        self.assertNotIn("Synthetic private reflection", repr(listed.json()))
+        opened = self.client.get(f"/api/v5/local-owner/journal/entries/{entry_uid}")
+        self.assertEqual(opened.status_code, 200)
+        self.assertIsNone(opened.json()["entry"]["episode_uid"])
+        self.assertEqual(opened.json()["entry"]["body"], "Synthetic private reflection")
+
     def test_concurrent_identical_write_is_serialized_and_replayed(self) -> None:
         operation = str(uuid4())
         payload = {

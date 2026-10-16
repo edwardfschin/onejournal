@@ -1,7 +1,7 @@
 """Passkey-gated, credential-free intake of an exact manual capture package.
 
-Only verified raw evidence is staged. No broker access, journal append,
-financial calculation, checkpoint advance, or release activation occurs here.
+The default remains staging only. A separately enabled Mac Journal target can
+save validated activity atomically; position packages still use staging only.
 """
 
 from __future__ import annotations
@@ -15,8 +15,11 @@ from pathlib import Path
 import shutil
 import tempfile
 from typing import Mapping
+from threading import Lock
+import duckdb
 
 from fastapi import HTTPException, Request
+from starlette.concurrency import run_in_threadpool
 
 from onejournal.brokers.schwab.position_binding import load_schwab_position_private_binding_bytes
 from onejournal.local_web import private_directory, private_file
@@ -53,7 +56,7 @@ class ManualCaptureIntake:
         if self.staging_root.is_relative_to(project_root.resolve()):
             raise ValueError("Manual capture staging must be outside the project checkout.")
 
-    def stage(self, files: Mapping[str, bytes]) -> dict[str, object]:
+    def stage(self, files: Mapping[str, bytes], *, journal_db: Path | None = None) -> dict[str, object]:
         authorization = load_private_capture_authorization(
             self.authorization_path, project_root=self.project_root
         )
@@ -92,7 +95,7 @@ class ManualCaptureIntake:
             if not converted.snapshot.account_complete:
                 raise ValueError("A complete current-position snapshot is required.")
         else:
-            convert_external_schwab_lifecycle(
+            converted = convert_external_schwab_lifecycle(
                 acquisition,
                 provider_account_hash=binding.provider_account_hash,
                 provider_account_number=binding.provider_account_number,
@@ -118,7 +121,7 @@ class ManualCaptureIntake:
                 if pending.exists():
                     shutil.rmtree(pending)
             replayed = False
-        return {
+        receipt = {
             "contract_version": CONTRACT,
             "state": "verified_and_staged",
             "scope": authorization.capture_scope,
@@ -127,6 +130,43 @@ class ManualCaptureIntake:
             "journal_written": False,
             "financial_publication_authorized": False,
         }
+        if journal_db is not None and authorization.capture_scope == 'activity':
+            from onejournal.brokers.schwab.account_binding import (
+                SCHWAB_ACCOUNT_PRIVATE_BINDING_SCHEMA, SchwabAccountPrivateBinding,
+            )
+            from onejournal.journal.activity_refresh_repository import append_activity_journal
+            from onejournal.refresh_activity import confirmed_import, activity_plan
+            account = SchwabAccountPrivateBinding(SCHWAB_ACCOUNT_PRIVATE_BINDING_SCHEMA,
+                binding.connection_uid, binding.source_account_id,
+                binding.provider_account_hash, binding.provider_account_number)
+            baseline = confirmed_import(journal_db, account)
+            with duckdb.connect(str(journal_db), read_only=True) as con:
+                replay = con.execute('''SELECT artifact_json FROM incremental_activity_imports
+                    WHERE source_broker='schwab' AND source_account_id=? AND acquisition_run_uid=?''',
+                    [account.source_account_id, authorization.acquisition_run_uid]).fetchone()
+            if replay:
+                saved = json.loads(replay[0])
+                if saved['manifest_sha256'] != authorization.manifest_sha256:
+                    raise ValueError('Retained upload differs from this package.')
+                plan = saved['plan']
+                overlap = plan['overlap_days']
+            else:
+                overlap = (baseline.cutoff.date() - converted.window_start_date).days + 1
+                if not 1 <= overlap <= 29:
+                    raise ValueError('Upload does not overlap the last confirmed Journal import.')
+                plan = activity_plan(baseline, account, asof=converted.window_end_date, overlap_days=overlap)
+            result = append_activity_journal(db=journal_db, binding=account,
+                asof=converted.window_end_date, overlap_days=overlap,
+                expected_plan_sha256=plan['plan_sha256'], acquisition_root=destination,
+                acknowledgement=self.acknowledgement_path, usage_policy=self.usage_policy,
+                expected_run_uid=authorization.acquisition_run_uid,
+                expected_approval_id=authorization.acquisition_approval_id,
+                expected_owner_uid=authorization.owner_uid,
+                expected_owner_epoch_uid=authorization.owner_epoch_uid, evaluated_at=datetime.now(UTC))
+            receipt.update(state='journal_saved', replayed=result['replayed'],
+                journal_written=True, new_records=result['new_records'],
+                trade_count=result['trade_count'], execution_count=result['execution_count'])
+        return receipt
 
 
 def _exact_staged_files(directory: Path, files: Mapping[str, bytes]) -> bool:
@@ -165,7 +205,9 @@ def _decode_upload(body: bytes) -> dict[str, bytes]:
         raise ValueError("Selected capture files are invalid.") from exc
 
 
-def register_manual_capture_routes(app, intake: ManualCaptureIntake | None = None) -> None:
+def register_manual_capture_routes(app, intake: ManualCaptureIntake | None = None,
+                                   *, journal_db=None, db_lock=None) -> None:
+    lock = db_lock if db_lock is not None else Lock()
     @app.get(PREFIX)
     def status(request: Request):
         return {"contract_version": CONTRACT,
@@ -185,6 +227,10 @@ def register_manual_capture_routes(app, intake: ManualCaptureIntake | None = Non
             if len(body) > MAX_UPLOAD_BYTES:
                 raise HTTPException(413, "Selected capture package is too large.")
         try:
-            return intake.stage(_decode_upload(body))
-        except (OSError, ValueError, ManualRefreshAuthorizationError):
+            files = _decode_upload(body)
+            def save():
+                with lock:
+                    return intake.stage(files, journal_db=journal_db)
+            return await run_in_threadpool(save)
+        except (OSError, ValueError, duckdb.Error, ManualRefreshAuthorizationError):
             raise HTTPException(422, "Capture was not verified or staged. Saved results are unchanged.") from None

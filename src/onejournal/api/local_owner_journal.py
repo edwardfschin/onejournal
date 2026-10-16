@@ -42,6 +42,7 @@ from onejournal.journal.domain import (
     get_current_entry_revision,
     revise_entry,
     save_review,
+    table_exists,
     utc_now_naive,
 )
 from onejournal.journal.broker_current_position_valuation_repository import (
@@ -379,6 +380,7 @@ def create_local_owner_journal_app(
     reporting_authorization: ReportingReleaseAuthorization | None = None,
     refresh_requests=None,
     manual_capture_intake=None,
+    manual_capture_save_journal: bool = False,
 ) -> FastAPI:
     """Build the private app with a server-selected, existing journal database.
 
@@ -576,7 +578,13 @@ def create_local_owner_journal_app(
     from onejournal.refresh_requests import register_routes
     register_routes(app, refresh_requests)
     from onejournal.manual_capture_upload import register_manual_capture_routes
-    register_manual_capture_routes(app, manual_capture_intake)
+    if type(manual_capture_save_journal) is not bool:
+        raise ValueError('Manual Journal saving must be explicitly enabled or disabled.')
+    if manual_capture_save_journal and (manual_capture_intake is None or isinstance(db_path, PostgresTarget)):
+        raise ValueError('Manual Journal saving requires a configured Mac capture intake.')
+    db_lock = Lock()
+    register_manual_capture_routes(app, manual_capture_intake,
+        journal_db=db_path if manual_capture_save_journal else None, db_lock=db_lock)
     vertical_groups = load_schwab_vertical_presentation_groups(db_path)
     vertical_group_by_episode = {
         member.episode_uid: group
@@ -587,6 +595,29 @@ def create_local_owner_journal_app(
     lifecycle_story_by_episode = {
         story.episode_uid: story for story in lifecycle_stories
     }
+    def activity_head():
+        with connect(db_path, read_only=True) as con:
+            if not table_exists(con, 'incremental_activity_imports'):
+                return ()
+            return tuple(con.execute('''SELECT source_broker,source_account_id,max(import_sequence)
+                FROM incremental_activity_imports GROUP BY source_broker,source_account_id
+                ORDER BY source_broker,source_account_id''').fetchall())
+
+    presentation_head = activity_head()
+
+    def refresh_presentations():
+        nonlocal presentation_head, vertical_groups, lifecycle_stories
+        head = activity_head()
+        if head == presentation_head:
+            return
+        groups = load_schwab_vertical_presentation_groups(db_path)
+        stories = load_schwab_lifecycle_presentations(db_path)
+        vertical_groups, lifecycle_stories = groups, stories
+        vertical_group_by_episode.clear()
+        vertical_group_by_episode.update({m.episode_uid:g for g in groups for m in g.members})
+        lifecycle_story_by_episode.clear()
+        lifecycle_story_by_episode.update({s.episode_uid:s for s in stories})
+        presentation_head = head
 
     def relevant_vertical_groups(
         episode_uids: set[str],
@@ -608,8 +639,6 @@ def create_local_owner_journal_app(
 
     def open_db(*, read_only: bool = False) -> duckdb.DuckDBPyConnection:
         return connect(db_path, read_only=read_only)
-
-    db_lock = Lock()
 
     @app.get(
         LOCAL_OWNER_CURRENT_PORTFOLIO_API_PATH,
@@ -786,6 +815,7 @@ def create_local_owner_journal_app(
         )
         try:
             with db_lock:
+                refresh_presentations()
                 with open_db(read_only=False) as con:
                     result = search_journal(con, filters, limit=limit)
                     _audit_read(con, action="journal_search", request={"filters": filters.__dict__, "limit": limit})
@@ -803,6 +833,7 @@ def create_local_owner_journal_app(
     @app.get(f"{LOCAL_OWNER_JOURNAL_API_PREFIX}/review-queues", response_model=ReviewQueuesResponse, tags=["local-owner-journal"])
     def review_queues(asof: date | None = Query(default=None)) -> ReviewQueuesResponse:
         with db_lock:
+            refresh_presentations()
             with open_db(read_only=False) as con:
                 queues = build_review_queues(con, asof=asof)
                 _audit_read(con, action="review_queue_read", request={"asof": str(asof) if asof else None})
@@ -821,6 +852,7 @@ def create_local_owner_journal_app(
     @app.get(f"{LOCAL_OWNER_JOURNAL_API_PREFIX}/trades/{{episode_uid}}", response_model=TradeLifecycleResponse, tags=["local-owner-journal"])
     def trade_lifecycle(episode_uid: str) -> TradeLifecycleResponse:
         with db_lock:
+            refresh_presentations()
             with open_db(read_only=False) as con:
                 row = _row(con, f"""
                     WITH latest_lifecycle_states AS (

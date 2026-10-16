@@ -113,9 +113,9 @@ def current_journal_relation(
         "phase1_journal_episode_lifecycle_states": "journal_current_episode_lifecycle_states",
     }
     current_name = current_names.get(legacy_name)
-    if current_name is not None and table_exists(con, current_name):
-        return current_name
-    return legacy_name
+    base = current_name if current_name is not None and table_exists(con, current_name) else legacy_name
+    from .activity_journal import current_relation
+    return current_relation(con, legacy_name, base)
 
 
 def save_review(

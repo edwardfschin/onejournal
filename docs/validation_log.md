@@ -6,6 +6,73 @@ new entry only after a meaningful new check. Keep private data and machine-
 specific private paths out of this file. Evidence from another worktree applies
 here only when the listed code hashes and conditions match.
 
+## 2026-10-16 — distinct local Trades and Journal views
+
+- **Code checked:** `web/app/journal/local/page.tsx` SHA-256
+  `162201d290e6462486f4a7822728b791471991edc857f14a1bf03184ca49dec1`;
+  `web/app/globals.css` SHA-256
+  `c6cedfdf1cb36083d063ed183db39b253d9432ebe384883a9d126a280c8d109a`;
+  `tests/test_local_owner_journal_api.py` SHA-256
+  `215d680ab505c31dffdb1e7aba72392a715c7b86594e515b90dec4d725a00d43`.
+- **Reason:** the two routes shared the same trade-heavy screen, burying journal
+  entries and reflections. The local Journal now puts saved entries first and
+  shows a standalone or trade-linked reflection form without first selecting
+  an old trade. Trades retains execution detail and the entry-reason review
+  form. One focused synthetic API test proved standalone save, private search
+  metadata, and intentional full-entry read. The production frontend build
+  passed with existing local dependencies; no private journal or broker data
+  was read for these checks.
+- **Not proved:** no live browser or owner acceptance, recent-trade import,
+  journal database change, report publication, or runtime activation. A change
+  to these UI files or their API contract invalidates this build evidence.
+
+## 2026-10-16 — validated upload to saved Journal
+
+- **Scope/revision:** focused continuation of `27f0ee9`; new v2 incremental
+  artifact retains the Journal read model, confirmed fills and checkpoint in one
+  transaction. No new migration. Existing staging and v1 evidence remain valid.
+  Activation defaults off with `manual_capture_save_journal: false`.
+- **Pinned code:** `journal/activity_journal.py` SHA-256
+  `a0f783ddf36c1d60c7458e3890bdef912d71f95a0cca55de2697db289026509e`;
+  `journal/activity_refresh_repository.py`
+  `3d8bd6d30b9a829a2b2ecec621b13efac96a7bc7cd894c0634e2b8dbb9917392`;
+  `manual_capture_upload.py`
+  `03541f11dd8e64b8502046498f75db838236308c64f8afad9ab2c07dbf955c8d`;
+  `api/local_owner_journal.py`
+  `a558485ae0e14403f3f7607c2ea50806185009ccecfdc09a72ae1b7905f19469`;
+  `tests/test_activity_journal_upload.py`
+  `74f5090b6d30b16876a9147a4c38794dd3a47496ea8b48c661027f84c1c5f6f3`.
+  Source module paths are relative to `src/onejournal/`.
+- **New synthetic journey:** `PYTHONPATH=src:tests:. python -m unittest
+  test_activity_journal_upload -q` passed (2 tests, Mac security runtime).
+  An HTTP upload saved a newly confirmed execution; existing search and trade
+  APIs returned it immediately. Entry-reason review, linked lesson save/read,
+  exact upload replay and a new app's read of the retained view passed. Injecting
+  a failure after new fills were inserted rolled back fills and checkpoint.
+  The original source bytes were unchanged. Network connections were forbidden.
+- **Focused compatibility:** the existing default staging/replay test and the
+  extended all-or-none private-config test passed. The changed frontend receipt
+  test passed with `node --experimental-strip-types --test
+  web/tests/manual-capture.test.mjs`. TypeScript no-emit check and static build
+  passed using existing local build dependencies. The earlier standalone-note
+  evidence above was reused, and no unchanged full suite or backup was rerun.
+- **Why new checks ran:** prior evidence covered staging/copy previews, not the
+  saved-Journal writer. The initial new check caught timezone-naive serialization;
+  UTC was retained. The note fixture was corrected to use the existing entry
+  type/header contract. A build invocation used an unsupported root flag and was
+  corrected without changing application code. Only affected checks were repeated.
+- **Private input:** one disposable-copy run used the already captured activity
+  package and existing private journal, calling the new writer and existing API.
+  It saved 118 new records and read 310 trades / 619 executions. API startup,
+  search and latest trade read passed; the source journal was retained exactly.
+  No source identifiers, raw responses, values or private paths are recorded here.
+- **Limits:** not live import, runtime activation, browser/owner acceptance,
+  Portfolio/Reports publication, broker download, history backfill or VPS proof.
+  Automatic approval review rejected direct live wiring; this change leaves its
+  activation flag off. Repeat only the affected check if the listed code, typed
+  Journal relations, financial/lifecycle contracts, capture class or runtime
+  changes. A newly authorized live import still needs its own commit/read-back.
+
 ## 2026-10-15 — staged position to disposable valuation and snapshot append
 
 - **Code tested:** `src/onejournal/staged_position_rehearsal.py` SHA-256

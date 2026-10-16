@@ -104,15 +104,43 @@ acknowledgement, usage policy and account/instrument binding are also Mac-side
 inputs. The optional Mac upload path accepts a bounded JSON request under the
 existing passkey and CSRF protection, rechecks the exact approval, provider use,
 account and package bytes, then stages the unchanged files once in an owner-only
-directory. An exact repeat returns a replay receipt. It does not append to the
-journal, advance a checkpoint, calculate P&L or publish a release. The running
-Mac site has not been reconfigured or restarted to activate this path. The
+directory. An exact repeat returns a replay receipt. Staging remains the default.
+The Mac-only `manual_capture_save_journal: true` option additionally connects
+activity uploads to the saved Journal. It must be deliberately enabled for the
+approved live target; adding this option to source does not activate a site. The
 private configuration requires all five server-selected fields:
 `manual_capture_authorization`, `manual_capture_acknowledgement`,
 `manual_capture_usage_policy`, `manual_capture_account_binding`, and
 `manual_capture_staging_root`; an incomplete configuration is rejected. Neither
 package self-checksums nor a user-selected local file confer approval by
 themselves. A changed package requires a new independent approval record.
+
+The saved-Journal option requires existing exact migration 0030 and an active
+exact-cutoff history revision. Within the app's existing database lock, the
+importer reuses the validated overlap, identity/correction rules, execution
+reconciliation and lifecycle calculation. It stores new normalized fills and an
+immutable v2 incremental artifact carrying all Journal read-model rows together
+with the checkpoint in one transaction. Missing opening evidence and stale
+position reconciliation stay visibly pending; they do not prevent recording
+confirmed executions or turn into accepted P&L. An error rolls back fills, trade
+view and checkpoint together. An identical upload returns its original receipt;
+it does not repeat its financial effect. Existing notes/reviews are retained;
+an altered grouping that would detach an existing link is held.
+
+Journal search, trade details, review queues and note validation read the latest
+retained activity view only while its original history activation matches.
+Decimal values retain their established types. The saved artifact contains the
+read model so page requests do no financial calculation. The new UI/API receipt
+state `journal_saved` means the saved Journal was updated; `verified_and_staged`
+continues to mean files only. Portfolio/Reports release authorization and the
+position-upload path are unchanged. The v1 ledger remains readable. There is no
+new schema migration, credential connection, broker request or history backfill.
+
+Rollback before activation is to keep `manual_capture_save_journal` false. For a
+failed import the transaction rolls back automatically. For a committed import
+requiring recovery, stop the site and restore the verified pre-import journal
+and matching configuration; retain the failed source package privately. Never
+delete ledger rows or manually advance its checkpoint.
 
 The older, inactive request-queue boundary uses the versioned
 `onejournal.data-refresh.v1` request/status boundary. It accepts a request ID,
@@ -146,10 +174,8 @@ This applies to Schwab and future IBKR adapters:
 
 The current request/intake implementation rejects full/reset/replacement options
 and retains earlier request/receipt rows. Incremental activity planning and
-duplicate/correction review are now prepared offline as described below, not
-connected to a live worker. Atomic activity-evidence append/checkpoint persistence
-is now implemented and rehearsed on disposable DuckDB copies only. Acquisition,
-live integration and financial publication remain outside that operating scope.
+duplicate/correction review also feed the optional saved-Journal upload path
+described above. Acquisition and Portfolio/Reports publication remain separate.
 
 **Owner operating choice, 2026-10-14:** a future Mac website refresh should
 publish the updated saved Portfolio/Reports automatically *only when the entire

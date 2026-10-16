@@ -32,6 +32,7 @@ CONFIG_FIELDS = {
     "manual_capture_authorization", "manual_capture_acknowledgement",
     "manual_capture_usage_policy", "manual_capture_account_binding",
     "manual_capture_staging_root",
+    "manual_capture_save_journal",
 }
 
 
@@ -52,6 +53,7 @@ class LocalWebConfig:
     manual_capture_usage_policy: Path | None = None
     manual_capture_account_binding: Path | None = None
     manual_capture_staging_root: Path | None = None
+    manual_capture_save_journal: bool = False
 
     @property
     def url(self) -> str:
@@ -115,6 +117,9 @@ def parse_config(document: Any) -> LocalWebConfig:
         "manual_capture_staging_root",
     )
     supplied_capture = [document.get(name) is not None for name in capture_names]
+    save_journal = document.get('manual_capture_save_journal', False)
+    if type(save_journal) is not bool or (save_journal and not all(supplied_capture)):
+        raise LocalWebError('Journal saving requires an explicit boolean and complete private capture setup.')
     if any(supplied_capture) and not all(supplied_capture):
         raise LocalWebError("Manual capture setup requires all five private paths.")
     capture_files = [file_field(name) for name in capture_names[:4]] if all(supplied_capture) else [None] * 4
@@ -137,7 +142,7 @@ def parse_config(document: Any) -> LocalWebConfig:
         raise LocalWebError("start_page must be a canonical local Journal, Trades, Portfolio, or Reports path.")
     assert db is not None
     return LocalWebConfig(db, broker, report, ports[0], ports[1], page,
-                          *capture_files, capture_root)
+                          *capture_files, capture_root, save_journal)
 
 
 def load_config(path: Path, project_root: Path) -> LocalWebConfig:
@@ -178,6 +183,7 @@ def configured_app(config: LocalWebConfig) -> Any:
             broker_current_authorization=broker,
             reporting_authorization=report,
             manual_capture_intake=capture,
+            manual_capture_save_journal=config.manual_capture_save_journal,
         )
     except ImportError:
         raise LocalWebError("Python dependencies are missing. Complete the documented project setup in the OneJournal environment.") from None

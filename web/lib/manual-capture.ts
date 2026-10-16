@@ -3,8 +3,9 @@ import { fetchLocalOwner } from './local-owner-access.ts';
 const PATH = '/api/v1/local-owner/manual-capture';
 const CONTRACT = 'onejournal.manual-capture-upload.v1';
 export type ManualCaptureReceipt = {
-  state: 'verified_and_staged'; scope: 'current_positions' | 'activity';
+  state: 'verified_and_staged' | 'journal_saved'; scope: 'current_positions' | 'activity';
   manifest_sha256: string; replayed: boolean;
+  new_records?: number;
 };
 
 export async function manualCaptureAvailable(): Promise<boolean> {
@@ -39,11 +40,15 @@ export async function stageManualCapture(selected: File[]): Promise<ManualCaptur
     ? 'The selected package is too large. Saved results are unchanged.'
     : 'The package could not be verified. Saved results are unchanged.');
   const value = await response.json();
-  if (value.contract_version !== CONTRACT || value.state !== 'verified_and_staged'
+  if (value.contract_version !== CONTRACT || !['verified_and_staged', 'journal_saved'].includes(value.state)
       || !['current_positions', 'activity'].includes(value.scope)
       || !/^[0-9a-f]{64}$/.test(value.manifest_sha256)
       || typeof value.replayed !== 'boolean'
-      || value.journal_written !== false || value.financial_publication_authorized !== false)
+      || value.journal_written !== (value.state === 'journal_saved')
+      || (value.state === 'journal_saved' && (value.scope !== 'activity'
+          || !Number.isSafeInteger(value.new_records) || value.new_records < 0))
+      || value.financial_publication_authorized !== false)
     throw new Error('Capture receipt could not be verified. Saved results are unchanged.');
-  return { state: value.state, scope: value.scope, manifest_sha256: value.manifest_sha256, replayed: value.replayed };
+  return { state: value.state, scope: value.scope, manifest_sha256: value.manifest_sha256,
+    replayed: value.replayed, new_records: value.new_records };
 }

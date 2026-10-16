@@ -62,6 +62,8 @@ class ActivityFinancialPreview:
     executions: tuple
     instruments: tuple
     result_fingerprint: str
+    journal_relations: dict | None = None
+    normalized_fills: tuple = ()
 
 
 def _combined_records(baseline):
@@ -72,7 +74,7 @@ def _combined_records(baseline):
 
 
 def _build_preview(baseline, *, approved_events, account_alias, reviews=None,
-                   calculation_revision=CURRENT_CALCULATION_REVISION):
+                   calculation_revision=CURRENT_CALCULATION_REVISION, include_journal=False):
     if calculation_revision not in (CURRENT_CALCULATION_REVISION,LEGACY_CALCULATION_REVISION):
         raise ValueError('Unsupported activity calculation revision.')
     records = _combined_records(baseline)
@@ -259,9 +261,15 @@ def _build_preview(baseline, *, approved_events, account_alias, reviews=None,
         fill_fingerprint=build_fill_input_fingerprint(fills),lifecycle_fingerprint=build_lifecycle_input_fingerprint(events),
         projection=projection.result_fingerprint,trades=trades,items=[asdict(i) for i in items],
         omissions=[asdict(o) for o in omissions],account_alias=account_alias,calculation_version=version)
+    journal = None
+    if include_journal:
+        from onejournal.journal.activity_journal import build_relations
+        journal = build_relations(baseline, episodes, projection, trades, event_records,
+                                  records['lifecycle_event_legs'])
     return ActivityFinancialPreview(source,baseline.cutoff,assembly.snapshot_cutoff_utc,start,end,version,
         (ReportingAccount('schwab',assembly.source_account_id,account_alias),),tuple(sorted(items,key=lambda i:i.item_uid)),
-        omissions,tuple(trades),projection.executions,projection.instruments,_digest(payload))
+        omissions,tuple(trades),projection.executions,projection.instruments,_digest(payload),
+        journal, fills if include_journal else ())
 
 
 def load_activity_financial_preview(db, binding, *, expected_checkpoint_uid, account_alias,

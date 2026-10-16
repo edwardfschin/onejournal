@@ -1,8 +1,9 @@
-"""Atomic, append-only activity evidence/checkpoint; disposable targets only.
+"""Atomic, append-only activity evidence/checkpoint and optional saved Journal.
 
 The canonical artifact stores new normalized records, exact source-manifest
 lineage and the resulting checkpoint together. Existing financial read models
-remain unchanged. There is deliberately no live-write opt-in or activation.
+remain unchanged for copy rehearsals. The website writer additionally retains
+the Journal read model in the same immutable artifact and transaction.
 """
 from dataclasses import replace
 from datetime import UTC, datetime, time
@@ -21,6 +22,7 @@ from onejournal.provider_connectors.external_acquisition import external_provide
 
 MIGRATION = DEFAULT_MIGRATIONS_DIR / '0030_add_incremental_activity_imports.sql'
 CONTRACT = 'onejournal.incremental-activity-import.v1'
+JOURNAL_CONTRACT = 'onejournal.incremental-activity-import.v2'
 
 
 def disposable_target(path):
@@ -74,13 +76,15 @@ def _ledger(con, baseline, binding):
         if (sha256(body.encode()).hexdigest() != uid
                 or canonical_schwab_evidence_json(artifact) != body
                 or stored_sequence != sequence or artifact['sequence'] != sequence
-                or artifact['contract_version'] != CONTRACT or artifact['predecessor_uid'] != previous
+                or artifact['contract_version'] not in (CONTRACT, JOURNAL_CONTRACT) or artifact['predecessor_uid'] != previous
                 or artifact['source_broker'] != broker or artifact['source_account_id'] != account
                 or artifact['run_uid'] != run or artifact['binding_sha256'] != _binding_hash(binding)
                 or artifact['activation_uid'] != baseline.activation_uid
                 or artifact['revision_uid'] != baseline.revision_uid
                 or artifact['assembly_fingerprint'] != baseline.assembly.result_fingerprint):
             raise ValueError('Activity lineage differs; explicit source reconciliation is required.')
+        if artifact['contract_version'] == JOURNAL_CONTRACT and artifact.get('journal_view', {}).get('contract_version') != 'onejournal.activity-journal.v1':
+            raise ValueError('Saved activity Journal view is missing.')
         next_cutoff = datetime.fromisoformat(artifact['checkpoint_utc'])
         if next_cutoff.tzinfo is None or next_cutoff < cutoff or set(artifact['records']) != set(_FAMILIES):
             raise ValueError('Invalid activity checkpoint or record families.')
@@ -140,7 +144,7 @@ def activity_recovery_digests(con):
         artifact = json.loads(body)
         previous, expected_sequence = heads.get(account,('',1))
         if (sha256(body.encode()).hexdigest()!=uid or canonical_schwab_evidence_json(artifact)!=body
-                or artifact['contract_version']!=CONTRACT or artifact['source_broker']!='schwab'
+                or artifact['contract_version'] not in (CONTRACT,JOURNAL_CONTRACT) or artifact['source_broker']!='schwab'
                 or artifact['source_account_id']!=account or artifact['sequence']!=sequence
                 or sequence!=expected_sequence or artifact['predecessor_uid']!=previous
                 or artifact['run_uid']!=run):
@@ -161,6 +165,21 @@ def activity_recovery_digests(con):
 
 
 def append_activity_copy(*, db, binding, asof, overlap_days, expected_plan_sha256, **capture_args):
+    checked = disposable_target(db)
+    return _append_activity(db=checked, binding=binding, asof=asof,
+        overlap_days=overlap_days, expected_plan_sha256=expected_plan_sha256, **capture_args)
+
+
+def append_activity_journal(*, db, **capture_args):
+    """Server-selected Mac target; a validated upload saves Journal and cursor."""
+    checked = private_file(Path(db), 'saved journal', private_parent=True)
+    if checked.stat().st_nlink != 1:
+        raise ValueError('Saved journal must not have another hard link.')
+    return _append_activity(db=checked, save_journal=True, **capture_args)
+
+
+def _append_activity(*, db, binding, asof, overlap_days, expected_plan_sha256,
+                     save_journal=False, **capture_args):
     """Revalidate bytes, then append records + checkpoint in one transaction.
 
     Any failure rolls back the entire insert. A unique account sequence prevents
@@ -171,10 +190,9 @@ def append_activity_copy(*, db, binding, asof, overlap_days, expected_plan_sha25
         _confirmed_import, activity_plan, load_activity_capture, _review_delta,
         _index, _prior_order_variants, _review_order_corrections, _FAMILIES,
     )
-    checked = disposable_target(db)
     acquisition, converted = load_activity_capture(binding=binding, **capture_args)
     manifest = acquisition.manifest
-    with duckdb.connect(str(checked)) as con:
+    with duckdb.connect(str(db)) as con:
         con.execute('BEGIN TRANSACTION')
         try:
             _schema(con, required=True)
@@ -190,9 +208,12 @@ def append_activity_copy(*, db, binding, asof, overlap_days, expected_plan_sha25
                         or saved['plan']['target_asof'] != asof.isoformat()
                         or saved['plan']['overlap_days'] != overlap_days):
                     raise ValueError('Activity run replay differs.')
+                if save_journal and saved.get('journal_view', {}).get('contract_version') != 'onejournal.activity-journal.v1':
+                    raise ValueError('This retained import has no saved Journal view.')
                 con.execute('ROLLBACK')
                 return dict(import_uid=replay[0], created=False, replayed=True,
-                            checkpoint_utc=saved['checkpoint_utc'], new_records=saved['new_records'])
+                            checkpoint_utc=saved['checkpoint_utc'], new_records=saved['new_records'],
+                            **(_journal_receipt(saved) if save_journal else {}))
             plan = activity_plan(baseline, binding, asof=asof, overlap_days=overlap_days)
             if plan['plan_sha256'] != expected_plan_sha256:
                 raise ValueError('Activity predecessor changed; replan before append.')
@@ -232,6 +253,8 @@ def append_activity_copy(*, db, binding, asof, overlap_days, expected_plan_sha25
                 source_manifest=json.loads(external_provider_acquisition_manifest_bytes(manifest)),
                 records=records, new_records=sum(len(v) for v in records.values()), review=review,
                 order_corrections=[order_corrections[uid] for uid in sorted(order_corrections)])
+            if save_journal:
+                _save_journal(con, artifact, baseline, records, cutoff)
             body = canonical_schwab_evidence_json(artifact)
             uid = sha256(body.encode()).hexdigest()
             con.execute('INSERT INTO incremental_activity_imports VALUES (?,?,?,?,?,?)',
@@ -240,9 +263,62 @@ def append_activity_copy(*, db, binding, asof, overlap_days, expected_plan_sha25
             restored = _confirmed_import(con, binding)
             if restored.checkpoint_uid != uid or restored.cutoff != cutoff:
                 raise ValueError('Activity read-back differs.')
+            if save_journal:
+                from onejournal.journal.domain import current_journal_relation
+                relation = current_journal_relation(con, 'trade_episodes')
+                found = {r[0] for r in con.execute(f'SELECT episode_uid FROM {relation} WHERE source_broker=? AND source_account_id=?',
+                    ['schwab', binding.source_account_id]).fetchall()}
+                expected = {r['episode_uid'] for r in artifact['journal_view']['relations']['trade_episodes']}
+                if found != expected:
+                    raise ValueError('Saved Journal read-back differs.')
             con.execute('COMMIT')
             return dict(import_uid=uid, created=True, replayed=False,
-                        checkpoint_utc=artifact['checkpoint_utc'], new_records=artifact['new_records'])
+                        checkpoint_utc=artifact['checkpoint_utc'], new_records=artifact['new_records'],
+                        **(_journal_receipt(artifact) if save_journal else {}))
         except Exception:
             con.execute('ROLLBACK')
             raise
+
+
+def _journal_receipt(artifact):
+    rows = artifact['journal_view']['relations']
+    return dict(journal_written=True, trade_count=len(rows['trade_episodes']),
+                execution_count=len(rows['phase1_journal_projected_executions']))
+
+
+def _save_journal(con, artifact, baseline, records, cutoff):
+    from onejournal.activity_financial_preview import _build_preview
+    from onejournal.journal.pnl_repository import load_approved_lifecycle_events
+    from onejournal.journal.schwab_history_revision import _insert_fill, _stable_fill_row, _stored_stable_fill_row
+    pending = replace(baseline, checkpoint_uid='activity-journal:' + sha256(
+        canonical_schwab_evidence_json(artifact).encode()).hexdigest(), checkpoint_cutoff=cutoff,
+        appended_records={name: (*baseline.appended_records.get(name, ()), *rows)
+                          for name, rows in records.items()})
+    preview = _build_preview(pending, approved_events=load_approved_lifecycle_events(con, asof=cutoff.date()),
+                             account_alias='Journal', include_journal=True)
+    view = preview.journal_relations
+    incoming_uids = {r['episode_uid'] for r in view['relations']['trade_episodes']}
+    # Preserve note/review links if an unusual source correction changes grouping.
+    from onejournal.journal.domain import current_journal_relation
+    prior = current_journal_relation(con, 'trade_episodes')
+    linked = {r[0] for r in con.execute(f'''SELECT e.episode_uid FROM {prior} e
+        WHERE e.source_broker='schwab' AND e.source_account_id=? AND
+        (EXISTS (SELECT 1 FROM journal_entry_revisions n WHERE n.episode_uid=e.episode_uid)
+         OR EXISTS (SELECT 1 FROM manual_reviews r WHERE r.episode_uid=e.episode_uid))''',
+        [baseline.assembly.source_account_id]).fetchall()}
+    if not linked.issubset(incoming_uids):
+        raise ValueError('New grouping would detach an existing Journal entry or review.')
+    new_fills = []
+    for fill in preview.normalized_fills:
+        stored = _stored_stable_fill_row(con, fill.fill_uid)
+        if stored is None:
+            new_fills.append(fill)
+        elif stored != _stable_fill_row(fill):
+            raise ValueError('Saved normalized fill differs from the upload.')
+    if new_fills:
+        con.execute('''INSERT INTO import_runs VALUES (?, 'schwab_activity_journal', NULL, ?, ?, ?,
+                    'completed', 'validated incremental Journal import')''',
+            [pending.checkpoint_uid, cutoff.date(), cutoff.replace(tzinfo=None), len(new_fills)])
+        for fill in new_fills:
+            _insert_fill(con, fill, import_run_id=pending.checkpoint_uid)
+    artifact.update(contract_version=JOURNAL_CONTRACT, journal_view=view)

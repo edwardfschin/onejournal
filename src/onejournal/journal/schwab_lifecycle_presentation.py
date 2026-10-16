@@ -320,6 +320,10 @@ def _latest_family_records(
     con: duckdb.DuckDBPyConnection,
     family: str,
 ) -> list[dict[str, Any]]:
+    from onejournal.journal.activity_journal import current_family_records
+    current = current_family_records(con, family)
+    if current is not None:
+        return current
     lifecycle_run_relation = current_journal_relation(
         con, "phase1_journal_lifecycle_reconciliation_runs"
     )

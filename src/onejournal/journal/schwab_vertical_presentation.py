@@ -260,9 +260,12 @@ def load_schwab_vertical_presentation_groups(
             LIMIT 1
             """
         ).fetchone()
-        if family is None:
-            return ()
-        orders = json.loads(str(family[0]))
+        from onejournal.journal.activity_journal import current_family_records
+        orders = current_family_records(con, 'orders')
+        if orders is None:
+            if family is None:
+                return ()
+            orders = json.loads(str(family[0]))
         filled_vertical_order_ids = {
             str(order["source_order_id"])
             for order in orders
