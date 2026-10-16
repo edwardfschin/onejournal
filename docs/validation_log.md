@@ -6,6 +6,50 @@ new entry only after a meaningful new check. Keep private data and machine-
 specific private paths out of this file. Evidence from another worktree applies
 here only when the listed code hashes and conditions match.
 
+## 2026-10-16 — combined website upload to saved financial release
+
+- **Scope/authority:** owner requested automatic Journal, Portfolio and Reports
+  publication after upload validation, with OneBot, historical backfill and VPS
+  separate, and explicitly approved Mac installation, enablement and restart.
+  The new private opt-in defaults off; ordinary staging remains unchanged.
+- **Code checked:** `src/onejournal/manual_financial_refresh.py` SHA-256
+  `e8b538c8aa5934964e8adf06620e923f809d61d68a38e1061fbef3dd0906afc5`;
+  `src/onejournal/manual_capture_upload.py` SHA-256
+  `9039e0650dc2a88dc305f10478c16c4d190ccf4ca59a9aae6c8aec5a572404e1`;
+  `src/onejournal/local_web.py` SHA-256
+  `5d1e7ac096997cc99911e72de74b26f4333ceaf0c9e43a41b65be095399ad6a7`;
+  `src/onejournal/api/local_owner_journal.py` SHA-256
+  `828fa0761bdaf323b95293cda573384e3a0c4b110dda0c36835d0de27a6fe119`.
+- **New synthetic evidence:** focused `test_manual_financial_refresh` cases
+  proved paired HTTP upload, exact decimal realized result, current Portfolio,
+  current report/CSV selection, duplicate replay, selection after restart,
+  denied unprotected access, invalid bytes/owner rejection and complete original
+  database preservation after an injected report-save failure. The existing
+  default staging case and extended private-config all-or-none case passed.
+  Only failed new fixture assertions were repeated: correct provider terms
+  artifact, signed sell quantity, actual broker basis field and decimal-scale
+  comparison. No financial validation rule was relaxed.
+- **Private integration:** one completed HTTP rehearsal on a disposable copy
+  used the already retained position/activity evidence and an existing accepted
+  predecessor. Same-app reporting reads, exact replay and selection in a newly
+  constructed app passed. Original journal bytes were retained unchanged.
+  The private receipt binds the four source hashes above. An initial operator
+  attempt used the wrong activity subdirectory and stopped before copying or
+  writing any journal; only that new integration attempt was corrected.
+- **Frontend:** the two focused `web/tests/financial-upload.test.mjs` tests and
+  TypeScript no-emit check passed. The build completed with the existing
+  lockfile-matching dependencies. The initial build-tool lookup was corrected
+  to reuse that existing installation; no dependency upgrade was performed.
+  Saved synthetic renders show the two labelled file selectors and action at
+  desktop, tablet and mobile sizes, without horizontal overflow. The mobile
+  render was inspected. These are not screenshots of private financial data.
+- **Reuse/limits:** reused the established valuation, quantity, lifecycle,
+  Journal projection, security and encrypted recovery evidence. No unchanged
+  full suite or broker call ran. This entry proves the new connection on copies,
+  not a new live financial import or owner browser acceptance. The installed
+  runtime activation is a separate outcome. Repeat only affected evidence if
+  these components, their financial contracts, input class or environment change.
+
 ## 2026-10-16 — live latest captured Portfolio/Reports publication
 
 - **Authority/source:** owner explicitly requested updating Portfolio and Reports

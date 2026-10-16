@@ -16,7 +16,8 @@ from io import StringIO
 import json
 from pathlib import Path
 import stat
-from threading import Lock
+from threading import RLock
+from functools import wraps
 from typing import Any, Literal
 from uuid import UUID, uuid4
 
@@ -381,6 +382,7 @@ def create_local_owner_journal_app(
     refresh_requests=None,
     manual_capture_intake=None,
     manual_capture_save_journal: bool = False,
+    manual_capture_publish_financials: bool = False,
 ) -> FastAPI:
     """Build the private app with a server-selected, existing journal database.
 
@@ -582,9 +584,39 @@ def create_local_owner_journal_app(
         raise ValueError('Manual Journal saving must be explicitly enabled or disabled.')
     if manual_capture_save_journal and (manual_capture_intake is None or isinstance(db_path, PostgresTarget)):
         raise ValueError('Manual Journal saving requires a configured Mac capture intake.')
-    db_lock = Lock()
+    db_lock = RLock()
     register_manual_capture_routes(app, manual_capture_intake,
         journal_db=db_path if manual_capture_save_journal else None, db_lock=db_lock)
+    from onejournal.manual_financial_refresh import (
+        FinancialUploadPublisher, portfolio_response, register_financial_upload_routes,
+    )
+    if type(manual_capture_publish_financials) is not bool:
+        raise ValueError('Automatic financial publication must be explicitly enabled or disabled.')
+    if manual_capture_publish_financials and not (
+            manual_capture_save_journal and reporting_authorization and broker_current_authorization):
+        raise ValueError('Automatic publication requires the configured Mac Journal and financial releases.')
+    publisher = FinancialUploadPublisher(manual_capture_intake, reporting_authorization) if manual_capture_publish_financials else None
+    register_financial_upload_routes(app, publisher, db=db_path, db_lock=db_lock)
+
+    def refresh_financials():
+        nonlocal reporting_release, broker_current_response
+        if publisher is not None:
+            selected = publisher.selected_release(db_path)
+            if selected != reporting_release:
+                response = portfolio_response(db_path, selected)
+                reporting_release, broker_current_response = selected, response
+
+    # On restart use only releases bound to this explicitly enabled policy.
+    refresh_financials()
+
+    def financial_read(function):
+        @wraps(function)
+        def serialized(*args, **kwargs):
+            # One response/CSV cannot mix old and new financial releases.
+            with db_lock:
+                refresh_financials()
+                return function(*args, **kwargs)
+        return serialized
     vertical_groups = load_schwab_vertical_presentation_groups(db_path)
     vertical_group_by_episode = {
         member.episode_uid: group
@@ -645,6 +677,7 @@ def create_local_owner_journal_app(
         response_model=BrokerCurrentPositionValuationResponse,
         tags=["local-owner-portfolio"],
     )
+    @financial_read
     def current_portfolio() -> BrokerCurrentPositionValuationResponse:
         if broker_current_response is None:
             raise HTTPException(
@@ -718,6 +751,7 @@ def create_local_owner_journal_app(
             return current_breakdowns(db_path, reporting_release)
 
     @app.get(f"{LOCAL_OWNER_REPORTING_API_PREFIX}/current/accounts", tags=["local-owner-reports"])
+    @financial_read
     def report_current_accounts() -> dict[str, Any]:
         if reporting_release is None:
             raise HTTPException(status_code=503, detail="bounded reporting is unavailable")
@@ -732,6 +766,7 @@ def create_local_owner_journal_app(
         return {"metadata": report_metadata(selection=selection, quality=quality, reason_counts=reasons, current_asof=_valuation.asof), "counts": counts, "accounts": rows}
 
     @app.get(f"{LOCAL_OWNER_REPORTING_API_PREFIX}/current/symbols", tags=["local-owner-reports"])
+    @financial_read
     def report_current_symbols() -> dict[str, Any]:
         if reporting_release is None:
             raise HTTPException(status_code=503, detail="bounded reporting is unavailable")
@@ -746,6 +781,7 @@ def create_local_owner_journal_app(
         return {"metadata": report_metadata(selection=selection, quality=quality, reason_counts=reasons, current_asof=_valuation.asof), "counts": counts, "symbols": rows}
 
     @app.get(f"{LOCAL_OWNER_REPORTING_API_PREFIX}/realized-history", tags=["local-owner-reports"])
+    @financial_read
     def report_realized_history(
         from_date: date = Query(), to_date: date = Query(), account_alias: str | None = Query(default=None, max_length=64), symbol: str | None = Query(default=None, max_length=64)
     ) -> dict[str, Any]:
@@ -764,6 +800,7 @@ def create_local_owner_journal_app(
         return {"metadata": report_metadata(selection=selection, quality=quality, reason_counts=reason_counts), "counts": counts, "items": rows}
 
     @app.get(f"{LOCAL_OWNER_REPORTING_API_PREFIX}/current/positions.csv", tags=["local-owner-reports"])
+    @financial_read
     def report_current_positions_csv() -> Response:
         if reporting_release is None:
             raise HTTPException(status_code=503, detail="bounded reporting is unavailable")
@@ -781,6 +818,7 @@ def create_local_owner_journal_app(
         return report_csv(filename="onejournal-current-positions.csv", fields=fields, rows=rows, selection=selection, counts=counts, quality=quality, reason_counts=reasons)
 
     @app.get(f"{LOCAL_OWNER_REPORTING_API_PREFIX}/realized-history.csv", tags=["local-owner-reports"])
+    @financial_read
     def report_realized_history_csv(from_date: date = Query(), to_date: date = Query(), account_alias: str | None = Query(default=None, max_length=64), symbol: str | None = Query(default=None, max_length=64)) -> Response:
         if reporting_release is None:
             raise HTTPException(status_code=503, detail="bounded reporting is unavailable")

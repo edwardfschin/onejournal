@@ -56,8 +56,11 @@ class ManualCaptureIntake:
         if self.staging_root.is_relative_to(project_root.resolve()):
             raise ValueError("Manual capture staging must be outside the project checkout.")
 
-    def stage(self, files: Mapping[str, bytes], *, journal_db: Path | None = None) -> dict[str, object]:
-        authorization = load_private_capture_authorization(
+    def stage(self, files: Mapping[str, bytes], *, journal_db: Path | None = None,
+              publication_authorization=None) -> dict[str, object]:
+        # Only the configured financial publisher can supply standing-policy
+        # authority. The legacy HTTP endpoint never accepts this parameter.
+        authorization = publication_authorization or load_private_capture_authorization(
             self.authorization_path, project_root=self.project_root
         )
         acknowledgement = private_file(

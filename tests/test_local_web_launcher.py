@@ -60,6 +60,9 @@ class LocalWebLauncherTests(unittest.TestCase):
 
     def test_manual_capture_setup_is_all_or_none_and_private(self) -> None:
         self.assertFalse(runner.parse_config(self.document).manual_capture_save_journal)
+        self.assertFalse(runner.parse_config(self.document).manual_capture_publish_financials)
+        with self.assertRaises(runner.LocalWebError):
+            runner.parse_config({**self.document, 'manual_capture_publish_financials': True})
         with self.assertRaises(runner.LocalWebError):
             runner.parse_config({**self.document, 'manual_capture_save_journal': True})
         self.document["manual_capture_authorization"] = str(self.config_path)
@@ -73,6 +76,12 @@ class LocalWebLauncherTests(unittest.TestCase):
         self.document["manual_capture_staging_root"] = str(staging)
         self.assertEqual(runner.parse_config(self.document).manual_capture_staging_root, staging)
         self.assertTrue(runner.parse_config({**self.document, 'manual_capture_save_journal': True}).manual_capture_save_journal)
+        financial = {**self.document, 'manual_capture_save_journal': True,
+            'manual_capture_publish_financials': True,
+            'broker_current_authorization': str(self.config_path), 'reporting_authorization': str(self.config_path)}
+        self.assertTrue(runner.parse_config(financial).manual_capture_publish_financials)
+        with self.assertRaises(runner.LocalWebError):
+            runner.parse_config({**financial, 'manual_capture_publish_financials': 'true'})
         with self.assertRaises(runner.LocalWebError):
             runner.parse_config({**self.document, 'manual_capture_save_journal': 'true'})
         staging.chmod(0o755)

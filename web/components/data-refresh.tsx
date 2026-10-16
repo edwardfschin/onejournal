@@ -1,48 +1,51 @@
 'use client';
 import * as React from 'react';
-import { manualCaptureAvailable, stageManualCapture } from '@/lib/manual-capture';
+import { financialUploadAvailable, publishFinancialUpload } from '@/lib/financial-upload';
 
-export default function DataRefresh() {
+export default function DataRefresh({ onPublished }: { onPublished?: () => void }) {
   const [enabled, setEnabled] = React.useState(false);
   const [checked, setChecked] = React.useState(false);
   const [busy, setBusy] = React.useState(false);
-  const [selected, setSelected] = React.useState<File[]>([]);
+  const [positions, setPositions] = React.useState<File[]>([]);
+  const [activity, setActivity] = React.useState<File[]>([]);
   const [message, setMessage] = React.useState('');
   const [error, setError] = React.useState('');
-  const input = React.useRef<HTMLInputElement>(null);
+  const positionInput = React.useRef<HTMLInputElement>(null);
+  const activityInput = React.useRef<HTMLInputElement>(null);
   React.useEffect(() => {
-    void manualCaptureAvailable().then(value => { setEnabled(value); setChecked(true); })
+    void financialUploadAvailable().then(value => { setEnabled(value); setChecked(true); })
       .catch(() => { setChecked(true); setError('Capture upload status is unavailable. Saved results are unchanged.'); });
   }, []);
   async function upload() {
     setBusy(true); setError(''); setMessage('');
     try {
-      const receipt = await stageManualCapture(selected);
-      setMessage(receipt.state === 'journal_saved'
-        ? receipt.replayed ? 'This package is already in your Journal. No duplicate trades were added.'
-          : 'Your Journal is updated. Open Trades to review the activity or Journal to write your notes.'
-        : receipt.replayed
-        ? 'This exact package was already received. Your saved results are unchanged.'
-        : 'The package was verified and saved privately on this Mac. Portfolio and Reports have not changed yet.');
-      setSelected([]);
-      if (input.current) input.current.value = '';
+      const receipt = await publishFinancialUpload(positions, activity);
+      setMessage(`${receipt.replayed ? 'Already saved; no duplicates added.' : 'Journal, Portfolio and Reports updated.'} Portfolio: ${receipt.portfolio_asof}. Reports through: ${receipt.coverage_end_date} (New York dates). ${receipt.reportable_count} reportable results; ${receipt.withheld_count} withheld. Saved prices, not live quotes.`);
+      setPositions([]); setActivity([]);
+      if (positionInput.current) positionInput.current.value = '';
+      if (activityInput.current) activityInput.current.value = '';
+      onPublished?.();
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : 'The package could not be verified. Saved results are unchanged.');
+      setError(reason instanceof Error ? reason.message : 'Completion could not be confirmed. Reload saved data before trying again.');
     } finally { setBusy(false); }
   }
   return <section className="panel report-section" aria-labelledby="refresh-heading">
-    <h2 id="refresh-heading">Refresh from Schwab</h2>
-    <p>Upload your verified Schwab activity package to add new trades to your saved Journal when Journal saving is enabled. Repeated uploads do not duplicate trades. Portfolio and Reports keep their separately accepted figures.</p>
-    <label className="manual-capture-label" htmlFor="manual-capture-files">Capture manifest and response files</label>
-    <input className="manual-capture-files" id="manual-capture-files" ref={input} type="file" accept=".json,application/json" multiple
-      disabled={!enabled || busy} onChange={event => setSelected(Array.from(event.target.files ?? []))} />
+    <h2 id="refresh-heading">Update Journal, Portfolio and Reports</h2>
+    <p>Upload both verified Schwab packages below. OneJournal checks them, keeps a rollback copy and automatically saves the update. New activity is added without duplicating earlier trades. Results missing evidence remain withheld.</p>
+    <p>This upload does not download from Schwab. Use the verified JSON packages—not a statement CSV.</p>
+    <label className="manual-capture-label" htmlFor="position-capture-files">1. Current positions — manifest and positions response (2 JSON files)</label>
+    <input className="manual-capture-files" id="position-capture-files" ref={positionInput} type="file" accept=".json,application/json" multiple
+      disabled={!enabled || busy} onChange={event => setPositions(Array.from(event.target.files ?? []))} />
+    <label className="manual-capture-label" htmlFor="activity-capture-files">2. New activity — manifest, orders and transactions (3 JSON files)</label>
+    <input className="manual-capture-files" id="activity-capture-files" ref={activityInput} type="file" accept=".json,application/json" multiple
+      disabled={!enabled || busy} onChange={event => setActivity(Array.from(event.target.files ?? []))} />
     <div className="report-filter-actions">
-      <button className="report-download" type="button" disabled={!enabled || busy || selected.length === 0}
-        onClick={() => void upload()}>Upload activity package</button>
+      <button className="report-download" type="button" disabled={!enabled || busy || positions.length !== 2 || activity.length !== 3}
+        onClick={() => void upload()}>Upload and update</button>
     </div>
-    <output aria-live="polite">{busy ? 'Checking and saving your activity…' : message ||
-      (checked && !enabled ? 'Manual package upload is not configured yet. Your saved results are unchanged.' :
-        !checked ? 'Checking whether private upload is available…' : 'Choose the package files to verify.')}</output>
+    <output aria-live="polite">{busy ? 'Checking both packages and preparing your update. Keep this page open…' : message ||
+      (checked && !enabled ? 'Automatic financial upload is not enabled on this site. Your saved results are unchanged.' :
+        !checked ? 'Checking whether private upload is available…' : 'Choose both packages, then select Upload and update.')}</output>
     {error ? <p role="alert">{error}</p> : null}
   </section>;
 }

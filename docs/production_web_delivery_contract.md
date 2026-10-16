@@ -94,7 +94,7 @@ existing checksum-verified OneJournal capture package through a Mac website
 file picker. A generic Schwab website CSV is not an equivalent input and must
 not be silently accepted. Historical backfill remains separate.
 
-The file picker must accept only the capture manifest and its exact response
+The legacy staging/Journal-only file picker accepts only the capture manifest and its exact response
 files. It must not accept a browser-supplied approval or provider-use
 acknowledgement. A separate, owner-private, mode-`0600` approval record in a
 mode-`0700` directory outside Git and the web root binds one manifest SHA-256,
@@ -113,7 +113,79 @@ private configuration requires all five server-selected fields:
 `manual_capture_usage_policy`, `manual_capture_account_binding`, and
 `manual_capture_staging_root`; an incomplete configuration is rejected. Neither
 package self-checksums nor a user-selected local file confer approval by
-themselves. A changed package requires a new independent approval record.
+themselves. In this legacy mode a changed package requires a new independent
+approval record. The explicitly opted-in combined financial-upload mode below
+replaces that per-package step with the owner's standing conditional instruction.
+
+### Combined Mac upload and automatic financial publication
+
+The owner's 2026-10-16 instruction approves completing the Mac website upload so
+validation automatically updates the Journal, Portfolio and Reports. The private
+boolean `manual_capture_publish_financials` defaults to false. Enabling it
+requires Journal saving, complete private capture setup and exact existing
+Portfolio/report authorizations. It is Mac-only, not a hosted or broker grant.
+The same request separately received explicit owner approval for installation,
+enablement and restart of the protected local OneJournal site.
+
+The additive `/api/v1/local-owner/financial-upload` v1 boundary accepts **two
+separate groups**: a position manifest/response pair and an activity
+manifest/orders/transactions triplet. Keeping the groups separate avoids their
+identically named manifests colliding. The browser supplies no configuration,
+approval, account selector or provider-use acknowledgement. Existing passkey,
+same-origin and CSRF controls apply. The enabled private setting supplies the
+standing publication instruction; the private capture authority independently
+pins the approved producer owner/epoch. The private terms acknowledgement,
+connection/account and instrument mapping still apply. Self-checksums do not
+authenticate a broker file. This is an owner-supplied, checksum-verified export
+workflow, not a signed Schwab attestation or a website-to-OneBot download.
+
+Impact map and implementation:
+
+- Immutable exported evidence and the existing DuckDB Journal remain the sources
+  of truth. The upstream producer stays external and unchanged.
+- `manual_financial_refresh.py` orchestrates existing adapters, Journal append,
+  quantity reconciliation, valuation and bounded reporting; no financial rules
+  move into the frontend. A bounded worker thread keeps this attended Mac
+  operation off the event loop; no acquisition, scheduler or daemon is added.
+- It prepares the complete update on one disposable copy while holding the
+  shared database lock. Prior reported items must remain identical; historical
+  activation, starting coverage and account scope cannot change. Unknown or
+  unreconciled results stay withheld, not guessed. Portfolio completeness,
+  exact snapshot/activity timing, existing age/precision policy and typed
+  downstream reads must pass. No validation is performed by changing live rows.
+- After these checks, preserve an exact owner-private rollback journal and
+  preparation receipt, flush the closed candidate, then atomically replace the
+  saved journal on the same filesystem. The active release selector is in that
+  same database: a policy-bound accepted release, not an independently rewritten
+  authorization file. No new table or migration is required. All unrelated
+  rows, notes, earlier releases and history travel unchanged in the copy.
+- The private root report authorization scopes the conditional owner instruction.
+  Policy-derived acceptance IDs record that instruction; they do not assert a
+  fresh manual review of each result. Only tagged, validated releases in that
+  root's account/history scope can become active. Portfolio, Reports and CSV
+  readers share the publication lock and reload that selection. A restart
+  selects the same retained release without a config change.
+- Repeating a published pair returns the current selected dates without
+  duplicating records or reactivating an older release. Validation failure
+  leaves the entire live journal unchanged. If confirmation fails after atomic
+  installation, show uncertainty and ask the owner to reload; never falsely
+  promise that saved data is unchanged.
+
+The Data page offers both file selections and one **Upload and update** button,
+then shows Portfolio date, report coverage and withheld counts and rereads saved
+coverage. A normal accepted upload needs no chat approval or site restart.
+Obtaining fresh export packages is still manual; a statement CSV is not accepted
+as equivalent. OneBot, historical backfill, VPS and broker access stay separate.
+Missing/new unsupported instrument mappings or conflicting source evidence cause
+a validation rejection, not an automatic policy change or guessed financial data.
+
+Rollback after an installed update requires stopping the owned site, preserving
+the failed state, restoring its exact pre-install journal with matching release
+configuration, then restarting the retained compatible protected release. The
+pre-install receipt is not proof of completed publication; the active database
+release and returned/read-back response establish completion. Existing encrypted
+recovery procedures include this database and its root authorizations; private
+raw evidence remains a separate recovery scope.
 
 The saved-Journal option requires existing exact migration 0030 and an active
 exact-cutoff history revision. Within the app's existing database lock, the
