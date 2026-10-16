@@ -136,6 +136,12 @@ Before changing anything:
 
 Always fix root causes rather than introducing workarounds.
 
+Use the smallest reliable solution and reuse relevant existing components
+before creating new ones. Avoid band-aids, speculative features, and unrelated
+refactoring. Keep investigation, tool use, validation, and explanations
+proportional to the task. Reuse valid validation evidence and choose the
+lowest-cost suitable model.
+
 Work one small, validated step at a time. Avoid broad rewrites unless evidence
 proves the current architecture cannot safely support the requirement.
 
@@ -562,15 +568,48 @@ pause, resolve or explicitly set aside unrelated changes, then re-run the check
 before starting substantive edits.
 Preserve unrelated user changes.
 
+Before editing, confirm the repository, current branch, working-tree state,
+remote, relevant baseline, and any conflicting operation or Git lock. Verify the
+current remote `main` commit before using it as a starting point; do not assume
+the local branch is current.
+
+Each workstream uses its own worktree and task branch created from verified
+`main`. Record the scope, owner, branch, and starting commit. Keep one writer in
+each checkout. Coordinate overlapping files and dependencies early, and pause
+only the conflicting work while independent work continues. Do not share
+writable databases, generated outputs, or temporary files between workstreams.
+Assign one owner to binary documents that cannot be reliably merged; other
+workstreams provide proposed amendments.
+
+Each workstream owns validation, commits, pushes to its task branch, conflict
+resolution, and handover. Review the full diff, run relevant checks, and stage
+only task-related paths. Exclude secrets, credentials, caches, logs, generated
+runtime data, and personal financial information. Do not leave completed work
+uncommitted or unpushed unless the user explicitly requests local-only work or a
+verified blocker prevents completion.
+
+Resolve task-related conflicts on the task branch, validate the resolution, and
+prepare the branch for integration. Do not resolve conflicts by blindly
+choosing one side. One integration owner merges validated workstreams into
+`main`, one at a time, through the repository's agreed review and branch
+protection process, then verifies the combined result. Recheck relevant
+behaviour after integration and confirm the resulting commit and remote state
+before claiming completion.
+
+After the merge is verified, remove only that workstream's own clean branch and
+worktree. Never discard unrelated changes, force-push shared history, rewrite
+published history, reset away work, merge unrelated or unreviewed changes, or
+use destructive cleanup without explicit approval. Before risky reconciliation,
+preserve a verified recovery copy of relevant Git history and changed files,
+including binary documents.
+
 Do not commit secrets, credentials, tokens, private environment files, raw broker
 data, runtime databases, generated outputs, or personal financial information.
 
 Keep changes focused. Do not mix unrelated cleanup, refactoring, and feature work
 without approval.
 
-Do not commit, push, deploy, synchronize, create a pull request, or modify
-external systems unless explicitly requested. Respect instructions such as
-"commit but do not push" literally.
+Respect narrower instructions such as "commit but do not push" literally.
 
 ## Documentation and architecture decisions
 
@@ -606,8 +645,15 @@ Do not hide uncertainty. Inspect and validate instead of guessing.
 Explicit approval is required before destructive file or data operations, live
 database migrations, major framework changes, major dependency installations,
 public contract changes, external deployment, VPS/production synchronization,
-broker-account access, security-policy changes, order submission, pushing
-commits, or creating pull requests.
+broker-account access, security-policy changes, and order submission. Deployment,
+service restart, production changes, and destructive actions remain separately
+controlled.
+
+An approved task authorizes routine task-branch and worktree creation,
+validation, commits, task-branch pushes, integration through the agreed process,
+and verified cleanup. Do not repeatedly request approval for these steps.
+Respect narrower instructions, and pause if a new risk, conflict, or approval
+boundary appears.
 
 When the user explicitly says `Proceed` after an action has already been
 presented and approved, treat that instruction as authorization to execute the
