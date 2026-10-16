@@ -153,6 +153,34 @@ class ActivityRefreshTests(unittest.TestCase):
         linked_fill = {**original.transaction_rows[0], 'source_order_id': successor['source_order_id']}
         self.assertFalse(_review_order_corrections(prior, current, (linked_fill,)))
 
+    def test_unfilled_conditional_order_terminal_states_are_bounded(self):
+        original = self.window()
+        waiting = {**original.order_records[0], 'order_uid': 'synthetic-stop-order',
+                   'source_order_id': 'synthetic-stop-order', 'status': 'AWAITING_STOP_CONDITION',
+                   'requested_quantity': '2', 'remaining_quantity': '2',
+                   'filled_quantity': '0', 'closed_at_utc': ''}
+        prior = _prior_order_variants((waiting,))
+        for status in ('REPLACED', 'CANCELED'):
+            successor = {**waiting, 'status': status, 'remaining_quantity': '0',
+                         'closed_at_utc': '2026-09-06T10:00:00+00:00'}
+            current = _prior_order_variants((successor,))
+            encoded = {successor['order_uid']: next(iter(current[successor['order_uid']]))}
+            reviewed = _review_order_corrections(prior, encoded, original.transaction_rows)
+            self.assertEqual(reviewed[successor['order_uid']]['reason_code'],
+                             'unfilled_conditional_order_' + status.lower())
+            with_fill = {**original.transaction_rows[0], 'source_order_id': successor['source_order_id']}
+            self.assertFalse(_review_order_corrections(prior, encoded, (with_fill,)))
+            changed_terms = {**successor, 'requested_quantity': '3'}
+            changed = _prior_order_variants((changed_terms,))
+            self.assertFalse(_review_order_corrections(prior,
+                {successor['order_uid']: next(iter(changed[successor['order_uid']]))}, ()))
+        canceled_pending = {**waiting, 'status': 'PENDING_ACTIVATION'}
+        canceled = {**canceled_pending, 'status': 'CANCELED', 'remaining_quantity': '0',
+                    'closed_at_utc': '2026-09-06T10:00:00+00:00'}
+        current = _prior_order_variants((canceled,))
+        self.assertFalse(_review_order_corrections(_prior_order_variants((canceled_pending,)),
+            {canceled['order_uid']: next(iter(current[canceled['order_uid']]))}, ()))
+
     def test_real_active_import_and_verified_cli_are_read_only(self):
         history = history_fixture.SchwabHistoryRevisionTests()
         history.setUp()

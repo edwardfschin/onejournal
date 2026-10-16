@@ -167,3 +167,35 @@ here only when the listed code hashes and conditions match.
   private file. This selection defines the input, not a working upload or
   financial publication. The automatic publication choice still applies only
   after complete validation.
+
+## 2026-10-16 — bounded manual capture correction and copy rehearsal
+
+- **Code tested:** `src/onejournal/refresh_activity.py` SHA-256
+  `6aa852b84804a0855064a129827d5e33b35bb47e71310f0181883095f3f26520`;
+  `tests/test_refresh_activity.py` SHA-256
+  `8bbc5b591a368f192128296116a9043b3ef11a6ee912f5e533914883bfa24281`.
+- **Why repeated:** the new October 16 private capture exposed two previously
+  unsupported, unfilled conditional-order closing transitions. Earlier tests
+  covered only pending-activation replacement, so that evidence did not cover
+  this input class. Two focused synthetic tests passed, including economic-field
+  and linked-fill rejection. The saved capture then passed read-only activity
+  review with three narrowly reviewed order states. Append plus exact replay
+  passed on a disposable journal copy; the source journal was unchanged.
+- **Position evidence:** the complete private position response had seven
+  newly observed instruments and three prior mappings absent. Each new identity
+  was supported by one verified transaction identity observed no later than
+  the position capture; retained identities did not conflict. A new owner-only
+  binding was saved separately from the earlier binding. Credential-free
+  position intake passed for all 68 positions. The valuation persisted and read
+  back on a disposable copy when evaluated at the exact capture instant.
+- **Limit:** the accepted position release has a zero-second snapshot-age
+  allowance. A later-time valuation correctly failed as stale; the copy result
+  does not authorize treating this snapshot as current now. No live append,
+  release publication, website activation, broker request, OneBot change or
+  historical backfill occurred in this correction/rehearsal step. The three
+  read-only broker requests and zero renewal were completed in the separate
+  approved capture step; its private source bundles were preserved.
+- **Reuse boundary:** reuse these checks only while the cited code, private
+  source bundles, account and position bindings, active journal revision and
+  freshness policy match. A newly authorized live action or changed evidence
+  needs its smallest affected check, not another full rehearsal by default.

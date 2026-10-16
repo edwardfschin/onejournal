@@ -154,7 +154,7 @@ def _prior_order_variants(records):
 
 
 def _review_order_corrections(prior, incoming, fills):
-    """Review only an unfilled pending order's source-backed replacement.
+    """Review bounded terminal states of unfilled, non-active orders.
 
     The older observation stays immutable. Exact canonical hashes bind the
     reviewed successor; transaction fills, other statuses or other changed
@@ -166,8 +166,9 @@ def _review_order_corrections(prior, incoming, fills):
             continue
         current = json.loads(encoded)
         source_order_id = current.get('source_order_id')
+        target_status = current.get('status')
         if (not isinstance(source_order_id, str) or not source_order_id
-                or current.get('status') != 'REPLACED'
+                or target_status not in {'REPLACED', 'CANCELED'}
                 or any(row.get('source_order_id') == source_order_id for row in fills)):
             continue
         matching = []
@@ -175,8 +176,13 @@ def _review_order_corrections(prior, incoming, fills):
             previous = json.loads(previous_encoded)
             changed = {key for key in previous.keys() | current.keys()
                        if previous.get(key) != current.get(key)}
+            prior_status = previous.get('status')
             if (previous.keys() != current.keys()
-                    or previous.get('status') != 'PENDING_ACTIVATION'
+                    or (prior_status, target_status) not in {
+                        ('PENDING_ACTIVATION', 'REPLACED'),
+                        ('AWAITING_STOP_CONDITION', 'REPLACED'),
+                        ('AWAITING_STOP_CONDITION', 'CANCELED'),
+                    }
                     or not changed <= {'status', 'remaining_quantity', 'closed_at_utc'}
                     or 'status' not in changed):
                 continue
@@ -199,14 +205,16 @@ def _review_order_corrections(prior, incoming, fills):
                     or (old_closed is not None and (old_closed.tzinfo is None
                                                    or new_closed < old_closed))):
                 continue
-            matching.append(previous_encoded)
+            matching.append((previous_encoded, prior_status))
         if len(matching) != 1:
             continue
+        reason = ('unfilled_pending_order_replaced' if matching[0][1] == 'PENDING_ACTIVATION'
+                  else 'unfilled_conditional_order_' + target_status.lower())
         reviewed[uid] = dict(
             contract_version='onejournal.order-status-correction-review.v1',
-            reason_code='unfilled_pending_order_replaced',
+            reason_code=reason,
             order_uid_sha256=sha256(uid.encode()).hexdigest(),
-            predecessor_sha256=sha256(matching[0].encode()).hexdigest(),
+            predecessor_sha256=sha256(matching[0][0].encode()).hexdigest(),
             successor_sha256=sha256(encoded.encode()).hexdigest())
     return reviewed
 

@@ -1386,6 +1386,12 @@ creates and migrates only its own temporary copy as described below.
   write a receipt. The original database and evidence are unchanged. Missing
   incoming records do not delete existing records. Any conflicting same-identity
   observation requires source review, not an automatic overwrite.
+- The bounded order-status review also accepts an unfilled order moving from
+  `AWAITING_STOP_CONDITION` to `REPLACED` or `CANCELED` when only status,
+  remaining quantity and closing time change, the remaining quantity becomes
+  zero, closing time does not move backward, and no transaction fill is linked.
+  Other changed order states or economic fields remain held. This preserves the
+  earlier `PENDING_ACTIVATION` to `REPLACED` rule and does not authorize P&L.
 
 Focused synthetic tests cover active-versus-saved imports, UTC partial-day
 overlap, bounded catch-up, duplicate/new/changed identities, paired-fill
