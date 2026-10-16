@@ -6,6 +6,34 @@ new entry only after a meaningful new check. Keep private data and machine-
 specific private paths out of this file. Evidence from another worktree applies
 here only when the listed code hashes and conditions match.
 
+## 2026-10-16 — combined upload Mac installation and activation
+
+- **Installed source:** `ae6cd63b566876013126f2bec01a0eb31b44ab44`, built from
+  committed public inputs using the existing lockfile-matching build tools.
+  The 58-file installable artifact and exact source were verified at installation.
+  Installed the application and declared pinned dependencies in a new isolated
+  runtime; the previous release remains intact for rollback.
+- **Approved activation:** retained the previous launcher and staged a new
+  private configuration differing only by
+  `manual_capture_publish_financials: true`. Identified the existing OneJournal
+  listener by its exact runtime and configuration, stopped it gracefully, then
+  started the new protected release in Terminal with the same journal, passkeys
+  and TLS setup. No migration, financial import or broker request ran.
+- **Critical installed-site confirmation only:** the listener selects the new
+  runtime/configuration; trusted loopback HTTPS, selected static shell and
+  anonymous enrolled-access status passed. The journal's exact file hash before
+  and after activation matched. The private installation and runtime receipts
+  bind the artifact, launcher, configuration and retained data. OneBot, history
+  and VPS remain unchanged. No already-passed financial or security suite was
+  rerun for this installation.
+- **Operating scope/limits:** the Data page's paired upload can now publish a
+  validated update without chat approval or another restart. Export acquisition
+  remains manual; generic statement CSV and broker downloads are not supported
+  by this upload. This activation does not claim that a new live package was
+  uploaded or that the owner has accepted the changed screen after signing in.
+  Invalidate only affected evidence if the installed artifact, configuration,
+  financial/input contracts or protected runtime change.
+
 ## 2026-10-16 — combined website upload to saved financial release
 
 - **Scope/authority:** owner requested automatic Journal, Portfolio and Reports
