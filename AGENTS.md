@@ -547,6 +547,31 @@ performance, and Git-state checks.
 Validate both the changed component and downstream contracts. Do not weaken a
 test or validation rule merely to make a failing change pass.
 
+### Reuse validation evidence; do not repeat proof for its own sake
+
+Keep a concise, privacy-safe record of meaningful checks in
+`docs/validation_log.md`. Before running a test, rehearsal, backup check, or
+browser check, read the relevant entry and ask whether its code, contract,
+input class, environment, and stated outcome still match the current task.
+Reuse valid evidence rather than repeating it. Rerun only the smallest affected
+check when something relevant changed, earlier evidence failed or is incomplete,
+or a new consequential action requires evidence the log does not contain.
+Record the reason for a repeat. Do not rerun an unchanged full suite or private
+rehearsal merely to produce another success message.
+
+For each new meaningful check, record the date, exact scope, code revision or
+file hashes, synthetic versus private input, command or procedure, result,
+what it does **not** prove, and the specific condition that would invalidate
+it. Keep credentials, private paths, account or instrument identifiers,
+holdings, financial values, raw broker responses, and journal notes out of Git.
+If a private receipt exists, refer to it without copying its contents. A chat
+claim without a saved receipt may guide work but is not durable live acceptance.
+
+Keep code tests, disposable-copy rehearsals, live journal changes, and the
+actual website journey as separate outcomes. A passing upstream check does not
+mean the next connection is built or active. Once the evidence answers the
+question, stop testing and work on the remaining user-visible gap.
+
 ## Rollback readiness
 
 Before risky changes, establish how to return to the previous working state
