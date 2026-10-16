@@ -136,6 +136,13 @@ Before changing anything:
 
 Always fix root causes rather than introducing workarounds.
 
+Use the smallest reliable solution and reuse relevant existing components
+before creating new ones. Keep investigation, tool use, validation, and
+explanations proportional to the task. Reuse current validation evidence when
+it remains relevant; repeat checks when the change, environment, or risk makes
+that evidence insufficient. Stay within the approved scope and avoid
+speculative features, unrelated refactoring, and unnecessary dependencies.
+
 Within a work item, take small, validated execution steps, but group them into
 the largest coherent approval and delivery chunk that reaches a logical
 checkpoint without increasing risk. Avoid broad rewrites unless evidence proves
@@ -564,6 +571,38 @@ pause, resolve or explicitly set aside unrelated changes, then re-run the check
 before starting substantive edits.
 Preserve unrelated user changes.
 
+Before editing, confirm the repository, current branch, working-tree state,
+remote, and relevant baseline. Do not assume the checkout is current. If branch
+history or ownership is unclear, inspect it before changing anything.
+
+For concurrent editing workstreams, use a separate worktree and unique task
+branch for each workstream, and keep one writer in each checkout. Record each
+workstream's scope, owner, branch, and starting commit. Coordinate overlapping
+files and dependencies early; pause only the conflicting work while independent
+work continues. Do not share writable databases, generated outputs, or temporary
+files between workstreams. Assign one owner to binary documents that cannot be
+reliably merged; other workstreams may propose amendments.
+
+Keep completed task work on its task branch. Do not push directly to a shared
+default branch or compete to update it. Assign one integration owner for the
+default branch and use the repository's established review and branch-protection
+process. Determine the default branch from current remote HEAD metadata or the
+repository hosting settings; verify the result instead of assuming it is named
+`main`. Before integration, compare with the latest verified default branch,
+resolve task-related conflicts on the task branch, validate the resolution, and
+recheck relevant behaviour after integration. Never resolve conflicts by
+blindly choosing one side. Confirm the resulting commit and remote state before
+claiming that work was integrated.
+
+Review the full diff, run relevant checks, and stage explicit paths before a
+commit. Exclude secrets, credentials, caches, logs, and generated runtime data
+unless intentionally versioned. Never force-push a shared branch, rewrite
+published history, reset away work, merge unrelated or unreviewed changes, or
+run broad destructive cleanup without explicit authorization. Before risky
+reconciliation, preserve a verified recovery copy of relevant Git history and
+changed files, including binary documents. Remove task-owned branches or
+worktrees only after integration is verified and cleanup is authorized.
+
 Do not commit secrets, credentials, tokens, private environment files, raw broker
 data, runtime databases, generated outputs, or personal financial information.
 
@@ -573,6 +612,12 @@ without approval.
 Do not commit, push, deploy, synchronize, create a pull request, or modify
 external systems unless explicitly requested. Respect instructions such as
 "commit but do not push" literally.
+
+Approval to perform a coding task authorizes scoped local edits and validation;
+it does not by itself authorize committing, pushing, creating a pull request,
+merging, or synchronizing. Explicitly authorize each such action, or name the
+actions and targets together in one bounded approval. Follow any narrower
+instruction exactly.
 
 ## Documentation and architecture decisions
 
