@@ -2,8 +2,35 @@
 let csrf: string | null = null;
 let expiresAt = 0;
 let expiryTimer: ReturnType<typeof setTimeout> | null = null;
+let revocationChannel: BroadcastChannel | null = null;
 export const ACCESS_REQUIRED_EVENT = 'onejournal-access-required';
 export const ACCESS_PREFIX = '/api/v1/local-owner/access';
+const REVOCATION_CHANNEL = 'onejournal-access-revoked';
+
+function channel() {
+  if (typeof window === 'undefined' || typeof BroadcastChannel === 'undefined') return null;
+  try {
+    revocationChannel ??= new BroadcastChannel(REVOCATION_CHANNEL);
+    return revocationChannel;
+  } catch { return null; }
+}
+
+export function listenForAccessRevocation() {
+  const connection = channel();
+  if (!connection) return () => {};
+  const onMessage = (event: MessageEvent) => {
+    if (event.data === 'logout') expireAccess();
+  };
+  connection.addEventListener('message', onMessage);
+  return () => connection.removeEventListener('message', onMessage);
+}
+
+export function revokeAccessAcrossTabs() {
+  expireAccess();
+  // A missing or blocked browser channel must not turn a confirmed server
+  // logout into an apparent failure. Other tabs still lose server access.
+  try { channel()?.postMessage('logout'); } catch { /* Best-effort display lock. */ }
+}
 
 function clearExpiryTimer() {
   if (expiryTimer !== null) clearTimeout(expiryTimer);

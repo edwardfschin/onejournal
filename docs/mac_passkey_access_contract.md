@@ -37,7 +37,10 @@ expires. Security-store failure does not grant legacy access.
 Session status reports the seconds until the earlier of idle or absolute
 expiry. The browser hides private views at that deadline and checks it again
 on focus after sleep. The server gate remains authoritative for every private
-request.
+request. After confirmed logout, an origin-scoped browser signal also hides
+already-open private views in other tabs immediately; it carries no credential
+or financial value. A browser without this feature still loses server access
+immediately and its other tabs clear on their next session check.
 
 Defaults: 15-minute idle/8-hour absolute session, two-minute single-use challenge,
 ten-minute one-use enrollment, five failed attempts per 15 minutes, five passkeys,
