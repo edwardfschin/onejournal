@@ -45,6 +45,45 @@ here only when the listed code hashes and conditions match.
   rehearsal or encrypted recovery exercise was repeated. Recheck only affected
   behavior when code, selected package, binding, database or release changes.
 
+## 2026-10-16 — latest captured Portfolio/Reports preparation
+
+- **Changed gap:** the newly saved Journal activity had advanced, but Portfolio
+  and Reports still selected their previous October 10 release. The report
+  preview also still used the older position evidence. An optional exact-snapshot
+  quantity check now connects the latest position observation to that preview
+  without changing existing calculation behavior when no snapshot is supplied.
+- **Code:** `src/onejournal/activity_financial_preview.py` SHA-256
+  `3c193e52e7d1d54015c94a5d366171fcb5b98521b63b03a9eac26fe3c88c4d18`;
+  `tests/test_activity_financial_preview.py` SHA-256
+  `8ea6226922edc31c9919c0c187bea0d05f20e7225e1f046f3b6a977998b3455e`.
+- **Smallest changed checks:** the new
+  `test_latest_snapshot_reconciles_partial_close_without_promoting_missing_evidence`
+  and existing `test_new_close_reconciles_fees_and_reuses_trade_report_contracts`
+  passed (2 focused synthetic tests, security Python runtime). Quantity match
+  admitted the reconciled partial close; wrong quantities remained pending.
+  Wrong account, incomplete snapshot and activity after the snapshot failed.
+  The existing no-snapshot calculation remained unchanged. No full suite ran.
+- **Private publication preparation:** reused the retained October 16 capture,
+  its approved account/instrument binding, existing valuation precision and age
+  policy, and the confirmed Journal checkpoint. All 68 positions had available
+  basis, value and unrealized result. The dated valuation is for October 15 New
+  York time, evaluated at the actual retrieval instant; it does not assert
+  current prices at publication time. The new report has 260 admitted results
+  and 83 withheld entries, preserves all 257 previously published results exactly,
+  and has coverage ending October 15. Existing financial holds were retained.
+- **New integration check:** persisted the combined candidate on one disposable
+  journal copy, then read Portfolio, current report breakdowns, realized history
+  and CSV through the existing APIs. Typed read-back, CSV count and preservation
+  passed. An initial operator call omitted required report date filters and was
+  corrected; the failed new integration check alone was repeated. Prior
+  upload/replay, backup restoration, frontend build and security tests were reused.
+  The source journal was unchanged, and no broker access occurred.
+- **Limit/invalidation:** this entry proves preparation, not live publication or
+  runtime activation. Saved private candidate/plan files bind the source and
+  calculation hashes. Repeat only affected behavior if code, captures, account
+  binding, financial contracts or environment change; the live append/read-back
+  and configuration switch still require their own operational receipt.
+
 ## 2026-10-16 — distinct local Trades and Journal views
 
 - **Code checked:** `web/app/journal/local/page.tsx` SHA-256

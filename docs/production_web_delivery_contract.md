@@ -142,6 +142,25 @@ requiring recovery, stop the site and restore the verified pre-import journal
 and matching configuration; retain the failed source package privately. Never
 delete ledger rows or manually advance its checkpoint.
 
+For a separately approved saved Portfolio/Reports update, the activity financial
+preview can take the latest complete, validated broker position snapshot. The
+optional `position-quantity-v1` calculation extension reuses the established
+account-position reconciliation against FIFO quantities after approved lifecycle
+events. It requires the same provider/connection/account and New York market
+date, a snapshot no later than the confirmed activity checkpoint, and no retained
+fill or lifecycle event between that snapshot and the checkpoint. Matching
+quantities remove only the extra stale-snapshot gate; missing opening records,
+unreviewed terminal events and prior lifecycle holds remain withheld. A mismatch
+remains pending. The result fingerprint binds the exact snapshot fingerprint.
+Without this optional snapshot, existing v1/v2 calculations remain unchanged.
+
+Portfolio valuation retains the existing precision and maximum-age policy and
+is evaluated at its actual capture instant for the explicitly dated saved
+snapshot. Publication time never substitutes for retrieval time and never makes
+saved prices live. The current-position and realized branches are persisted
+before switching the private website configuration to the combined release;
+existing releases, Journal records and historical imports are preserved.
+
 The older, inactive request-queue boundary uses the versioned
 `onejournal.data-refresh.v1` request/status boundary. It accepts a request ID,
 not a broker URL, credentials, account selector or history range. A private

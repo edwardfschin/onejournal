@@ -61,6 +61,31 @@ class ActivityFinancialPreviewTests(unittest.TestCase):
         self.assertEqual(outside['metadata']['quality'],'unavailable')
         self.assertEqual(outside['items'],[])
 
+    def test_latest_snapshot_reconciles_partial_close_without_promoting_missing_evidence(self):
+        close = dict(self.close, quantity='1')
+        baseline = self.baseline(close=close, transaction=dict(self.transaction, net_amount='109.70'))
+        original = inputs()['position'].snapshot
+        snapshot = replace(original, asof=date(2026,9,8), retrieved_at=baseline.cutoff,
+            positions=(replace(original.positions[0], quantity=Decimal('1')),))
+        missing = self.preview(baseline)
+        self.assertEqual(missing.items, ())
+        matched = _build_preview(baseline, approved_events=(), account_alias='Primary', current_snapshot=snapshot)
+        self.assertEqual(matched.items[0].realized_pnl, Decimal('9.70'))
+        self.assertEqual(matched.trades[0]['position_reconciliation_status'], 'matched_current')
+        self.assertEqual(matched.position_snapshot_utc, snapshot.retrieved_at)
+        self.assertNotEqual(matched.result_fingerprint, missing.result_fingerprint)
+        self.assertIn('position-quantity-v1', matched.calculation_version)
+        self.assertIn('calculation_version', report_preview(matched, **self.filters(matched))['metadata'])
+        wrong_quantity = replace(snapshot, positions=(replace(snapshot.positions[0], quantity=Decimal('2')),))
+        held = _build_preview(baseline, approved_events=(), account_alias='Primary', current_snapshot=wrong_quantity)
+        self.assertEqual(held.items, ())
+        self.assertEqual(held.omissions[0].reason_code, 'position_reconciliation_incomplete')
+        for invalid in (replace(snapshot, account_complete=False),
+                        replace(snapshot, source_account_id='wrong-account'),
+                        replace(snapshot, retrieved_at=datetime(2026,9,7,12,tzinfo=UTC))):
+            with self.assertRaises(ValueError):
+                _build_preview(baseline, approved_events=(), account_alias='Primary', current_snapshot=invalid)
+
     def test_precise_values_are_not_rounded_to_database_projection_scale(self):
         close = dict(self.close,fill_price='110.1234567890123',commission='0.000000000012345',fees='0')
         net = Decimal(close['fill_price'])*Decimal('2')-Decimal(close['commission'])

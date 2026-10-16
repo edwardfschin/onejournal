@@ -73,8 +73,35 @@ def _combined_records(baseline):
         for name, (identity, observation, _) in _FAMILIES.items() if name!='orders'}
 
 
+def _current_position_checks(baseline, fills, event_records, calculation, snapshot):
+    """Reconcile quantities at a supplied, validated snapshot's actual instant."""
+    from onejournal.pnl.position_reconciliation import CanonicalPositionQuantity, reconcile_account_positions
+    if (not snapshot.account_complete or not snapshot.positions
+            or (snapshot.source_broker, snapshot.connection_uid, snapshot.source_account_id) !=
+               ('schwab', baseline.assembly.connection_uid, baseline.assembly.source_account_id)
+            or snapshot.asof != baseline.cutoff.astimezone(NEW_YORK).date()
+            or snapshot.retrieved_at > baseline.cutoff
+            or any(f.filled_at > snapshot.retrieved_at for f in fills)
+            or any(datetime.fromisoformat(r['event_at'].replace('Z','+00:00')) > snapshot.retrieved_at
+                   for r in event_records.values())):
+        raise ValueError('Position snapshot does not cover the exact activity scope.')
+    identities = {build_instrument_key(f):InstrumentIdentity.from_fill(f) for f in fills}
+    canonical = tuple(CanonicalPositionQuantity(source_broker='schwab',
+        connection_uid=snapshot.connection_uid, source_account_id=snapshot.source_account_id,
+        identity=identities[g.instrument_key], quantity=g.open_quantity,
+        asof=snapshot.asof, evaluated_at=snapshot.retrieved_at,
+        calculation_version=calculation.calculation_version, open_cost_basis=g.open_cost_basis)
+        for g in calculation.groups.values() if g.open_quantity and g.instrument_key in identities)
+    reconciled = reconcile_account_positions(canonical, snapshot,
+        evaluated_at=snapshot.retrieved_at, max_snapshot_age_seconds=0)
+    quantities = {identities[g.instrument_key].key:g.open_quantity for g in calculation.groups.values()
+                  if g.instrument_key in identities}
+    return {r.identity.key:r.status for r in reconciled}, quantities
+
+
 def _build_preview(baseline, *, approved_events, account_alias, reviews=None,
-                   calculation_revision=CURRENT_CALCULATION_REVISION, include_journal=False):
+                   calculation_revision=CURRENT_CALCULATION_REVISION, include_journal=False,
+                   current_snapshot=None):
     if calculation_revision not in (CURRENT_CALCULATION_REVISION,LEGACY_CALCULATION_REVISION):
         raise ValueError('Unsupported activity calculation revision.')
     records = _combined_records(baseline)
@@ -208,8 +235,21 @@ def _build_preview(baseline, *, approved_events, account_alias, reviews=None,
         reasons[episode_by_fill[uid].preview.episode_uid] = 'opening_history_missing'
     # A stale complete position observation cannot reconcile today's open trade.
     stale = baseline.cutoff > assembly.snapshot_cutoff_utc
+    position_statuses = {}
+    checks = quantities = None
+    if current_snapshot is not None:
+        checks, quantities = _current_position_checks(baseline, fills, event_records, calculation, current_snapshot)
     for e in episodes:
-        if stale and statuses[e.preview.episode_uid] == 'open':
+        if statuses[e.preview.episode_uid] != 'open':
+            continue
+        if checks is not None:
+            keys = {InstrumentIdentity.from_fill(by_fill[uid]).key for uid in e.fill_uids}
+            required = {key for key in keys if quantities.get(key)}
+            matched = bool(required) and all(checks.get(key)=='valid' for key in required)
+            position_statuses[e.preview.episode_uid] = 'matched_current' if matched else 'pending'
+            if not matched:
+                reasons.setdefault(e.preview.episode_uid,'position_reconciliation_incomplete')
+        elif stale:
             reasons.setdefault(e.preview.episode_uid,'fresh_position_snapshot_required')
     items = []
     for allocation in calculation.closed_allocations:
@@ -233,7 +273,8 @@ def _build_preview(baseline, *, approved_events, account_alias, reviews=None,
     omissions = tuple(ReportingOmission('activity-omission:'+_digest((source,e.preview.episode_uid,reasons[e.preview.episode_uid])),
         'schwab',assembly.source_account_id,max(by_fill[uid].filled_at.astimezone(NEW_YORK).date() for uid in e.fill_uids),
         e.preview.primary_symbol,reasons[e.preview.episode_uid],
-        'reconciliation_pending' if reasons[e.preview.episode_uid]=='fresh_position_snapshot_required' else 'incomplete')
+        'reconciliation_pending' if reasons[e.preview.episode_uid] in (
+            'fresh_position_snapshot_required','position_reconciliation_incomplete') else 'incomplete')
         for e in episodes if e.preview.episode_uid in reasons)
     omissions += tuple(ReportingOmission('activity-event-omission:'+_digest((source,uid)),
         'schwab',assembly.source_account_id,
@@ -251,7 +292,8 @@ def _build_preview(baseline, *, approved_events, account_alias, reviews=None,
             asset_class=e.preview.asset_class,strategy_type=p.strategy_type,strategy_label=p.strategy_label,
             opened_at=e.preview.opened_at,episode_status=statuses[e.preview.episode_uid],review_status=review[0],setup_quality=review[1],
             lifecycle_quality='review_required' if reason else 'resolved',lifecycle_reason=reason,
-            position_reconciliation_status='pending' if stale and statuses[e.preview.episode_uid]=='open' else 'not_applicable',
+            position_reconciliation_status=position_statuses.get(e.preview.episode_uid,
+                'pending' if stale and statuses[e.preview.episode_uid]=='open' else 'not_applicable'),
             instrument_count=p.instrument_count,execution_count=p.execution_count,lifecycle_sequence=p.lifecycle_sequence,
             lifecycle_count=p.lifecycle_count,instrument_summary=p.instrument_summary))
     start = datetime.combine(assembly.lifecycle_window_start,time(),UTC).astimezone(NEW_YORK).date()
@@ -261,19 +303,26 @@ def _build_preview(baseline, *, approved_events, account_alias, reviews=None,
         fill_fingerprint=build_fill_input_fingerprint(fills),lifecycle_fingerprint=build_lifecycle_input_fingerprint(events),
         projection=projection.result_fingerprint,trades=trades,items=[asdict(i) for i in items],
         omissions=[asdict(o) for o in omissions],account_alias=account_alias,calculation_version=version)
+    snapshot_utc = assembly.snapshot_cutoff_utc
+    if current_snapshot is not None:
+        from onejournal.journal.broker_current_position_valuation_repository import calculate_broker_position_snapshot_fingerprint
+        version += '+position-quantity-v1'
+        payload.update(calculation_version=version,
+            current_position_snapshot_fingerprint=calculate_broker_position_snapshot_fingerprint(current_snapshot))
+        snapshot_utc = current_snapshot.retrieved_at
     journal = None
     if include_journal:
         from onejournal.journal.activity_journal import build_relations
         journal = build_relations(baseline, episodes, projection, trades, event_records,
                                   records['lifecycle_event_legs'])
-    return ActivityFinancialPreview(source,baseline.cutoff,assembly.snapshot_cutoff_utc,start,end,version,
+    return ActivityFinancialPreview(source,baseline.cutoff,snapshot_utc,start,end,version,
         (ReportingAccount('schwab',assembly.source_account_id,account_alias),),tuple(sorted(items,key=lambda i:i.item_uid)),
         omissions,tuple(trades),projection.executions,projection.instruments,_digest(payload),
         journal, fills if include_journal else ())
 
 
 def load_activity_financial_preview(db, binding, *, expected_checkpoint_uid, account_alias,
-                                   calculation_revision=CURRENT_CALCULATION_REVISION):
+                                   calculation_revision=CURRENT_CALCULATION_REVISION, current_snapshot=None):
     if not isinstance(account_alias,str) or not account_alias.strip() or len(account_alias)>64:
         raise ValueError('An explicit private account alias is required.')
     checked = private_file(db,'activity journal',private_parent=True)
@@ -291,7 +340,7 @@ def load_activity_financial_preview(db, binding, *, expected_checkpoint_uid, acc
         reviews = {uid:(status,quality) for uid,status,quality in con.execute(
             'SELECT episode_uid,review_status,setup_quality FROM manual_reviews').fetchall()}
         return _build_preview(baseline,approved_events=events,account_alias=account_alias,reviews=reviews,
-                              calculation_revision=calculation_revision)
+                              calculation_revision=calculation_revision, current_snapshot=current_snapshot)
 
 
 def report_preview(preview, *, from_date, to_date, account_alias=None, symbol=None):
@@ -306,7 +355,7 @@ def report_preview(preview, *, from_date, to_date, account_alias=None, symbol=No
     metadata = dict(contract_version=CONTRACT,quality=quality,reason_counts=reasons,
         result_fingerprint=preview.result_fingerprint,checkpoint_utc=preview.checkpoint_utc.isoformat(),
         position_snapshot_utc=preview.position_snapshot_utc.isoformat(),owner_accepted=False)
-    if preview.calculation_version.endswith('+'+CURRENT_CALCULATION_REVISION):
+    if CURRENT_CALCULATION_REVISION in preview.calculation_version.split('+'):
         metadata['calculation_version'] = preview.calculation_version
     return dict(metadata=metadata,
         counts=dict(processed_count=len(rows)+sum(reasons.values()),available_count=len(rows),
