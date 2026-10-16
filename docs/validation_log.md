@@ -6,6 +6,45 @@ new entry only after a meaningful new check. Keep private data and machine-
 specific private paths out of this file. Evidence from another worktree applies
 here only when the listed code hashes and conditions match.
 
+## 2026-10-16 — Mac saved-Journal live activation
+
+- **Authority and release:** owner explicitly approved the fresh rollback copy,
+  live Journal import and protected Mac restart, then separately approved existing
+  migrations 0029 and 0030 after the live target was found at 0028. Application
+  source is `5c8b815fbbdd906b4a5b5ef768e054e884312fa9`. The new isolated runtime
+  imports its installed wheel and matches the pinned Python dependencies; the
+  previously missing pinned timezone package was installed only in that runtime.
+- **Fresh rollback:** copied the closed live journal under a read-only lock;
+  exact source/copy file hashes matched. Opening the copy reproduced its existing
+  relation proofs. The previous launcher/configuration were retained alongside
+  the private rollback receipt. Previous encrypted backups were not replaced or
+  retested. No existing process was stopped: the site port was initially free.
+- **Live operation:** applied only pending 0029/0030 through the existing ordered
+  migration operator, preserving every prior schema-ledger row. All newly added
+  historical-evidence tables stayed empty. The already captured package then
+  passed the configured intake and committed 118 activity additions, with 310
+  trades and 619 executions returned by the saved Journal. Existing search and
+  latest-trade API reads passed against the live target. No broker request or
+  historical backfill was performed.
+- **Preservation:** compared every pre-existing relation except the explicitly
+  permitted fills/import-run/checkpoint tables and the additive schema ledger.
+  Existing history, notes, Portfolio and Reports records matched their rollback
+  proofs exactly. The Portfolio/Reports authorization files retained their exact
+  hashes. The subsequent Journal reads added only normal value-free read audits.
+- **Actual runtime:** updated the private launcher and started the approved wheel
+  and static build in a Mac Terminal. The selected 58-file release inventory,
+  trusted localhost HTTPS, served shell hash, existing enrolled-passkey anonymous
+  session status and private Journal HTTP 401 denial passed. The service listens
+  only on loopback port 4173. Import, rollback and runtime receipts are saved
+  privately outside Git; no private paths, identifiers or financial values are
+  included here.
+- **Limits/reuse:** this proves the live import and protected runtime activation,
+  not a new Portfolio/Reports release, broker download, hosted acceptance or owner
+  sign-in/visual acceptance of the changed Journal screen. The earlier synthetic
+  save/review/replay/rollback checks were reused. No unchanged suite, private-copy
+  rehearsal or encrypted recovery exercise was repeated. Recheck only affected
+  behavior when code, selected package, binding, database or release changes.
+
 ## 2026-10-16 — distinct local Trades and Journal views
 
 - **Code checked:** `web/app/journal/local/page.tsx` SHA-256
